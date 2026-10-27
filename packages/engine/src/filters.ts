@@ -1,5 +1,5 @@
 import type { Index } from './index-builder.js';
-import { EngineError, type AttributeValue, type EngineConfig, type Filter } from './types.js';
+import { type AttributeValue, type EngineConfig, EngineError, type Filter } from './types.js';
 
 /**
  * Filters narrow the candidate set before anything is scored.

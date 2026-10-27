@@ -76,14 +76,23 @@ const basePriceFor = (random: Random, leaf: LeafSpec): number => {
     return (Math.floor(dollars / 10) * 10 + ending) * DOLLARS;
 };
 
-const variantsFor = (
-    random: Random,
-    sku: string,
-    colors: readonly string[],
-    sizes: readonly string[],
-    basePrice: number,
-    memberDiscount: number
-): Variant[] => {
+interface VariantPlan {
+    readonly random: Random;
+    readonly sku: string;
+    readonly colors: readonly string[];
+    readonly sizes: readonly string[];
+    readonly basePrice: number;
+    readonly memberDiscount: number;
+}
+
+const variantsFor = ({
+    random,
+    sku,
+    colors,
+    sizes,
+    basePrice,
+    memberDiscount,
+}: VariantPlan): Variant[] => {
     // Most products have one price. Some charge more for larger sizes, which
     // is what gives a product a price range rather than a single number.
     const sizePremium = random.chance(0.25) ? random.int(1, 3) * 5 * DOLLARS : 0;
@@ -125,6 +134,86 @@ const createdAtFor = (random: Random): string => {
     return new Date(reference - daysAgo * 86_400_000).toISOString();
 };
 
+/** Everything one product's generation draws on, shared across the run. */
+interface Generation {
+    readonly random: Random;
+    readonly brands: readonly Brand[];
+    readonly memberDiscountByBrand: ReadonlyMap<string, number>;
+    readonly leafSpecs: readonly LeafSpec[];
+    readonly positions: Map<string, number>;
+    readonly usedNames: Set<string>;
+}
+
+/** A name unique within the catalog. A would-be duplicate gets a numbered edition. */
+const uniqueName = (random: Random, usedNames: Set<string>, brand: string, noun: string) => {
+    let name = `${brand} ${random.pick(ADJECTIVES)} ${noun}`;
+    for (let edition = 2; usedNames.has(name); edition += 1) {
+        name = `${brand} ${random.pick(ADJECTIVES)} ${noun} ${edition}`;
+    }
+    usedNames.add(name);
+    return name;
+};
+
+const createProduct = (generation: Generation, index: number): Product => {
+    const { random, brands, memberDiscountByBrand, leafSpecs, positions, usedNames } = generation;
+    const leaf = random.pick(leafSpecs);
+    const brand = random.pick(brands);
+    const noun = random.pick(leaf.nouns);
+    const name = uniqueName(random, usedNames, brand.name, noun);
+
+    const sku = `SL-${String(index + 1).padStart(5, '0')}`;
+    const colors = random.sample(COLORS, random.int(1, 4));
+    const sizes =
+        leaf.sizes.length === 1
+            ? leaf.sizes
+            : leaf.sizes.slice(random.int(0, 1), leaf.sizes.length - random.int(0, 1));
+    const material = random.pick(leaf.materials);
+    const variants = variantsFor({
+        random,
+        sku,
+        colors,
+        sizes,
+        basePrice: basePriceFor(random, leaf),
+        memberDiscount: memberDiscountByBrand.get(brand.id) ?? 0,
+    });
+    const position = (positions.get(leaf.id) ?? 0) + 1;
+    positions.set(leaf.id, position);
+    const ratingCount = random.chance(0.15) ? 0 : random.int(1, 2400);
+
+    // Exactly one product is for members only, so the visibility rule has
+    // something to apply to and a test can name it.
+    const visibleTo: CustomerGroup[] = index === 7 ? ['member'] : ['guest', 'member'];
+
+    return {
+        sku,
+        name,
+        description: describe(random, noun, material),
+        brandId: brand.id,
+        brand: brand.name,
+        categoryId: leaf.id,
+        categoryPath: [
+            CATEGORY_TREE.find((branch) => branch.leaves.includes(leaf))?.id ?? '',
+            leaf.id,
+        ],
+        colors,
+        sizes,
+        material,
+        tags: [leaf.id, slugify(noun), ...(ratingCount > 1500 ? ['bestseller'] : [])],
+        variants,
+        price: {
+            guest: rangeOf(variants.map((variant) => variant.price)),
+            member: rangeOf(variants.map((variant) => variant.memberPrice)),
+        },
+        rating: {
+            average: ratingCount === 0 ? 0 : random.int(20, 50) / 10,
+            count: ratingCount,
+        },
+        visibleTo,
+        position,
+        createdAt: createdAtFor(random),
+    };
+};
+
 export const generateCatalog = ({
     seed = DEFAULT_SEED,
     products: count = DEFAULT_PRODUCTS,
@@ -140,77 +229,15 @@ export const generateCatalog = ({
     const memberDiscountByBrand = new Map(
         brands.map((brand) => [brand.id, random.chance(0.5) ? 0.1 : 0])
     );
-    const categories = buildCategories();
-    const leafSpecs = leaves();
-    const positions = new Map<string, number>();
-    const usedNames = new Set<string>();
-
-    const products: Product[] = [];
-    for (let index = 0; index < count; index += 1) {
-        const leaf = random.pick(leafSpecs);
-        const brand = random.pick(brands);
-        const noun = random.pick(leaf.nouns);
-
-        // Names are unique within the catalog. A second product that would
-        // share a name gets a numbered edition, as a real catalog's would.
-        let name = `${brand.name} ${random.pick(ADJECTIVES)} ${noun}`;
-        for (let edition = 2; usedNames.has(name); edition += 1) {
-            name = `${brand.name} ${random.pick(ADJECTIVES)} ${noun} ${edition}`;
-        }
-        usedNames.add(name);
-
-        const sku = `SL-${String(index + 1).padStart(5, '0')}`;
-        const colors = random.sample(COLORS, random.int(1, 4));
-        const sizes =
-            leaf.sizes.length === 1
-                ? leaf.sizes
-                : leaf.sizes.slice(random.int(0, 1), leaf.sizes.length - random.int(0, 1));
-        const material = random.pick(leaf.materials);
-        const variants = variantsFor(
-            random,
-            sku,
-            colors,
-            sizes,
-            basePriceFor(random, leaf),
-            memberDiscountByBrand.get(brand.id) ?? 0
-        );
-        const position = (positions.get(leaf.id) ?? 0) + 1;
-        positions.set(leaf.id, position);
-        const ratingCount = random.chance(0.15) ? 0 : random.int(1, 2400);
-
-        // Exactly one product is for members only, so the visibility rule has
-        // something to apply to and a test can name it.
-        const visibleTo: CustomerGroup[] = index === 7 ? ['member'] : ['guest', 'member'];
-
-        products.push({
-            sku,
-            name,
-            description: describe(random, noun, material),
-            brandId: brand.id,
-            brand: brand.name,
-            categoryId: leaf.id,
-            categoryPath: [
-                CATEGORY_TREE.find((branch) => branch.leaves.includes(leaf))?.id ?? '',
-                leaf.id,
-            ],
-            colors,
-            sizes,
-            material,
-            tags: [leaf.id, slugify(noun), ...(ratingCount > 1500 ? ['bestseller'] : [])],
-            variants,
-            price: {
-                guest: rangeOf(variants.map((variant) => variant.price)),
-                member: rangeOf(variants.map((variant) => variant.memberPrice)),
-            },
-            rating: {
-                average: ratingCount === 0 ? 0 : random.int(20, 50) / 10,
-                count: ratingCount,
-            },
-            visibleTo,
-            position,
-            createdAt: createdAtFor(random),
-        });
-    }
+    const generation: Generation = {
+        random,
+        brands,
+        memberDiscountByBrand,
+        leafSpecs: leaves(),
+        positions: new Map(),
+        usedNames: new Set(),
+    };
+    const products = Array.from({ length: count }, (_, index) => createProduct(generation, index));
 
     return {
         version: `${GENERATOR_VERSION}-${seed}-${count}`,
@@ -218,7 +245,7 @@ export const generateCatalog = ({
         currency: 'USD',
         locale: 'en-US',
         brands,
-        categories,
+        categories: buildCategories(),
         products,
     };
 };

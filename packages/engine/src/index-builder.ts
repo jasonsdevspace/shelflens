@@ -1,10 +1,10 @@
 import { tokenize } from './normalize.js';
 import {
-    EngineError,
     type AttributeKind,
     type AttributeValue,
     type Document,
     type EngineConfig,
+    EngineError,
 } from './types.js';
 
 /**

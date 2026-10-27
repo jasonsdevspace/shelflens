@@ -16,7 +16,8 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "type-check": "tsc -p tsconfig.json",
+        "build": "tsc -b tsconfig.build.json"
     },
     "license": "MIT"
 }

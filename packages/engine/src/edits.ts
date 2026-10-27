@@ -10,30 +10,25 @@
  * because the question is only ever "within one", and answering that is
  * far cheaper than computing how far apart two terms are.
  */
-export const withinOneEdit = (a: string, b: string): boolean => {
-    if (a === b) return true;
-    const lengthGap = a.length - b.length;
-    if (lengthGap > 1 || lengthGap < -1) return false;
-
-    if (lengthGap === 0) {
-        let first = -1;
-        for (let i = 0; i < a.length; i += 1) {
-            if (a[i] === b[i]) continue;
-            if (first === -1) {
-                first = i;
-                continue;
-            }
-            // A second mismatch is allowed only as the other half of a swap
-            // of two adjacent characters, with everything after it equal.
-            if (i !== first + 1 || a[first] !== b[i] || a[i] !== b[first]) return false;
-            return a.slice(i + 1) === b.slice(i + 1);
+/** Same length: at most one substitution, or one swap of adjacent characters. */
+const sameLengthWithinOneEdit = (a: string, b: string): boolean => {
+    let first = -1;
+    for (let i = 0; i < a.length; i += 1) {
+        if (a[i] === b[i]) continue;
+        if (first === -1) {
+            first = i;
+            continue;
         }
-        return true;
+        // A second mismatch is allowed only as the other half of a swap of
+        // two adjacent characters, with everything after it equal.
+        const swapped = i === first + 1 && a[first] === b[i] && a[i] === b[first];
+        return swapped && a.slice(i + 1) === b.slice(i + 1);
     }
+    return true;
+};
 
-    // One character longer: the longer term must equal the shorter with one
-    // character removed.
-    const [longer, shorter] = lengthGap === 1 ? [a, b] : [b, a];
+/** One character longer: the longer term is the shorter with one character added. */
+const oneLongerWithinOneEdit = (longer: string, shorter: string): boolean => {
     let skipped = false;
     for (let i = 0, j = 0; j < shorter.length; i += 1, j += 1) {
         if (longer[i] === shorter[j]) continue;
@@ -42,4 +37,13 @@ export const withinOneEdit = (a: string, b: string): boolean => {
         j -= 1;
     }
     return true;
+};
+
+export const withinOneEdit = (a: string, b: string): boolean => {
+    if (a === b) return true;
+    const lengthGap = a.length - b.length;
+    if (lengthGap === 0) return sameLengthWithinOneEdit(a, b);
+    if (lengthGap === 1) return oneLongerWithinOneEdit(a, b);
+    if (lengthGap === -1) return oneLongerWithinOneEdit(b, a);
+    return false;
 };

@@ -1,12 +1,12 @@
-export { createEngine, type Engine } from './search.js';
-export { foldAccents, normalize, stem, tokenize } from './normalize.js';
 export { withinOneEdit } from './edits.js';
+export { foldAccents, normalize, stem, tokenize } from './normalize.js';
+export { createEngine, type Engine } from './search.js';
 export {
-    EngineError,
     type AttributeKind,
     type AttributeValue,
     type Document,
     type EngineConfig,
+    EngineError,
     type Filter,
     type Hit,
     type MatchKind,

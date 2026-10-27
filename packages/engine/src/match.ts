@@ -1,5 +1,5 @@
 import { withinOneEdit } from './edits.js';
-import { termsWithPrefix, type Index, type Posting } from './index-builder.js';
+import { type Index, type Posting, termsWithPrefix } from './index-builder.js';
 import type { SynonymTable } from './synonyms.js';
 import type { EngineConfig, MatchKind, TermMatch } from './types.js';
 
@@ -39,9 +39,14 @@ export type TermHits = ReadonlyMap<number, readonly TermMatch[]>;
 const idf = (index: Index, documentFrequency: number): number =>
     Math.log(1 + (index.documents.length - documentFrequency + 0.5) / (documentFrequency + 0.5));
 
+/** What scoring reads: the index and the field weights. */
+interface Corpus {
+    readonly index: Index;
+    readonly config: EngineConfig;
+}
+
 const scorePosting = (
-    index: Index,
-    config: EngineConfig,
+    { index, config }: Corpus,
     term: string,
     posting: Posting,
     weight: number
@@ -52,7 +57,8 @@ const scorePosting = (
     for (const [field, count] of posting.counts) {
         const fieldWeight = config.fields[field]?.weight ?? 1;
         const length = index.lengths[posting.doc]?.get(field) ?? 0;
-        const average = index.averageLength.get(field) || 1;
+        const averageLength = index.averageLength.get(field) ?? 0;
+        const average = averageLength > 0 ? averageLength : 1;
         const saturated = (count * (K1 + 1)) / (count + K1 * (1 - B + (B * length) / average));
         const contribution = termIdf * saturated * fieldWeight * weight;
         score += contribution;
@@ -68,11 +74,11 @@ const scorePosting = (
  * synonym like "baseball cap", which only counts when the document has both.
  */
 const documentsWithAll = (
-    index: Index,
-    config: EngineConfig,
+    corpus: Corpus,
     terms: readonly string[],
     kind: MatchKind
 ): Map<number, TermMatch[]> => {
+    const { index } = corpus;
     const lists = terms.map((term) => index.postings.get(term) ?? []);
     if (lists.some((list) => list.length === 0)) return new Map();
     const [first, ...rest] = lists;
@@ -84,7 +90,7 @@ const documentsWithAll = (
         for (const [i, term] of terms.entries()) {
             const p = i === 0 ? posting : others[i - 1];
             if (!p) continue;
-            const { byField } = scorePosting(index, config, term, p, KIND_WEIGHT[kind]);
+            const { byField } = scorePosting(corpus, term, p, KIND_WEIGHT[kind]);
             matches.push(...byField.map((m) => ({ ...m, kind })));
         }
         result.set(posting.doc, matches);
@@ -119,20 +125,21 @@ export const createMatcher = (
     config: EngineConfig,
     synonyms: SynonymTable
 ): TermMatcher => {
+    const corpus: Corpus = { index, config };
     const strict = (
         term: string,
         isLast: boolean,
         prefixLast: boolean
     ): Map<number, TermMatch[]> => {
         const hits = new Map<number, TermMatch[]>();
-        merge(hits, documentsWithAll(index, config, [term], 'exact'), term);
+        merge(hits, documentsWithAll(corpus, [term], 'exact'), term);
         for (const expansion of synonyms.expansionsOf(term)) {
-            merge(hits, documentsWithAll(index, config, expansion, 'synonym'), term);
+            merge(hits, documentsWithAll(corpus, expansion, 'synonym'), term);
         }
         if (isLast && prefixLast) {
             for (const candidate of termsWithPrefix(index, term)) {
                 if (candidate === term) continue;
-                merge(hits, documentsWithAll(index, config, [candidate], 'prefix'), term);
+                merge(hits, documentsWithAll(corpus, [candidate], 'prefix'), term);
             }
         }
         return hits;
@@ -148,7 +155,7 @@ export const createMatcher = (
         for (const length of [term.length - 1, term.length, term.length + 1]) {
             for (const candidate of index.termsByLength.get(length) ?? []) {
                 if (candidate === term || !withinOneEdit(term, candidate)) continue;
-                merge(hits, documentsWithAll(index, config, [candidate], 'fuzzy'), term);
+                merge(hits, documentsWithAll(corpus, [candidate], 'fuzzy'), term);
             }
         }
         return hits;

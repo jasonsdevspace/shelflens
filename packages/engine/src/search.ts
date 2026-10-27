@@ -4,10 +4,10 @@ import { createMatcher, type TermHits } from './match.js';
 import { tokenize } from './normalize.js';
 import { buildSynonyms } from './synonyms.js';
 import {
-    EngineError,
     type AttributeValue,
     type Document,
     type EngineConfig,
+    EngineError,
     type Hit,
     type MatchMode,
     type SearchRequest,
@@ -70,11 +70,83 @@ const matchAll = (
     return { docs: fuzzy, mode: fuzzy.size > 0 ? 'fuzzy' : 'none' };
 };
 
+const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
+
+/** A multi-valued attribute sorts by its first value. */
 const compareValues = (a: AttributeValue, b: AttributeValue): number => {
-    const left = Array.isArray(a) ? (a[0] ?? '') : a;
-    const right = Array.isArray(b) ? (b[0] ?? '') : b;
+    const left = isList(a) ? (a[0] ?? '') : a;
+    const right = isList(b) ? (b[0] ?? '') : b;
     if (typeof left === 'number' && typeof right === 'number') return left - right;
     return String(left).localeCompare(String(right));
+};
+
+type AttributeOf = (hit: Hit, name: string) => AttributeValue | undefined;
+
+/**
+ * Orders two hits by one clause, or reports a tie with `undefined` so the
+ * next clause can break it.
+ *
+ * A missing value sorts last whichever way the clause runs, so a product
+ * nobody has rated never leads a list sorted by rating in either direction.
+ */
+const compareByClause = (
+    clause: SortClause,
+    attribute: AttributeOf,
+    a: Hit,
+    b: Hit
+): number | undefined => {
+    const direction = clause.direction === 'asc' ? 1 : -1;
+    if (clause.by === 'relevance') {
+        return a.score === b.score ? undefined : (a.score - b.score) * direction;
+    }
+    const left = attribute(a, clause.by);
+    const right = attribute(b, clause.by);
+    if (left === undefined || right === undefined) {
+        if (left === undefined && right === undefined) return undefined;
+        return left === undefined ? 1 : -1;
+    }
+    const difference = compareValues(left, right);
+    return difference === 0 ? undefined : difference * direction;
+};
+
+/**
+ * Every sort ends on the id, so documents that tie on everything the caller
+ * asked for still come back in one fixed order. Without that, paging through
+ * equal scores shows some products twice and others never.
+ */
+const comparator =
+    (sort: readonly SortClause[], attribute: AttributeOf) =>
+    (a: Hit, b: Hit): number => {
+        for (const clause of sort) {
+            const ordered = compareByClause(clause, attribute, a, b);
+            if (ordered !== undefined) return ordered;
+        }
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    };
+
+interface Limits {
+    readonly maxPageSize: number;
+    readonly maxResults: number;
+}
+
+/**
+ * One page of the sorted hits.
+ *
+ * A page past the end is empty rather than an error. The caller asked a
+ * well-formed question whose answer is "nothing there".
+ */
+const paginate = (hits: readonly Hit[], request: SearchRequest, limits: Limits) => {
+    const pageSize = Math.min(
+        Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE),
+        limits.maxPageSize
+    );
+    const page = Math.max(1, Math.floor(request.page ?? 1));
+    const reachable = Math.min(hits.length, limits.maxResults);
+    const totalPages = Math.ceil(reachable / pageSize);
+    const start = (page - 1) * pageSize;
+    const pageHits =
+        start >= reachable ? [] : hits.slice(start, Math.min(start + pageSize, reachable));
+    return { hits: pageHits, total: hits.length, page, pageSize, totalPages };
 };
 
 /**
@@ -114,8 +186,10 @@ export const createEngine = (documents: readonly Document[], config: EngineConfi
     const index = buildIndex(documents, config);
     const synonyms = buildSynonyms(config.synonyms ?? []);
     const matcher = createMatcher(index, config, synonyms);
-    const maxPageSize = config.limits?.pageSize ?? MAX_PAGE_SIZE;
-    const maxResults = config.limits?.results ?? MAX_RESULTS;
+    const limits: Limits = {
+        maxPageSize: config.limits?.pageSize ?? MAX_PAGE_SIZE,
+        maxResults: config.limits?.results ?? MAX_RESULTS,
+    };
     const byId = new Map(index.documents.map((d, doc) => [d.id, doc]));
 
     const search = (request: SearchRequest): SearchResult => {
@@ -151,43 +225,8 @@ export const createEngine = (documents: readonly Document[], config: EngineConfi
         const attribute = (hit: Hit, name: string) =>
             name === 'id' ? hit.id : index.attributes[byId.get(hit.id) ?? -1]?.get(name);
 
-        // Every sort ends on the id, so documents that tie on everything the
-        // caller asked for still come back in one fixed order. Without that,
-        // paging through equal scores shows some products twice and others
-        // never.
-        hits.sort((a, b) => {
-            for (const clause of sort) {
-                const direction = clause.direction === 'asc' ? 1 : -1;
-                if (clause.by === 'relevance') {
-                    if (a.score !== b.score) return (a.score - b.score) * direction;
-                    continue;
-                }
-                const left = attribute(a, clause.by);
-                const right = attribute(b, clause.by);
-                // A missing value sorts last whichever way the clause runs,
-                // so a product nobody has rated never leads a list sorted by
-                // rating in either direction.
-                if (left === undefined || right === undefined) {
-                    if (left === undefined && right === undefined) continue;
-                    return left === undefined ? 1 : -1;
-                }
-                const difference = compareValues(left, right);
-                if (difference !== 0) return difference * direction;
-            }
-            return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-        });
-
-        const pageSize = Math.min(Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE), maxPageSize);
-        const page = Math.max(1, Math.floor(request.page ?? 1));
-        const reachable = Math.min(hits.length, maxResults);
-        const totalPages = Math.ceil(reachable / pageSize);
-        const start = (page - 1) * pageSize;
-        // A page past the end is empty rather than an error. The caller asked
-        // a well-formed question whose answer is "nothing there".
-        const pageHits =
-            start >= reachable ? [] : hits.slice(start, Math.min(start + pageSize, reachable));
-
-        return { hits: pageHits, total: hits.length, page, pageSize, totalPages, mode, sort };
+        hits.sort(comparator(sort, attribute));
+        return { ...paginate(hits, request, limits), mode, sort };
     };
 
     return { search, size: documents.length };

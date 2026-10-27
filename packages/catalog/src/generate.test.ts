@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { generateCatalog, slugify } from './generate.js';
 import { createRandom } from './random.js';
 import { CUSTOMER_GROUPS } from './types.js';

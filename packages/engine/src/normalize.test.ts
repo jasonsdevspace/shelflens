@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { foldAccents, normalize, stem, tokenize } from './normalize.js';
 
 describe('foldAccents', () => {
