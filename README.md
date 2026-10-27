@@ -23,9 +23,10 @@ tests. Use `npm test` for watch mode while you work.
 
 ## Packages
 
-| Package                                  | What it is                                                |
-| ---------------------------------------- | --------------------------------------------------------- |
-| [`@shelflens/catalog`](packages/catalog) | A deterministic generator for the store's product catalog |
+| Package                                        | What it is                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine: matching, typo tolerance, synonyms, filters, sorting and paging, with no dependencies |
+| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog                                                |
 
 ## License
 

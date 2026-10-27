@@ -26,7 +26,7 @@ export default tseslint.config(
         // Packages that run in the browser as well as in Node. They may not
         // load anything from Node, or the demo stops building. Enforced here
         // rather than discovered there.
-        files: ['packages/catalog/src/**/*.ts'],
+        files: ['packages/engine/src/**/*.ts', 'packages/catalog/src/**/*.ts'],
         ignores: ['**/*.test.ts', '**/cli.ts'],
         rules: {
             '@typescript-eslint/no-restricted-imports': [
