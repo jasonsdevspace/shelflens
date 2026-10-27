@@ -1,0 +1,227 @@
+:root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #5c5c5c;
+    --line: #d9d9d9;
+    --accent: #1f4fd8;
+    --highlight: #eef2fd;
+    color-scheme: light dark;
+    font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #121212;
+        --fg: #f0f0f0;
+        --muted: #a5a5a5;
+        --line: #3a3a3a;
+        --accent: #8fb0ff;
+        --highlight: #1e2a4a;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+}
+
+.masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.content {
+    padding: 1rem;
+    max-width: 60rem;
+}
+
+.notice {
+    color: var(--muted);
+}
+
+/* The search box and its popover. */
+
+.searchbox {
+    position: relative;
+    flex: 1 1 20rem;
+    max-width: 36rem;
+}
+
+.searchbox-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.searchbox-input {
+    width: 100%;
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--bg);
+    color: var(--fg);
+}
+
+.searchbox-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.searchbox-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.searchbox-popover {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    margin: 0.25rem 0 0;
+    padding: 0.25rem 0;
+    list-style: none;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.searchbox-popover[hidden] {
+    display: none;
+}
+
+.searchbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.8rem;
+    cursor: pointer;
+}
+
+.searchbox-option.is-active {
+    background: var(--highlight);
+}
+
+.searchbox-option-query {
+    font-weight: 500;
+}
+
+.searchbox-option-query + .searchbox-option-product {
+    border-top: 1px solid var(--line);
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+}
+
+.searchbox-product {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.searchbox-product-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.searchbox-product-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.swatch {
+    flex: none;
+}
+
+/* The results list. */
+
+.results-heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.results-note {
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.result-button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.result-button:hover,
+.result-button:focus-visible {
+    border-color: var(--line);
+    background: var(--highlight);
+}
+
+.result-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.result-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+@media (max-width: 40rem) {
+    .searchbox-popover {
+        position: fixed;
+        left: 0.5rem;
+        right: 0.5rem;
+        top: 4rem;
+        max-height: calc(100vh - 4.5rem);
+    }
+}

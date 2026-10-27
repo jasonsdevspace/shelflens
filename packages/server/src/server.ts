@@ -5,7 +5,7 @@ import {
     type ServerResponse,
 } from 'node:http';
 
-import { type StoreApi, type StoreRequest, viewerFromHeader } from '@shelflens/api';
+import { GROUP_HEADER, isStoreRequest, type StoreApi, viewerFromHeader } from '@shelflens/api';
 
 /**
  * The API over HTTP, for local runs and for anything that cannot host a
@@ -17,9 +17,6 @@ import { type StoreApi, type StoreRequest, viewerFromHeader } from '@shelflens/a
  * is done, bodies are bounded, and a failure reaches the client as a
  * request id to quote, never as a stack.
  */
-
-/** The header a client sets to say who is shopping. */
-export const GROUP_HEADER = 'shelflens-customer-group';
 
 const BODY_LIMIT_BYTES = 16 * 1024;
 
@@ -76,19 +73,20 @@ const send = (response: ServerResponse, status: number, body: unknown, requestId
     response.end(JSON.stringify(body));
 };
 
-const isRequest = (value: unknown): value is StoreRequest =>
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { query?: unknown }).query === 'string';
+export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 
-export const createServer = ({
+/**
+ * The request handler on its own, for a host that already has a server,
+ * such as the storefront's dev server.
+ */
+export const createHandler = ({
     api,
     rateLimitPerMinute = 600,
     now = () => new Date(),
-}: ServerOptions) => {
+}: ServerOptions): RequestHandler => {
     const allow = createRateLimit(rateLimitPerMinute, now);
 
-    const handle = async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         if (request.method === 'GET' && request.url === '/health') {
             send(response, 200, { status: 'ok' }, requestId);
@@ -129,7 +127,7 @@ export const createServer = ({
             );
             return;
         }
-        if (!isRequest(parsed)) {
+        if (!isStoreRequest(parsed)) {
             send(response, 400, { errors: [{ message: 'the request needs a query' }] }, requestId);
             return;
         }
@@ -150,7 +148,10 @@ export const createServer = ({
             );
         }
     };
+};
 
+export const createServer = (options: ServerOptions) => {
+    const handle = createHandler(options);
     return createHttpServer((request, response) => {
         void handle(request, response);
     });

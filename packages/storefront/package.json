@@ -1,0 +1,18 @@
+{
+    "name": "@shelflens/storefront",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The demo storefront: the search popover and results over the store's API, served from a service worker.",
+    "type": "module",
+    "scripts": {
+        "type-check": "tsc -p tsconfig.json",
+        "dev": "vite",
+        "bundle": "vite build && vite build --config vite.sw.config.ts",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "react": "19.3.1",
+        "react-dom": "19.3.1"
+    },
+    "license": "MIT"
+}

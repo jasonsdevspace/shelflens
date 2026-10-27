@@ -17,11 +17,30 @@ export default defineConfig({
         },
     },
     test: {
-        environment: 'node',
-        include: ['packages/*/src/**/*.test.ts'],
+        // The storefront's tests need a document. Everything else runs in Node.
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: 'packages',
+                    environment: 'node',
+                    include: ['packages/*/src/**/*.test.ts'],
+                    exclude: ['packages/storefront/**'],
+                },
+            },
+            {
+                extends: true,
+                test: {
+                    name: 'storefront',
+                    environment: 'jsdom',
+                    include: ['packages/storefront/src/**/*.test.{ts,tsx}'],
+                    setupFiles: ['packages/storefront/vitest.setup.ts'],
+                },
+            },
+        ],
         coverage: {
-            include: ['packages/*/src/**/*.ts'],
-            exclude: ['**/*.test.ts', '**/cli.ts'],
+            include: ['packages/*/src/**/*.{ts,tsx}'],
+            exclude: ['**/*.test.{ts,tsx}', '**/cli.ts', '**/generated/**'],
         },
     },
 });

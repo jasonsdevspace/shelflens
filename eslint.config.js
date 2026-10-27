@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import importX from 'eslint-plugin-import-x';
+import reactHooks from 'eslint-plugin-react-hooks';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
@@ -98,8 +99,17 @@ export default tseslint.config(
         },
     },
     {
+        // The storefront runs in a browser, and its hooks follow React's rules.
+        files: ['packages/storefront/**/*.{ts,tsx}'],
+        languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
+        plugins: { 'react-hooks': reactHooks },
+        rules: {
+            ...reactHooks.configs.flat.recommended.rules,
+        },
+    },
+    {
         // Tests read whatever a result happens to contain.
-        files: ['**/*.test.{ts,tsx}'],
+        files: ['**/*.test.{ts,tsx}', 'packages/storefront/vitest.setup.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -119,8 +129,15 @@ export default tseslint.config(
             'packages/catalog/src/**/*.ts',
             'packages/search/src/**/*.ts',
             'packages/api/src/**/*.ts',
+            'packages/storefront/src/**/*.{ts,tsx}',
         ],
-        ignores: ['**/*.test.ts', '**/cli.ts', '**/bench.ts', '**/bench-cli.ts'],
+        ignores: [
+            '**/*.test.{ts,tsx}',
+            '**/cli.ts',
+            '**/bench.ts',
+            '**/bench-cli.ts',
+            'packages/storefront/src/dev/**',
+        ],
         rules: {
             '@typescript-eslint/no-restricted-imports': [
                 'error',

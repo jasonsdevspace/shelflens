@@ -62,6 +62,9 @@ export const createStore = ({
 };
 
 /** The customer group a request declared, or guest when it declared none. */
+/** The request header that says who is shopping, read by every host of the API. */
+export const GROUP_HEADER = 'shelflens-customer-group';
+
 export const viewerFromHeader = (value: string | null | undefined): Viewer => ({
     group: value?.trim().toLowerCase() === 'member' ? 'member' : 'guest',
 });

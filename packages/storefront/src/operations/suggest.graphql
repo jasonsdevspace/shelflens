@@ -1,0 +1,25 @@
+query Suggest($phrase: String!, $limit: Int!) {
+    suggest(phrase: $phrase, limit: $limit) {
+        queries
+        products {
+            product {
+                sku
+                name
+                colors
+                brand {
+                    name
+                }
+                price {
+                    min {
+                        amount
+                        currency
+                    }
+                    max {
+                        amount
+                        currency
+                    }
+                }
+            }
+        }
+    }
+}
