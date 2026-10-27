@@ -76,7 +76,8 @@ const scorePosting = (
 const documentsWithAll = (
     corpus: Corpus,
     terms: readonly string[],
-    kind: MatchKind
+    kind: MatchKind,
+    scale = 1
 ): Map<number, TermMatch[]> => {
     const { index } = corpus;
     const lists = terms.map((term) => index.postings.get(term) ?? []);
@@ -90,7 +91,7 @@ const documentsWithAll = (
         for (const [i, term] of terms.entries()) {
             const p = i === 0 ? posting : others[i - 1];
             if (!p) continue;
-            const { byField } = scorePosting(corpus, term, p, KIND_WEIGHT[kind]);
+            const { byField } = scorePosting(corpus, term, p, KIND_WEIGHT[kind] * scale);
             matches.push(...byField.map((m) => ({ ...m, kind })));
         }
         result.set(posting.doc, matches);
@@ -134,7 +135,10 @@ export const createMatcher = (
         const hits = new Map<number, TermMatch[]>();
         merge(hits, documentsWithAll(corpus, unit.terms, 'exact'), label);
         for (const alternative of unit.alternatives) {
-            merge(hits, documentsWithAll(corpus, alternative, 'synonym'), label);
+            // An alternative is scored per word the shopper typed, so a
+            // two-word synonym for one word does not count double.
+            const scale = unit.terms.length / alternative.length;
+            merge(hits, documentsWithAll(corpus, alternative, 'synonym', scale), label);
         }
         // A word still being typed is a single word. A phrase that a rule
         // recognized is already complete.
