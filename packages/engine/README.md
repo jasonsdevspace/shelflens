@@ -58,6 +58,26 @@ which route, and for how much. That is what an explain mode shows.
 - Pages are one-based. A page past the end is empty rather than an error. The page size is clamped
   to a limit, and a query can be paged only so far, while the total still reports every match.
 
-## Not yet in this package
+## Facets
 
-Facets with counts, and merchandising rules. Both are built on the filters and matches above.
+A facet is a filter the shopper could add next, with a count beside each choice. Keyword facets
+list an attribute's values, range facets count documents into fixed bands with exclusive upper
+bounds, and stats facets report the smallest and largest value for a slider.
+
+Each facet is counted over the documents that match the query and every filter except the ones on
+its own attribute. Selecting "Red" never drops "Blue" to zero in the same facet, so a shopper can
+always widen a selection, while a filter on a different attribute narrows every facet as expected.
+
+## Merchandising rules
+
+A rule names when it applies, to certain queries or inside a filter and optionally between two
+dates, and what it does: pin products to the top, boost or bury them, or hide them. Rules are
+checked when the engine is created, so a rule that names a product that does not exist or does
+nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over the same
+index without rebuilding it.
+
+Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and
+hides still apply under a sort scoped to the rule's own filter, which is how a category's
+merchandising survives its position sort. A rule set aside by the sort is reported in the result,
+so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
+result is recorded on that hit, alongside its matches, for explain mode.
