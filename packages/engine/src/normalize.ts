@@ -60,6 +60,18 @@ export const phraseVariants = (text: string): string[][] => {
     return variants.filter((variant) => variant.length > 0);
 };
 
+/**
+ * How many words a text has, for length normalization.
+ *
+ * Counted as words rather than as the terms `tokenize` emits, because a
+ * hyphenated word emits three terms for one word, and a product named
+ * "Everyday T-Shirt" is not twice as long as one named "Coastal Tee".
+ */
+export const wordCount = (text: string): number =>
+    normalize(text)
+        .split(/[^a-z0-9-]+/)
+        .filter((chunk) => chunk.replace(/-/g, '').length > 0).length;
+
 export const tokenize = (text: string): string[] => {
     const terms: string[] = [];
     for (const chunk of normalize(text)

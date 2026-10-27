@@ -21,13 +21,15 @@ const B = 0.75;
  *
  * A prefix match is a word still being typed, a synonym is the shopper's
  * word for the catalog's, and a fuzzy match is a correction. All are real
- * matches, and all should lose a tie to the exact word.
+ * matches, and all should lose clearly to the exact word, so that when a
+ * catalog has both a "Tee" and a "T-Shirt", a shopper who typed one gets
+ * that one first.
  */
 const KIND_WEIGHT: Readonly<Record<MatchKind, number>> = {
     exact: 1,
-    synonym: 0.9,
     prefix: 0.7,
-    fuzzy: 0.6,
+    synonym: 0.6,
+    fuzzy: 0.5,
 };
 
 /** Terms shorter than this are not corrected, since nearly everything is one edit from "ab". */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { foldAccents, normalize, stem, tokenize } from './normalize.js';
+import { foldAccents, normalize, stem, tokenize, wordCount } from './normalize.js';
 
 describe('foldAccents', () => {
     it('strips accents and leaves the letters', () => {
@@ -69,5 +69,18 @@ describe('tokenize', () => {
             expect(tokenize(spelling)).toContain('tshirt');
         }
         expect(tokenize('cafe')).toEqual(tokenize('CAFÉ'));
+    });
+});
+
+describe('wordCount', () => {
+    it('counts a hyphenated word once, however many terms it emits', () => {
+        expect(wordCount('Everyday T-Shirt')).toBe(2);
+        expect(wordCount('Coastal Tee')).toBe(2);
+        expect(tokenize('Everyday T-Shirt')).toHaveLength(4);
+    });
+
+    it('ignores punctuation and empty input', () => {
+        expect(wordCount('Harbor & Pine, size 28!')).toBe(4);
+        expect(wordCount(' - ')).toBe(0);
     });
 });
