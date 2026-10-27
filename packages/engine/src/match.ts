@@ -1,6 +1,6 @@
 import { withinOneEdit } from './edits.js';
 import { type Index, type Posting, termsWithPrefix } from './index-builder.js';
-import type { SynonymTable } from './synonyms.js';
+import type { QueryUnit, SynonymTable } from './synonyms.js';
 import type { EngineConfig, MatchKind, TermMatch } from './types.js';
 
 /**
@@ -114,10 +114,12 @@ const merge = (
 };
 
 export interface TermMatcher {
-    /** Exact, synonym and (for the last term) prefix matches. */
-    strict(term: string, isLast: boolean, prefixLast: boolean): TermHits;
+    /** Splits the query into units, each a phrase a synonym rule may widen. */
+    rewrite(terms: readonly string[]): QueryUnit[];
+    /** Exact, synonym and (for the last unit) prefix matches. */
+    strict(unit: QueryUnit, isLast: boolean, prefixLast: boolean): TermHits;
     /** Everything strict finds, plus one-typo neighbors. */
-    fuzzy(term: string, isLast: boolean, prefixLast: boolean): TermHits;
+    fuzzy(unit: QueryUnit, isLast: boolean, prefixLast: boolean): TermHits;
 }
 
 export const createMatcher = (
@@ -126,32 +128,31 @@ export const createMatcher = (
     synonyms: SynonymTable
 ): TermMatcher => {
     const corpus: Corpus = { index, config };
-    const strict = (
-        term: string,
-        isLast: boolean,
-        prefixLast: boolean
-    ): Map<number, TermMatch[]> => {
+
+    const strict = (unit: QueryUnit, isLast: boolean, prefixLast: boolean) => {
+        const label = unit.terms.join(' ');
         const hits = new Map<number, TermMatch[]>();
-        merge(hits, documentsWithAll(corpus, [term], 'exact'), term);
-        for (const expansion of synonyms.expansionsOf(term)) {
-            merge(hits, documentsWithAll(corpus, expansion, 'synonym'), term);
+        merge(hits, documentsWithAll(corpus, unit.terms, 'exact'), label);
+        for (const alternative of unit.alternatives) {
+            merge(hits, documentsWithAll(corpus, alternative, 'synonym'), label);
         }
-        if (isLast && prefixLast) {
+        // A word still being typed is a single word. A phrase that a rule
+        // recognized is already complete.
+        const [term] = unit.terms;
+        if (isLast && prefixLast && term !== undefined && unit.terms.length === 1) {
             for (const candidate of termsWithPrefix(index, term)) {
                 if (candidate === term) continue;
-                merge(hits, documentsWithAll(corpus, [candidate], 'prefix'), term);
+                merge(hits, documentsWithAll(corpus, [candidate], 'prefix'), label);
             }
         }
         return hits;
     };
 
-    const fuzzy = (
-        term: string,
-        isLast: boolean,
-        prefixLast: boolean
-    ): Map<number, TermMatch[]> => {
-        const hits = strict(term, isLast, prefixLast);
-        if (term.length < MIN_FUZZY_LENGTH) return hits;
+    const fuzzy = (unit: QueryUnit, isLast: boolean, prefixLast: boolean) => {
+        const hits = strict(unit, isLast, prefixLast);
+        const [term] = unit.terms;
+        if (term === undefined || unit.terms.length > 1 || term.length < MIN_FUZZY_LENGTH)
+            return hits;
         for (const length of [term.length - 1, term.length, term.length + 1]) {
             for (const candidate of index.termsByLength.get(length) ?? []) {
                 if (candidate === term || !withinOneEdit(term, candidate)) continue;
@@ -161,5 +162,5 @@ export const createMatcher = (
         return hits;
     };
 
-    return { strict, fuzzy };
+    return { rewrite: (terms) => synonyms.rewrite(terms), strict, fuzzy };
 };

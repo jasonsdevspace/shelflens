@@ -1,0 +1,129 @@
+{
+    "recordedAt": "2026-10-27T19:23:17.774Z",
+    "commit": "1ca987a",
+    "environment": {
+        "node": "v24.3.0",
+        "cpu": "Apple M2 Max",
+        "cores": 12
+    },
+    "iterations": 100,
+    "catalog": {
+        "products": 100000,
+        "seed": 7,
+        "jsonBytes": 188665845,
+        "gzipBytes": 17360008
+    },
+    "index": {
+        "terms": 306,
+        "buildMs": 1826,
+        "documentsPerSecond": 54773,
+        "heapMb": 979
+    },
+    "queries": [
+        {
+            "name": "search as you type, two letters",
+            "request": {
+                "query": "sh",
+                "prefixLastTerm": true
+            },
+            "total": 61666,
+            "p50": 341.15,
+            "p95": 357.47,
+            "p99": 800.32
+        },
+        {
+            "name": "one common word",
+            "request": {
+                "query": "jacket"
+            },
+            "total": 5627,
+            "p50": 16.08,
+            "p95": 17.78,
+            "p99": 18.12
+        },
+        {
+            "name": "two words",
+            "request": {
+                "query": "navy blue hoodie"
+            },
+            "total": 375,
+            "p50": 61.88,
+            "p95": 66.84,
+            "p99": 1156.51
+        },
+        {
+            "name": "a synonym",
+            "request": {
+                "query": "trainers"
+            },
+            "total": 10449,
+            "p50": 34.77,
+            "p95": 39.57,
+            "p99": 41.55
+        },
+        {
+            "name": "a typo, so the fuzzy pass runs",
+            "request": {
+                "query": "sneakr"
+            },
+            "total": 8310,
+            "p50": 24.17,
+            "p95": 29.16,
+            "p99": 32.46
+        },
+        {
+            "name": "browse a category by position",
+            "request": {
+                "filters": [
+                    {
+                        "attribute": "category",
+                        "eq": "shoes"
+                    }
+                ],
+                "sort": [
+                    {
+                        "by": "position",
+                        "direction": "asc"
+                    }
+                ]
+            },
+            "total": 33566,
+            "p50": 248.29,
+            "p95": 260.64,
+            "p99": 527.93
+        },
+        {
+            "name": "a word with two filters",
+            "request": {
+                "query": "boot",
+                "filters": [
+                    {
+                        "attribute": "brand",
+                        "eq": "Northwind"
+                    },
+                    {
+                        "attribute": "price",
+                        "range": {
+                            "from": 10000,
+                            "to": 20000
+                        }
+                    }
+                ]
+            },
+            "total": 304,
+            "p50": 14.33,
+            "p95": 17.13,
+            "p99": 17.37
+        },
+        {
+            "name": "everything, page fifty",
+            "request": {
+                "page": 50
+            },
+            "total": 99999,
+            "p50": 339.05,
+            "p95": 352.93,
+            "p99": 698.62
+        }
+    ]
+}

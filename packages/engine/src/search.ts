@@ -43,6 +43,8 @@ export interface Engine {
     reconfigure(changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine;
     /** How many documents are indexed. */
     readonly size: number;
+    /** How many distinct terms the index holds. */
+    readonly terms: number;
 }
 
 /**
@@ -69,13 +71,11 @@ const matchAll = (
         return docs;
     };
 
-    const strict = intersect(
-        terms.map((term, i) => matcher.strict(term, i === terms.length - 1, prefixLast))
-    );
+    const units = matcher.rewrite(terms);
+    const last = units.length - 1;
+    const strict = intersect(units.map((unit, i) => matcher.strict(unit, i === last, prefixLast)));
     if (strict.size > 0) return { docs: strict, mode: 'exact' };
-    const fuzzy = intersect(
-        terms.map((term, i) => matcher.fuzzy(term, i === terms.length - 1, prefixLast))
-    );
+    const fuzzy = intersect(units.map((unit, i) => matcher.fuzzy(unit, i === last, prefixLast)));
     return { docs: fuzzy, mode: fuzzy.size > 0 ? 'fuzzy' : 'none' };
 };
 
@@ -313,7 +313,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         return createFromIndex(index, next);
     };
 
-    return { search, reconfigure, size: index.documents.length };
+    return { search, reconfigure, size: index.documents.length, terms: index.terms.length };
 };
 
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {

@@ -1,0 +1,27 @@
+{
+    "name": "@shelflens/search",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The store's search: the catalog mapped onto the engine, with its field weights, facets, synonyms and customer groups.",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "type-check": "tsc -p tsconfig.json",
+        "build": "tsc -b tsconfig.build.json"
+    },
+    "dependencies": {
+        "@jasonsdevspace/shelflens": "0.1.0",
+        "@shelflens/catalog": "0.1.0"
+    },
+    "license": "MIT"
+}
