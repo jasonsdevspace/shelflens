@@ -23,12 +23,16 @@
         "build": "npm run build --workspaces --if-present",
         "catalog": "tsx packages/catalog/src/cli.ts",
         "bench": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/search/src/bench-cli.ts && prettier --write docs/benchmarks",
+        "codegen": "graphql-codegen --config packages/api/codegen.mjs && prettier --write packages/api/src/generated",
         "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run test:run",
         "prepare": "husky || true"
     },
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "10.0.1",
+        "@graphql-codegen/cli": "^7.4.6",
+        "@graphql-codegen/typescript": "^6.1.2",
+        "@graphql-codegen/typescript-resolvers": "^6.1.1",
         "@types/node": "26.6.5",
         "@vitest/coverage-v8": "5.0.5",
         "eslint": "10.13.0",
