@@ -66,7 +66,9 @@ npm run verify
 ```
 
 `npm run verify` runs what CI runs: type checking, linting, formatting, a prose check and the
-tests, golden queries included. Use `npm test` for watch mode while you work.
+tests, golden queries included. Use `npm test` for watch mode while you work. CI also runs the
+storefront in a real browser with `npm run e2e`, which needs Chromium once:
+`npx playwright install chromium`.
 
 To work on the storefront:
 

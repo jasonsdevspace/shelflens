@@ -5,3 +5,5 @@ dist
 .DS_Store
 *.tsbuildinfo
 packages/storefront/public/catalog.json
+playwright-report
+test-results

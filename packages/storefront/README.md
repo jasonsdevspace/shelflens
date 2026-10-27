@@ -17,6 +17,10 @@ the page.
   their own filter, choosing "Red" never zeroes "Blue", and the category facet offers the
   children of wherever the shopper is. The tests run the whole page over the worker's handler,
   so the counts, the sort fallbacks and the pages are the real ones.
+- **A phone gets the same page, laid out for it.** The facets become a drawer that is modal
+  while open: focus starts on its close button, Tab cycles inside it, Escape and the backdrop
+  close it, and focus returns to the button that opened it. The popover takes the width of the
+  screen and no more height than the on-screen keyboard leaves.
 - **The popover is a combobox.** `src/search` holds the search box, the suggestions hook with its
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.
@@ -26,6 +30,9 @@ the page.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
   and no worker fighting hot reloading.
+- **A real browser in CI.** `npm run e2e` builds the production page, serves it, and runs
+  Playwright against it on a desktop and a phone profile with the service worker answering, with
+  an axe audit of each page it reaches. Nothing is mocked.
 - **Two budgets.** A test bundles the page and fails past 100 KB compressed or if anything from
   GraphQL is in it. Another times every suggestion on the demo catalog and fails past the
   popover's share of its 150 ms budget. `npm run bench:popover` records the measurement in
@@ -35,6 +42,7 @@ the page.
 npm run dev          # the page with hot reloading, API answered by the dev server
 npm run storefront   # the production build: page, catalog and worker, into dist/
 npx vite preview     # from this directory, serves what was built
+npm run e2e          # the browser tests, against that build
 ```
 
 `BASE_PATH` sets the path the site is served under, `/shelflens/` on GitHub Pages.

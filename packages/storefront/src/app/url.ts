@@ -140,6 +140,16 @@ export const hasFilters = (state: SearchState): boolean =>
     state.price !== undefined ||
     state.rating !== undefined;
 
+/** How many facets narrow the results: each list counts once, a band or a rating once. */
+export const activeFilterCount = (state: SearchState): number =>
+    [
+        state.brand.length > 0,
+        state.color.length > 0,
+        state.size.length > 0,
+        state.price !== undefined,
+        state.rating !== undefined,
+    ].filter(Boolean).length;
+
 /** The same state with every facet cleared, back on the first page. */
 export const withoutFilters = (state: SearchState): SearchState => ({
     ...(state.phrase && { phrase: state.phrase }),

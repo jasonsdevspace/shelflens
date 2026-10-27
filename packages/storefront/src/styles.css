@@ -217,12 +217,13 @@ body {
 }
 
 @media (max-width: 40rem) {
+    /* Over the whole width, and no taller than what the on-screen keyboard leaves. */
     .searchbox-popover {
         position: fixed;
         left: 0.5rem;
         right: 0.5rem;
         top: 4rem;
-        max-height: calc(100vh - 4.5rem);
+        max-height: calc(100dvh - 4.5rem);
     }
 }
 
@@ -568,5 +569,83 @@ body {
 @media (max-width: 48rem) {
     .results-layout {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
+}
+
+/* The facets as a drawer, on a phone. */
+
+.drawer-open {
+    font: inherit;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.drawer-badge {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.drawer-panel {
+    position: fixed;
+    z-index: 21;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(22rem, 90vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.drawer-title {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.drawer-close {
+    font: inherit;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.drawer-done {
+    margin: 1rem;
+    padding: 0.75rem;
+    font: inherit;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--accent);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
 }

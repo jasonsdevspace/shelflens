@@ -2,6 +2,7 @@ import { useId } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import {
+    activeFilterCount,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -9,10 +10,12 @@ import {
     SORTS,
     toSearchInput,
 } from '../app/url.js';
+import { NARROW, useMediaQuery } from '../app/useMediaQuery.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
 import { SearchDocument } from '../generated/operations.js';
+import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
@@ -52,6 +55,7 @@ export const ResultsPage = ({
     const { data, loading, error } = useQuery(client, SearchDocument, {
         input: toSearchInput(state),
     });
+    const narrow = useMediaQuery(NARROW);
     const result = data?.search;
 
     if (error) {
@@ -66,18 +70,25 @@ export const ResultsPage = ({
     const crumbs = ancestry(categories, state.category);
     const { category: _current, ...allProducts } = { ...state, page: 1 };
     const sortKey = state.sort ?? sortKeyOf(result.sort);
+    const facets = (
+        <Facets
+            facets={result.facets}
+            state={state}
+            categories={categories}
+            currency={currency}
+            onChange={navigate}
+        />
+    );
 
     return (
         <div className={`results-layout${loading ? ' is-loading' : ''}`} aria-busy={loading}>
-            <aside className="results-side">
-                <Facets
-                    facets={result.facets}
-                    state={state}
-                    categories={categories}
-                    currency={currency}
-                    onChange={navigate}
-                />
-            </aside>
+            {narrow ? (
+                <FacetDrawer active={activeFilterCount(state)} total={result.total}>
+                    {facets}
+                </FacetDrawer>
+            ) : (
+                <aside className="results-side">{facets}</aside>
+            )}
             <section className="results-main" aria-labelledby={`${id}-heading`}>
                 {crumbs.length > 0 && (
                     <nav className="crumbs" aria-label="Category">
