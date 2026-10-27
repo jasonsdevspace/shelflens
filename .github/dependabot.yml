@@ -1,0 +1,28 @@
+# Weekly checks for newer versions of everything this repo depends on.
+#
+# The workflow actions are pinned to commit hashes, which never move on their
+# own, so without this they would quietly fall behind. Minor and patch updates
+# are grouped into one pull request per ecosystem to keep the noise down.
+# Security fixes arrive separately, as soon as an advisory is published.
+version: 2
+updates:
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          npm:
+              update-types: [minor, patch]
+      # A new TypeScript major waits for typescript-eslint to support it,
+      # since the lint tooling refuses to install against an unsupported one.
+      ignore:
+          - dependency-name: typescript
+            update-types: ['version-update:semver-major']
+
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          actions:
+              patterns: ['*']

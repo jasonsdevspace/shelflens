@@ -1,0 +1,40 @@
+{
+    "name": "shelflens",
+    "version": "0.1.0",
+    "private": true,
+    "description": "A product search experience for a fictional store, and the search engine behind it.",
+    "type": "module",
+    "engines": {
+        "node": ">=24"
+    },
+    "workspaces": [
+        "packages/*"
+    ],
+    "scripts": {
+        "type-check": "tsc -b",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "prose": "node scripts/check-prose.mjs",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "build": "npm run build --workspaces --if-present",
+        "catalog": "tsx packages/catalog/src/cli.ts",
+        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run test:run"
+    },
+    "license": "MIT",
+    "devDependencies": {
+        "@eslint/js": "10.0.1",
+        "@types/node": "26.6.5",
+        "@vitest/coverage-v8": "5.0.5",
+        "eslint": "10.13.0",
+        "globals": "17.13.0",
+        "prettier": "3.9.10",
+        "tsx": "4.21.0",
+        "typescript": "6.0.3",
+        "typescript-eslint": "8.72.1",
+        "vitest": "5.0.5"
+    }
+}
