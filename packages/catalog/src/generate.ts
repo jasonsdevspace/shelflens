@@ -44,7 +44,7 @@ export const DEFAULT_PRODUCTS = 2000;
 export const slugify = (text: string): string =>
     text
         .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
+        .replace(/\p{M}/gu, '')
         .toLowerCase()
         .replace(/&/g, 'and')
         .replace(/[^a-z0-9]+/g, '-')
