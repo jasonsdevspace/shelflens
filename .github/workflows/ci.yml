@@ -47,6 +47,11 @@ jobs:
             - name: Test
               run: npm run test:run
 
+            # The server's types are generated from the schema and committed.
+            # A schema change without regenerating them fails here.
+            - name: Check the generated types match the schema
+              run: npm run codegen && git diff --exit-code -- packages/api/src/generated
+
             # The packages are published from their compiled output, so a
             # build that compiles but emits something broken is caught here.
             - name: Build

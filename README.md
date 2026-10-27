@@ -22,6 +22,7 @@ schema.
 | [`@jasonsdevspace/shelflens`](packages/engine) | The search engine: one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, and an explanation on every hit. No dependencies. |
 | [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                      |
 | [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                             |
+| [`@shelflens/api`](packages/api)               | The GraphQL schema the storefront is written against, with its generated types                                                                                                         |
 
 Three checks keep the search honest, and each has already caught something:
 
@@ -79,7 +80,8 @@ packages/
 ├── engine/      the search engine, published as @jasonsdevspace/shelflens
 │   └── src/     normalize, index-builder, match, synonyms, filters, facets, rules, search
 ├── catalog/     the generator, its vocabulary and its types
-└── search/      documents, the store config, customer groups, golden queries, the benchmark
+├── search/      documents, the store config, customer groups, golden queries, the benchmark
+└── api/         the GraphQL schema and its generated types
 docs/
 ├── benchmarks/  the recorded benchmark results
 └── decisions/   the decision records

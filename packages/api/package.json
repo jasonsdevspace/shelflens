@@ -1,0 +1,30 @@
+{
+    "name": "@shelflens/api",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The store's GraphQL search API: the schema, and the resolvers over @shelflens/search.",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "schema.graphql"
+    ],
+    "scripts": {
+        "type-check": "tsc -p tsconfig.json",
+        "build": "tsc -b tsconfig.build.json"
+    },
+    "dependencies": {
+        "@jasonsdevspace/shelflens": "0.1.0",
+        "@shelflens/catalog": "0.1.0",
+        "@shelflens/search": "0.1.0",
+        "graphql": "17.0.2"
+    },
+    "license": "MIT"
+}

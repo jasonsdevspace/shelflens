@@ -1,0 +1,438 @@
+"""
+The search API of one store, as seen by one shopper.
+
+Who the shopper is comes from the request, not from the query, so no query
+can ask for another customer group's prices or products. Everything a
+response contains is the viewer's view.
+"""
+type Query {
+    """
+    Search the catalog. An empty phrase browses, which is how a category page works.
+    """
+    search(input: SearchInput!): SearchResult!
+
+    """
+    What a phrase still being typed could become: completed queries, and products.
+    """
+    suggest(phrase: String!, limit: Int = 5): Suggestions!
+
+    product(sku: ID!): Product
+
+    """
+    The category tree, roots first. Each category's children follow it.
+    """
+    categories: [Category!]!
+
+    """
+    The store itself, and the viewer's place in it.
+    """
+    store: Store!
+}
+
+input SearchInput {
+    phrase: String
+
+    """
+    Treat the last word of the phrase as a prefix, for search as you type.
+    """
+    partial: Boolean = false
+
+    filters: [FilterInput!]
+
+    """
+    The first clause orders, and each later one breaks the ties before it.
+    Relevance when omitted and there is a phrase. Position within a category
+    when browsing one. Catalog order otherwise.
+    """
+    sort: [SortInput!]
+
+    """
+    One-based. A page past the end is empty, not an error.
+    """
+    page: Int = 1
+
+    """
+    At most 100. Larger values are reduced, not refused.
+    """
+    pageSize: Int = 20
+
+    """
+    Which facets to count, by name. Every facet when omitted, none when empty.
+    """
+    facets: [String!]
+}
+
+"""
+A filter on one attribute. Exactly one of the three matchers is given.
+"""
+input FilterInput {
+    attribute: FilterAttribute!
+    match: MatchInput!
+}
+
+enum FilterAttribute {
+    CATEGORY
+    BRAND
+    COLOR
+    SIZE
+    MATERIAL
+    PRICE
+    RATING
+    IN_STOCK
+}
+
+input MatchInput @oneOf {
+    """
+    Equal to this value. For IN_STOCK, "true" or "false".
+    """
+    eq: String
+
+    """
+    Equal to any of these values.
+    """
+    in: [String!]
+
+    """
+    Within a numeric range. PRICE is in minor units. RATING is 0 to 5.
+    """
+    range: RangeInput
+}
+
+"""
+A numeric range. The lower bound is inclusive and the upper bound is exclusive,
+so adjacent ranges never share a value.
+"""
+input RangeInput {
+    from: Float
+    to: Float
+}
+
+input SortInput {
+    by: SortField!
+    direction: SortDirection = ASC
+}
+
+enum SortField {
+    RELEVANCE
+
+    """
+    The viewer's price, lowest first under ASC.
+    """
+    PRICE
+
+    RATING
+
+    """
+    A merchandiser's order within a category. Only inside a category filter,
+    and relevance otherwise.
+    """
+    POSITION
+
+    """
+    When the product was added to the catalog.
+    """
+    ADDED
+}
+
+enum SortDirection {
+    ASC
+    DESC
+}
+
+type SearchResult {
+    items: [SearchHit!]!
+
+    """
+    Matching products in all, before the limit on how far a query can page.
+    """
+    total: Int!
+
+    page: Int!
+    pageSize: Int!
+    totalPages: Int!
+
+    """
+    How the phrase was matched. CORRECTED means nothing matched as typed and
+    one typo per word was allowed.
+    """
+    matching: Matching!
+
+    """
+    The sort actually applied, after any fallback.
+    """
+    sort: [SortClause!]!
+
+    facets: [Facet!]!
+
+    """
+    Which merchandising rules shaped this result, and which the sort set aside.
+    """
+    merchandising: Merchandising!
+}
+
+enum Matching {
+    EXACT
+    CORRECTED
+
+    """
+    No phrase was given, so everything matched.
+    """
+    ALL
+
+    NONE
+}
+
+type SortClause {
+    by: SortField!
+    direction: SortDirection!
+}
+
+type SearchHit {
+    product: Product!
+    score: Float!
+
+    """
+    Why this product ranked where it did.
+    """
+    explanation: Explanation!
+}
+
+type Explanation {
+    matches: [TermMatch!]!
+    rules: [RuleEffect!]!
+}
+
+"""
+One word of the phrase, and what it matched.
+"""
+type TermMatch {
+    """
+    The word or words as the shopper typed them, normalized.
+    """
+    typed: String!
+
+    """
+    The indexed term that matched.
+    """
+    matched: String!
+
+    field: String!
+    route: MatchRoute!
+    score: Float!
+}
+
+enum MatchRoute {
+    EXACT
+
+    """
+    The typed word is the start of the matched one.
+    """
+    PREFIX
+
+    SYNONYM
+
+    """
+    The matched term is one typo from the typed word.
+    """
+    CORRECTED
+}
+
+type RuleEffect {
+    ruleId: ID!
+    action: RuleAction!
+
+    """
+    The score multiplier, for a boost or a bury.
+    """
+    weight: Float
+}
+
+enum RuleAction {
+    PIN
+    BOOST
+    BURY
+}
+
+type Merchandising {
+    applied: [ID!]!
+
+    """
+    Rules that would have applied under a relevance sort.
+    """
+    setAsideBySort: [ID!]!
+}
+
+"""
+A filter the shopper could add next, with a count beside each choice. Counts
+ignore this facet's own current filter, so a selection never empties the
+facet it was made in.
+"""
+interface Facet {
+    name: String!
+    attribute: FilterAttribute!
+}
+
+type ValueFacet implements Facet {
+    name: String!
+    attribute: FilterAttribute!
+    buckets: [ValueBucket!]!
+}
+
+type RangeFacet implements Facet {
+    name: String!
+    attribute: FilterAttribute!
+    buckets: [RangeBucket!]!
+}
+
+"""
+The smallest and largest value among the results, for a slider. Absent when no
+result has a value.
+"""
+type StatsFacet implements Facet {
+    name: String!
+    attribute: FilterAttribute!
+    count: Int!
+    min: Float
+    max: Float
+}
+
+type ValueBucket {
+    value: String!
+    count: Int!
+}
+
+"""
+A band of values. A missing bound is open on that side.
+"""
+type RangeBucket {
+    from: Float
+    to: Float
+    count: Int!
+}
+
+type Suggestions {
+    """
+    Completions of the phrase, drawn from the catalog's own words.
+    """
+    queries: [String!]!
+
+    products: [SearchHit!]!
+}
+
+type Product {
+    sku: ID!
+    name: String!
+    description: String!
+    brand: Brand!
+
+    """
+    The leaf category.
+    """
+    category: Category!
+
+    """
+    From the root down to the leaf.
+    """
+    categoryPath: [Category!]!
+
+    colors: [String!]!
+    sizes: [String!]!
+    material: String!
+
+    """
+    The viewer's price. A range when variants are priced differently.
+    """
+    price: PriceRange!
+
+    """
+    Absent until somebody has rated it.
+    """
+    rating: Rating
+
+    variants: [Variant!]!
+
+    """
+    Whether any variant is in stock.
+    """
+    inStock: Boolean!
+
+    """
+    When the product was added, as an ISO 8601 instant.
+    """
+    addedAt: String!
+}
+
+type PriceRange {
+    min: Money!
+    max: Money!
+}
+
+"""
+An amount in a currency's minor unit, such as cents. The client formats it for
+the store's locale.
+"""
+type Money {
+    amount: Int!
+    currency: String!
+}
+
+type Variant {
+    sku: ID!
+    color: String!
+    size: String!
+
+    """
+    The viewer's price for this variant.
+    """
+    price: Money!
+
+    inStock: Boolean!
+}
+
+type Rating {
+    average: Float!
+    count: Int!
+}
+
+type Brand {
+    id: ID!
+    name: String!
+}
+
+type Category {
+    id: ID!
+    name: String!
+
+    """
+    Ids from the root down to this category.
+    """
+    path: [ID!]!
+
+    parent: Category
+}
+
+type Store {
+    name: String!
+    currency: String!
+    locale: String!
+
+    """
+    Changes whenever the catalog or the rules change. Part of every cache key
+    a client builds, so a stale response can never be served after an update.
+    """
+    catalogVersion: String!
+
+    viewer: Viewer!
+}
+
+"""
+Who is asking. Set by the request, never by the query.
+"""
+type Viewer {
+    group: CustomerGroup!
+}
+
+enum CustomerGroup {
+    GUEST
+    MEMBER
+}

@@ -45,7 +45,7 @@ const sizeBudgets = {
 };
 
 export default tseslint.config(
-    { ignores: ['**/coverage', '**/node_modules', '**/dist'] },
+    { ignores: ['**/coverage', '**/node_modules', '**/dist', '**/generated'] },
     {
         extends: [js.configs.recommended, ...tseslint.configs.recommended],
         files: ['**/*.{ts,tsx,mjs,js}'],

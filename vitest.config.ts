@@ -12,6 +12,7 @@ export default defineConfig({
             '@shelflens/catalog': here('./packages/catalog/src/index.ts'),
             '@jasonsdevspace/shelflens': here('./packages/engine/src/index.ts'),
             '@shelflens/search': here('./packages/search/src/index.ts'),
+            '@shelflens/api': here('./packages/api/src/index.ts'),
         },
     },
     test: {
