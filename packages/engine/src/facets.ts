@@ -1,5 +1,6 @@
 import type { Index } from './index-builder.js';
 import {
+    type AttributeValue,
     type EngineConfig,
     EngineError,
     type Facet,
@@ -18,6 +19,9 @@ import {
  * brand, does narrow it, which is what a shopper expects.
  */
 
+const isList = (value: AttributeValue | undefined): value is readonly string[] =>
+    Array.isArray(value);
+
 /** The most values one facet reports. Past this a facet is a list, not a filter. */
 const DEFAULT_MAX_BUCKETS = 100;
 
@@ -29,21 +33,35 @@ export const checkFacets = (config: EngineConfig, names: readonly string[]): voi
     }
 };
 
-const valuesOf = (value: unknown): readonly string[] =>
-    typeof value === 'string' ? [value] : Array.isArray(value) ? (value as string[]) : [];
+/** Documents to count: a document array, and which of them pass. */
+export interface Counted {
+    readonly docs: ArrayLike<number>;
+    /** A flag per position in `docs`: one when that document passes. */
+    readonly passes: Uint8Array;
+}
 
 const keywordFacet = (
     name: string,
     facet: Extract<FacetConfig, { kind: 'keyword' }>,
-    docs: Iterable<number>,
+    counted: Counted,
     index: Index
 ): Facet => {
     const counts = new Map<string, number>();
-    for (const doc of docs) {
-        // A document with several values counts once for each, and never
-        // twice for the same one.
-        const values = new Set(valuesOf(index.attributes[doc]?.get(facet.attribute)));
-        for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+    const count = (value: string) => counts.set(value, (counts.get(value) ?? 0) + 1);
+    const column = index.columns.get(facet.attribute);
+    for (let i = 0; i < counted.docs.length; i += 1) {
+        if (counted.passes[i] !== 1) continue;
+        const value = column?.[counted.docs[i] ?? 0];
+        if (typeof value === 'string') {
+            count(value);
+        } else if (isList(value)) {
+            // A document with several values counts once for each, and
+            // never twice for the same one. The lists are short, so a scan
+            // back is cheaper than a Set per document.
+            value.forEach((item, j) => {
+                if (value.indexOf(item) === j) count(item);
+            });
+        }
     }
     const buckets: ValueBucket[] = [...counts]
         .map(([value, count]) => ({ kind: 'value' as const, value, count }))
@@ -55,28 +73,30 @@ const keywordFacet = (
 const rangeFacet = (
     name: string,
     facet: Extract<FacetConfig, { kind: 'range' }>,
-    docs: Iterable<number>,
+    counted: Counted,
     index: Index
 ): Facet => {
     const counts = facet.ranges.map(() => 0);
-    for (const doc of docs) {
-        const value = index.attributes[doc]?.get(facet.attribute);
+    const column = index.columns.get(facet.attribute);
+    for (let i = 0; i < counted.docs.length; i += 1) {
+        if (counted.passes[i] !== 1) continue;
+        const value = column?.[counted.docs[i] ?? 0];
         if (typeof value !== 'number') continue;
-        facet.ranges.forEach((range, i) => {
+        facet.ranges.forEach((range, r) => {
             const above = range.from === undefined || value >= range.from;
             const below = range.to === undefined || value < range.to;
-            if (above && below) counts[i] = (counts[i] ?? 0) + 1;
+            if (above && below) counts[r] = (counts[r] ?? 0) + 1;
         });
     }
     return {
         name,
         attribute: facet.attribute,
         kind: 'range',
-        buckets: facet.ranges.map((range, i) => ({
+        buckets: facet.ranges.map((range, r) => ({
             kind: 'range' as const,
             ...(range.from !== undefined && { from: range.from }),
             ...(range.to !== undefined && { to: range.to }),
-            count: counts[i] ?? 0,
+            count: counts[r] ?? 0,
         })),
     };
 };
@@ -84,14 +104,16 @@ const rangeFacet = (
 const statsFacet = (
     name: string,
     facet: Extract<FacetConfig, { kind: 'stats' }>,
-    docs: Iterable<number>,
+    counted: Counted,
     index: Index
 ): Facet => {
     let min = Infinity;
     let max = -Infinity;
     let count = 0;
-    for (const doc of docs) {
-        const value = index.attributes[doc]?.get(facet.attribute);
+    const column = index.columns.get(facet.attribute);
+    for (let i = 0; i < counted.docs.length; i += 1) {
+        if (counted.passes[i] !== 1) continue;
+        const value = column?.[counted.docs[i] ?? 0];
         if (typeof value !== 'number') continue;
         count += 1;
         if (value < min) min = value;
@@ -109,15 +131,15 @@ const statsFacet = (
 export const computeFacet = (
     name: string,
     facet: FacetConfig,
-    docs: Iterable<number>,
+    counted: Counted,
     index: Index
 ): Facet => {
     switch (facet.kind) {
         case 'keyword':
-            return keywordFacet(name, facet, docs, index);
+            return keywordFacet(name, facet, counted, index);
         case 'range':
-            return rangeFacet(name, facet, docs, index);
+            return rangeFacet(name, facet, counted, index);
         case 'stats':
-            return statsFacet(name, facet, docs, index);
+            return statsFacet(name, facet, counted, index);
     }
 };

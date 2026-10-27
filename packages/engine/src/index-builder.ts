@@ -14,31 +14,41 @@ import {
  * Built once from the documents and never changed. A catalog changes by
  * being reindexed, which keeps the index a plain value with no update path
  * to get wrong.
+ *
+ * Everything is stored in flat arrays rather than in an object or a Map per
+ * posting and per document. The first version did the latter, and the
+ * benchmark put its index of a hundred thousand products at a gigabyte of
+ * heap. A posting here is one number in a document array and one small
+ * integer per field in a count array beside it.
  */
 
-/** How often a term appears in one document, by field. */
-export type FieldCounts = ReadonlyMap<string, number>;
-
-export interface Posting {
-    readonly doc: number;
-    readonly counts: FieldCounts;
+export interface PostingList {
+    /** Document numbers, ascending. */
+    readonly docs: Int32Array;
+    /** Occurrences by field, row-major: `counts[i * fields + field]` for `docs[i]`. */
+    readonly counts: Uint16Array;
 }
 
 export interface Index {
     readonly documents: readonly Document[];
     readonly fieldNames: readonly string[];
-    /** Term to the documents containing it, in document order. */
-    readonly postings: ReadonlyMap<string, readonly Posting[]>;
+    readonly postings: ReadonlyMap<string, PostingList>;
     /** Every term, sorted, for prefix lookups by binary search. */
     readonly terms: readonly string[];
     /** Terms grouped by length, for the fuzzy pass. */
     readonly termsByLength: ReadonlyMap<number, readonly string[]>;
-    /** Document length in terms, by field, and the average per field. */
-    readonly lengths: readonly ReadonlyMap<string, number>[];
-    readonly averageLength: ReadonlyMap<string, number>;
-    /** Attribute values by document, with only the configured attributes kept. */
-    readonly attributes: readonly ReadonlyMap<string, AttributeValue>[];
+    /** Words per document, by field: `lengths[field][doc]`. */
+    readonly lengths: readonly Uint16Array[];
+    readonly averageLength: readonly number[];
+    /** Attribute values by document, one column per configured attribute. */
+    readonly columns: ReadonlyMap<string, readonly (AttributeValue | undefined)[]>;
+    /** Each document's position in id order, for breaking ties the same way every time. */
+    readonly idRank: Int32Array;
 }
+
+/** A value an attribute holds, or nothing. */
+export const attributeOf = (index: Index, doc: number, name: string): AttributeValue | undefined =>
+    index.columns.get(name)?.[doc];
 
 const checkAttribute = (name: string, kind: AttributeKind, value: AttributeValue): void => {
     const ok =
@@ -56,44 +66,81 @@ const checkAttribute = (name: string, kind: AttributeKind, value: AttributeValue
     }
 };
 
+/** A posting list while it is being built. */
+interface Draft {
+    readonly docs: number[];
+    readonly counts: number[];
+}
+
+const buildColumns = (
+    documents: readonly Document[],
+    config: EngineConfig
+): Map<string, (AttributeValue | undefined)[]> => {
+    const columns = new Map<string, (AttributeValue | undefined)[]>();
+    for (const [name, kind] of Object.entries(config.attributes)) {
+        const column = documents.map((document) => {
+            const value = document.attributes[name];
+            if (value !== undefined) checkAttribute(name, kind, value);
+            return value;
+        });
+        columns.set(name, column);
+    }
+    return columns;
+};
+
+const rankByIdOrder = (documents: readonly Document[]): Int32Array => {
+    const order = documents.map((document, doc) => ({ id: document.id, doc }));
+    order.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const rank = new Int32Array(documents.length);
+    order.forEach(({ doc }, position) => {
+        rank[doc] = position;
+    });
+    return rank;
+};
+
 export const buildIndex = (documents: readonly Document[], config: EngineConfig): Index => {
     const fieldNames = Object.keys(config.fields);
-    const postings = new Map<string, Posting[]>();
-    const lengths: Map<string, number>[] = [];
-    const totals = new Map<string, number>();
-    const attributes: Map<string, AttributeValue>[] = [];
+    const fields = fieldNames.length;
+    const drafts = new Map<string, Draft>();
+    const lengths = fieldNames.map(() => new Uint16Array(documents.length));
+    const totals = fieldNames.map(() => 0);
 
     documents.forEach((document, doc) => {
-        const counts = new Map<string, Map<string, number>>();
-        const length = new Map<string, number>();
-        for (const field of fieldNames) {
+        // Occurrences of each term in this document, by field, before they
+        // are appended to the term's posting list in one row.
+        const rows = new Map<string, number[]>();
+        fieldNames.forEach((field, f) => {
             const text = document.text[field] ?? '';
-            const terms = tokenize(text);
             const words = wordCount(text);
-            length.set(field, words);
-            totals.set(field, (totals.get(field) ?? 0) + words);
-            for (const term of terms) {
-                const byField = counts.get(term) ?? new Map<string, number>();
-                byField.set(field, (byField.get(field) ?? 0) + 1);
-                counts.set(term, byField);
+            (lengths[f] as Uint16Array)[doc] = words;
+            totals[f] = (totals[f] ?? 0) + words;
+            for (const term of tokenize(text)) {
+                let row = rows.get(term);
+                if (!row) {
+                    row = new Array<number>(fields).fill(0);
+                    rows.set(term, row);
+                }
+                row[f] = (row[f] ?? 0) + 1;
             }
+        });
+        for (const [term, row] of rows) {
+            let draft = drafts.get(term);
+            if (!draft) {
+                draft = { docs: [], counts: [] };
+                drafts.set(term, draft);
+            }
+            draft.docs.push(doc);
+            draft.counts.push(...row);
         }
-        for (const [term, byField] of counts) {
-            const list = postings.get(term) ?? [];
-            list.push({ doc, counts: byField });
-            postings.set(term, list);
-        }
-        lengths.push(length);
-
-        const kept = new Map<string, AttributeValue>();
-        for (const [name, kind] of Object.entries(config.attributes)) {
-            const value = document.attributes[name];
-            if (value === undefined) continue;
-            checkAttribute(name, kind, value);
-            kept.set(name, value);
-        }
-        attributes.push(kept);
     });
+
+    const postings = new Map<string, PostingList>();
+    for (const [term, draft] of drafts) {
+        postings.set(term, {
+            docs: Int32Array.from(draft.docs),
+            counts: Uint16Array.from(draft.counts),
+        });
+    }
 
     const terms = [...postings.keys()].sort();
     const termsByLength = new Map<number, string[]>();
@@ -102,12 +149,6 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
         bucket.push(term);
         termsByLength.set(term.length, bucket);
     }
-    const averageLength = new Map(
-        fieldNames.map((field) => [
-            field,
-            documents.length === 0 ? 0 : (totals.get(field) ?? 0) / documents.length,
-        ])
-    );
 
     return {
         documents,
@@ -116,8 +157,11 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
         terms,
         termsByLength,
         lengths,
-        averageLength,
-        attributes,
+        averageLength: totals.map((total) =>
+            documents.length === 0 ? 0 : total / documents.length
+        ),
+        columns: buildColumns(documents, config),
+        idRank: rankByIdOrder(documents),
     };
 };
 
@@ -138,4 +182,18 @@ export const termsWithPrefix = (index: Index, prefix: string): string[] => {
         found.push(term);
     }
     return found;
+};
+
+/** Where a document sits in a posting list, or -1. The list is ascending. */
+export const positionOf = (list: PostingList, doc: number): number => {
+    let low = 0;
+    let high = list.docs.length - 1;
+    while (low <= high) {
+        const mid = (low + high) >>> 1;
+        const at = list.docs[mid] ?? -1;
+        if (at === doc) return mid;
+        if (at < doc) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
 };

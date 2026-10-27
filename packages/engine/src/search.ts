@@ -1,7 +1,7 @@
 import { checkFacets, computeFacet } from './facets.js';
 import { checkFilter, matchesFilter } from './filters.js';
-import { buildIndex, type Index } from './index-builder.js';
-import { createMatcher, type TermHits } from './match.js';
+import { attributeOf, buildIndex, type Index } from './index-builder.js';
+import { createMatcher, type TermMatcher, type UnitHit, type UnitHits } from './match.js';
 import { tokenize } from './normalize.js';
 import { adjustmentsFor, checkRules, planRules, type RulePlan } from './rules.js';
 import { buildSynonyms } from './synonyms.js';
@@ -10,12 +10,13 @@ import {
     type Document,
     type EngineConfig,
     EngineError,
+    type Filter,
     type Hit,
     type MatchMode,
+    type RuleEffect,
     type SearchRequest,
     type SearchResult,
     type SortClause,
-    type TermMatch,
 } from './types.js';
 
 /**
@@ -25,6 +26,12 @@ import {
  * give the same result, and nothing here reads a clock, the network or a
  * file. That is what lets the same engine run in a Node process, a service
  * worker and a test.
+ *
+ * A search can match most of a catalog, as a two-letter prefix or a browse
+ * with no query does, so the work per candidate is kept small: a document
+ * number, a score, and which filters it passes, in parallel arrays. Hit
+ * objects, with their matches and rule effects, are built for the page
+ * that is returned and for nothing else.
  */
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -47,8 +54,42 @@ export interface Engine {
     readonly terms: number;
 }
 
+/** Every document the query admits, before filters, in parallel arrays. */
+interface Candidates {
+    readonly docs: number[];
+    readonly scores: number[];
+    /** How each candidate matched, unit by unit. Absent when there was no query. */
+    readonly units: (readonly UnitHit[] | undefined)[];
+    readonly mode: MatchMode;
+}
+
+const intersect = (perUnit: readonly UnitHits[]): Omit<Candidates, 'mode'> => {
+    const docs: number[] = [];
+    const scores: number[] = [];
+    const units: (readonly UnitHit[] | undefined)[] = [];
+    const [first, ...rest] = perUnit;
+    if (!first) return { docs, scores, units };
+    for (const [doc, hit] of first) {
+        const all = [hit];
+        let complete = true;
+        for (const other of rest) {
+            const found = other.get(doc);
+            if (!found) {
+                complete = false;
+                break;
+            }
+            all.push(found);
+        }
+        if (!complete) continue;
+        docs.push(doc);
+        scores.push(all.reduce((sum, u) => sum + u.score, 0));
+        units.push(all);
+    }
+    return { docs, scores, units };
+};
+
 /**
- * The documents matching every query term, scored.
+ * The documents matching every query unit, scored.
  *
  * Runs the strict pass first. The fuzzy pass runs only if the strict pass
  * finds nothing at all, so a correctly typed query is never diluted with
@@ -57,26 +98,53 @@ export interface Engine {
 const matchAll = (
     terms: readonly string[],
     prefixLast: boolean,
-    matcher: ReturnType<typeof createMatcher>
-): { docs: Map<number, TermMatch[]>; mode: MatchMode } => {
-    const intersect = (perTerm: readonly TermHits[]): Map<number, TermMatch[]> => {
-        const [first, ...rest] = perTerm;
-        const docs = new Map<number, TermMatch[]>();
-        if (!first) return docs;
-        for (const [doc, matches] of first) {
-            const others = rest.map((hits) => hits.get(doc));
-            if (others.some((m) => m === undefined)) continue;
-            docs.set(doc, [...matches, ...others.flatMap((m) => m ?? [])]);
-        }
-        return docs;
-    };
-
+    matcher: TermMatcher
+): Candidates => {
     const units = matcher.rewrite(terms);
     const last = units.length - 1;
     const strict = intersect(units.map((unit, i) => matcher.strict(unit, i === last, prefixLast)));
-    if (strict.size > 0) return { docs: strict, mode: 'exact' };
+    if (strict.docs.length > 0) return { ...strict, mode: 'exact' };
     const fuzzy = intersect(units.map((unit, i) => matcher.fuzzy(unit, i === last, prefixLast)));
-    return { docs: fuzzy, mode: fuzzy.size > 0 ? 'fuzzy' : 'none' };
+    return { ...fuzzy, mode: fuzzy.docs.length > 0 ? 'fuzzy' : 'none' };
+};
+
+/** Every document, unscored, for a search with no query. */
+const everything = (index: Index): Candidates => {
+    const count = index.documents.length;
+    return {
+        docs: Array.from({ length: count }, (_, doc) => doc),
+        scores: new Array<number>(count).fill(0),
+        units: new Array<undefined>(count).fill(undefined),
+        mode: 'all',
+    };
+};
+
+/** Pinned documents join the candidates, and hidden ones leave them. */
+const applyPlan = (
+    candidates: Candidates,
+    plan: RulePlan,
+    byId: ReadonlyMap<string, number>
+): Candidates => {
+    if (plan.pins.length === 0 && plan.hidden.size === 0) return candidates;
+    const hidden = new Set([...plan.hidden].map((id) => byId.get(id)));
+    const present = new Set(candidates.docs);
+    const docs: number[] = [];
+    const scores: number[] = [];
+    const units: (readonly UnitHit[] | undefined)[] = [];
+    candidates.docs.forEach((doc, i) => {
+        if (hidden.has(doc)) return;
+        docs.push(doc);
+        scores.push(candidates.scores[i] ?? 0);
+        units.push(candidates.units[i]);
+    });
+    for (const id of plan.pins) {
+        const doc = byId.get(id);
+        if (doc === undefined || present.has(doc) || hidden.has(doc)) continue;
+        docs.push(doc);
+        scores.push(0);
+        units.push(undefined);
+    }
+    return { docs, scores, units, mode: candidates.mode };
 };
 
 const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
@@ -89,27 +157,34 @@ const compareValues = (a: AttributeValue, b: AttributeValue): number => {
     return String(left).localeCompare(String(right));
 };
 
-type AttributeOf = (hit: Hit, name: string) => AttributeValue | undefined;
+interface Ordering {
+    readonly sort: readonly SortClause[];
+    readonly index: Index;
+    readonly candidates: Candidates;
+    readonly pinRank: ReadonlyMap<number, number>;
+}
 
 /**
- * Orders two hits by one clause, or reports a tie with `undefined` so the
- * next clause can break it.
+ * Orders two candidates by one clause, or reports a tie with `undefined`
+ * so the next clause can break it.
  *
  * A missing value sorts last whichever way the clause runs, so a product
  * nobody has rated never leads a list sorted by rating in either direction.
  */
 const compareByClause = (
     clause: SortClause,
-    attribute: AttributeOf,
-    a: Hit,
-    b: Hit
+    { index, candidates }: Pick<Ordering, 'index' | 'candidates'>,
+    a: number,
+    b: number
 ): number | undefined => {
     const direction = clause.direction === 'asc' ? 1 : -1;
     if (clause.by === 'relevance') {
-        return a.score === b.score ? undefined : (a.score - b.score) * direction;
+        const left = candidates.scores[a] ?? 0;
+        const right = candidates.scores[b] ?? 0;
+        return left === right ? undefined : (left - right) * direction;
     }
-    const left = attribute(a, clause.by);
-    const right = attribute(b, clause.by);
+    const left = attributeOf(index, candidates.docs[a] ?? 0, clause.by);
+    const right = attributeOf(index, candidates.docs[b] ?? 0, clause.by);
     if (left === undefined || right === undefined) {
         if (left === undefined && right === undefined) return undefined;
         return left === undefined ? 1 : -1;
@@ -119,18 +194,24 @@ const compareByClause = (
 };
 
 /**
- * Every sort ends on the id, so documents that tie on everything the caller
- * asked for still come back in one fixed order. Without that, paging through
- * equal scores shows some products twice and others never.
+ * Pinned candidates first, in pin order, then the sort, and every sort
+ * ends on the id. Documents that tie on everything the caller asked for
+ * still come back in one fixed order, so paging through equal scores never
+ * shows a document twice or skips one.
  */
 const comparator =
-    (sort: readonly SortClause[], attribute: AttributeOf) =>
-    (a: Hit, b: Hit): number => {
+    ({ sort, index, candidates, pinRank }: Ordering) =>
+    (a: number, b: number): number => {
+        const docA = candidates.docs[a] ?? 0;
+        const docB = candidates.docs[b] ?? 0;
+        const pinA = pinRank.get(docA) ?? Infinity;
+        const pinB = pinRank.get(docB) ?? Infinity;
+        if (pinA !== pinB) return pinA - pinB;
         for (const clause of sort) {
-            const ordered = compareByClause(clause, attribute, a, b);
+            const ordered = compareByClause(clause, { index, candidates }, a, b);
             if (ordered !== undefined) return ordered;
         }
-        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+        return (index.idRank[docA] ?? 0) - (index.idRank[docB] ?? 0);
     };
 
 interface Limits {
@@ -139,23 +220,23 @@ interface Limits {
 }
 
 /**
- * One page of the sorted hits.
+ * The slice of the sorted positions that make one page.
  *
  * A page past the end is empty rather than an error. The caller asked a
  * well-formed question whose answer is "nothing there".
  */
-const paginate = (hits: readonly Hit[], request: SearchRequest, limits: Limits) => {
+const paginate = (sorted: readonly number[], request: SearchRequest, limits: Limits) => {
     const pageSize = Math.min(
         Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE),
         limits.maxPageSize
     );
     const page = Math.max(1, Math.floor(request.page ?? 1));
-    const reachable = Math.min(hits.length, limits.maxResults);
+    const reachable = Math.min(sorted.length, limits.maxResults);
     const totalPages = Math.ceil(reachable / pageSize);
     const start = (page - 1) * pageSize;
-    const pageHits =
-        start >= reachable ? [] : hits.slice(start, Math.min(start + pageSize, reachable));
-    return { hits: pageHits, total: hits.length, page, pageSize, totalPages };
+    const positions =
+        start >= reachable ? [] : sorted.slice(start, Math.min(start + pageSize, reachable));
+    return { positions, total: sorted.length, page, pageSize, totalPages };
 };
 
 /**
@@ -170,9 +251,8 @@ const resolveSort = (
     request: SearchRequest,
     hasQuery: boolean
 ): SortClause[] => {
-    const requested = request.sort ?? [];
     const resolved: SortClause[] = [];
-    for (const clause of requested) {
+    for (const clause of request.sort ?? []) {
         if (clause.by === 'relevance') {
             resolved.push(clause);
             continue;
@@ -191,45 +271,45 @@ const resolveSort = (
     return resolved;
 };
 
-/** Document numbers matching the query, or every document when there is none. */
-const matchedDocuments = (
+/** Which candidates pass the filters, leaving out those on one attribute. */
+const passing = (
     index: Index,
-    terms: readonly string[],
-    prefixLast: boolean,
-    matcher: ReturnType<typeof createMatcher>
-): { docs: Map<number, TermMatch[]>; mode: MatchMode } => {
-    if (terms.length > 0) return matchAll(terms, prefixLast, matcher);
-    const docs = new Map<number, TermMatch[]>();
-    index.documents.forEach((_, doc) => docs.set(doc, []));
-    return { docs, mode: 'all' };
+    candidates: Candidates,
+    filters: readonly Filter[],
+    except?: string
+): Uint8Array => {
+    const applicable = filters
+        .filter((filter) => filter.attribute !== except)
+        .map((filter) => ({ filter, column: index.columns.get(filter.attribute) }));
+    const result = new Uint8Array(candidates.docs.length);
+    candidates.docs.forEach((doc, i) => {
+        result[i] = applicable.every(({ filter, column }) => matchesFilter(column?.[doc], filter))
+            ? 1
+            : 0;
+    });
+    return result;
 };
 
-/** Pinned documents join the matches, and hidden ones leave them. */
-const applyPlan = (
-    docs: Map<number, TermMatch[]>,
-    plan: RulePlan,
-    byId: ReadonlyMap<string, number>
-) => {
-    for (const id of plan.pins) {
-        const doc = byId.get(id);
-        if (doc !== undefined && !docs.has(doc)) docs.set(doc, []);
-    }
-    for (const id of plan.hidden) {
-        const doc = byId.get(id);
-        if (doc !== undefined) docs.delete(doc);
-    }
+/** Applies the rules' boosts and buries to the scores, and remembers each effect. */
+const adjustScores = (
+    index: Index,
+    candidates: Candidates,
+    plan: RulePlan
+): ReadonlyMap<number, RuleEffect[]> => {
+    const effects = new Map<number, RuleEffect[]>();
+    candidates.docs.forEach((doc, i) => {
+        const id = index.documents[doc]?.id ?? '';
+        const pinnedBy = plan.pinnedBy.get(id);
+        const own: RuleEffect[] = pinnedBy ? [{ ruleId: pinnedBy, action: 'pin' }] : [];
+        if (plan.adjustments.length > 0) {
+            const adjusted = adjustmentsFor(plan, id, (name) => attributeOf(index, doc, name));
+            candidates.scores[i] = (candidates.scores[i] ?? 0) * adjusted.weight;
+            own.push(...adjusted.effects);
+        }
+        if (own.length > 0) effects.set(doc, own);
+    });
+    return effects;
 };
-
-/** Pinned hits first, in pin order, then everything else by the sort. */
-const withPinsFirst =
-    (plan: RulePlan, compare: (a: Hit, b: Hit) => number) =>
-    (a: Hit, b: Hit): number => {
-        const rankA = plan.pins.indexOf(a.id);
-        const rankB = plan.pins.indexOf(b.id);
-        if (rankA !== rankB)
-            return (rankA === -1 ? Infinity : rankA) - (rankB === -1 ? Infinity : rankB);
-        return compare(a, b);
-    };
 
 const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const synonyms = buildSynonyms(config.synonyms ?? []);
@@ -240,7 +320,6 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         maxResults: config.limits?.results ?? MAX_RESULTS,
     };
     const byId = new Map(index.documents.map((d, doc) => [d.id, doc]));
-    const attributeOf = (doc: number, name: string) => index.attributes[doc]?.get(name);
 
     const search = (request: SearchRequest): SearchResult => {
         const filters = request.filters ?? [];
@@ -253,53 +332,51 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         const sortScope = sort[0] ? config.sortScopes?.[sort[0].by] : undefined;
         const plan = planRules(rules, { terms, filters, sort, now: request.now, sortScope });
 
-        const matched = matchedDocuments(index, terms, request.prefixLastTerm ?? false, matcher);
-        applyPlan(matched.docs, plan, byId);
+        const matched =
+            terms.length === 0
+                ? everything(index)
+                : matchAll(terms, request.prefixLastTerm ?? false, matcher);
+        const candidates = applyPlan(matched, plan, byId);
+        const effects = adjustScores(index, candidates, plan);
 
-        // A document passes when every filter accepts it, or every filter
-        // but those on one attribute, which is how a facet counts past its
-        // own selection.
-        const passes = (doc: number, except?: string) =>
-            filters.every(
-                (filter) =>
-                    filter.attribute === except ||
-                    matchesFilter(attributeOf(doc, filter.attribute), filter)
-            );
+        const passesAll = passing(index, candidates, filters);
+        const kept: number[] = [];
+        passesAll.forEach((pass, i) => {
+            if (pass === 1) kept.push(i);
+        });
+        const mode: MatchMode =
+            kept.length === 0 && candidates.mode !== 'all' ? 'none' : candidates.mode;
 
-        const hits: Hit[] = [...matched.docs]
-            .filter(([doc]) => passes(doc))
-            .map(([doc, matches]) => {
-                const id = index.documents[doc]?.id ?? '';
-                const base = matches.reduce((sum, m) => sum + m.score, 0);
-                const { weight, effects } = adjustmentsFor(plan, id, (name) =>
-                    attributeOf(doc, name)
-                );
-                const pinnedBy = plan.pinnedBy.get(id);
-                return {
-                    id,
-                    score: base * weight,
-                    matches,
-                    rules: [
-                        ...(pinnedBy ? [{ ruleId: pinnedBy, action: 'pin' as const }] : []),
-                        ...effects,
-                    ],
-                };
-            });
-        const mode: MatchMode = hits.length === 0 && matched.mode !== 'all' ? 'none' : matched.mode;
+        const pinRank = new Map(plan.pins.map((id, rank) => [byId.get(id) ?? -1, rank]));
+        kept.sort(comparator({ sort, index, candidates, pinRank }));
+        const { positions, ...pageInfo } = paginate(kept, request, limits);
 
-        const attribute: AttributeOf = (hit, name) =>
-            name === 'id' ? hit.id : attributeOf(byId.get(hit.id) ?? -1, name);
-        hits.sort(withPinsFirst(plan, comparator(sort, attribute)));
+        const hits: Hit[] = positions.map((i) => {
+            const doc = candidates.docs[i] ?? 0;
+            return {
+                id: index.documents[doc]?.id ?? '',
+                score: candidates.scores[i] ?? 0,
+                matches: (candidates.units[i] ?? []).flatMap((unit) => unit.matches),
+                rules: effects.get(doc) ?? [],
+            };
+        });
 
+        // A facet counts past its own selection, so its pass set leaves out
+        // the filters on its attribute. Most facets have no such filter and
+        // share the one pass set every result used.
         const facets = facetNames.map((name) => {
             const facet = config.facets?.[name];
             if (!facet) throw new EngineError('unknown_facet', `no facet named ${name}`);
-            const docs = [...matched.docs.keys()].filter((doc) => passes(doc, facet.attribute));
-            return computeFacet(name, facet, docs, index);
+            const filtered = filters.some((filter) => filter.attribute === facet.attribute);
+            const passes = filtered
+                ? passing(index, candidates, filters, facet.attribute)
+                : passesAll;
+            return computeFacet(name, facet, { docs: candidates.docs, passes }, index);
         });
 
         return {
-            ...paginate(hits, request, limits),
+            hits,
+            ...pageInfo,
             mode,
             sort,
             facets,

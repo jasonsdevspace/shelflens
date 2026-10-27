@@ -29,9 +29,11 @@ Three checks keep the search honest, and each has already caught something:
   must be, run in the test suite. Their first run found that synonyms expanded word by word, so
   "t shirt" credited a Tee twice for one word and ranked it above an actual T-Shirt.
 - **The benchmark.** `npm run bench` indexes a hundred thousand generated products and times the
-  requests a storefront sends. The [first results](docs/benchmarks/results.md) show about a
-  gigabyte of heap for the index and a third of a second for the widest queries, which is the next
-  thing to fix.
+  requests a storefront sends. Its first run showed about a gigabyte of memory for the index and a
+  third of a second for the widest queries. Storing the index in flat arrays instead of a Map per
+  posting, and building result objects only for the page returned, brought that to under a hundred
+  megabytes and about a tenth of a second. The [current results](docs/benchmarks/results.md) are
+  recorded with the machine they ran on.
 - **A size budget.** The catalog the demo will ship stays under 400 KB compressed, or the build
   fails.
 

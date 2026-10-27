@@ -6,7 +6,7 @@ what does not.
 
 | Recorded   | Commit    | Machine                | Node    |
 | ---------- | --------- | ---------------------- | ------- |
-| 2026-10-27 | `1ca987a` | Apple M2 Max, 12 cores | v24.3.0 |
+| 2026-10-27 | `8512d4a` | Apple M2 Max, 12 cores | v24.3.0 |
 
 ## The catalog
 
@@ -16,7 +16,7 @@ what does not.
 
 | Terms | Build time | Documents per second | Heap used |
 | ----- | ---------- | -------------------- | --------- |
-| 306   | 1826 ms    | 54,773               | 979 MB    |
+| 306   | 2375 ms    | 42,113               | 84 MB     |
 
 ## Queries
 
@@ -28,13 +28,13 @@ every indexed term of a similar length, costs far less here than it would on a r
 tens of thousands of distinct words. The other costs, which grow with the number of products
 rather than of words, carry over.
 
-| Query                           | Results | p50    | p95    | p99     |
-| ------------------------------- | ------- | ------ | ------ | ------- |
-| search as you type, two letters | 61,666  | 341.15 | 357.47 | 800.32  |
-| one common word                 | 5,627   | 16.08  | 17.78  | 18.12   |
-| two words                       | 375     | 61.88  | 66.84  | 1156.51 |
-| a synonym                       | 10,449  | 34.77  | 39.57  | 41.55   |
-| a typo, so the fuzzy pass runs  | 8,310   | 24.17  | 29.16  | 32.46   |
-| browse a category by position   | 33,566  | 248.29 | 260.64 | 527.93  |
-| a word with two filters         | 304     | 14.33  | 17.13  | 17.37   |
-| everything, page fifty          | 99,999  | 339.05 | 352.93 | 698.62  |
+| Query                           | Results | p50   | p95   | p99    |
+| ------------------------------- | ------- | ----- | ----- | ------ |
+| search as you type, two letters | 61,666  | 93.21 | 98.31 | 175.66 |
+| one common word                 | 5,627   | 4.6   | 9.83  | 10.11  |
+| two words                       | 375     | 15.96 | 18.6  | 93.88  |
+| a synonym                       | 10,449  | 9.81  | 15.3  | 16.88  |
+| a typo, so the fuzzy pass runs  | 8,310   | 7.16  | 12.48 | 13.39  |
+| browse a category by position   | 33,566  | 71.29 | 74.71 | 77.53  |
+| a word with two filters         | 304     | 2.9   | 7.51  | 8.11   |
+| everything, page fifty          | 99,999  | 90.12 | 93.61 | 95.79  |
