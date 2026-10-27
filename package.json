@@ -11,7 +11,7 @@
         "packages/*"
     ],
     "scripts": {
-        "type-check": "tsc -b",
+        "type-check": "npm run type-check --workspaces",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
@@ -22,7 +22,8 @@
         "test:coverage": "vitest run --coverage",
         "build": "npm run build --workspaces --if-present",
         "catalog": "tsx packages/catalog/src/cli.ts",
-        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run test:run"
+        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run test:run",
+        "prepare": "husky || true"
     },
     "license": "MIT",
     "devDependencies": {
@@ -30,11 +31,25 @@
         "@types/node": "26.6.5",
         "@vitest/coverage-v8": "5.0.5",
         "eslint": "10.13.0",
+        "eslint-plugin-import-x": "^4.17.1",
+        "eslint-plugin-simple-import-sort": "^14.0.0",
+        "eslint-plugin-sonarjs": "^4.2.2",
         "globals": "17.13.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.6.0",
         "prettier": "3.9.10",
         "tsx": "4.23.15",
         "typescript": "6.0.3",
         "typescript-eslint": "8.72.1",
         "vitest": "5.0.5"
+    },
+    "lint-staged": {
+        "*.{ts,tsx,js,mjs}": [
+            "eslint --fix",
+            "prettier --write"
+        ],
+        "*.{json,md,yml,yaml,css,html,graphql}": [
+            "prettier --write"
+        ]
     }
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+
 import { createEngine } from './search.js';
-import { EngineError, type Document, type EngineConfig } from './types.js';
+import { type Document, type EngineConfig, EngineError } from './types.js';
 
 /*
  * A small catalog, written by hand so each test can name exactly what it

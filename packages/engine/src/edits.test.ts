@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { withinOneEdit } from './edits.js';
 
 describe('withinOneEdit', () => {

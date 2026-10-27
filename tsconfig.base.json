@@ -13,10 +13,6 @@
         "noUnusedParameters": true,
         "verbatimModuleSyntax": true,
         "isolatedModules": true,
-        "skipLibCheck": true,
-        "composite": true,
-        "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true
+        "skipLibCheck": true
     }
 }

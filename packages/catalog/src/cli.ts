@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
+
 import { DEFAULT_PRODUCTS, DEFAULT_SEED, generateCatalog } from './generate.js';
 
 /**
