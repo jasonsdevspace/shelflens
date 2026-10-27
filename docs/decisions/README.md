@@ -16,3 +16,5 @@ so the evidence was still fresh.
    hit, and a viewer the client cannot choose.
 6. [The API runs in the browser, and in Node when asked](0006-the-api-runs-in-the-browser.md): a
    service worker answers the demo, a thin Node server answers everything else.
+7. [A GraphQL client of our own, rather than Apollo or urql](0007-a-client-of-our-own.md): the
+   stale response and the cache key are the point, so they are code here, not configuration.

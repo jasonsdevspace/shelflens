@@ -24,6 +24,7 @@ schema.
 | [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                             |
 | [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, and the resolvers over the store. Nothing from Node, so it runs in a service worker                |
 | [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                  |
+| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the search popover, and the service worker that is the API in the browser                                                                 |
 
 Three checks keep the search honest, and each has already caught something:
 
@@ -51,6 +52,7 @@ it.
 4. [Facets count past their own filter](docs/decisions/0004-facets-count-past-their-own-filter.md)
 5. [The shape of the API](docs/decisions/0005-the-shape-of-the-api.md)
 6. [The API runs in the browser, and in Node when asked](docs/decisions/0006-the-api-runs-in-the-browser.md)
+7. [A GraphQL client of our own, rather than Apollo or urql](docs/decisions/0007-a-client-of-our-own.md)
 
 ## Dev setup
 
@@ -65,6 +67,17 @@ npm run verify
 
 `npm run verify` runs what CI runs: type checking, linting, formatting, a prose check and the
 tests, golden queries included. Use `npm test` for watch mode while you work.
+
+To work on the storefront:
+
+```bash
+npm run dev
+```
+
+That serves the page with hot reloading, and answers `/graphql` from the dev server through the
+same API the service worker runs in production. `npm run storefront` builds what the demo
+deploys: the page, the catalog it ships, and the worker, which `npx vite preview` in
+`packages/storefront` then serves.
 
 Three more commands are worth knowing:
 
@@ -83,7 +96,8 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
   --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
 ```
 
-The schema is `packages/api/schema.graphql`. Changing it means running `npm run codegen` and
+The schema is `packages/api/schema.graphql` and the storefront's operations are in
+`packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
 committing the generated types, which CI checks.
 
 ## Layout
@@ -95,7 +109,10 @@ packages/
 ├── catalog/     the generator, its vocabulary and its types
 ├── search/      documents, the store config, customer groups, golden queries, the benchmark
 ├── api/         the GraphQL schema, its generated types, the resolvers and the request limits
-└── server/      the API behind POST /graphql, with a rate limit and a request id
+├── server/      the API behind POST /graphql, with a rate limit and a request id
+└── storefront/  the demo page
+    └── src/     client (the GraphQL client and the latest-request helper), search (the popover
+                 and results), worker (the API as a service worker), operations, generated
 docs/
 ├── benchmarks/  the recorded benchmark results
 └── decisions/   the decision records

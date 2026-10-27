@@ -1,6 +1,7 @@
 export {
     type Context,
     createStore,
+    GROUP_HEADER,
     type Store,
     type StoreOptions,
     type Viewer,
@@ -9,6 +10,7 @@ export {
 export {
     createStoreApi,
     DEFAULT_LIMITS,
+    isStoreRequest,
     type Limits,
     type StoreApi,
     type StoreRequest,

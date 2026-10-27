@@ -112,6 +112,12 @@ const withinLimits =
         };
     };
 
+/** Whether a parsed request body is a request at all: an object with a query in it. */
+export const isStoreRequest = (value: unknown): value is StoreRequest =>
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { query?: unknown }).query === 'string';
+
 export interface StoreApi {
     readonly schema: GraphQLSchema;
     run(request: StoreRequest, viewer: Viewer, now?: Date): Promise<StoreResponse>;

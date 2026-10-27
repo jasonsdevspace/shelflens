@@ -1,0 +1,26 @@
+query Search($input: SearchInput!) {
+    search(input: $input) {
+        total
+        matching
+        items {
+            product {
+                sku
+                name
+                colors
+                brand {
+                    name
+                }
+                price {
+                    min {
+                        amount
+                        currency
+                    }
+                    max {
+                        amount
+                        currency
+                    }
+                }
+            }
+        }
+    }
+}

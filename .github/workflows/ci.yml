@@ -50,9 +50,15 @@ jobs:
             # The server's types are generated from the schema and committed.
             # A schema change without regenerating them fails here.
             - name: Check the generated types match the schema
-              run: npm run codegen && git diff --exit-code -- packages/api/src/generated
+              run: npm run codegen && git diff --exit-code -- packages/api/src/generated packages/storefront/src/generated
 
             # The packages are published from their compiled output, so a
             # build that compiles but emits something broken is caught here.
             - name: Build
               run: npm run build
+
+            # The storefront is what the demo deploys. Its build bundles the
+            # API into a service worker, so a Node import that slipped past
+            # lint would fail here.
+            - name: Build the storefront
+              run: npm run storefront

@@ -1,5 +1,5 @@
 /**
- * Generates the server's types from the schema.
+ * Generates both sides' types from the schema.
  *
  * The schema is the contract, and the types on both sides are generated
  * from it, so a change to one that breaks the other fails the build. The
@@ -9,7 +9,21 @@
  */
 export default {
     schema: 'packages/api/schema.graphql',
+    documents: 'packages/storefront/src/operations/*.graphql',
     generates: {
+        // The storefront's operations, as typed strings: the client sends the
+        // string and gets the result type, with no GraphQL library in the page.
+        'packages/storefront/src/generated/operations.ts': {
+            plugins: ['typescript-operations', 'typed-document-node'],
+            config: {
+                useTypeImports: true,
+                strictScalars: true,
+                enumsAsTypes: true,
+                immutableTypes: true,
+                documentMode: 'string',
+                avoidOptionals: { field: true, inputValue: false, object: true },
+            },
+        },
         'packages/api/src/generated/schema.ts': {
             plugins: ['typescript', 'typescript-resolvers'],
             config: {

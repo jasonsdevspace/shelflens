@@ -1,10 +1,10 @@
 import type { AddressInfo } from 'node:net';
 
-import { createStore, createStoreApi } from '@shelflens/api';
+import { createStore, createStoreApi, GROUP_HEADER } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createServer, GROUP_HEADER } from './server.js';
+import { createServer } from './server.js';
 
 const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
 const server = createServer({ api, rateLimitPerMinute: 5 });
