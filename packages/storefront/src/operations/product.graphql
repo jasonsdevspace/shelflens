@@ -1,0 +1,42 @@
+query Product($sku: ID!) {
+    product(sku: $sku) {
+        sku
+        name
+        description
+        material
+        colors
+        sizes
+        inStock
+        brand {
+            name
+        }
+        categoryPath {
+            id
+            name
+        }
+        price {
+            min {
+                amount
+                currency
+            }
+            max {
+                amount
+                currency
+            }
+        }
+        rating {
+            average
+            count
+        }
+        variants {
+            sku
+            color
+            size
+            inStock
+            price {
+                amount
+                currency
+            }
+        }
+    }
+}

@@ -1,7 +1,14 @@
 query Search($input: SearchInput!) {
     search(input: $input) {
         total
+        page
+        pageSize
+        totalPages
         matching
+        sort {
+            by
+            direction
+        }
         items {
             product {
                 sku
@@ -20,6 +27,33 @@ query Search($input: SearchInput!) {
                         currency
                     }
                 }
+                rating {
+                    average
+                    count
+                }
+                inStock
+            }
+        }
+        facets {
+            name
+            attribute
+            ... on ValueFacet {
+                buckets {
+                    value
+                    count
+                }
+            }
+            ... on RangeFacet {
+                ranges: buckets {
+                    from
+                    to
+                    count
+                }
+            }
+            ... on StatsFacet {
+                count
+                min
+                max
             }
         }
     }

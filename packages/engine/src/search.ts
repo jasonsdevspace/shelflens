@@ -240,6 +240,26 @@ const paginate = (sorted: readonly number[], request: SearchRequest, limits: Lim
 };
 
 /**
+ * The sort when the request names none.
+ *
+ * Relevance for a query. Browsing one value of a scope, such as a
+ * category, means its scoped sort, which is how a category page shows a
+ * merchandiser's order without asking for it. Index order otherwise.
+ */
+const defaultSort = (
+    config: EngineConfig,
+    request: SearchRequest,
+    hasQuery: boolean
+): SortClause => {
+    if (hasQuery) return RELEVANCE;
+    const filters = request.filters ?? [];
+    const browsed = Object.entries(config.sortScopes ?? {}).find(([, scope]) =>
+        filters.some((filter) => filter.attribute === scope && 'eq' in filter)
+    );
+    return browsed ? { by: browsed[0], direction: 'asc' } : { by: 'id', direction: 'asc' };
+};
+
+/**
  * Settles which sort applies.
  *
  * A clause on an unknown attribute is the caller's mistake. A scoped sort
@@ -267,7 +287,7 @@ const resolveSort = (
         const scoped = scope && !(request.filters ?? []).some((f) => f.attribute === scope);
         resolved.push(scoped ? RELEVANCE : clause);
     }
-    if (resolved.length === 0) resolved.push(hasQuery ? RELEVANCE : { by: 'id', direction: 'asc' });
+    if (resolved.length === 0) resolved.push(defaultSort(config, request, hasQuery));
     return resolved;
 };
 

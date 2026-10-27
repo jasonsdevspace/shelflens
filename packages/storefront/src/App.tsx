@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { treeOf } from './app/categories.js';
+import { CategoryNav } from './app/CategoryNav.jsx';
+import { EMPTY_STATE } from './app/url.js';
+import { useQuery } from './app/useQuery.js';
+import { useUrlState } from './app/useUrlState.js';
 import { createClient } from './client/graphql.js';
-import { Results } from './search/Results.jsx';
+import { CategoriesDocument, StoreDocument } from './generated/operations.js';
+import { ProductPage } from './product/ProductPage.jsx';
+import { ResultsPage } from './results/ResultsPage.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 
 export interface AppProps {
@@ -14,9 +21,12 @@ type Readiness = 'waiting' | 'ready' | 'failed';
 
 export const App = ({ apiUrl, ready }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
-    const [phrase, setPhrase] = useState<string>();
-    const [picked, setPicked] = useState<string>();
+    const [state, navigate] = useUrlState();
     const client = useMemo(() => createClient({ url: apiUrl }), [apiUrl]);
+    const isReady = readiness === 'ready';
+    const categories = useQuery(client, CategoriesDocument, isReady ? {} : undefined);
+    const store = useQuery(client, StoreDocument, isReady ? {} : undefined);
+    const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
 
     useEffect(() => {
         ready.then(
@@ -28,22 +38,28 @@ export const App = ({ apiUrl, ready }: AppProps) => {
     return (
         <>
             <header className="masthead">
-                <a className="brand" href="./">
-                    ShelfLens
-                </a>
-                {readiness === 'ready' && (
-                    <SearchBox
-                        client={client}
-                        onSearch={(wanted) => {
-                            setPicked(undefined);
-                            setPhrase(wanted);
+                <div className="masthead-row">
+                    <a
+                        className="brand"
+                        href="./"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            navigate(EMPTY_STATE);
                         }}
-                        onPick={(sku) => {
-                            setPhrase(undefined);
-                            setPicked(sku);
-                        }}
-                    />
-                )}
+                    >
+                        ShelfLens
+                    </a>
+                    {isReady && (
+                        <SearchBox
+                            key={state.phrase ?? ''}
+                            client={client}
+                            initialPhrase={state.phrase ?? ''}
+                            onSearch={(phrase) => navigate({ ...EMPTY_STATE, phrase })}
+                            onPick={(sku) => navigate({ ...state, product: sku })}
+                        />
+                    )}
+                </div>
+                {isReady && <CategoryNav categories={tree} state={state} navigate={navigate} />}
             </header>
             <main className="content">
                 {readiness === 'waiting' && <p className="notice">Preparing the store.</p>}
@@ -52,13 +68,22 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         The store could not start in this browser. It needs a service worker.
                     </p>
                 )}
-                {readiness === 'ready' && phrase !== undefined && (
-                    <Results client={client} phrase={phrase} onPick={setPicked} />
+                {isReady && state.product !== undefined && (
+                    <ProductPage
+                        client={client}
+                        sku={state.product}
+                        state={state}
+                        navigate={navigate}
+                    />
                 )}
-                {readiness === 'ready' && picked !== undefined && (
-                    <p className="notice">
-                        You chose <code>{picked}</code>.
-                    </p>
+                {isReady && state.product === undefined && (
+                    <ResultsPage
+                        client={client}
+                        state={state}
+                        navigate={navigate}
+                        categories={tree}
+                        currency={store.data?.store.currency ?? 'USD'}
+                    />
                 )}
             </main>
         </>

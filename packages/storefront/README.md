@@ -8,6 +8,15 @@ the page.
   a ticket, aborts the one before, and marks a late answer stale.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
   Apollo or urql.
+- **The URL is the page.** `src/app` holds the state every page reads from the query string:
+  the phrase, the category, each facet, the sort, the page and the product being looked at.
+  Parse and serialize are pure and tested. A filter is a history entry, so the back button
+  undoes it, and a pasted link lands on the same page.
+- **The results page reads one answer.** `src/results` renders the facets, the sort, the cards
+  and the pages from a single search response, so they can never disagree. The facets count past
+  their own filter, choosing "Red" never zeroes "Blue", and the category facet offers the
+  children of wherever the shopper is. The tests run the whole page over the worker's handler,
+  so the counts, the sort fallbacks and the pages are the real ones.
 - **The popover is a combobox.** `src/search` holds the search box, the suggestions hook with its
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.

@@ -4,6 +4,8 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 export type Incremental<T> =
     T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+export type CustomerGroup = 'GUEST' | 'MEMBER';
+
 export type FilterAttribute =
     'BRAND' | 'CATEGORY' | 'COLOR' | 'IN_STOCK' | 'MATERIAL' | 'PRICE' | 'RATING' | 'SIZE';
 
@@ -85,6 +87,46 @@ export type SortInput = {
     readonly direction?: SortDirection | null | undefined;
 };
 
+export type CategoriesQueryVariables = Exact<{ [key: string]: never }>;
+
+export type CategoriesQuery = {
+    readonly categories: ReadonlyArray<{
+        readonly id: string;
+        readonly name: string;
+        readonly path: ReadonlyArray<string>;
+    }>;
+};
+
+export type ProductQueryVariables = Exact<{
+    sku: string | number;
+}>;
+
+export type ProductQuery = {
+    readonly product: {
+        readonly sku: string;
+        readonly name: string;
+        readonly description: string;
+        readonly material: string;
+        readonly colors: ReadonlyArray<string>;
+        readonly sizes: ReadonlyArray<string>;
+        readonly inStock: boolean;
+        readonly brand: { readonly name: string };
+        readonly categoryPath: ReadonlyArray<{ readonly id: string; readonly name: string }>;
+        readonly price: {
+            readonly min: { readonly amount: number; readonly currency: string };
+            readonly max: { readonly amount: number; readonly currency: string };
+        };
+        readonly rating: { readonly average: number; readonly count: number } | null;
+        readonly variants: ReadonlyArray<{
+            readonly sku: string;
+            readonly color: string;
+            readonly size: string;
+            readonly inStock: boolean;
+            readonly price: { readonly amount: number; readonly currency: string };
+        }>;
+    } | null;
+};
+
 export type SearchQueryVariables = Exact<{
     input: SearchInput;
 }>;
@@ -92,19 +134,63 @@ export type SearchQueryVariables = Exact<{
 export type SearchQuery = {
     readonly search: {
         readonly total: number;
+        readonly page: number;
+        readonly pageSize: number;
+        readonly totalPages: number;
         readonly matching: Matching;
+        readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
         readonly items: ReadonlyArray<{
             readonly product: {
                 readonly sku: string;
                 readonly name: string;
                 readonly colors: ReadonlyArray<string>;
+                readonly inStock: boolean;
                 readonly brand: { readonly name: string };
                 readonly price: {
                     readonly min: { readonly amount: number; readonly currency: string };
                     readonly max: { readonly amount: number; readonly currency: string };
                 };
+                readonly rating: { readonly average: number; readonly count: number } | null;
             };
         }>;
+        readonly facets: ReadonlyArray<
+            | {
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+                  readonly ranges: ReadonlyArray<{
+                      readonly from: number | null;
+                      readonly to: number | null;
+                      readonly count: number;
+                  }>;
+              }
+            | {
+                  readonly count: number;
+                  readonly min: number | null;
+                  readonly max: number | null;
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+              }
+            | {
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+                  readonly buckets: ReadonlyArray<{
+                      readonly value: string;
+                      readonly count: number;
+                  }>;
+              }
+        >;
+    };
+};
+
+export type StoreQueryVariables = Exact<{ [key: string]: never }>;
+
+export type StoreQuery = {
+    readonly store: {
+        readonly name: string;
+        readonly currency: string;
+        readonly locale: string;
+        readonly catalogVersion: string;
+        readonly viewer: { readonly group: CustomerGroup };
     };
 };
 
@@ -150,11 +236,71 @@ export class TypedDocumentString<TResult, TVariables>
     }
 }
 
+export const CategoriesDocument = new TypedDocumentString(`
+    query Categories {
+  categories {
+    id
+    name
+    path
+  }
+}
+    `) as unknown as TypedDocumentString<CategoriesQuery, CategoriesQueryVariables>;
+export const ProductDocument = new TypedDocumentString(`
+    query Product($sku: ID!) {
+  product(sku: $sku) {
+    sku
+    name
+    description
+    material
+    colors
+    sizes
+    inStock
+    brand {
+      name
+    }
+    categoryPath {
+      id
+      name
+    }
+    price {
+      min {
+        amount
+        currency
+      }
+      max {
+        amount
+        currency
+      }
+    }
+    rating {
+      average
+      count
+    }
+    variants {
+      sku
+      color
+      size
+      inStock
+      price {
+        amount
+        currency
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
 export const SearchDocument = new TypedDocumentString(`
     query Search($input: SearchInput!) {
   search(input: $input) {
     total
+    page
+    pageSize
+    totalPages
     matching
+    sort {
+      by
+      direction
+    }
     items {
       product {
         sku
@@ -173,11 +319,51 @@ export const SearchDocument = new TypedDocumentString(`
             currency
           }
         }
+        rating {
+          average
+          count
+        }
+        inStock
+      }
+    }
+    facets {
+      name
+      attribute
+      ... on ValueFacet {
+        buckets {
+          value
+          count
+        }
+      }
+      ... on RangeFacet {
+        ranges: buckets {
+          from
+          to
+          count
+        }
+      }
+      ... on StatsFacet {
+        count
+        min
+        max
       }
     }
   }
 }
     `) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
+export const StoreDocument = new TypedDocumentString(`
+    query Store {
+  store {
+    name
+    currency
+    locale
+    catalogVersion
+    viewer {
+      group
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
 export const SuggestDocument = new TypedDocumentString(`
     query Suggest($phrase: String!, $limit: Int!) {
   suggest(phrase: $phrase, limit: $limit) {
