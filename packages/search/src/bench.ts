@@ -111,14 +111,20 @@ export const runBench = ({ products, seed, iterations }: BenchOptions): BenchRes
 
     // Collected before and after, when the runtime allows it, so the heap
     // figure is the index and not the garbage left by generating the catalog.
+    // Typed arrays live outside the JavaScript heap, in array buffers, so
+    // the index's memory is the sum of both.
     const collect = (globalThis as { gc?: () => void }).gc;
+    const inUse = () => {
+        const usage = process.memoryUsage();
+        return usage.heapUsed + usage.arrayBuffers;
+    };
     collect?.();
-    const heapBefore = process.memoryUsage().heapUsed;
+    const heapBefore = inUse();
     const started = performance.now();
     const engine = createEngine(documents, storeConfig());
     const buildMs = performance.now() - started;
     collect?.();
-    const heapMb = (process.memoryUsage().heapUsed - heapBefore) / 1024 / 1024;
+    const heapMb = (inUse() - heapBefore) / 1024 / 1024;
 
     return {
         catalog: {
