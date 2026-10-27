@@ -1,0 +1,24 @@
+{
+    "recorded": {
+        "date": "2026-10-27",
+        "commit": "c15acf2",
+        "machine": "Apple M2 Max, 12 cores",
+        "node": "v24.3.0"
+    },
+    "products": 2000,
+    "catalogBytes": 3732927,
+    "parseMs": 9.58,
+    "buildMs": 64.91,
+    "suggest": {
+        "samples": 2600,
+        "p50Ms": 0.21,
+        "p95Ms": 0.8,
+        "maxMs": 12.87
+    },
+    "search": {
+        "samples": 340,
+        "p50Ms": 0.33,
+        "p95Ms": 0.54,
+        "maxMs": 1.84
+    }
+}
