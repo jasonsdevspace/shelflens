@@ -40,10 +40,104 @@ export type SynonymRule =
     | { readonly kind: 'equivalent'; readonly terms: readonly string[] }
     | { readonly kind: 'one-way'; readonly from: string; readonly to: string };
 
+/**
+ * A facet a shopper can filter by, with a count beside each choice.
+ *
+ * Keyword facets list the values of an attribute. Range facets count
+ * documents into fixed bands, such as price ranges, where each band's
+ * upper bound is exclusive. Stats facets report the smallest and largest
+ * value, which is what a slider needs.
+ */
+export type FacetConfig =
+    | { readonly kind: 'keyword'; readonly attribute: string; readonly maxBuckets?: number }
+    | {
+          readonly kind: 'range';
+          readonly attribute: string;
+          readonly ranges: readonly { readonly from?: number; readonly to?: number }[];
+      }
+    | { readonly kind: 'stats'; readonly attribute: string };
+
+export interface ValueBucket {
+    readonly kind: 'value';
+    readonly value: string;
+    readonly count: number;
+}
+
+export interface RangeBucket {
+    readonly kind: 'range';
+    readonly from?: number;
+    readonly to?: number;
+    readonly count: number;
+}
+
+export type Facet =
+    | {
+          readonly name: string;
+          readonly attribute: string;
+          readonly kind: 'keyword';
+          readonly buckets: readonly ValueBucket[];
+      }
+    | {
+          readonly name: string;
+          readonly attribute: string;
+          readonly kind: 'range';
+          readonly buckets: readonly RangeBucket[];
+      }
+    | {
+          readonly name: string;
+          readonly attribute: string;
+          readonly kind: 'stats';
+          readonly count: number;
+          readonly min?: number;
+          readonly max?: number;
+      };
+
+/** When a rule applies: to these queries, or inside this filter. Both widen it. */
+export interface RuleTrigger {
+    readonly queries?: readonly string[];
+    readonly filter?: { readonly attribute: string; readonly value: string };
+}
+
+/** A score multiplier for named documents, or for every document with an attribute value. */
+export interface RuleAdjustment {
+    readonly ids?: readonly string[];
+    readonly attribute?: { readonly name: string; readonly value: string };
+    /** Above one boosts, below one buries. */
+    readonly weight: number;
+}
+
+/**
+ * A merchandising rule.
+ *
+ * Without `when`, a rule applies to every search. With `active`, it applies
+ * only between those instants, given as ISO 8601 strings, and only when the
+ * request says what time it is.
+ */
+export interface Rule {
+    readonly id: string;
+    readonly name?: string;
+    readonly when?: RuleTrigger;
+    readonly active?: { readonly from?: string; readonly to?: string };
+    /** Placed first, in this order, whether or not they matched the query. */
+    readonly pin?: readonly string[];
+    readonly boost?: readonly RuleAdjustment[];
+    readonly bury?: readonly RuleAdjustment[];
+    readonly hide?: readonly string[];
+}
+
+/** What a rule did to one result, kept so explain mode can show it. */
+export interface RuleEffect {
+    readonly ruleId: string;
+    readonly action: 'pin' | 'boost' | 'bury';
+    readonly weight?: number;
+}
+
 export interface EngineConfig {
     readonly fields: Readonly<Record<string, TextField>>;
     readonly attributes: Readonly<Record<string, AttributeKind>>;
     readonly synonyms?: readonly SynonymRule[];
+    readonly facets?: Readonly<Record<string, FacetConfig>>;
+    readonly rules?: readonly Rule[];
     /**
      * Sorts that only make sense inside a filter.
      *
@@ -92,6 +186,10 @@ export interface SearchRequest {
      * is finished.
      */
     readonly prefixLastTerm?: boolean;
+    /** Which facets to count. All configured facets when omitted, none when empty. */
+    readonly facets?: readonly string[];
+    /** The time, for rules with a window. The engine never reads a clock itself. */
+    readonly now?: Date;
 }
 
 export type MatchKind = 'exact' | 'prefix' | 'fuzzy' | 'synonym';
@@ -109,6 +207,7 @@ export interface Hit {
     readonly id: string;
     readonly score: number;
     readonly matches: readonly TermMatch[];
+    readonly rules: readonly RuleEffect[];
 }
 
 /**
@@ -130,6 +229,12 @@ export interface SearchResult {
     readonly mode: MatchMode;
     /** The sort actually applied, after any scoped sort fell back. */
     readonly sort: readonly SortClause[];
+    readonly facets: readonly Facet[];
+    readonly rules: {
+        readonly applied: readonly string[];
+        /** Rules that would have applied, had the sort been relevance. */
+        readonly setAsideBySort: readonly string[];
+    };
 }
 
 /**
@@ -141,7 +246,12 @@ export interface SearchResult {
  */
 export class EngineError extends Error {
     constructor(
-        readonly code: 'unknown_attribute' | 'wrong_attribute_kind' | 'unknown_field',
+        readonly code:
+            | 'unknown_attribute'
+            | 'wrong_attribute_kind'
+            | 'unknown_field'
+            | 'unknown_facet'
+            | 'invalid_rule',
         message: string
     ) {
         super(message);

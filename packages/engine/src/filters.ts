@@ -1,4 +1,3 @@
-import type { Index } from './index-builder.js';
 import { type AttributeValue, type EngineConfig, EngineError, type Filter } from './types.js';
 
 /**
@@ -40,16 +39,4 @@ export const matchesFilter = (value: AttributeValue | undefined, filter: Filter)
         : [value as string | number | boolean];
     if ('eq' in filter) return values.includes(filter.eq);
     return values.some((v) => typeof v === 'string' && filter.in.includes(v));
-};
-
-/** Document numbers passing every filter. */
-export const applyFilters = (index: Index, filters: readonly Filter[]): Set<number> | undefined => {
-    if (filters.length === 0) return undefined;
-    const passing = new Set<number>();
-    index.attributes.forEach((attributes, doc) => {
-        if (filters.every((filter) => matchesFilter(attributes.get(filter.attribute), filter))) {
-            passing.add(doc);
-        }
-    });
-    return passing;
 };

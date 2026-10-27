@@ -1,7 +1,9 @@
-import { applyFilters, checkFilter } from './filters.js';
-import { buildIndex } from './index-builder.js';
+import { checkFacets, computeFacet } from './facets.js';
+import { checkFilter, matchesFilter } from './filters.js';
+import { buildIndex, type Index } from './index-builder.js';
 import { createMatcher, type TermHits } from './match.js';
 import { tokenize } from './normalize.js';
+import { adjustmentsFor, checkRules, planRules, type RulePlan } from './rules.js';
 import { buildSynonyms } from './synonyms.js';
 import {
     type AttributeValue,
@@ -32,6 +34,13 @@ const RELEVANCE: SortClause = { by: 'relevance', direction: 'desc' };
 
 export interface Engine {
     search(request: SearchRequest): SearchResult;
+    /**
+     * The same index under different synonyms or rules.
+     *
+     * A merchandiser edits rules far more often than the catalog changes,
+     * and neither needs the index rebuilt.
+     */
+    reconfigure(changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine;
     /** How many documents are indexed. */
     readonly size: number;
 }
@@ -182,52 +191,132 @@ const resolveSort = (
     return resolved;
 };
 
-export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
-    const index = buildIndex(documents, config);
+/** Document numbers matching the query, or every document when there is none. */
+const matchedDocuments = (
+    index: Index,
+    terms: readonly string[],
+    prefixLast: boolean,
+    matcher: ReturnType<typeof createMatcher>
+): { docs: Map<number, TermMatch[]>; mode: MatchMode } => {
+    if (terms.length > 0) return matchAll(terms, prefixLast, matcher);
+    const docs = new Map<number, TermMatch[]>();
+    index.documents.forEach((_, doc) => docs.set(doc, []));
+    return { docs, mode: 'all' };
+};
+
+/** Pinned documents join the matches, and hidden ones leave them. */
+const applyPlan = (
+    docs: Map<number, TermMatch[]>,
+    plan: RulePlan,
+    byId: ReadonlyMap<string, number>
+) => {
+    for (const id of plan.pins) {
+        const doc = byId.get(id);
+        if (doc !== undefined && !docs.has(doc)) docs.set(doc, []);
+    }
+    for (const id of plan.hidden) {
+        const doc = byId.get(id);
+        if (doc !== undefined) docs.delete(doc);
+    }
+};
+
+/** Pinned hits first, in pin order, then everything else by the sort. */
+const withPinsFirst =
+    (plan: RulePlan, compare: (a: Hit, b: Hit) => number) =>
+    (a: Hit, b: Hit): number => {
+        const rankA = plan.pins.indexOf(a.id);
+        const rankB = plan.pins.indexOf(b.id);
+        if (rankA !== rankB)
+            return (rankA === -1 ? Infinity : rankA) - (rankB === -1 ? Infinity : rankB);
+        return compare(a, b);
+    };
+
+const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const synonyms = buildSynonyms(config.synonyms ?? []);
     const matcher = createMatcher(index, config, synonyms);
+    const rules = config.rules ?? [];
     const limits: Limits = {
         maxPageSize: config.limits?.pageSize ?? MAX_PAGE_SIZE,
         maxResults: config.limits?.results ?? MAX_RESULTS,
     };
     const byId = new Map(index.documents.map((d, doc) => [d.id, doc]));
+    const attributeOf = (doc: number, name: string) => index.attributes[doc]?.get(name);
 
     const search = (request: SearchRequest): SearchResult => {
         const filters = request.filters ?? [];
         for (const filter of filters) checkFilter(config, filter);
+        const facetNames = request.facets ?? Object.keys(config.facets ?? {});
+        checkFacets(config, facetNames);
+
         const terms = tokenize(request.query ?? '');
         const sort = resolveSort(config, request, terms.length > 0);
-        const allowed = applyFilters(index, filters);
+        const sortScope = sort[0] ? config.sortScopes?.[sort[0].by] : undefined;
+        const plan = planRules(rules, { terms, filters, sort, now: request.now, sortScope });
 
-        // Scoring first, filtering second, would score documents the filters
-        // then throw away. Matching only among allowed documents keeps a
-        // narrow filter cheap on a wide query.
-        let candidates: Map<number, TermMatch[]>;
-        let mode: MatchMode;
-        if (terms.length === 0) {
-            candidates = new Map();
-            index.documents.forEach((_, doc) => {
-                if (!allowed || allowed.has(doc)) candidates.set(doc, []);
+        const matched = matchedDocuments(index, terms, request.prefixLastTerm ?? false, matcher);
+        applyPlan(matched.docs, plan, byId);
+
+        // A document passes when every filter accepts it, or every filter
+        // but those on one attribute, which is how a facet counts past its
+        // own selection.
+        const passes = (doc: number, except?: string) =>
+            filters.every(
+                (filter) =>
+                    filter.attribute === except ||
+                    matchesFilter(attributeOf(doc, filter.attribute), filter)
+            );
+
+        const hits: Hit[] = [...matched.docs]
+            .filter(([doc]) => passes(doc))
+            .map(([doc, matches]) => {
+                const id = index.documents[doc]?.id ?? '';
+                const base = matches.reduce((sum, m) => sum + m.score, 0);
+                const { weight, effects } = adjustmentsFor(plan, id, (name) =>
+                    attributeOf(doc, name)
+                );
+                const pinnedBy = plan.pinnedBy.get(id);
+                return {
+                    id,
+                    score: base * weight,
+                    matches,
+                    rules: [
+                        ...(pinnedBy ? [{ ruleId: pinnedBy, action: 'pin' as const }] : []),
+                        ...effects,
+                    ],
+                };
             });
-            mode = 'all';
-        } else {
-            const matched = matchAll(terms, request.prefixLastTerm ?? false, matcher);
-            mode = matched.mode;
-            candidates = new Map([...matched.docs].filter(([doc]) => !allowed || allowed.has(doc)));
-            if (candidates.size === 0 && mode !== 'none') mode = 'none';
-        }
+        const mode: MatchMode = hits.length === 0 && matched.mode !== 'all' ? 'none' : matched.mode;
 
-        const hits: Hit[] = [...candidates].map(([doc, matches]) => ({
-            id: index.documents[doc]?.id ?? '',
-            score: matches.reduce((sum, m) => sum + m.score, 0),
-            matches,
-        }));
-        const attribute = (hit: Hit, name: string) =>
-            name === 'id' ? hit.id : index.attributes[byId.get(hit.id) ?? -1]?.get(name);
+        const attribute: AttributeOf = (hit, name) =>
+            name === 'id' ? hit.id : attributeOf(byId.get(hit.id) ?? -1, name);
+        hits.sort(withPinsFirst(plan, comparator(sort, attribute)));
 
-        hits.sort(comparator(sort, attribute));
-        return { ...paginate(hits, request, limits), mode, sort };
+        const facets = facetNames.map((name) => {
+            const facet = config.facets?.[name];
+            if (!facet) throw new EngineError('unknown_facet', `no facet named ${name}`);
+            const docs = [...matched.docs.keys()].filter((doc) => passes(doc, facet.attribute));
+            return computeFacet(name, facet, docs, index);
+        });
+
+        return {
+            ...paginate(hits, request, limits),
+            mode,
+            sort,
+            facets,
+            rules: { applied: plan.applied, setAsideBySort: plan.setAsideBySort },
+        };
     };
 
-    return { search, size: documents.length };
+    const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine => {
+        const next = { ...config, ...changes };
+        checkRules(next.rules ?? [], new Set(byId.keys()));
+        return createFromIndex(index, next);
+    };
+
+    return { search, reconfigure, size: index.documents.length };
+};
+
+export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
+    checkRules(config.rules ?? [], new Set(documents.map((d) => d.id)));
+    return createFromIndex(buildIndex(documents, config), config);
 };
