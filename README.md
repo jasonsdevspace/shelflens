@@ -22,7 +22,8 @@ schema.
 | [`@jasonsdevspace/shelflens`](packages/engine) | The search engine: one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, and an explanation on every hit. No dependencies. |
 | [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                      |
 | [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                             |
-| [`@shelflens/api`](packages/api)               | The GraphQL schema the storefront is written against, with its generated types                                                                                                         |
+| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, and the resolvers over the store. Nothing from Node, so it runs in a service worker                |
+| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                  |
 
 Three checks keep the search honest, and each has already caught something:
 
@@ -35,8 +36,8 @@ Three checks keep the search honest, and each has already caught something:
   posting, and building result objects only for the page returned, brought that to under a hundred
   megabytes and about a tenth of a second. The [current results](docs/benchmarks/results.md) are
   recorded with the machine they ran on.
-- **A size budget.** The catalog the demo will ship stays under 400 KB compressed, or the build
-  fails.
+- **Size budgets.** The catalog the demo will ship stays under 400 KB compressed, and the API
+  bundled for a browser under 90 KB, or the build fails.
 
 ## Decisions
 
@@ -48,6 +49,8 @@ it.
 2. [Flat arrays for the index](docs/decisions/0002-flat-arrays-for-the-index.md)
 3. [Synonyms rewrite phrases, scored per typed word](docs/decisions/0003-synonyms-rewrite-phrases.md)
 4. [Facets count past their own filter](docs/decisions/0004-facets-count-past-their-own-filter.md)
+5. [The shape of the API](docs/decisions/0005-the-shape-of-the-api.md)
+6. [The API runs in the browser, and in Node when asked](docs/decisions/0006-the-api-runs-in-the-browser.md)
 
 ## Dev setup
 
@@ -63,15 +66,25 @@ npm run verify
 `npm run verify` runs what CI runs: type checking, linting, formatting, a prose check and the
 tests, golden queries included. Use `npm test` for watch mode while you work.
 
-Two more commands are worth knowing:
+Three more commands are worth knowing:
 
 ```bash
 npm run catalog -- --products 50 --out data/catalog.json
 npm run bench
+npm run api
 ```
 
 The first writes a catalog to look at. The second runs the benchmark and writes its results to
-`docs/benchmarks/`.
+`docs/benchmarks/`. The third serves the API on port 8080, so a query can be sent by hand:
+
+```bash
+curl localhost:8080/graphql --header 'content-type: application/json' \
+  --header 'shelflens-customer-group: member' \
+  --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
+```
+
+The schema is `packages/api/schema.graphql`. Changing it means running `npm run codegen` and
+committing the generated types, which CI checks.
 
 ## Layout
 
@@ -81,7 +94,8 @@ packages/
 │   └── src/     normalize, index-builder, match, synonyms, filters, facets, rules, search
 ├── catalog/     the generator, its vocabulary and its types
 ├── search/      documents, the store config, customer groups, golden queries, the benchmark
-└── api/         the GraphQL schema and its generated types
+├── api/         the GraphQL schema, its generated types, the resolvers and the request limits
+└── server/      the API behind POST /graphql, with a rate limit and a request id
 docs/
 ├── benchmarks/  the recorded benchmark results
 └── decisions/   the decision records

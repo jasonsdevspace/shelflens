@@ -104,6 +104,8 @@ export default tseslint.config(
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-argument': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-return': 'off',
             'max-params': 'off',
             'sonarjs/cognitive-complexity': 'off',
         },
@@ -116,6 +118,7 @@ export default tseslint.config(
             'packages/engine/src/**/*.ts',
             'packages/catalog/src/**/*.ts',
             'packages/search/src/**/*.ts',
+            'packages/api/src/**/*.ts',
         ],
         ignores: ['**/*.test.ts', '**/cli.ts', '**/bench.ts', '**/bench-cli.ts'],
         rules: {

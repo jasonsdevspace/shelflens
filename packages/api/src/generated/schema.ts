@@ -1,4 +1,13 @@
 import type { GraphQLResolveInfo } from 'graphql';
+import type {
+    Product as ProductModel,
+    Variant as VariantModel,
+    Brand as BrandModel,
+    Category as CategoryModel,
+} from '@shelflens/catalog';
+import type { HitModel, SearchResultModel } from '../resolvers.js';
+import type { Facet as FacetModel } from '@jasonsdevspace/shelflens';
+import type { Context } from '../context.js';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
@@ -13,30 +22,26 @@ export type Scalars = {
 };
 
 export type Brand = {
-    __typename?: 'Brand';
-    id: Scalars['ID']['output'];
-    name: Scalars['String']['output'];
+    readonly __typename?: 'Brand';
+    readonly id: Scalars['ID']['output'];
+    readonly name: Scalars['String']['output'];
 };
 
 export type Category = {
-    __typename?: 'Category';
-    id: Scalars['ID']['output'];
-    name: Scalars['String']['output'];
-    parent: Maybe<Category>;
+    readonly __typename?: 'Category';
+    readonly id: Scalars['ID']['output'];
+    readonly name: Scalars['String']['output'];
+    readonly parent: Maybe<Category>;
     /** Ids from the root down to this category. */
-    path: Array<Scalars['ID']['output']>;
+    readonly path: ReadonlyArray<Scalars['ID']['output']>;
 };
 
-export const CustomerGroup = {
-    Guest: 'GUEST',
-    Member: 'MEMBER',
-} as const;
+export type CustomerGroup = 'GUEST' | 'MEMBER';
 
-export type CustomerGroup = (typeof CustomerGroup)[keyof typeof CustomerGroup];
 export type Explanation = {
-    __typename?: 'Explanation';
-    matches: Array<TermMatch>;
-    rules: Array<RuleEffect>;
+    readonly __typename?: 'Explanation';
+    readonly matches: ReadonlyArray<TermMatch>;
+    readonly rules: ReadonlyArray<RuleEffect>;
 };
 
 /**
@@ -45,66 +50,50 @@ export type Explanation = {
  * facet it was made in.
  */
 export type Facet = {
-    attribute: FilterAttribute;
-    name: Scalars['String']['output'];
+    readonly attribute: FilterAttribute;
+    readonly name: Scalars['String']['output'];
 };
 
-export const FilterAttribute = {
-    Brand: 'BRAND',
-    Category: 'CATEGORY',
-    Color: 'COLOR',
-    InStock: 'IN_STOCK',
-    Material: 'MATERIAL',
-    Price: 'PRICE',
-    Rating: 'RATING',
-    Size: 'SIZE',
-} as const;
+export type FilterAttribute =
+    'BRAND' | 'CATEGORY' | 'COLOR' | 'IN_STOCK' | 'MATERIAL' | 'PRICE' | 'RATING' | 'SIZE';
 
-export type FilterAttribute = (typeof FilterAttribute)[keyof typeof FilterAttribute];
 /** A filter on one attribute. Exactly one of the three matchers is given. */
 export type FilterInput = {
-    attribute: FilterAttribute;
-    match: MatchInput;
+    readonly attribute: FilterAttribute;
+    readonly match: MatchInput;
 };
 
 export type MatchInput =
     /** Equal to this value. For IN_STOCK, "true" or "false". */
     | {
-          eq: Scalars['String']['input'];
-          in?: never;
-          range?: never;
+          readonly eq: Scalars['String']['input'];
+          readonly in?: never;
+          readonly range?: never;
       } /** Equal to any of these values. */
     | {
-          eq?: never;
-          in: Array<Scalars['String']['input']>;
-          range?: never;
+          readonly eq?: never;
+          readonly in: ReadonlyArray<Scalars['String']['input']>;
+          readonly range?: never;
       } /** Within a numeric range. PRICE is in minor units. RATING is 0 to 5. */
-    | { eq?: never; in?: never; range: RangeInput };
+    | { readonly eq?: never; readonly in?: never; readonly range: RangeInput };
 
-export const MatchRoute = {
+export type MatchRoute =
     /** The matched term is one typo from the typed word. */
-    Corrected: 'CORRECTED',
-    Exact: 'EXACT',
+    | 'CORRECTED'
+    | 'EXACT'
     /** The typed word is the start of the matched one. */
-    Prefix: 'PREFIX',
-    Synonym: 'SYNONYM',
-} as const;
+    | 'PREFIX'
+    | 'SYNONYM';
 
-export type MatchRoute = (typeof MatchRoute)[keyof typeof MatchRoute];
-export const Matching = {
+export type Matching =
     /** No phrase was given, so everything matched. */
-    All: 'ALL',
-    Corrected: 'CORRECTED',
-    Exact: 'EXACT',
-    None: 'NONE',
-} as const;
+    'ALL' | 'CORRECTED' | 'EXACT' | 'NONE';
 
-export type Matching = (typeof Matching)[keyof typeof Matching];
 export type Merchandising = {
-    __typename?: 'Merchandising';
-    applied: Array<Scalars['ID']['output']>;
+    readonly __typename?: 'Merchandising';
+    readonly applied: ReadonlyArray<Scalars['ID']['output']>;
     /** Rules that would have applied under a relevance sort. */
-    setAsideBySort: Array<Scalars['ID']['output']>;
+    readonly setAsideBySort: ReadonlyArray<Scalars['ID']['output']>;
 };
 
 /**
@@ -112,39 +101,39 @@ export type Merchandising = {
  * the store's locale.
  */
 export type Money = {
-    __typename?: 'Money';
-    amount: Scalars['Int']['output'];
-    currency: Scalars['String']['output'];
+    readonly __typename?: 'Money';
+    readonly amount: Scalars['Int']['output'];
+    readonly currency: Scalars['String']['output'];
 };
 
 export type PriceRange = {
-    __typename?: 'PriceRange';
-    max: Money;
-    min: Money;
+    readonly __typename?: 'PriceRange';
+    readonly max: Money;
+    readonly min: Money;
 };
 
 export type Product = {
-    __typename?: 'Product';
+    readonly __typename?: 'Product';
     /** When the product was added, as an ISO 8601 instant. */
-    addedAt: Scalars['String']['output'];
-    brand: Brand;
+    readonly addedAt: Scalars['String']['output'];
+    readonly brand: Brand;
     /** The leaf category. */
-    category: Category;
+    readonly category: Category;
     /** From the root down to the leaf. */
-    categoryPath: Array<Category>;
-    colors: Array<Scalars['String']['output']>;
-    description: Scalars['String']['output'];
+    readonly categoryPath: ReadonlyArray<Category>;
+    readonly colors: ReadonlyArray<Scalars['String']['output']>;
+    readonly description: Scalars['String']['output'];
     /** Whether any variant is in stock. */
-    inStock: Scalars['Boolean']['output'];
-    material: Scalars['String']['output'];
-    name: Scalars['String']['output'];
+    readonly inStock: Scalars['Boolean']['output'];
+    readonly material: Scalars['String']['output'];
+    readonly name: Scalars['String']['output'];
     /** The viewer's price. A range when variants are priced differently. */
-    price: PriceRange;
+    readonly price: PriceRange;
     /** Absent until somebody has rated it. */
-    rating: Maybe<Rating>;
-    sizes: Array<Scalars['String']['output']>;
-    sku: Scalars['ID']['output'];
-    variants: Array<Variant>;
+    readonly rating: Maybe<Rating>;
+    readonly sizes: ReadonlyArray<Scalars['String']['output']>;
+    readonly sku: Scalars['ID']['output'];
+    readonly variants: ReadonlyArray<Variant>;
 };
 
 /**
@@ -155,16 +144,16 @@ export type Product = {
  * response contains is the viewer's view.
  */
 export type Query = {
-    __typename?: 'Query';
+    readonly __typename?: 'Query';
     /** The category tree, roots first. Each category's children follow it. */
-    categories: Array<Category>;
-    product: Maybe<Product>;
+    readonly categories: ReadonlyArray<Category>;
+    readonly product: Maybe<Product>;
     /** Search the catalog. An empty phrase browses, which is how a category page works. */
-    search: SearchResult;
+    readonly search: SearchResult;
     /** The store itself, and the viewer's place in it. */
-    store: Store;
+    readonly store: Store;
     /** What a phrase still being typed could become: completed queries, and products. */
-    suggest: Suggestions;
+    readonly suggest: Suggestions;
 };
 
 /**
@@ -203,17 +192,17 @@ export type QuerySuggestArgs = {
 
 /** A band of values. A missing bound is open on that side. */
 export type RangeBucket = {
-    __typename?: 'RangeBucket';
-    count: Scalars['Int']['output'];
-    from: Maybe<Scalars['Float']['output']>;
-    to: Maybe<Scalars['Float']['output']>;
+    readonly __typename?: 'RangeBucket';
+    readonly count: Scalars['Int']['output'];
+    readonly from: Maybe<Scalars['Float']['output']>;
+    readonly to: Maybe<Scalars['Float']['output']>;
 };
 
 export type RangeFacet = Facet & {
-    __typename?: 'RangeFacet';
-    attribute: FilterAttribute;
-    buckets: Array<RangeBucket>;
-    name: Scalars['String']['output'];
+    readonly __typename?: 'RangeFacet';
+    readonly attribute: FilterAttribute;
+    readonly buckets: ReadonlyArray<RangeBucket>;
+    readonly name: Scalars['String']['output'];
 };
 
 /**
@@ -221,108 +210,99 @@ export type RangeFacet = Facet & {
  * so adjacent ranges never share a value.
  */
 export type RangeInput = {
-    from?: InputMaybe<Scalars['Float']['input']>;
-    to?: InputMaybe<Scalars['Float']['input']>;
+    readonly from?: InputMaybe<Scalars['Float']['input']>;
+    readonly to?: InputMaybe<Scalars['Float']['input']>;
 };
 
 export type Rating = {
-    __typename?: 'Rating';
-    average: Scalars['Float']['output'];
-    count: Scalars['Int']['output'];
+    readonly __typename?: 'Rating';
+    readonly average: Scalars['Float']['output'];
+    readonly count: Scalars['Int']['output'];
 };
 
-export const RuleAction = {
-    Boost: 'BOOST',
-    Bury: 'BURY',
-    Pin: 'PIN',
-} as const;
+export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
-export type RuleAction = (typeof RuleAction)[keyof typeof RuleAction];
 export type RuleEffect = {
-    __typename?: 'RuleEffect';
-    action: RuleAction;
-    ruleId: Scalars['ID']['output'];
+    readonly __typename?: 'RuleEffect';
+    readonly action: RuleAction;
+    readonly ruleId: Scalars['ID']['output'];
     /** The score multiplier, for a boost or a bury. */
-    weight: Maybe<Scalars['Float']['output']>;
+    readonly weight: Maybe<Scalars['Float']['output']>;
 };
 
 export type SearchHit = {
-    __typename?: 'SearchHit';
+    readonly __typename?: 'SearchHit';
     /** Why this product ranked where it did. */
-    explanation: Explanation;
-    product: Product;
-    score: Scalars['Float']['output'];
+    readonly explanation: Explanation;
+    readonly product: Product;
+    readonly score: Scalars['Float']['output'];
 };
 
 export type SearchInput = {
     /** Which facets to count, by name. Every facet when omitted, none when empty. */
-    facets?: InputMaybe<Array<Scalars['String']['input']>>;
-    filters?: InputMaybe<Array<FilterInput>>;
+    readonly facets?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+    readonly filters?: InputMaybe<ReadonlyArray<FilterInput>>;
     /** One-based. A page past the end is empty, not an error. */
-    page?: InputMaybe<Scalars['Int']['input']>;
+    readonly page?: InputMaybe<Scalars['Int']['input']>;
     /** At most 100. Larger values are reduced, not refused. */
-    pageSize?: InputMaybe<Scalars['Int']['input']>;
+    readonly pageSize?: InputMaybe<Scalars['Int']['input']>;
     /** Treat the last word of the phrase as a prefix, for search as you type. */
-    partial?: InputMaybe<Scalars['Boolean']['input']>;
-    phrase?: InputMaybe<Scalars['String']['input']>;
+    readonly partial?: InputMaybe<Scalars['Boolean']['input']>;
+    readonly phrase?: InputMaybe<Scalars['String']['input']>;
     /**
      * The first clause orders, and each later one breaks the ties before it.
      * Relevance when omitted and there is a phrase. Position within a category
      * when browsing one. Catalog order otherwise.
      */
-    sort?: InputMaybe<Array<SortInput>>;
+    readonly sort?: InputMaybe<ReadonlyArray<SortInput>>;
 };
 
 export type SearchResult = {
-    __typename?: 'SearchResult';
-    facets: Array<Facet>;
-    items: Array<SearchHit>;
+    readonly __typename?: 'SearchResult';
+    readonly facets: ReadonlyArray<Facet>;
+    readonly items: ReadonlyArray<SearchHit>;
     /**
      * How the phrase was matched. CORRECTED means nothing matched as typed and
      * one typo per word was allowed.
      */
-    matching: Matching;
+    readonly matching: Matching;
     /** Which merchandising rules shaped this result, and which the sort set aside. */
-    merchandising: Merchandising;
-    page: Scalars['Int']['output'];
-    pageSize: Scalars['Int']['output'];
+    readonly merchandising: Merchandising;
+    readonly page: Scalars['Int']['output'];
+    readonly pageSize: Scalars['Int']['output'];
     /** The sort actually applied, after any fallback. */
-    sort: Array<SortClause>;
+    readonly sort: ReadonlyArray<SortClause>;
     /** Matching products in all, before the limit on how far a query can page. */
-    total: Scalars['Int']['output'];
-    totalPages: Scalars['Int']['output'];
+    readonly total: Scalars['Int']['output'];
+    readonly totalPages: Scalars['Int']['output'];
 };
 
 export type SortClause = {
-    __typename?: 'SortClause';
-    by: SortField;
-    direction: SortDirection;
+    readonly __typename?: 'SortClause';
+    readonly by: SortField;
+    readonly direction: SortDirection;
 };
 
-export const SortDirection = {
-    Asc: 'ASC',
-    Desc: 'DESC',
-} as const;
+export type SortDirection = 'ASC' | 'DESC';
 
-export type SortDirection = (typeof SortDirection)[keyof typeof SortDirection];
-export const SortField = {
+export type SortField =
     /** When the product was added to the catalog. */
-    Added: 'ADDED',
+    | 'ADDED'
+    /** The catalog's own order. The default when browsing without a phrase or a category. */
+    | 'CATALOG'
     /**
      * A merchandiser's order within a category. Only inside a category filter,
      * and relevance otherwise.
      */
-    Position: 'POSITION',
+    | 'POSITION'
     /** The viewer's price, lowest first under ASC. */
-    Price: 'PRICE',
-    Rating: 'RATING',
-    Relevance: 'RELEVANCE',
-} as const;
+    | 'PRICE'
+    | 'RATING'
+    | 'RELEVANCE';
 
-export type SortField = (typeof SortField)[keyof typeof SortField];
 export type SortInput = {
-    by: SortField;
-    direction?: InputMaybe<SortDirection>;
+    readonly by: SortField;
+    readonly direction?: InputMaybe<SortDirection>;
 };
 
 /**
@@ -330,73 +310,73 @@ export type SortInput = {
  * result has a value.
  */
 export type StatsFacet = Facet & {
-    __typename?: 'StatsFacet';
-    attribute: FilterAttribute;
-    count: Scalars['Int']['output'];
-    max: Maybe<Scalars['Float']['output']>;
-    min: Maybe<Scalars['Float']['output']>;
-    name: Scalars['String']['output'];
+    readonly __typename?: 'StatsFacet';
+    readonly attribute: FilterAttribute;
+    readonly count: Scalars['Int']['output'];
+    readonly max: Maybe<Scalars['Float']['output']>;
+    readonly min: Maybe<Scalars['Float']['output']>;
+    readonly name: Scalars['String']['output'];
 };
 
 export type Store = {
-    __typename?: 'Store';
+    readonly __typename?: 'Store';
     /**
      * Changes whenever the catalog or the rules change. Part of every cache key
      * a client builds, so a stale response can never be served after an update.
      */
-    catalogVersion: Scalars['String']['output'];
-    currency: Scalars['String']['output'];
-    locale: Scalars['String']['output'];
-    name: Scalars['String']['output'];
-    viewer: Viewer;
+    readonly catalogVersion: Scalars['String']['output'];
+    readonly currency: Scalars['String']['output'];
+    readonly locale: Scalars['String']['output'];
+    readonly name: Scalars['String']['output'];
+    readonly viewer: Viewer;
 };
 
 export type Suggestions = {
-    __typename?: 'Suggestions';
-    products: Array<SearchHit>;
+    readonly __typename?: 'Suggestions';
+    readonly products: ReadonlyArray<SearchHit>;
     /** Completions of the phrase, drawn from the catalog's own words. */
-    queries: Array<Scalars['String']['output']>;
+    readonly queries: ReadonlyArray<Scalars['String']['output']>;
 };
 
 /** One word of the phrase, and what it matched. */
 export type TermMatch = {
-    __typename?: 'TermMatch';
-    field: Scalars['String']['output'];
+    readonly __typename?: 'TermMatch';
+    readonly field: Scalars['String']['output'];
     /** The indexed term that matched. */
-    matched: Scalars['String']['output'];
-    route: MatchRoute;
-    score: Scalars['Float']['output'];
+    readonly matched: Scalars['String']['output'];
+    readonly route: MatchRoute;
+    readonly score: Scalars['Float']['output'];
     /** The word or words as the shopper typed them, normalized. */
-    typed: Scalars['String']['output'];
+    readonly typed: Scalars['String']['output'];
 };
 
 export type ValueBucket = {
-    __typename?: 'ValueBucket';
-    count: Scalars['Int']['output'];
-    value: Scalars['String']['output'];
+    readonly __typename?: 'ValueBucket';
+    readonly count: Scalars['Int']['output'];
+    readonly value: Scalars['String']['output'];
 };
 
 export type ValueFacet = Facet & {
-    __typename?: 'ValueFacet';
-    attribute: FilterAttribute;
-    buckets: Array<ValueBucket>;
-    name: Scalars['String']['output'];
+    readonly __typename?: 'ValueFacet';
+    readonly attribute: FilterAttribute;
+    readonly buckets: ReadonlyArray<ValueBucket>;
+    readonly name: Scalars['String']['output'];
 };
 
 export type Variant = {
-    __typename?: 'Variant';
-    color: Scalars['String']['output'];
-    inStock: Scalars['Boolean']['output'];
+    readonly __typename?: 'Variant';
+    readonly color: Scalars['String']['output'];
+    readonly inStock: Scalars['Boolean']['output'];
     /** The viewer's price for this variant. */
-    price: Money;
-    size: Scalars['String']['output'];
-    sku: Scalars['ID']['output'];
+    readonly price: Money;
+    readonly size: Scalars['String']['output'];
+    readonly sku: Scalars['ID']['output'];
 };
 
 /** Who is asking. Set by the request, never by the query. */
 export type Viewer = {
-    __typename?: 'Viewer';
-    group: CustomerGroup;
+    readonly __typename?: 'Viewer';
+    readonly group: CustomerGroup;
 };
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -494,100 +474,95 @@ export type DirectiveResolverFn<
     info: GraphQLResolveInfo
 ) => TResult | Promise<TResult>;
 
-/** Mapping of interface types */
-export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = {
-    Facet: Partial<RangeFacet> | Partial<StatsFacet> | Partial<ValueFacet>;
-};
-
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
-    Boolean: ResolverTypeWrapper<Partial<Scalars['Boolean']['output']>>;
-    Brand: ResolverTypeWrapper<Partial<Brand>>;
-    Category: ResolverTypeWrapper<Partial<Category>>;
-    CustomerGroup: ResolverTypeWrapper<Partial<CustomerGroup>>;
-    Explanation: ResolverTypeWrapper<Partial<Explanation>>;
-    Facet: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Facet']>;
-    FilterAttribute: ResolverTypeWrapper<Partial<FilterAttribute>>;
-    FilterInput: ResolverTypeWrapper<Partial<FilterInput>>;
-    Float: ResolverTypeWrapper<Partial<Scalars['Float']['output']>>;
-    ID: ResolverTypeWrapper<Partial<Scalars['ID']['output']>>;
-    Int: ResolverTypeWrapper<Partial<Scalars['Int']['output']>>;
-    MatchInput: ResolverTypeWrapper<Partial<MatchInput>>;
-    MatchRoute: ResolverTypeWrapper<Partial<MatchRoute>>;
-    Matching: ResolverTypeWrapper<Partial<Matching>>;
-    Merchandising: ResolverTypeWrapper<Partial<Merchandising>>;
-    Money: ResolverTypeWrapper<Partial<Money>>;
-    PriceRange: ResolverTypeWrapper<Partial<PriceRange>>;
-    Product: ResolverTypeWrapper<Partial<Product>>;
+    Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+    Brand: ResolverTypeWrapper<BrandModel>;
+    Category: ResolverTypeWrapper<CategoryModel>;
+    CustomerGroup: CustomerGroup;
+    Explanation: ResolverTypeWrapper<Explanation>;
+    Facet: ResolverTypeWrapper<FacetModel>;
+    FilterAttribute: FilterAttribute;
+    FilterInput: FilterInput;
+    Float: ResolverTypeWrapper<Scalars['Float']['output']>;
+    ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+    Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+    MatchInput: MatchInput;
+    MatchRoute: MatchRoute;
+    Matching: Matching;
+    Merchandising: ResolverTypeWrapper<Merchandising>;
+    Money: ResolverTypeWrapper<Money>;
+    PriceRange: ResolverTypeWrapper<PriceRange>;
+    Product: ResolverTypeWrapper<ProductModel>;
     Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
-    RangeBucket: ResolverTypeWrapper<Partial<RangeBucket>>;
-    RangeFacet: ResolverTypeWrapper<Partial<RangeFacet>>;
-    RangeInput: ResolverTypeWrapper<Partial<RangeInput>>;
-    Rating: ResolverTypeWrapper<Partial<Rating>>;
-    RuleAction: ResolverTypeWrapper<Partial<RuleAction>>;
-    RuleEffect: ResolverTypeWrapper<Partial<RuleEffect>>;
-    SearchHit: ResolverTypeWrapper<Partial<SearchHit>>;
-    SearchInput: ResolverTypeWrapper<Partial<SearchInput>>;
-    SearchResult: ResolverTypeWrapper<
-        Partial<Omit<SearchResult, 'facets'> & { facets: Array<ResolversTypes['Facet']> }>
+    RangeBucket: ResolverTypeWrapper<RangeBucket>;
+    RangeFacet: ResolverTypeWrapper<FacetModel>;
+    RangeInput: RangeInput;
+    Rating: ResolverTypeWrapper<Rating>;
+    RuleAction: RuleAction;
+    RuleEffect: ResolverTypeWrapper<RuleEffect>;
+    SearchHit: ResolverTypeWrapper<HitModel>;
+    SearchInput: SearchInput;
+    SearchResult: ResolverTypeWrapper<SearchResultModel>;
+    SortClause: ResolverTypeWrapper<SortClause>;
+    SortDirection: SortDirection;
+    SortField: SortField;
+    SortInput: SortInput;
+    StatsFacet: ResolverTypeWrapper<FacetModel>;
+    Store: ResolverTypeWrapper<Store>;
+    String: ResolverTypeWrapper<Scalars['String']['output']>;
+    Suggestions: ResolverTypeWrapper<
+        Omit<Suggestions, 'products'> & { products: ReadonlyArray<ResolversTypes['SearchHit']> }
     >;
-    SortClause: ResolverTypeWrapper<Partial<SortClause>>;
-    SortDirection: ResolverTypeWrapper<Partial<SortDirection>>;
-    SortField: ResolverTypeWrapper<Partial<SortField>>;
-    SortInput: ResolverTypeWrapper<Partial<SortInput>>;
-    StatsFacet: ResolverTypeWrapper<Partial<StatsFacet>>;
-    Store: ResolverTypeWrapper<Partial<Store>>;
-    String: ResolverTypeWrapper<Partial<Scalars['String']['output']>>;
-    Suggestions: ResolverTypeWrapper<Partial<Suggestions>>;
-    TermMatch: ResolverTypeWrapper<Partial<TermMatch>>;
-    ValueBucket: ResolverTypeWrapper<Partial<ValueBucket>>;
-    ValueFacet: ResolverTypeWrapper<Partial<ValueFacet>>;
-    Variant: ResolverTypeWrapper<Partial<Variant>>;
-    Viewer: ResolverTypeWrapper<Partial<Viewer>>;
+    TermMatch: ResolverTypeWrapper<TermMatch>;
+    ValueBucket: ResolverTypeWrapper<ValueBucket>;
+    ValueFacet: ResolverTypeWrapper<FacetModel>;
+    Variant: ResolverTypeWrapper<VariantModel>;
+    Viewer: ResolverTypeWrapper<Viewer>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
-    Boolean: Partial<Scalars['Boolean']['output']>;
-    Brand: Partial<Brand>;
-    Category: Partial<Category>;
-    Explanation: Partial<Explanation>;
-    Facet: ResolversInterfaceTypes<ResolversParentTypes>['Facet'];
-    FilterInput: Partial<FilterInput>;
-    Float: Partial<Scalars['Float']['output']>;
-    ID: Partial<Scalars['ID']['output']>;
-    Int: Partial<Scalars['Int']['output']>;
-    MatchInput: Partial<MatchInput>;
-    Merchandising: Partial<Merchandising>;
-    Money: Partial<Money>;
-    PriceRange: Partial<PriceRange>;
-    Product: Partial<Product>;
+    Boolean: Scalars['Boolean']['output'];
+    Brand: BrandModel;
+    Category: CategoryModel;
+    Explanation: Explanation;
+    Facet: FacetModel;
+    FilterInput: FilterInput;
+    Float: Scalars['Float']['output'];
+    ID: Scalars['ID']['output'];
+    Int: Scalars['Int']['output'];
+    MatchInput: MatchInput;
+    Merchandising: Merchandising;
+    Money: Money;
+    PriceRange: PriceRange;
+    Product: ProductModel;
     Query: Record<PropertyKey, never>;
-    RangeBucket: Partial<RangeBucket>;
-    RangeFacet: Partial<RangeFacet>;
-    RangeInput: Partial<RangeInput>;
-    Rating: Partial<Rating>;
-    RuleEffect: Partial<RuleEffect>;
-    SearchHit: Partial<SearchHit>;
-    SearchInput: Partial<SearchInput>;
-    SearchResult: Partial<
-        Omit<SearchResult, 'facets'> & { facets: Array<ResolversParentTypes['Facet']> }
-    >;
-    SortClause: Partial<SortClause>;
-    SortInput: Partial<SortInput>;
-    StatsFacet: Partial<StatsFacet>;
-    Store: Partial<Store>;
-    String: Partial<Scalars['String']['output']>;
-    Suggestions: Partial<Suggestions>;
-    TermMatch: Partial<TermMatch>;
-    ValueBucket: Partial<ValueBucket>;
-    ValueFacet: Partial<ValueFacet>;
-    Variant: Partial<Variant>;
-    Viewer: Partial<Viewer>;
+    RangeBucket: RangeBucket;
+    RangeFacet: FacetModel;
+    RangeInput: RangeInput;
+    Rating: Rating;
+    RuleEffect: RuleEffect;
+    SearchHit: HitModel;
+    SearchInput: SearchInput;
+    SearchResult: SearchResultModel;
+    SortClause: SortClause;
+    SortInput: SortInput;
+    StatsFacet: FacetModel;
+    Store: Store;
+    String: Scalars['String']['output'];
+    Suggestions: Omit<Suggestions, 'products'> & {
+        products: ReadonlyArray<ResolversParentTypes['SearchHit']>;
+    };
+    TermMatch: TermMatch;
+    ValueBucket: ValueBucket;
+    ValueFacet: FacetModel;
+    Variant: VariantModel;
+    Viewer: Viewer;
 };
 
 export type BrandResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Brand'] = ResolversParentTypes['Brand'],
 > = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -595,25 +570,25 @@ export type BrandResolvers<
 };
 
 export type CategoryResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Category'] = ResolversParentTypes['Category'],
 > = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
-    path?: Resolver<Array<ResolversTypes['ID']>, ParentType, ContextType>;
+    path?: Resolver<ReadonlyArray<ResolversTypes['ID']>, ParentType, ContextType>;
 };
 
 export type ExplanationResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Explanation'] = ResolversParentTypes['Explanation'],
 > = {
-    matches?: Resolver<Array<ResolversTypes['TermMatch']>, ParentType, ContextType>;
-    rules?: Resolver<Array<ResolversTypes['RuleEffect']>, ParentType, ContextType>;
+    matches?: Resolver<ReadonlyArray<ResolversTypes['TermMatch']>, ParentType, ContextType>;
+    rules?: Resolver<ReadonlyArray<ResolversTypes['RuleEffect']>, ParentType, ContextType>;
 };
 
 export type FacetResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Facet'] = ResolversParentTypes['Facet'],
 > = {
     __resolveType: TypeResolveFn<
@@ -624,16 +599,16 @@ export type FacetResolvers<
 };
 
 export type MerchandisingResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Merchandising'] =
         ResolversParentTypes['Merchandising'],
 > = {
-    applied?: Resolver<Array<ResolversTypes['ID']>, ParentType, ContextType>;
-    setAsideBySort?: Resolver<Array<ResolversTypes['ID']>, ParentType, ContextType>;
+    applied?: Resolver<ReadonlyArray<ResolversTypes['ID']>, ParentType, ContextType>;
+    setAsideBySort?: Resolver<ReadonlyArray<ResolversTypes['ID']>, ParentType, ContextType>;
 };
 
 export type MoneyResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Money'] = ResolversParentTypes['Money'],
 > = {
     amount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -641,7 +616,7 @@ export type MoneyResolvers<
 };
 
 export type PriceRangeResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['PriceRange'] = ResolversParentTypes['PriceRange'],
 > = {
     max?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
@@ -649,30 +624,30 @@ export type PriceRangeResolvers<
 };
 
 export type ProductResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Product'] = ResolversParentTypes['Product'],
 > = {
     addedAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     brand?: Resolver<ResolversTypes['Brand'], ParentType, ContextType>;
     category?: Resolver<ResolversTypes['Category'], ParentType, ContextType>;
-    categoryPath?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
-    colors?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+    categoryPath?: Resolver<ReadonlyArray<ResolversTypes['Category']>, ParentType, ContextType>;
+    colors?: Resolver<ReadonlyArray<ResolversTypes['String']>, ParentType, ContextType>;
     description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     inStock?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     material?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     price?: Resolver<ResolversTypes['PriceRange'], ParentType, ContextType>;
     rating?: Resolver<Maybe<ResolversTypes['Rating']>, ParentType, ContextType>;
-    sizes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+    sizes?: Resolver<ReadonlyArray<ResolversTypes['String']>, ParentType, ContextType>;
     sku?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-    variants?: Resolver<Array<ResolversTypes['Variant']>, ParentType, ContextType>;
+    variants?: Resolver<ReadonlyArray<ResolversTypes['Variant']>, ParentType, ContextType>;
 };
 
 export type QueryResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query'],
 > = {
-    categories?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+    categories?: Resolver<ReadonlyArray<ResolversTypes['Category']>, ParentType, ContextType>;
     product?: Resolver<
         Maybe<ResolversTypes['Product']>,
         ParentType,
@@ -695,7 +670,7 @@ export type QueryResolvers<
 };
 
 export type RangeBucketResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['RangeBucket'] = ResolversParentTypes['RangeBucket'],
 > = {
     count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -704,17 +679,17 @@ export type RangeBucketResolvers<
 };
 
 export type RangeFacetResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['RangeFacet'] = ResolversParentTypes['RangeFacet'],
 > = {
     attribute?: Resolver<ResolversTypes['FilterAttribute'], ParentType, ContextType>;
-    buckets?: Resolver<Array<ResolversTypes['RangeBucket']>, ParentType, ContextType>;
+    buckets?: Resolver<ReadonlyArray<ResolversTypes['RangeBucket']>, ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type RatingResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Rating'] = ResolversParentTypes['Rating'],
 > = {
     average?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
@@ -722,7 +697,7 @@ export type RatingResolvers<
 };
 
 export type RuleEffectResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['RuleEffect'] = ResolversParentTypes['RuleEffect'],
 > = {
     action?: Resolver<ResolversTypes['RuleAction'], ParentType, ContextType>;
@@ -731,7 +706,7 @@ export type RuleEffectResolvers<
 };
 
 export type SearchHitResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['SearchHit'] = ResolversParentTypes['SearchHit'],
 > = {
     explanation?: Resolver<ResolversTypes['Explanation'], ParentType, ContextType>;
@@ -740,22 +715,22 @@ export type SearchHitResolvers<
 };
 
 export type SearchResultResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['SearchResult'] = ResolversParentTypes['SearchResult'],
 > = {
-    facets?: Resolver<Array<ResolversTypes['Facet']>, ParentType, ContextType>;
-    items?: Resolver<Array<ResolversTypes['SearchHit']>, ParentType, ContextType>;
+    facets?: Resolver<ReadonlyArray<ResolversTypes['Facet']>, ParentType, ContextType>;
+    items?: Resolver<ReadonlyArray<ResolversTypes['SearchHit']>, ParentType, ContextType>;
     matching?: Resolver<ResolversTypes['Matching'], ParentType, ContextType>;
     merchandising?: Resolver<ResolversTypes['Merchandising'], ParentType, ContextType>;
     page?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     pageSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-    sort?: Resolver<Array<ResolversTypes['SortClause']>, ParentType, ContextType>;
+    sort?: Resolver<ReadonlyArray<ResolversTypes['SortClause']>, ParentType, ContextType>;
     total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     totalPages?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type SortClauseResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['SortClause'] = ResolversParentTypes['SortClause'],
 > = {
     by?: Resolver<ResolversTypes['SortField'], ParentType, ContextType>;
@@ -763,7 +738,7 @@ export type SortClauseResolvers<
 };
 
 export type StatsFacetResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['StatsFacet'] = ResolversParentTypes['StatsFacet'],
 > = {
     attribute?: Resolver<ResolversTypes['FilterAttribute'], ParentType, ContextType>;
@@ -775,7 +750,7 @@ export type StatsFacetResolvers<
 };
 
 export type StoreResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Store'] = ResolversParentTypes['Store'],
 > = {
     catalogVersion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -786,15 +761,15 @@ export type StoreResolvers<
 };
 
 export type SuggestionsResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Suggestions'] = ResolversParentTypes['Suggestions'],
 > = {
-    products?: Resolver<Array<ResolversTypes['SearchHit']>, ParentType, ContextType>;
-    queries?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+    products?: Resolver<ReadonlyArray<ResolversTypes['SearchHit']>, ParentType, ContextType>;
+    queries?: Resolver<ReadonlyArray<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type TermMatchResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['TermMatch'] = ResolversParentTypes['TermMatch'],
 > = {
     field?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -805,7 +780,7 @@ export type TermMatchResolvers<
 };
 
 export type ValueBucketResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['ValueBucket'] = ResolversParentTypes['ValueBucket'],
 > = {
     count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -813,17 +788,17 @@ export type ValueBucketResolvers<
 };
 
 export type ValueFacetResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['ValueFacet'] = ResolversParentTypes['ValueFacet'],
 > = {
     attribute?: Resolver<ResolversTypes['FilterAttribute'], ParentType, ContextType>;
-    buckets?: Resolver<Array<ResolversTypes['ValueBucket']>, ParentType, ContextType>;
+    buckets?: Resolver<ReadonlyArray<ResolversTypes['ValueBucket']>, ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type VariantResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Variant'] = ResolversParentTypes['Variant'],
 > = {
     color?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -834,13 +809,13 @@ export type VariantResolvers<
 };
 
 export type ViewerResolvers<
-    ContextType = any,
+    ContextType = Context,
     ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer'],
 > = {
     group?: Resolver<ResolversTypes['CustomerGroup'], ParentType, ContextType>;
 };
 
-export type Resolvers<ContextType = any> = {
+export type Resolvers<ContextType = Context> = {
     Brand?: BrandResolvers<ContextType>;
     Category?: CategoryResolvers<ContextType>;
     Explanation?: ExplanationResolvers<ContextType>;

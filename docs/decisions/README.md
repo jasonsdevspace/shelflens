@@ -12,3 +12,7 @@ so the evidence was still fresh.
    Tees outranked the T-Shirts, and the three things that fixed it.
 4. [Facets count past their own filter](0004-facets-count-past-their-own-filter.md): selecting
    "Red" never zeroes "Blue", and what that costs.
+5. [The shape of the API](0005-the-shape-of-the-api.md): one search field, explanations on every
+   hit, and a viewer the client cannot choose.
+6. [The API runs in the browser, and in Node when asked](0006-the-api-runs-in-the-browser.md): a
+   service worker answers the demo, a thin Node server answers everything else.

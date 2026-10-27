@@ -1,20 +1,13 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { buildSchema, type GraphQLSchema } from 'graphql';
 
+import { SCHEMA_SOURCE } from './generated/schema-source.js';
+
 /**
- * The schema, as the single file it is written in.
+ * The schema, built from the copy generated beside the types.
  *
- * Read from disk rather than embedded, so the file a reviewer reads and the
- * file the server runs are the same one. The browser build inlines it at
- * bundle time.
+ * `schema.graphql` is the file a reviewer reads. The generated copy is what
+ * runs, so the API needs no file system and can run in a service worker.
  */
-const here = dirname(fileURLToPath(import.meta.url));
+export const schemaSource = (): string => SCHEMA_SOURCE;
 
-export const SCHEMA_PATH = join(here, '..', 'schema.graphql');
-
-export const schemaSource = (): string => readFileSync(SCHEMA_PATH, 'utf8');
-
-export const buildStoreSchema = (): GraphQLSchema => buildSchema(schemaSource());
+export const buildStoreSchema = (): GraphQLSchema => buildSchema(SCHEMA_SOURCE);
