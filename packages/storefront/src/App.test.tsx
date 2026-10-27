@@ -222,3 +222,59 @@ describe('searching and looking', () => {
         ).toBeChecked();
     });
 });
+
+describe('on a phone', () => {
+    const narrow = () => {
+        vi.stubGlobal('matchMedia', (query: string) => ({
+            matches: query.includes('max-width'),
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }));
+    };
+
+    it('keeps the facets in a drawer that is modal while open', async () => {
+        narrow();
+        const user = await open();
+        expect(screen.queryByRole('group', { name: 'Brand' })).not.toBeInTheDocument();
+        const opener = screen.getByRole('button', { name: 'Filters' });
+        expect(opener).toHaveAttribute('aria-haspopup', 'dialog');
+
+        await user.click(opener);
+        const drawer = screen.getByRole('dialog', { name: 'Filters' });
+        expect(drawer).toHaveAttribute('aria-modal', 'true');
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+
+        const [first] = within(drawer).getAllByRole('checkbox');
+        if (!first) throw new Error('expected a facet');
+        await user.click(first);
+        await settled();
+        expect(window.location.search).not.toBe('');
+        expect(
+            within(drawer).getByRole('button', { name: /Show \d+ results/ })
+        ).toBeInTheDocument();
+
+        const audit = await axe.run(document.body, {
+            rules: { 'color-contrast': { enabled: false } },
+        });
+        expect(audit.violations).toEqual([]);
+
+        await user.keyboard('{Escape}');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Filters/ })).toHaveFocus();
+        expect(screen.getByRole('button', { name: /Filters/ })).toHaveTextContent('1');
+    });
+
+    it('cycles focus inside the drawer with Tab', async () => {
+        narrow();
+        const user = await open();
+        await user.click(screen.getByRole('button', { name: 'Filters' }));
+        const drawer = screen.getByRole('dialog', { name: 'Filters' });
+        const done = within(drawer).getByRole('button', { name: /Show \d+ results/ });
+        done.focus();
+        await user.tab();
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+        await user.tab({ shift: true });
+        expect(done).toHaveFocus();
+    });
+});
