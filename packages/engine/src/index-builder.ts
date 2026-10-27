@@ -1,4 +1,4 @@
-import { tokenize } from './normalize.js';
+import { tokenize, wordCount } from './normalize.js';
 import {
     type AttributeKind,
     type AttributeValue,
@@ -67,9 +67,11 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
         const counts = new Map<string, Map<string, number>>();
         const length = new Map<string, number>();
         for (const field of fieldNames) {
-            const terms = tokenize(document.text[field] ?? '');
-            length.set(field, terms.length);
-            totals.set(field, (totals.get(field) ?? 0) + terms.length);
+            const text = document.text[field] ?? '';
+            const terms = tokenize(text);
+            const words = wordCount(text);
+            length.set(field, words);
+            totals.set(field, (totals.get(field) ?? 0) + words);
             for (const term of terms) {
                 const byField = counts.get(term) ?? new Map<string, number>();
                 byField.set(field, (byField.get(field) ?? 0) + 1);

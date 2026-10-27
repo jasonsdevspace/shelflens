@@ -38,6 +38,40 @@ export const stem = (term: string): string => {
  * are dropped rather than split on, so "men's" becomes "mens" and then
  * "men". Everything else that is not a letter or digit separates words.
  */
+/**
+ * The ways a phrase can be written as terms.
+ *
+ * A hyphenated word is indexed as both its joined form and its parts, so a
+ * phrase containing one can be matched either way. "t-shirt" gives
+ * [["tshirt"], ["t", "shirt"]], and a phrase of several such words gives
+ * every combination. Synonym rules are matched against a query this way.
+ */
+export const phraseVariants = (text: string): string[][] => {
+    let variants: string[][] = [[]];
+    for (const chunk of normalize(text)
+        .replace(/'/g, '')
+        .split(/[^a-z0-9-]+/)) {
+        const parts = chunk.split('-').filter((part) => part.length > 0);
+        if (parts.length === 0) continue;
+        const forms =
+            parts.length > 1 ? [[stem(parts.join(''))], parts.map(stem)] : [parts.map(stem)];
+        variants = variants.flatMap((variant) => forms.map((form) => [...variant, ...form]));
+    }
+    return variants.filter((variant) => variant.length > 0);
+};
+
+/**
+ * How many words a text has, for length normalization.
+ *
+ * Counted as words rather than as the terms `tokenize` emits, because a
+ * hyphenated word emits three terms for one word, and a product named
+ * "Everyday T-Shirt" is not twice as long as one named "Coastal Tee".
+ */
+export const wordCount = (text: string): number =>
+    normalize(text)
+        .split(/[^a-z0-9-]+/)
+        .filter((chunk) => chunk.replace(/-/g, '').length > 0).length;
+
 export const tokenize = (text: string): string[] => {
     const terms: string[] = [];
     for (const chunk of normalize(text)

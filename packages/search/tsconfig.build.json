@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "composite": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "rootDir": "src",
+        "outDir": "dist",
+        "paths": {
+            "@shelflens/catalog": ["../catalog/dist/index.d.ts"],
+            "@jasonsdevspace/shelflens": ["../engine/dist/index.d.ts"]
+        }
+    },
+    "references": [
+        { "path": "../catalog/tsconfig.build.json" },
+        { "path": "../engine/tsconfig.build.json" }
+    ],
+    "include": ["src"],
+    "exclude": ["src/**/*.test.ts"]
+}

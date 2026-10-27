@@ -7,6 +7,8 @@ export {
     type Document,
     type EngineConfig,
     EngineError,
+    type Facet,
+    type FacetConfig,
     type Filter,
     type Hit,
     type MatchKind,
