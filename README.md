@@ -37,6 +37,17 @@ Three checks keep the search honest, and each has already caught something:
 - **A size budget.** The catalog the demo will ship stays under 400 KB compressed, or the build
   fails.
 
+## Decisions
+
+Each choice with a real alternative is a record in [docs/decisions](docs/decisions), written when
+it was made, with the option rejected, what the choice costs, and the test or measurement behind
+it.
+
+1. [An engine of our own, rather than a library](docs/decisions/0001-an-engine-of-our-own.md)
+2. [Flat arrays for the index](docs/decisions/0002-flat-arrays-for-the-index.md)
+3. [Synonyms rewrite phrases, scored per typed word](docs/decisions/0003-synonyms-rewrite-phrases.md)
+4. [Facets count past their own filter](docs/decisions/0004-facets-count-past-their-own-filter.md)
+
 ## Dev setup
 
 You need [Node.js 24](https://nodejs.org/) and Git.
@@ -70,7 +81,8 @@ packages/
 ├── catalog/     the generator, its vocabulary and its types
 └── search/      documents, the store config, customer groups, golden queries, the benchmark
 docs/
-└── benchmarks/  the recorded benchmark results
+├── benchmarks/  the recorded benchmark results
+└── decisions/   the decision records
 ```
 
 ## Background
