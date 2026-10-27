@@ -9,6 +9,7 @@ import { DEFAULT_PRODUCTS, DEFAULT_SEED, generateCatalog } from './generate.js';
  *
  *   npm run catalog -- --out data/catalog.json
  *   npm run catalog -- --seed 7 --products 100000 --out /tmp/big.json
+ *   npm run catalog -- --compact --out packages/storefront/public/catalog.json
  *
  * The demo and the tests generate catalogs in memory. This exists for the
  * snapshot the demo ships, and for anyone who wants to look at the data.
@@ -18,6 +19,8 @@ const { values } = parseArgs({
         seed: { type: 'string', default: String(DEFAULT_SEED) },
         products: { type: 'string', default: String(DEFAULT_PRODUCTS) },
         out: { type: 'string' },
+        /** One line, for the file the demo ships rather than one to read. */
+        compact: { type: 'boolean', default: false },
     },
 });
 
@@ -29,7 +32,7 @@ if (!Number.isInteger(seed) || !Number.isInteger(products) || products < 1) {
 }
 
 const catalog = generateCatalog({ seed, products });
-const json = `${JSON.stringify(catalog, null, 2)}\n`;
+const json = `${values.compact ? JSON.stringify(catalog) : JSON.stringify(catalog, null, 2)}\n`;
 
 if (values.out) {
     mkdirSync(dirname(values.out), { recursive: true });

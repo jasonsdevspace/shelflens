@@ -136,7 +136,9 @@ export default tseslint.config(
             '**/cli.ts',
             '**/bench.ts',
             '**/bench-cli.ts',
+            '**/bundle.test.ts',
             'packages/storefront/src/dev/**',
+            'packages/storefront/src/bench/**',
         ],
         rules: {
             '@typescript-eslint/no-restricted-imports': [
