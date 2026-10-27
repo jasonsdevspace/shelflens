@@ -132,6 +132,11 @@ enum SortField {
     When the product was added to the catalog.
     """
     ADDED
+
+    """
+    The catalog's own order. The default when browsing without a phrase or a category.
+    """
+    CATALOG
 }
 
 enum SortDirection {

@@ -38,9 +38,9 @@ const forGroup = (name: string, group: CustomerGroup): string =>
 
 const asShopperFacet = (facet: Facet, group: CustomerGroup): Facet =>
     facet.name === `price.${group}`
-        ? { ...facet, name: 'price' }
+        ? { ...facet, name: 'price', attribute: 'price' }
         : facet.name === `priceStats.${group}`
-          ? { ...facet, name: 'priceStats' }
+          ? { ...facet, name: 'priceStats', attribute: 'price' }
           : facet;
 
 export const createStoreEngine = (catalog: Catalog): Engine =>

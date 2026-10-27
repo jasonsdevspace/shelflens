@@ -1,6 +1,6 @@
 # 5. The shape of the API
 
-**Status:** proposed
+**Status:** accepted
 
 ## Context
 

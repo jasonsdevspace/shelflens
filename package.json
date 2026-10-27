@@ -23,7 +23,8 @@
         "build": "npm run build --workspaces --if-present",
         "catalog": "tsx packages/catalog/src/cli.ts",
         "bench": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/search/src/bench-cli.ts && prettier --write docs/benchmarks",
-        "codegen": "graphql-codegen --config packages/api/codegen.mjs && prettier --write packages/api/src/generated",
+        "api": "npm run build && node packages/server/dist/main.js",
+        "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && prettier --write packages/api/src/generated",
         "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run test:run",
         "prepare": "husky || true"
     },
@@ -35,6 +36,7 @@
         "@graphql-codegen/typescript-resolvers": "^6.1.1",
         "@types/node": "26.6.5",
         "@vitest/coverage-v8": "5.0.5",
+        "esbuild": "^0.28.2",
         "eslint": "10.13.0",
         "eslint-plugin-import-x": "^4.17.1",
         "eslint-plugin-simple-import-sort": "^14.0.0",

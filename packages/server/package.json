@@ -1,0 +1,28 @@
+{
+    "name": "@shelflens/server",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The store's API over HTTP, for local runs and anything that cannot host a service worker.",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "type-check": "tsc -p tsconfig.json",
+        "build": "tsc -b tsconfig.build.json",
+        "start": "node dist/main.js"
+    },
+    "dependencies": {
+        "@shelflens/api": "0.1.0",
+        "@shelflens/catalog": "0.1.0"
+    },
+    "license": "MIT"
+}

@@ -1,0 +1,14 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "noEmit": true,
+        "paths": {
+            "@shelflens/catalog": ["../catalog/src/index.ts"],
+            "@jasonsdevspace/shelflens": ["../engine/src/index.ts"],
+            "@shelflens/search": ["../search/src/index.ts"],
+            "@shelflens/api": ["../api/src/index.ts"]
+        }
+    },
+    "include": ["src"]
+}
