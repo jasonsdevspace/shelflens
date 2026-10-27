@@ -111,8 +111,9 @@ packages/
 ├── api/         the GraphQL schema, its generated types, the resolvers and the request limits
 ├── server/      the API behind POST /graphql, with a rate limit and a request id
 └── storefront/  the demo page
-    └── src/     client (the GraphQL client and the latest-request helper), search (the popover
-                 and results), worker (the API as a service worker), operations, generated
+    └── src/     app (the URL as state, categories), client (the GraphQL client and the
+                 latest-request helper), search (the popover), results (facets, sort, pages),
+                 product, worker (the API as a service worker), operations, generated
 docs/
 ├── benchmarks/  the recorded benchmark results
 └── decisions/   the decision records

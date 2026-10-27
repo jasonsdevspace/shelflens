@@ -1,0 +1,11 @@
+query Store {
+    store {
+        name
+        currency
+        locale
+        catalogVersion
+        viewer {
+            group
+        }
+    }
+}

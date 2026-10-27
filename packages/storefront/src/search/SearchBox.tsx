@@ -22,6 +22,8 @@ export interface SearchBoxProps {
     /** The shopper chose a product. */
     readonly onPick: (sku: string) => void;
     readonly placeholder?: string;
+    /** What the box starts with, when the page already has a phrase. */
+    readonly initialPhrase?: string;
 }
 
 type Option =
@@ -36,9 +38,15 @@ const optionsOf = (suggestions: Suggestions | undefined): readonly Option[] =>
           ]
         : [];
 
-export const SearchBox = ({ client, onSearch, onPick, placeholder }: SearchBoxProps) => {
+export const SearchBox = ({
+    client,
+    onSearch,
+    onPick,
+    placeholder,
+    initialPhrase = '',
+}: SearchBoxProps) => {
     const id = useId();
-    const [phrase, setPhrase] = useState('');
+    const [phrase, setPhrase] = useState(initialPhrase);
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(-1);
     const { answered, loading, error } = useSuggestions(client, phrase);

@@ -218,7 +218,10 @@ describe('filters', () => {
     });
 
     it('matches a multi-valued attribute when any value matches', () => {
-        expect(ids({ filters: [{ attribute: 'category', eq: 'shoes' }] })).toEqual(['p1', 'p2']);
+        expect(ids({ filters: [{ attribute: 'category', eq: 'shoes' }] }).sort()).toEqual([
+            'p1',
+            'p2',
+        ]);
     });
 
     it('filters a boolean', () => {
@@ -297,6 +300,20 @@ describe('sorting', () => {
         });
         expect(result.hits.map((h) => h.id)).toEqual(['p3', 'p5', 'p4']);
         expect(result.sort).toEqual([{ by: 'position', direction: 'asc' }]);
+    });
+
+    it('sorts by the scoped sort when browsing its scope without asking', () => {
+        const browsing = engine.search({ filters: [{ attribute: 'category', eq: 'clothing' }] });
+        expect(browsing.sort).toEqual([{ by: 'position', direction: 'asc' }]);
+        expect(browsing.hits.map((h) => h.id)).toEqual(['p3', 'p5', 'p4']);
+        // A query, or a filter that is not one value of the scope, keeps the usual default.
+        expect(
+            engine.search({ query: 'shirt', filters: [{ attribute: 'category', eq: 'clothing' }] })
+                .sort
+        ).toEqual([{ by: 'relevance', direction: 'desc' }]);
+        expect(
+            engine.search({ filters: [{ attribute: 'category', in: ['clothing'] }] }).sort
+        ).toEqual([{ by: 'id', direction: 'asc' }]);
     });
 
     it('falls back to relevance for a scoped sort outside its filter, and says so', () => {

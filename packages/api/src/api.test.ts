@@ -132,6 +132,16 @@ describe('searching', () => {
             })
         );
         expect(inCategory.search.sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
+        // Browsing a category asks for nothing and gets position, as the schema promises.
+        const browsing = data(
+            await run(RESULTS, {
+                input: {
+                    filters: [{ attribute: 'CATEGORY', match: { eq: 'boots' } }],
+                    pageSize: 1,
+                },
+            })
+        );
+        expect(browsing.search.sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
     });
 
     it('reduces an oversized page rather than refusing it', async () => {

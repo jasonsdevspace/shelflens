@@ -54,7 +54,9 @@ which route, and for how much. That is what an explain mode shows.
   before it, and every sort ends on the id. Documents that tie on everything asked for still come
   back in one fixed order, so paging never shows a document twice or skips one. A sort declared as
   scoped to a filter, such as a position within a category, falls back to relevance when the
-  filter is absent, and the result reports the sort actually applied.
+  filter is absent, and the result reports the sort actually applied. When no sort is asked for,
+  a query sorts by relevance, browsing one value of a scope sorts by its scoped sort, and anything
+  else comes in index order.
 - Pages are one-based. A page past the end is empty rather than an error. The page size is clamped
   to a limit, and a query can be paged only so far, while the total still reports every match.
 
