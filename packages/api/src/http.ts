@@ -65,8 +65,10 @@ const parseJson = (text: string): unknown => {
 const persistedRequest = (url: URL, { persisted }: HttpOptions): Resolution | StoreRequest => {
     const id = url.searchParams.get('op');
     if (id === null) return refused(400, 'the request needs an operation');
-    const query = persisted[id];
-    if (query === undefined) return refused(404, 'the operation is not one this store knows');
+    if (!Object.hasOwn(persisted, id)) {
+        return refused(404, 'the operation is not one this store knows');
+    }
+    const query = persisted[id] as string;
     const raw = url.searchParams.get('variables');
     const variables = raw === null ? {} : parseJson(raw);
     if (typeof variables !== 'object' || variables === null || Array.isArray(variables)) {
@@ -86,9 +88,12 @@ const fullRequest = (
     return parsed;
 };
 
-/** Whether a URL is for the API at all. The host decides what to do otherwise. */
-export const isApiPath = (url: string): boolean =>
-    new URL(url, 'http://local').pathname.endsWith('/graphql');
+/**
+ * Whether a URL is for the API at all: `graphql` under the path the host
+ * serves from. The host decides what to do otherwise.
+ */
+export const isApiPath = (url: string, base = '/'): boolean =>
+    new URL(url, 'http://local').pathname === `${base}graphql`;
 
 /** What a request means, or why it is refused. */
 export const resolveRequest = (http: HttpRequest, options: HttpOptions): Resolution => {
@@ -109,6 +114,8 @@ export const resolveRequest = (http: HttpRequest, options: HttpOptions): Resolut
 export interface ResponseHeaderInput {
     /** The version of the store that answered. */
     readonly version: string;
+    /** When it answered, for a cache that ages what it keeps. */
+    readonly now?: Date | undefined;
     /** The version the client expected, from the URL. */
     readonly expected: string | undefined;
     readonly response: StoreResponse;
@@ -119,11 +126,13 @@ export interface ResponseHeaderInput {
 /** The headers every answer carries, and the caching the answer allows. */
 export const responseHeaders = ({
     version,
+    now = new Date(),
     expected,
     response,
     maxAgeSeconds = 300,
 }: ResponseHeaderInput): Record<string, string> => ({
     'content-type': 'application/json; charset=utf-8',
+    date: now.toUTCString(),
     [VERSION_HEADER]: version,
     vary: GROUP_HEADER,
     'cache-control':

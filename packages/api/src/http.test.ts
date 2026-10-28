@@ -47,6 +47,10 @@ describe('a persisted operation', () => {
             kind: 'refused',
             status: 404,
         });
+        // A name an object has by inheritance is not one the manifest has.
+        expect(resolveRequest(http('GET', '/graphql?op=constructor'), { persisted })).toMatchObject(
+            { kind: 'refused', status: 404 }
+        );
         expect(resolveRequest(http('GET', '/graphql'), { persisted })).toMatchObject({
             kind: 'refused',
             status: 400,
@@ -105,9 +109,11 @@ describe('any request', () => {
         });
     });
 
-    it('is for the API by its path alone', () => {
+    it('is for the API by its path under the base the host serves from', () => {
         expect(isApiPath('/graphql?op=1')).toBe(true);
-        expect(isApiPath('https://example.test/shelflens/graphql')).toBe(true);
+        expect(isApiPath('https://example.test/shelflens/graphql', '/shelflens/')).toBe(true);
+        expect(isApiPath('https://example.test/shelflens/graphql')).toBe(false);
+        expect(isApiPath('/anything/graphql')).toBe(false);
         expect(isApiPath('/shelflens/')).toBe(false);
         expect(isApiPath('/graphql/extra')).toBe(false);
     });
@@ -115,10 +121,12 @@ describe('any request', () => {
 
 describe('the answer', () => {
     const response = { data: { store: { name: 'ShelfLens' } } };
+    const now = new Date('2026-10-28T12:00:00Z');
 
     it('may be cached when the URL named the version that answered and nothing failed', () => {
-        expect(responseHeaders({ version: '7', expected: '7', response })).toEqual({
+        expect(responseHeaders({ version: '7', now, expected: '7', response })).toEqual({
             'content-type': 'application/json; charset=utf-8',
+            date: 'Wed, 28 Oct 2026 12:00:00 GMT',
             [VERSION_HEADER]: '7',
             vary: GROUP_HEADER,
             'cache-control': 'public, max-age=300',

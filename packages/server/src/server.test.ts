@@ -93,6 +93,10 @@ describe('the API over HTTP', () => {
         });
     });
 
+    it('answers only under its own path', async () => {
+        expect((await fetch(`${demoBase}/elsewhere/graphql?op=${STORE}`)).status).toBe(404);
+    });
+
     it('answers health without counting it against anyone', async () => {
         const response = await fetch(`${base}/health`);
         expect(await response.json()).toEqual({ status: 'ok' });

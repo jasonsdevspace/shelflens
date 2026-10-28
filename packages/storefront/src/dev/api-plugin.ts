@@ -16,11 +16,13 @@ export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
     configureServer(server) {
+        const base = server.config.base;
         const handle = createHandler({
             api: withResponseCache(createStoreApi(createStore({ catalog: generateCatalog() }))),
+            base,
         });
         server.middlewares.use((request, response, next) => {
-            if (request.url !== undefined && isApiPath(request.url)) {
+            if (request.url !== undefined && isApiPath(request.url, base)) {
                 void handle(request, response);
             } else {
                 next();

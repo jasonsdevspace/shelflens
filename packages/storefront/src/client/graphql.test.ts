@@ -8,7 +8,7 @@ import {
     type SuggestQueryVariables,
     TypedDocumentString,
 } from '../generated/operations.js';
-import { createClient, GraphQLClientError } from './graphql.js';
+import { createClient, createClientMemory, GraphQLClientError } from './graphql.js';
 
 const answer = (body: unknown, version?: string, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -23,6 +23,10 @@ const respond = (body: unknown, version?: string, status = 200) =>
     vi.fn<typeof fetch>().mockImplementation(() => Promise.resolve(answer(body, version, status)));
 
 const SUGGEST = { data: { suggest: { queries: [], products: [] } } };
+const STORE = { data: { store: {} } };
+const variables = { phrase: 'tr', limit: 5 };
+const nameOf = (document: { __meta__?: Record<string, unknown> | undefined }) =>
+    document.__meta__?.hash as string;
 
 /** The URL a fetch was given, as text. */
 const urlOf = (input: RequestInfo | URL | undefined): string => {
@@ -30,15 +34,13 @@ const urlOf = (input: RequestInfo | URL | undefined): string => {
     if (input instanceof URL) return input.href;
     return input?.url ?? '';
 };
-const nameOf = (document: { __meta__?: Record<string, unknown> | undefined }) =>
-    document.__meta__?.hash as string;
 
 describe('the client', () => {
     it('names a persisted operation in a GET, with the variables, the version and the viewer', async () => {
         const fetchImpl = respond(SUGGEST, 'v1');
         const client = createClient({ url: '/graphql', group: 'member', fetch: fetchImpl });
 
-        const data = await client.query(SuggestDocument, { phrase: 'tr', limit: 5 });
+        const data = await client.query(SuggestDocument, variables);
         expect(data.suggest).toEqual({ queries: [], products: [] });
         expect(client.version).toBe('v1');
 
@@ -56,19 +58,22 @@ describe('the client', () => {
         expect(second?.url.searchParams.get('v')).toBe('v1');
     });
 
-    it('leaves the variables out of the URL when there are none', async () => {
-        const fetchImpl = respond({ data: { store: {} } });
+    it('leaves the variables out of the URL when there are none, and keeps a query the URL has', async () => {
+        const fetchImpl = respond(STORE);
         await createClient({ url: '/graphql', fetch: fetchImpl }).query(StoreDocument, {});
         expect(urlOf(fetchImpl.mock.calls[0]?.[0])).toBe(`/graphql?op=${nameOf(StoreDocument)}`);
+        await createClient({ url: '/graphql?trace=1', fetch: fetchImpl }).query(StoreDocument, {});
+        expect(urlOf(fetchImpl.mock.calls[1]?.[0])).toBe(
+            `/graphql?trace=1&op=${nameOf(StoreDocument)}`
+        );
     });
 
     it('remembers an answer, and asks once for each question', async () => {
         const fetchImpl = vi
             .fn<typeof fetch>()
             .mockResolvedValueOnce(answer(SUGGEST, 'v1'))
-            .mockResolvedValueOnce(answer({ data: { store: {} } }, 'v1'));
+            .mockResolvedValueOnce(answer(STORE, 'v1'));
         const client = createClient({ url: '/graphql', fetch: fetchImpl });
-        const variables = { phrase: 'tr', limit: 5 };
 
         await client.query(SuggestDocument, variables);
         await client.query(SuggestDocument, variables);
@@ -81,31 +86,58 @@ describe('the client', () => {
         expect(client.remembered).toBe(2);
     });
 
-    it('forgets everything when an answer comes from a new version', async () => {
+    it('asks again when an answer comes from a new version, and never thrashes between two', async () => {
         const fetchImpl = vi
             .fn<typeof fetch>()
             .mockResolvedValueOnce(answer(SUGGEST, 'v1'))
-            .mockResolvedValueOnce(answer({ data: { store: {} } }, 'v2'))
-            .mockResolvedValueOnce(answer(SUGGEST, 'v2'));
+            .mockResolvedValueOnce(answer(STORE, 'v2'))
+            .mockResolvedValueOnce(answer(SUGGEST, 'v2'))
+            .mockResolvedValueOnce(answer(STORE, 'v1'));
         const client = createClient({ url: '/graphql', fetch: fetchImpl });
-        const variables = { phrase: 'tr', limit: 5 };
 
         await client.query(SuggestDocument, variables);
         await client.query(StoreDocument, {});
         expect(client.version).toBe('v2');
-        expect(client.remembered).toBe(1);
         await client.query(SuggestDocument, variables);
         expect(fetchImpl).toHaveBeenCalledTimes(3);
         expect(urlOf(fetchImpl.mock.calls[2]?.[0])).toContain('v=v2');
+
+        // An older instance answers next. Its answer is kept under its own
+        // version, and what was remembered under version two is still there.
+        await client.query(StoreDocument, { ...{} });
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        expect(client.remembered).toBe(3);
     });
 
-    it('keeps one viewer apart from another', async () => {
+    it('forgets an answer past its age', async () => {
+        let clock = 0;
         const fetchImpl = respond(SUGGEST, 'v1');
-        const guest = createClient({ url: '/graphql', fetch: fetchImpl });
-        const member = createClient({ url: '/graphql', group: 'member', fetch: fetchImpl });
-        await guest.query(SuggestDocument, { phrase: 'tr', limit: 5 });
-        await member.query(SuggestDocument, { phrase: 'tr', limit: 5 });
+        const client = createClient({
+            url: '/graphql',
+            fetch: fetchImpl,
+            memory: createClientMemory({ maxAgeMs: 1000 }),
+            now: () => clock,
+        });
+        await client.query(SuggestDocument, variables);
+        clock = 999;
+        await client.query(SuggestDocument, variables);
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+        clock = 1000;
+        await client.query(SuggestDocument, variables);
         expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it('shares a memory between viewers, keeping their answers apart', async () => {
+        const fetchImpl = respond(SUGGEST, 'v1');
+        const memory = createClientMemory();
+        const guest = createClient({ url: '/graphql', fetch: fetchImpl, memory });
+        const member = createClient({ url: '/graphql', group: 'member', fetch: fetchImpl, memory });
+        await guest.query(SuggestDocument, variables);
+        await member.query(SuggestDocument, variables);
+        await guest.query(SuggestDocument, variables);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+        expect(member.version).toBe('v1');
+        expect(urlOf(fetchImpl.mock.calls[1]?.[0])).toContain('v=v1');
     });
 
     it('posts the text of a document that has no name', async () => {
@@ -114,13 +146,13 @@ describe('the client', () => {
         const unnamed = new TypedDocumentString<SuggestQuery, SuggestQueryVariables>(
             '{ suggest(phrase: "tr") { queries } }'
         );
-        await client.query(unnamed, { phrase: 'tr', limit: 5 });
+        await client.query(unnamed, variables);
         const [url, init] = fetchImpl.mock.calls[0] ?? [];
         expect(url).toBe('/graphql');
         expect(init?.method).toBe('POST');
         expect(JSON.parse(init?.body as string)).toEqual({
             query: '{ suggest(phrase: "tr") { queries } }',
-            variables: { phrase: 'tr', limit: 5 },
+            variables,
         });
     });
 
@@ -132,7 +164,7 @@ describe('the client', () => {
             }),
         });
         const failure = await client
-            .query(SuggestDocument, { phrase: 'tr', limit: 5 })
+            .query(SuggestDocument, variables)
             .catch((error: unknown) => error);
         expect(failure).toBeInstanceOf(GraphQLClientError);
         expect((failure as GraphQLClientError).errors[0]?.extensions?.code).toBe('QUERY_TOO_DEEP');
@@ -145,20 +177,14 @@ describe('the client', () => {
             url: '/graphql',
             fetch: respond('bad gateway', undefined, 502),
         });
-        await expect(client.query(SuggestDocument, { phrase: 'tr', limit: 5 })).rejects.toThrow(
-            'status 502'
-        );
+        await expect(client.query(SuggestDocument, variables)).rejects.toThrow('status 502');
     });
 
     it('passes the signal through, so a request can be abandoned', async () => {
         const fetchImpl = respond(SUGGEST);
         const client = createClient({ url: '/graphql', fetch: fetchImpl });
         const controller = new AbortController();
-        await client.query(
-            SuggestDocument,
-            { phrase: 'tr', limit: 5 },
-            { signal: controller.signal }
-        );
+        await client.query(SuggestDocument, variables, { signal: controller.signal });
         expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
     });
 });

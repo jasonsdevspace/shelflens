@@ -3,7 +3,7 @@ import { createStore, GROUP_HEADER, PERSISTED_OPERATIONS, VERSION_HEADER } from 
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWorkerApi } from './handle.js';
+import { type AnswerStore, createWorkerApi } from './handle.js';
 
 const catalog = generateCatalog({ seed: 42, products: 200 });
 const version = createStore({ catalog }).version;
@@ -21,10 +21,12 @@ const STORE = Object.keys(PERSISTED_OPERATIONS).find((hash) =>
 );
 if (!STORE) throw new Error('expected the Store operation to be persisted');
 
+const BASE = '/shelflens/';
+
 const persisted = (
     params: Record<string, string>,
     headers: Record<string, string> = {},
-    path = '/shelflens/graphql'
+    path = `${BASE}graphql`
 ) =>
     new Request(`https://example.test${path}?${new URLSearchParams(params)}`, {
         method: 'GET',
@@ -43,6 +45,7 @@ describe('the API inside the worker', () => {
         const fetchImpl = servingCatalog();
         const api = createWorkerApi({
             catalogUrl: 'https://example.test/shelflens/catalog.json',
+            base: BASE,
             fetch: fetchImpl,
         });
 
@@ -61,7 +64,11 @@ describe('the API inside the worker', () => {
     });
 
     it('says what the browser may cache: an answer for the version it asked for', async () => {
-        const api = createWorkerApi({ catalogUrl: 'catalog.json', fetch: servingCatalog() });
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+        });
         const current = await api.handle(persisted({ op: STORE, v: version }));
         expect(current?.headers.get('cache-control')).toBe('public, max-age=300');
         expect(current?.headers.get('vary')).toBe(GROUP_HEADER);
@@ -73,19 +80,25 @@ describe('the API inside the worker', () => {
     });
 
     it('accepts only the operations it knows, by name', async () => {
-        const api = createWorkerApi({ catalogUrl: 'catalog.json', fetch: servingCatalog() });
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+        });
         const full = await api.handle(posted({ query: '{ store { name } }' }));
         expect(full?.status).toBe(400);
         expect(await full?.json()).toEqual({
             errors: [{ message: 'this store accepts persisted operations only' }],
         });
         expect((await api.handle(persisted({ op: 'unknown' })))?.status).toBe(404);
+        expect((await api.handle(persisted({ op: 'constructor' })))?.status).toBe(404);
         expect((await api.handle(persisted({})))?.status).toBe(400);
     });
 
     it('can accept full queries where the host wants them', async () => {
         const api = createWorkerApi({
             catalogUrl: 'catalog.json',
+            base: BASE,
             fetch: servingCatalog(),
             allowFullQueries: true,
         });
@@ -95,8 +108,13 @@ describe('the API inside the worker', () => {
     });
 
     it('leaves anything that is not an API request to the network', async () => {
-        const api = createWorkerApi({ catalogUrl: 'catalog.json', fetch: servingCatalog() });
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+        });
         expect(await api.handle(new Request('https://example.test/shelflens/'))).toBeUndefined();
+        expect(await api.handle(persisted({ op: STORE }, {}, '/graphql'))).toBeUndefined();
         expect(
             await api.handle(new Request('https://example.test/shelflens/catalog.json'))
         ).toBeUndefined();
@@ -117,11 +135,85 @@ describe('the API inside the worker', () => {
                     headers: { 'content-type': 'application/json' },
                 })
             );
-        const api = createWorkerApi({ catalogUrl: 'catalog.json', fetch: fetchImpl });
+        const api = createWorkerApi({ catalogUrl: 'catalog.json', base: BASE, fetch: fetchImpl });
         const failed = await api.handle(persisted({ op: STORE }));
         expect(failed?.status).toBe(503);
         const recovered = await api.handle(persisted({ op: STORE }));
         expect(recovered?.status).toBe(200);
         expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+});
+
+/** A store of answers like the Cache API's, matching on the URL and the viewer header. */
+const createAnswerStore = () => {
+    const kept = new Map<string, Response>();
+    const keyOf = (request: Request) => `${request.url}|${request.headers.get(GROUP_HEADER) ?? ''}`;
+    let matched = 0;
+    const store: AnswerStore = {
+        match: (request) => {
+            const found = kept.get(keyOf(request));
+            if (found) matched += 1;
+            return Promise.resolve(found?.clone());
+        },
+        put: (request, response) => {
+            kept.set(keyOf(request), response);
+            return Promise.resolve();
+        },
+        keys: () =>
+            Promise.resolve([...kept.keys()].map((key) => new Request(key.split('|')[0] ?? ''))),
+        delete: (request) => {
+            let removed = false;
+            for (const key of kept.keys()) {
+                if (key.startsWith(`${request.url}|`)) removed = kept.delete(key) || removed;
+            }
+            return Promise.resolve(removed);
+        },
+    };
+    return { store, kept, matches: () => matched };
+};
+
+describe('the answers the worker keeps', () => {
+    const withStore = (answers: AnswerStore) =>
+        createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            answers: () => Promise.resolve(answers),
+        });
+
+    it('keeps an answer the headers allow, per viewer, and serves it next time', async () => {
+        const { store, kept, matches } = createAnswerStore();
+        const api = withStore(store);
+        const first = await api.handle(persisted({ op: STORE, v: version }));
+        expect(first?.headers.get('cache-control')).toBe('public, max-age=300');
+        expect(kept.size).toBe(1);
+        const again = await api.handle(persisted({ op: STORE, v: version }));
+        expect(matches()).toBe(1);
+        expect(await again?.json()).toEqual(await first?.json());
+        await api.handle(persisted({ op: STORE, v: version }, { [GROUP_HEADER]: 'member' }));
+        expect(kept.size).toBe(2);
+        await api.handle(persisted({ op: STORE }));
+        expect(kept.size).toBe(2);
+    });
+
+    it('drops an answer past its age, and every answer for another version', async () => {
+        const { store, kept } = createAnswerStore();
+        const url = `https://example.test${BASE}graphql?${new URLSearchParams({ op: STORE, v: version })}`;
+        const old = `https://example.test${BASE}graphql?${new URLSearchParams({ op: STORE, v: 'older' })}`;
+        const stale = new Response('{"data":{"stale":true}}', {
+            headers: {
+                'cache-control': 'public, max-age=300',
+                date: new Date(Date.now() - 301_000).toUTCString(),
+            },
+        });
+        kept.set(`${url}|`, stale);
+        kept.set(`${old}|`, stale.clone());
+
+        const api = withStore(store);
+        await api.warm();
+        expect(kept.has(`${old}|`)).toBe(false);
+        expect(kept.has(`${url}|`)).toBe(true);
+        const fresh = await api.handle(persisted({ op: STORE, v: version }));
+        expect(await fresh?.json()).not.toEqual({ data: { stale: true } });
     });
 });

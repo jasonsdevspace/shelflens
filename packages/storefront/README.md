@@ -5,9 +5,10 @@ the page.
 
 - **The client is written here.** `src/client` sends typed documents, generated as strings from
   the operations in `src/operations` and named at build time by the hash of their text. A named
-  operation goes as a `GET` with its variables and the store version in the URL, so the browser
-  can keep the answer. The client remembers answers too, on the API's one cache key, and forgets
-  them all when an answer arrives from a new version. Beside it is the latest-request helper
+  operation goes as a `GET` with its variables and the store version in the URL, so a cache can
+  keep the answer under it. The client remembers answers too, on the API's one cache key, for a
+  count and an age, in a memory the page holds and shares between viewers. Beside it is the
+  latest-request helper
   that gives each request a ticket, aborts the one before, and marks a late answer stale.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
   Apollo or urql, and [decision record 8](../../docs/decisions/0008-one-cache-key.md) the key.
@@ -31,10 +32,11 @@ the page.
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.
 - **The API is a service worker.** `src/worker` builds the store from the shipped catalog during
-  install, claims the page on activation, and answers `/graphql` from inside the page. It accepts
-  only the storefront's own operations, by name, caches answers on the API's one cache key, and
-  marks each answer with what the browser may keep. Its handler is tested with plain fetch
-  requests.
+  install, claims the page on activation, and answers `graphql` under the site's path from inside
+  the page. It accepts only the storefront's own operations, by name, caches answers on the API's
+  one cache key, and keeps what the answer's headers allow in the Cache API under the answer's
+  URL, since a response a worker makes up never enters the browser's own cache. Its handler is
+  tested with plain fetch requests.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
   and no worker fighting hot reloading.

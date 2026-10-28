@@ -5,7 +5,7 @@ import { CategoryNav } from './app/CategoryNav.jsx';
 import { EMPTY_STATE } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
 import { useUrlState } from './app/useUrlState.js';
-import { createClient, type CustomerGroup } from './client/graphql.js';
+import { createClient, createClientMemory, type CustomerGroup } from './client/graphql.js';
 import { CategoriesDocument, StoreDocument } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
@@ -57,7 +57,12 @@ export const App = ({ apiUrl, ready }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     const [group, setGroup] = useState<CustomerGroup>('guest');
-    const client = useMemo(() => createClient({ url: apiUrl, group }), [apiUrl, group]);
+    // One memory for both viewers: the viewer is in the key, so switching keeps both.
+    const memory = useMemo(() => createClientMemory(), []);
+    const client = useMemo(
+        () => createClient({ url: apiUrl, group, memory }),
+        [apiUrl, group, memory]
+    );
     const isReady = readiness === 'ready';
     const categories = useQuery(client, CategoriesDocument, isReady ? {} : undefined);
     const store = useQuery(client, StoreDocument, isReady ? {} : undefined);

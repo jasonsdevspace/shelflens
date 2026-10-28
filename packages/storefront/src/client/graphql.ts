@@ -12,23 +12,52 @@ import type { TypedDocumentString } from '../generated/operations.js';
  *
  * A document generated with a name is sent as a `GET` that names it, with
  * the variables and the store version the client last saw in the URL, so
- * the browser's cache can keep the answer under that URL. A document with
- * no name is posted in full. Answers are remembered here too, on the
- * project's one cache key with the name standing for the query, so a
- * page the shopper returns to asks nothing. Every answer says which store
- * version it came from, and a new version empties the memory, so after a
- * catalog change nothing stale is shown past the next answer.
+ * a cache can keep the answer under that URL. A document with no name is
+ * posted in full. Answers are remembered here too, on the project's one
+ * cache key with the name standing for the query, for a count and an
+ * age, so a page the shopper returns to asks nothing. Every answer says
+ * which store version it came from, and the key carries that version, so
+ * after a catalog change nothing remembered is asked for again.
+ *
+ * The memory is a thing of its own, so clients for different viewers can
+ * share one: the viewer is in the key, and a reviewer switching between
+ * guest and member keeps both viewers' answers and the version.
  */
 
 export type CustomerGroup = 'guest' | 'member';
+
+export interface MemoryOptions {
+    /** How many answers to remember. */
+    readonly size?: number;
+    /** How long an answer may be served from memory, in milliseconds. */
+    readonly maxAgeMs?: number;
+}
+
+/** What a client remembers. Held by the page and handed to each client. */
+export interface ClientMemory {
+    version: string | undefined;
+    readonly answers: Map<string, { readonly data: unknown; readonly at: number }>;
+    readonly size: number;
+    readonly maxAgeMs: number;
+}
+
+export const createClientMemory = ({
+    size = 200,
+    maxAgeMs = 5 * 60_000,
+}: MemoryOptions = {}): ClientMemory => ({
+    version: undefined,
+    answers: new Map(),
+    size,
+    maxAgeMs,
+});
 
 export interface ClientOptions {
     /** Where requests go. */
     readonly url: string;
     readonly group?: CustomerGroup;
     readonly fetch?: typeof fetch;
-    /** How many answers to remember. */
-    readonly cacheSize?: number;
+    readonly memory?: ClientMemory;
+    readonly now?: () => number;
 }
 
 export interface QueryOptions {
@@ -81,26 +110,34 @@ export const createClient = ({
     url,
     group = 'guest',
     fetch: fetchImpl = fetch,
-    cacheSize = 200,
+    memory = createClientMemory(),
+    now = Date.now,
 }: ClientOptions): GraphQLClient => {
-    let version: string | undefined;
-    const answers = new Map<string, unknown>();
     const viewer = { group };
 
     const keyOf = (operation: string, variables: unknown) =>
         cacheKeyOf({
-            version: version ?? '',
+            version: memory.version ?? '',
             viewer,
             operation,
             variables: variables as Readonly<Record<string, unknown>> | undefined,
         });
 
+    const recall = (key: string): unknown => {
+        const held = memory.answers.get(key);
+        if (!held) return undefined;
+        memory.answers.delete(key);
+        if (now() - held.at >= memory.maxAgeMs) return undefined;
+        memory.answers.set(key, held);
+        return held.data;
+    };
+
     const remember = (key: string, data: unknown) => {
-        answers.set(key, data);
-        while (answers.size > cacheSize) {
-            const oldest = answers.keys().next().value;
+        memory.answers.set(key, { data, at: now() });
+        while (memory.answers.size > memory.size) {
+            const oldest = memory.answers.keys().next().value;
             if (oldest === undefined) break;
-            answers.delete(oldest);
+            memory.answers.delete(oldest);
         }
     };
 
@@ -125,8 +162,9 @@ export const createClient = ({
         const params = new URLSearchParams({ op: name });
         const encoded = JSON.stringify(variables);
         if (encoded !== '{}') params.set('variables', encoded);
-        if (version !== undefined) params.set('v', version);
-        return fetchImpl(`${url}?${params.toString()}`, {
+        if (memory.version !== undefined) params.set('v', memory.version);
+        const joiner = url.includes('?') ? '&' : '?';
+        return fetchImpl(`${url}${joiner}${params.toString()}`, {
             method: 'GET',
             headers,
             ...(signal && { signal }),
@@ -136,26 +174,19 @@ export const createClient = ({
     return {
         group,
         get version() {
-            return version;
+            return memory.version;
         },
         get remembered() {
-            return answers.size;
+            return memory.answers.size;
         },
         query: async (document, variables, { signal } = {}) => {
             const name = nameOf(document);
             const operation = name ?? document.toString();
-            const known = answers.get(keyOf(operation, variables));
-            if (known !== undefined) {
-                answers.delete(keyOf(operation, variables));
-                remember(keyOf(operation, variables), known);
-                return known as never;
-            }
+            const known = recall(keyOf(operation, variables));
+            if (known !== undefined) return known as never;
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
-            if (answered !== null && answered !== version) {
-                version = answered;
-                answers.clear();
-            }
+            if (answered !== null) memory.version = answered;
             const envelope = (await response.json().catch(() => ({}))) as Envelope<unknown>;
             if (envelope.errors && envelope.errors.length > 0) {
                 throw new GraphQLClientError(envelope.errors, response.status);
@@ -163,6 +194,7 @@ export const createClient = ({
             if (!response.ok || envelope.data === undefined) {
                 throw new GraphQLClientError([], response.status);
             }
+            // Keyed under the version that answered, which may be new.
             remember(keyOf(operation, variables), envelope.data);
             return envelope.data as never;
         },

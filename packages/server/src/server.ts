@@ -41,6 +41,8 @@ export interface ServerOptions {
     readonly persistedOnly?: boolean;
     /** How long a cacheable answer may be served, in seconds. */
     readonly maxAgeSeconds?: number;
+    /** The path the API is served under, so `graphql` is answered only there. */
+    readonly base?: string;
 }
 
 /**
@@ -114,6 +116,7 @@ export const createHandler = ({
     persisted = PERSISTED_OPERATIONS,
     persistedOnly = false,
     maxAgeSeconds,
+    base = '/',
 }: ServerOptions): RequestHandler => {
     const allow = createRateLimit(rateLimitPerMinute, now);
 
@@ -124,7 +127,7 @@ export const createHandler = ({
             send(response, { status: 200, body: { status: 'ok' }, requestId });
             return;
         }
-        if (!isApiPath(url)) {
+        if (!isApiPath(url, base)) {
             refuse(response, 404, 'not found', requestId);
             return;
         }
@@ -167,6 +170,7 @@ export const createHandler = ({
                 requestId,
                 headers: responseHeaders({
                     version: api.version,
+                    now: now(),
                     expected: resolved.expected,
                     response: answer,
                     maxAgeSeconds,
