@@ -373,7 +373,7 @@ describe('when nothing matches', () => {
         expect(window.location.search).toBe('?q=jacket');
     });
 
-    it('offers to clear the filters, and falls back to popular products', async () => {
+    it('offers to clear the filters', async () => {
         const user = await open('?q=jacket&price=0-1');
         await settled();
         expect(screen.getByText(/Nothing matched "jacket" with these filters/)).toBeInTheDocument();
@@ -381,7 +381,9 @@ describe('when nothing matches', () => {
         await settled();
         expect(window.location.search).toBe('?q=jacket');
         expect(cards().length).toBeGreaterThan(0);
+    });
 
+    it('falls back to popular products when nothing else helps', async () => {
         await open('?q=zzqx');
         await settled();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Popular products');
