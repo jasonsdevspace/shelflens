@@ -32,6 +32,14 @@ describe('the URL as the page state', () => {
         expect(parseSearchState(search)).toEqual(state);
     });
 
+    it('carries explain mode, and keeps it when the facets are cleared', () => {
+        const state = parseSearchState('?q=boot&brand=Ridgeback&explain=1');
+        expect(state.explain).toBe(true);
+        expect(serializeSearchState(state)).toBe('?q=boot&brand=Ridgeback&explain=1');
+        expect(withoutFilters(state)).toMatchObject({ phrase: 'boot', explain: true, brand: [] });
+        expect(parseSearchState('?explain=yes').explain).toBeUndefined();
+    });
+
     it('leaves defaults out, so the plain page has no query string', () => {
         expect(serializeSearchState(EMPTY_STATE)).toBe('');
         expect(parseSearchState('')).toEqual(EMPTY_STATE);

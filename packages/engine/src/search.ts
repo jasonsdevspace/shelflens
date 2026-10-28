@@ -406,7 +406,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
 
     const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine => {
         const next = { ...config, ...changes };
-        checkRules(next.rules ?? [], new Set(byId.keys()));
+        checkRules(next.rules ?? [], new Set(byId.keys()), next.attributes);
         return createFromIndex(index, next);
     };
 
@@ -414,6 +414,6 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
 };
 
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
-    checkRules(config.rules ?? [], new Set(documents.map((d) => d.id)));
+    checkRules(config.rules ?? [], new Set(documents.map((d) => d.id)), config.attributes);
     return createFromIndex(buildIndex(documents, config), config);
 };

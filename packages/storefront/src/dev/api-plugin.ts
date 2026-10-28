@@ -1,4 +1,12 @@
-import { createStore, createStoreApi, isApiPath, withResponseCache } from '@shelflens/api';
+import { readFileSync } from 'node:fs';
+
+import {
+    createStore,
+    createStoreApi,
+    isApiPath,
+    parseRulesFile,
+    withResponseCache,
+} from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { createHandler } from '@shelflens/server';
 import type { Plugin } from 'vite';
@@ -9,16 +17,25 @@ import type { Plugin } from 'vite';
  * In production the service worker answers `/graphql`. A dev server with
  * hot reloading and a service worker fight over the same requests, so in
  * development the same API answers from the dev server instead, through
- * the Node handler the server package already has. The client cannot tell
- * the difference, which is the point.
+ * the Node handler the server package already has, over the same catalog
+ * and the same rules file the worker ships. The client cannot tell the
+ * difference, which is the point.
  */
+
+/** The rules file the production build ships, read here at startup. */
+const rules = () =>
+    parseRulesFile(
+        JSON.parse(readFileSync(new URL('../../public/rules.json', import.meta.url), 'utf8'))
+    );
 export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
     configureServer(server) {
         const base = server.config.base;
         const handle = createHandler({
-            api: withResponseCache(createStoreApi(createStore({ catalog: generateCatalog() }))),
+            api: withResponseCache(
+                createStoreApi(createStore({ catalog: generateCatalog(), rules: rules() }))
+            ),
             base,
         });
         server.middlewares.use((request, response, next) => {

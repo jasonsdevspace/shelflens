@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 import { App } from './App.jsx';
 import { createWorkerApi } from './worker/handle.js';
+import { serving } from './worker/serving.js';
 
 /*
  * The storefront end to end, in a document, over the real API.
@@ -17,17 +18,17 @@ import { createWorkerApi } from './worker/handle.js';
  */
 
 const catalog = generateCatalog({ seed: 42, products: 300 });
+const jackets = catalog.products.filter((p) => /jacket/i.test(p.name));
+const featured = jackets[jackets.length - 1];
+if (!featured) throw new Error('expected a jacket in the catalog');
+/** One rule, so explain mode has a pin to show and a price sort has something to set aside. */
+const rules = [{ id: 'featured-jacket', when: { queries: ['jacket'] }, pin: [featured.sku] }];
 
 beforeAll(() => {
     const worker = createWorkerApi({
         catalogUrl: 'catalog.json',
-        fetch: () =>
-            Promise.resolve(
-                new Response(JSON.stringify(catalog), {
-                    status: 200,
-                    headers: { 'content-type': 'application/json' },
-                })
-            ),
+        rulesUrl: 'rules.json',
+        fetch: serving(catalog, { rules }),
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const response = await worker.handle(new Request(input, init));
@@ -308,5 +309,41 @@ describe('as a member', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');
         await shopAs(user, 'member');
         await screen.findByRole('heading', { level: 1, name: membersOnly.name });
+    });
+});
+
+describe('explain mode', () => {
+    it('says why each result ranked where it did, from the URL', async () => {
+        const user = await open('?q=jacket&explain=1');
+        await settled();
+        expect(screen.getByRole('button', { name: 'Explain ranking' })).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
+        const [first, second] = cards().map((card) => card.closest('li'));
+        expect(first).toHaveTextContent(featured.name);
+        expect(
+            within(first as HTMLElement).getByRole('list', { name: 'Why this is result 1' })
+        ).toHaveTextContent('Pinned to the top by rule featured-jacket');
+        expect(
+            within(second as HTMLElement).getByRole('list', { name: 'Why this is result 2' })
+        ).toHaveTextContent(/"jacket" matched "jacket" in the name/);
+
+        await user.click(screen.getByRole('button', { name: 'Explain ranking' }));
+        await settled();
+        expect(window.location.search).toBe('?q=jacket');
+        expect(screen.queryByRole('list', { name: /Why this is result/ })).toBeNull();
+    });
+
+    it('says when a sort set the merchandising aside', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
+        expect(screen.queryByText(/set aside the merchandising/)).toBeNull();
+        await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'price-asc');
+        await settled();
+        expect(screen.getByText(/set aside the merchandising/)).toHaveTextContent(
+            'Sorting by price, low to high set aside the merchandising: featured-jacket.'
+        );
     });
 });

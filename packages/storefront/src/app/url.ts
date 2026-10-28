@@ -33,6 +33,8 @@ export interface SearchState {
     readonly page: number;
     /** A product being looked at, over the results it was found in. */
     readonly product?: string;
+    /** Whether each result says why it ranked where it did. */
+    readonly explain?: boolean;
 }
 
 export const EMPTY_STATE: SearchState = { brand: [], color: [], size: [], page: 1 };
@@ -112,6 +114,7 @@ export const parseSearchState = (search: string): SearchState => {
         ...(isSortKey(sort) && { sort }),
         page: positiveInteger(params.get('page')) ?? 1,
         ...(product && { product }),
+        ...(params.get('explain') === '1' && { explain: true }),
     };
 };
 
@@ -128,6 +131,7 @@ export const serializeSearchState = (state: SearchState): string => {
     if (state.sort) params.set('sort', state.sort);
     if (state.page > 1) params.set('page', String(state.page));
     if (state.product) params.set('product', state.product);
+    if (state.explain) params.set('explain', '1');
     const serialized = params.toString();
     return serialized ? `?${serialized}` : '';
 };
@@ -155,6 +159,7 @@ export const withoutFilters = (state: SearchState): SearchState => ({
     ...(state.phrase && { phrase: state.phrase }),
     ...(state.category && { category: state.category }),
     ...(state.sort && { sort: state.sort }),
+    ...(state.explain && { explain: true }),
     brand: [],
     color: [],
     size: [],

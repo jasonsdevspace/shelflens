@@ -12,6 +12,14 @@ the page.
   that gives each request a ticket, aborts the one before, and marks a late answer stale.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
   Apollo or urql, and [decision record 8](../../docs/decisions/0008-one-cache-key.md) the key.
+- **Explain mode.** A toggle on the results page, carried in the URL, that asks the API for the
+  explanation it carries on every hit and says under each card why it ranked there: which word
+  matched which term in which field, exactly, by prefix, by synonym or corrected, and which rule
+  pinned, boosted or buried it. When a sort sets the merchandising aside, the page says so.
+- **Rules are config.** `public/rules.json` is the merchandising the demo ships, loaded beside the
+  catalog when the store is built and validated then: a rule that names a product or an attribute
+  the store does not have fails the build, in the worker, the Node server and the dev server
+  alike. A test runs the shipped rules against the shipped catalog.
 - **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
   prices change, a product only members may see appears, and nothing in the URL or the query
   asked for it: the viewer travels in a header, and every cache keys on it.

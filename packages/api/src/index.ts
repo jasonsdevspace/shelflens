@@ -41,4 +41,5 @@ export {
     responseHeaders,
     VERSION_HEADER,
 } from './http.js';
+export { parseRulesFile } from './rules-file.js';
 export { buildStoreSchema, schemaSource } from './schema.js';

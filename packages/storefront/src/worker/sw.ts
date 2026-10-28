@@ -16,6 +16,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 const api = createWorkerApi({
     catalogUrl: new URL('catalog.json', self.registration.scope).href,
+    rulesUrl: new URL('rules.json', self.registration.scope).href,
     base: new URL(self.registration.scope).pathname,
     answers: () => caches.open('shelflens-answers'),
 });
