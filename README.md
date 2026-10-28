@@ -162,7 +162,8 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
   --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
 ```
 
-To release the engine, bump the version in `packages/engine/package.json`, add the entry to
+To release the engine, bump the version in `packages/engine/package.json`, run
+`npm install --package-lock-only` so the lock file carries it, add the entry to
 `packages/engine/CHANGELOG.md`, merge that, then push a tag named for the version, such as
 `engine-v0.2.0`. The release workflow confirms the tag, the version and the changelog agree and
 that the commit is on main, runs every check CI runs, stages the version on npm with provenance
