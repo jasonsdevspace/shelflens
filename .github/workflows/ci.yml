@@ -111,7 +111,10 @@ jobs:
         needs: [verify, browser]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
+        # A job's own permissions replace the workflow's, so the read the
+        # checkout needs has to be named here beside the two Pages needs.
         permissions:
+            contents: read
             pages: write
             id-token: write
         environment:
