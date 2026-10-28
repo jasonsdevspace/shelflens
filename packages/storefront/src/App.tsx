@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
+import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
 import { DEFAULT_STORE_INFO, type StoreInfo, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
@@ -172,6 +173,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
 
     return (
         <StoreProvider value={info}>
+            <PortfolioStrip />
             <header className="masthead">
                 <div className="masthead-row">
                     <a
@@ -228,6 +230,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                     />
                 )}
             </main>
+            <DemoFooter />
         </StoreProvider>
     );
 };

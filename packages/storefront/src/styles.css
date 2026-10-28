@@ -5,7 +5,7 @@
     --line: #d9d9d9;
     --accent: #1f4fd8;
     --highlight: #eef2fd;
-    color-scheme: light dark;
+    color-scheme: light;
     font-family:
         system-ui,
         -apple-system,
@@ -14,15 +14,19 @@
         sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #121212;
-        --fg: #f0f0f0;
-        --muted: #a5a5a5;
-        --line: #3a3a3a;
-        --accent: #8fb0ff;
-        --highlight: #1e2a4a;
-    }
+/*
+ * The theme is the one the portfolio saved, or the system's when nothing is
+ * saved. A script in index.html sets the attribute before the first paint,
+ * so this page and jasonsdevspace.com switch together.
+ */
+:root[data-theme='dark'] {
+    --bg: #121212;
+    --fg: #f0f0f0;
+    --muted: #a5a5a5;
+    --line: #3a3a3a;
+    --accent: #8fb0ff;
+    --highlight: #1e2a4a;
+    color-scheme: dark;
 }
 
 * {
@@ -33,6 +37,41 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--fg);
+}
+
+/* Whose demo this is, above the masthead: two links, one line, scrolls away. */
+.portfolio {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+}
+
+.portfolio a,
+.colophon a {
+    color: var(--muted);
+}
+
+.portfolio a:hover,
+.colophon a:hover {
+    color: var(--fg);
+}
+
+.colophon {
+    max-width: 60rem;
+    margin: 2rem auto 0;
+    padding: 1rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.colophon p {
+    margin: 0;
 }
 
 .masthead {
@@ -54,6 +93,7 @@ body {
 .content {
     padding: 1rem;
     max-width: 60rem;
+    margin: 0 auto;
 }
 
 .notice {
