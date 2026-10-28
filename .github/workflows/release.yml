@@ -1,12 +1,14 @@
 name: Release
 
 # Publishes the engine to npm when a release tag is pushed, such as
-# engine-v0.2.0. The tag has to match the version in the engine's
-# package.json, and the changelog has to have an entry for it, or nothing
-# is published. Every check runs first. The publish uses npm's trusted
-# publishing: the workflow proves who it is with an OpenID Connect token,
-# so no npm token is stored anywhere, and each version carries provenance
-# that links it to the commit and the run that built it.
+# engine-v0.2.0. The tag has to name a commit on main, match the version in
+# the engine's package.json, and have an entry in the changelog, or nothing
+# is published. Every check CI runs, runs first. The publish uses npm's
+# trusted publishing: the workflow proves who it is with an OpenID Connect
+# token, so no npm token is stored anywhere, and each version carries
+# provenance that links it to the commit and the run that built it. A
+# prerelease version, one with a hyphen, is published under the "next"
+# tag and marked as a prerelease on GitHub, so "latest" stays a release.
 on:
     push:
         tags:
@@ -16,29 +18,29 @@ permissions:
     contents: read
 
 jobs:
-    verify:
+    # The cheap checks first, so a mistyped tag fails in seconds.
+    agree:
         runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+            prerelease: ${{ steps.version.outputs.prerelease }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
+                  fetch-depth: 0
 
             - name: Setup Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version: '24'
-                  cache: 'npm'
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Verify
-              run: npm run verify
 
             # The tag names the version, the package declares it, and the
-            # changelog explains it. All three have to agree.
-            - name: Check the tag, the version and the changelog agree
+            # changelog explains it. All three have to agree, and the commit
+            # has to be on main, so nothing unreviewed is ever released.
+            - name: Check the tag, the version, the changelog and the branch agree
+              id: version
               env:
                   TAG: ${{ github.ref_name }}
               run: |
@@ -48,17 +50,37 @@ jobs:
                       echo "the tag says $version but packages/engine/package.json says $declared"
                       exit 1
                   fi
-                  if ! grep -q "^## $version\$" packages/engine/CHANGELOG.md; then
+                  if ! grep -qxF -- "## $version" packages/engine/CHANGELOG.md; then
                       echo "packages/engine/CHANGELOG.md has no entry for $version"
                       exit 1
                   fi
+                  if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+                      echo "the tagged commit is not on main"
+                      exit 1
+                  fi
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  case "$version" in
+                      *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+                      *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+                  esac
+
+    checks:
+        needs: agree
+        uses: ./.github/workflows/ci.yml
 
     publish:
-        needs: verify
+        needs: [agree, checks]
         runs-on: ubuntu-latest
+        # The environment is what npm's trusted publisher is registered
+        # against, and where a required reviewer can be set.
+        environment: npm
         permissions:
             contents: write
             id-token: write
+        env:
+            VERSION: ${{ needs.agree.outputs.version }}
+            PRERELEASE: ${{ needs.agree.outputs.prerelease }}
+            TAG: ${{ github.ref_name }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -70,29 +92,46 @@ jobs:
               with:
                   node-version: '24'
                   cache: 'npm'
-                  registry-url: 'https://registry.npmjs.org'
+
+            # Trusted publishing needs a recent npm, whatever the runner ships.
+            - name: Use a current npm
+              run: npm install -g npm@latest && npm --version
 
             - name: Install dependencies
               run: npm ci
 
-            - name: Build
-              run: npm run build
-
+            # The engine builds itself on pack. A version already on npm is
+            # left alone, so a run can be repeated after a later step failed.
             - name: Publish to npm with provenance
-              run: npm publish --provenance --access public
               working-directory: packages/engine
+              run: |
+                  if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
+                      echo "$VERSION is already on npm"
+                      exit 0
+                  fi
+                  tag=latest
+                  [ "$PRERELEASE" = "true" ] && tag=next
+                  npm publish --provenance --access public --tag "$tag"
 
             # A release on GitHub with the changelog entry as its notes, so
-            # the tag has a page a reader can land on.
+            # the tag has a page a reader can land on. Left alone if it exists.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}
-                  TAG: ${{ github.ref_name }}
               run: |
-                  version="${TAG#engine-v}"
-                  awk -v v="$version" '
+                  if gh release view "$TAG" >/dev/null 2>&1; then
+                      echo "the release for $TAG exists"
+                      exit 0
+                  fi
+                  awk -v v="$VERSION" '
                       $0 == "## " v { on = 1; next }
                       on && /^## / { exit }
-                      on { print }
+                      on && (printed || NF) { print; printed = 1 }
                   ' packages/engine/CHANGELOG.md > notes.md
-                  gh release create "$TAG" --title "@jasonsdevspace/shelflens $version" --notes-file notes.md
+                  if ! grep -q . notes.md; then
+                      echo "the changelog entry for $VERSION is empty"
+                      exit 1
+                  fi
+                  flags=""
+                  [ "$PRERELEASE" = "true" ] && flags="--prerelease"
+                  gh release create "$TAG" --title "@jasonsdevspace/shelflens $VERSION" --notes-file notes.md $flags

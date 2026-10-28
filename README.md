@@ -164,9 +164,11 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
 
 To release the engine, bump the version in `packages/engine/package.json`, add the entry to
 `packages/engine/CHANGELOG.md`, merge that, then push a tag named for the version, such as
-`engine-v0.2.0`. The release workflow runs every check, confirms the tag, the version and the
-changelog agree, publishes to npm with provenance through npm's trusted publishing, and creates
-the GitHub release with the changelog entry as its notes. Nothing is published by hand.
+`engine-v0.2.0`. The release workflow confirms the tag, the version and the changelog agree and
+that the commit is on main, runs every check CI runs, publishes to npm with provenance through
+npm's trusted publishing, and creates the GitHub release with the changelog entry as its notes.
+A version with a hyphen, such as `0.2.0-rc.1`, is published under the `next` tag and marked as
+a prerelease. Nothing is published by hand.
 
 The schema is `packages/api/schema.graphql` and the storefront's operations are in
 `packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
