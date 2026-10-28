@@ -68,9 +68,16 @@ jobs:
                       *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
                   esac
 
+    # A called workflow may ask for no more than its caller grants, and CI's
+    # deploy job asks for the Pages permissions even though it never runs
+    # on a tag, so they are granted here or the run fails at startup.
     checks:
         needs: agree
         uses: ./.github/workflows/ci.yml
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 
     publish:
         needs: [agree, checks]
