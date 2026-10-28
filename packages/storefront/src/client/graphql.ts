@@ -70,7 +70,9 @@ interface Envelope<Result> {
 }
 
 /** The persisted name a generated document carries, if it has one. */
-const nameOf = (document: TypedDocumentString<unknown, unknown>): string | undefined => {
+const nameOf = <Result, Variables>(
+    document: TypedDocumentString<Result, Variables>
+): string | undefined => {
     const hash: unknown = document.__meta__?.hash;
     return typeof hash === 'string' ? hash : undefined;
 };
@@ -102,10 +104,10 @@ export const createClient = ({
         }
     };
 
-    const send = (
-        document: TypedDocumentString<unknown, unknown>,
+    const send = <Result, Variables>(
+        document: TypedDocumentString<Result, Variables>,
         name: string | undefined,
-        variables: unknown,
+        variables: Variables,
         signal: AbortSignal | undefined
     ): Promise<Response> => {
         const headers: Record<string, string> = {

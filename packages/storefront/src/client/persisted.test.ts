@@ -10,10 +10,12 @@ import * as operations from '../generated/operations.js';
  * name stands for exactly the text the page would have sent.
  */
 
-const documents = Object.entries(operations).filter(
-    (entry): entry is [string, operations.TypedDocumentString<unknown, unknown>] =>
-        entry[0].endsWith('Document')
-);
+const documents = Object.entries(operations)
+    .filter(([name]) => name.endsWith('Document'))
+    .map(
+        ([name, document]) =>
+            [name, document as unknown as operations.TypedDocumentString<unknown, unknown>] as const
+    );
 
 describe('the persisted operations', () => {
     it('name every document the page has, by the hash of its text', () => {
