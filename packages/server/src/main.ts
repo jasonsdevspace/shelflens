@@ -1,4 +1,4 @@
-import { createStore, createStoreApi } from '@shelflens/api';
+import { createStore, createStoreApi, withResponseCache } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 
 import { createServer } from './server.js';
@@ -14,7 +14,7 @@ const port = Number(process.env.PORT ?? 8080);
 const products = Number(process.env.PRODUCTS ?? 2000);
 
 const store = createStore({ catalog: generateCatalog({ products }) });
-const server = createServer({ api: createStoreApi(store) });
+const server = createServer({ api: withResponseCache(createStoreApi(store)) });
 
 server.listen(port, () => {
     console.log(`listening on ${port}, ${products} products, catalog ${store.version}`);

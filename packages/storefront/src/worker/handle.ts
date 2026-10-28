@@ -5,6 +5,7 @@ import {
     isStoreRequest,
     type StoreApi,
     viewerFromHeader,
+    withResponseCache,
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
@@ -14,8 +15,10 @@ import type { Catalog } from '@shelflens/catalog';
  * The store is built once, from the catalog the site ships beside it, the
  * first time anything asks. Every `POST` to `/graphql` after that is
  * answered in the page, so the client makes a real network request and
- * gets a real response, and only the hop to a server is missing. Anything
- * that is not a request for the API is left to the network.
+ * gets a real response, and only the hop to a server is missing. Answers
+ * are cached on the project's key, so a page the shopper returns to costs
+ * nothing. Anything that is not a request for the API is left to the
+ * network.
  */
 
 export interface WorkerApiOptions {
@@ -53,7 +56,7 @@ export const createWorkerApi = ({
                     throw new Error(`the catalog came back with status ${response.status}`);
                 return response.json() as Promise<Catalog>;
             })
-            .then((catalog) => createStoreApi(createStore({ catalog })))
+            .then((catalog) => withResponseCache(createStoreApi(createStore({ catalog }))))
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
                 store = undefined;

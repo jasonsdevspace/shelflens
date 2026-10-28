@@ -53,6 +53,7 @@ it.
 5. [The shape of the API](docs/decisions/0005-the-shape-of-the-api.md)
 6. [The API runs in the browser, and in Node when asked](docs/decisions/0006-the-api-runs-in-the-browser.md)
 7. [A GraphQL client of our own, rather than Apollo or urql](docs/decisions/0007-a-client-of-our-own.md)
+8. [One cache key, defined once](docs/decisions/0008-one-cache-key.md)
 
 ## Dev setup
 

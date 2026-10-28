@@ -1,4 +1,11 @@
 export {
+    type CachedStoreApi,
+    type ResponseCache,
+    type ResponseCacheOptions,
+    withResponseCache,
+} from './cache.js';
+export { type CacheKey, cacheKey, type CacheKeyInput } from './cache-key.js';
+export {
     type Context,
     createStore,
     GROUP_HEADER,
