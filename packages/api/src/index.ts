@@ -1,4 +1,11 @@
 export {
+    type CachedStoreApi,
+    type ResponseCache,
+    type ResponseCacheOptions,
+    withResponseCache,
+} from './cache.js';
+export { type CacheKey, cacheKey, type CacheKeyInput } from './cache-key.js';
+export {
     type Context,
     createStore,
     GROUP_HEADER,
@@ -16,4 +23,5 @@ export {
     type StoreRequest,
     type StoreResponse,
 } from './execute.js';
+export { canonical, fingerprint } from './fingerprint.js';
 export { buildStoreSchema, schemaSource } from './schema.js';

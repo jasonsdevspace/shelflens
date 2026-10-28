@@ -9,6 +9,10 @@ answer it over `@shelflens/search`.
   [number 5](../../docs/decisions/0005-the-shape-of-the-api.md).
 - **The viewer comes from the request.** Prices and visibility follow the customer group in the
   `shelflens-customer-group` header. There is no argument that asks for another group's prices.
+- **One cache key.** `cacheKey` is the only definition of what an answer is an answer to: the
+  store version, the viewer's group, and the operation with its variables. `withResponseCache`
+  remembers answers on that key, and a test shows the leak a key without the viewer causes.
+  [Decision record 8](../../docs/decisions/0008-one-cache-key.md).
 - **Requests have limits.** Depth and width are checked at validation. A client's own mistake
   comes back with a message and a code. A resolver's failure comes back as one fixed message
   with a path, never the reason.
@@ -18,9 +22,9 @@ answer it over `@shelflens/search`.
   explains why.
 
 ```ts
-import { createStore, createStoreApi, viewerFromHeader } from '@shelflens/api';
+import { createStore, createStoreApi, viewerFromHeader, withResponseCache } from '@shelflens/api';
 
-const api = createStoreApi(createStore({ catalog }));
+const api = withResponseCache(createStoreApi(createStore({ catalog })));
 const response = await api.run(
     { query: '{ search(input: { phrase: "boot" }) { total } }' },
     viewerFromHeader(request.headers.get('shelflens-customer-group'))

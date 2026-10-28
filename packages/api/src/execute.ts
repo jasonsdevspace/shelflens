@@ -120,6 +120,8 @@ export const isStoreRequest = (value: unknown): value is StoreRequest =>
 
 export interface StoreApi {
     readonly schema: GraphQLSchema;
+    /** The store's version, part of every cache key. */
+    readonly version: string;
     run(request: StoreRequest, viewer: Viewer, now?: Date): Promise<StoreResponse>;
 }
 
@@ -181,5 +183,5 @@ export const createStoreApi = (store: Store, limits: Limits = DEFAULT_LIMITS): S
         };
     };
 
-    return { schema, run };
+    return { schema, version: store.version, run };
 };

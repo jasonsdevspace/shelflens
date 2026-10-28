@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { GROUP_HEADER } from '@shelflens/api';
+import { createStore, GROUP_HEADER } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +34,9 @@ describe('the API inside the worker', () => {
         const second = await api.handle(graphql({ query: '{ store { name } }' }));
 
         expect(await first?.json()).toEqual({
-            data: { store: { name: 'ShelfLens', catalogVersion: `${catalog.version}+rules.0` } },
+            data: {
+                store: { name: 'ShelfLens', catalogVersion: createStore({ catalog }).version },
+            },
         });
         expect(second?.status).toBe(200);
         expect(fetchImpl).toHaveBeenCalledTimes(1);

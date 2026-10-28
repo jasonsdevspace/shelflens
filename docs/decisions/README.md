@@ -18,3 +18,5 @@ so the evidence was still fresh.
    service worker answers the demo, a thin Node server answers everything else.
 7. [A GraphQL client of our own, rather than Apollo or urql](0007-a-client-of-our-own.md): the
    stale response and the cache key are the point, so they are code here, not configuration.
+8. [One cache key, defined once](0008-one-cache-key.md): the store version, the viewer and the
+   request, and the test that shows a member's price reaching a guest without the viewer.

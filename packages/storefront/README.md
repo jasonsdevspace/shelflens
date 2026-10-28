@@ -25,8 +25,8 @@ the page.
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.
 - **The API is a service worker.** `src/worker` builds the store from the shipped catalog during
-  install, claims the page on activation, and answers `POST /graphql` from inside the page. Its
-  handler is tested with plain fetch requests.
+  install, claims the page on activation, and answers `POST /graphql` from inside the page, with
+  answers cached on the API's one cache key. Its handler is tested with plain fetch requests.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
   and no worker fighting hot reloading.
