@@ -3,6 +3,7 @@ import {
     type Engine,
     type Facet,
     type Filter,
+    type Recovery,
     type SearchRequest,
     type SearchResult,
     type SortClause,
@@ -46,6 +47,34 @@ const asShopperFacet = (facet: Facet, group: CustomerGroup): Facet =>
 export const createStoreEngine = (catalog: Catalog): Engine =>
     createEngine(toDocuments(catalog), storeConfig());
 
+/** The shopper's filters as the engine names them, prices by the group's column. */
+const engineFilters = (filters: readonly Filter[], group: CustomerGroup): Filter[] =>
+    filters.map((filter) =>
+        filter.attribute === 'price' ? { ...filter, attribute: priceAttribute(group) } : filter
+    );
+
+/**
+ * What to offer when a search found nothing. The group's visibility is
+ * kept throughout, and so is any filter on the attributes named as fixed,
+ * such as the category a shopper is browsing, which is a place rather
+ * than a filter they chose.
+ */
+export const recoverStore = (
+    engine: Engine,
+    request: StoreSearchRequest,
+    fixedAttributes: readonly string[] = []
+): Recovery => {
+    const { group, filters = [], sort: _sort, facets: _facets, ...rest } = request;
+    const named = engineFilters(filters, group);
+    return engine.recover(
+        { ...rest, filters: named.filter((filter) => !fixedAttributes.includes(filter.attribute)) },
+        [
+            { attribute: 'visibleTo', eq: group },
+            ...named.filter((filter) => fixedAttributes.includes(filter.attribute)),
+        ]
+    );
+};
+
 export const searchStore = (engine: Engine, request: StoreSearchRequest): SearchResult => {
     const { group, filters = [], sort = [], facets = [...SHOPPER_FACETS], ...rest } = request;
     const result = engine.search({
@@ -54,11 +83,7 @@ export const searchStore = (engine: Engine, request: StoreSearchRequest): Search
             // A product the group may not see is not merely hidden from the
             // page. It is out of the results, the counts and the totals.
             { attribute: 'visibleTo', eq: group },
-            ...filters.map((filter) =>
-                filter.attribute === 'price'
-                    ? { ...filter, attribute: priceAttribute(group) }
-                    : filter
-            ),
+            ...engineFilters(filters, group),
         ],
         sort: sort.map((clause) =>
             clause.by === 'price' ? { ...clause, by: priceAttribute(group) } : clause

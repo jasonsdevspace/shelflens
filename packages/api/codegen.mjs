@@ -40,6 +40,8 @@ export default {
                     Category: '@shelflens/catalog#Category as CategoryModel',
                     SearchHit: '../resolvers.js#HitModel',
                     SearchResult: '../resolvers.js#SearchResultModel',
+                    NoResults: '../resolvers.js#NoResultsModel',
+                    RelaxedSearch: '../resolvers.js#RelaxedModel',
                     Facet: '@jasonsdevspace/shelflens#Facet as FacetModel',
                     ValueFacet: '@jasonsdevspace/shelflens#Facet as FacetModel',
                     RangeFacet: '@jasonsdevspace/shelflens#Facet as FacetModel',

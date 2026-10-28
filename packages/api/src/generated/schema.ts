@@ -5,7 +5,7 @@ import type {
     Brand as BrandModel,
     Category as CategoryModel,
 } from '@shelflens/catalog';
-import type { HitModel, SearchResultModel } from '../resolvers.js';
+import type { HitModel, SearchResultModel, NoResultsModel, RelaxedModel } from '../resolvers.js';
 import type { Facet as FacetModel } from '@jasonsdevspace/shelflens';
 import type { Context } from '../context.js';
 export type Maybe<T> = T | null;
@@ -104,6 +104,31 @@ export type Money = {
     readonly __typename?: 'Money';
     readonly amount: Scalars['Int']['output'];
     readonly currency: Scalars['String']['output'];
+};
+
+/**
+ * What a page can offer instead of an empty one. Each part is present only
+ * when it would find something.
+ */
+export type NoResults = {
+    readonly __typename?: 'NoResults';
+    /** How many products the same phrase finds with every filter removed. */
+    readonly foundWithoutFilters: Scalars['Int']['output'];
+    /**
+     * The most rated products the viewer may see, within the category being
+     * browsed. A stand-in for popularity until the store collects events.
+     */
+    readonly popular: ReadonlyArray<Product>;
+    /**
+     * The phrase with some words left out, when that finds something under
+     * the same filters.
+     */
+    readonly relaxed: Maybe<RelaxedSearch>;
+    /**
+     * The phrase with each word nothing matched replaced by the nearest word
+     * in use, when that finds something under the same filters.
+     */
+    readonly suggestion: Maybe<Scalars['String']['output']>;
 };
 
 export type PriceRange = {
@@ -220,6 +245,14 @@ export type Rating = {
     readonly count: Scalars['Int']['output'];
 };
 
+export type RelaxedSearch = {
+    readonly __typename?: 'RelaxedSearch';
+    /** The words left out of the phrase as typed. */
+    readonly dropped: ReadonlyArray<Scalars['String']['output']>;
+    readonly phrase: Scalars['String']['output'];
+    readonly result: SearchResult;
+};
+
 export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
 export type RuleEffect = {
@@ -268,6 +301,8 @@ export type SearchResult = {
     readonly matching: Matching;
     /** Which merchandising rules shaped this result, and which the sort set aside. */
     readonly merchandising: Merchandising;
+    /** What to show instead of nothing. Null unless the search found nothing. */
+    readonly noResults: Maybe<NoResults>;
     readonly page: Scalars['Int']['output'];
     readonly pageSize: Scalars['Int']['output'];
     /** The sort actually applied, after any fallback. */
@@ -492,6 +527,7 @@ export type ResolversTypes = {
     Matching: Matching;
     Merchandising: ResolverTypeWrapper<Merchandising>;
     Money: ResolverTypeWrapper<Money>;
+    NoResults: ResolverTypeWrapper<NoResultsModel>;
     PriceRange: ResolverTypeWrapper<PriceRange>;
     Product: ResolverTypeWrapper<ProductModel>;
     Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -499,6 +535,7 @@ export type ResolversTypes = {
     RangeFacet: ResolverTypeWrapper<FacetModel>;
     RangeInput: RangeInput;
     Rating: ResolverTypeWrapper<Rating>;
+    RelaxedSearch: ResolverTypeWrapper<RelaxedModel>;
     RuleAction: RuleAction;
     RuleEffect: ResolverTypeWrapper<RuleEffect>;
     SearchHit: ResolverTypeWrapper<HitModel>;
@@ -535,6 +572,7 @@ export type ResolversParentTypes = {
     MatchInput: MatchInput;
     Merchandising: Merchandising;
     Money: Money;
+    NoResults: NoResultsModel;
     PriceRange: PriceRange;
     Product: ProductModel;
     Query: Record<PropertyKey, never>;
@@ -542,6 +580,7 @@ export type ResolversParentTypes = {
     RangeFacet: FacetModel;
     RangeInput: RangeInput;
     Rating: Rating;
+    RelaxedSearch: RelaxedModel;
     RuleEffect: RuleEffect;
     SearchHit: HitModel;
     SearchInput: SearchInput;
@@ -613,6 +652,16 @@ export type MoneyResolvers<
 > = {
     amount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type NoResultsResolvers<
+    ContextType = Context,
+    ParentType extends ResolversParentTypes['NoResults'] = ResolversParentTypes['NoResults'],
+> = {
+    foundWithoutFilters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    popular?: Resolver<ReadonlyArray<ResolversTypes['Product']>, ParentType, ContextType>;
+    relaxed?: Resolver<Maybe<ResolversTypes['RelaxedSearch']>, ParentType, ContextType>;
+    suggestion?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type PriceRangeResolvers<
@@ -696,6 +745,16 @@ export type RatingResolvers<
     count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
+export type RelaxedSearchResolvers<
+    ContextType = Context,
+    ParentType extends ResolversParentTypes['RelaxedSearch'] =
+        ResolversParentTypes['RelaxedSearch'],
+> = {
+    dropped?: Resolver<ReadonlyArray<ResolversTypes['String']>, ParentType, ContextType>;
+    phrase?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    result?: Resolver<ResolversTypes['SearchResult'], ParentType, ContextType>;
+};
+
 export type RuleEffectResolvers<
     ContextType = Context,
     ParentType extends ResolversParentTypes['RuleEffect'] = ResolversParentTypes['RuleEffect'],
@@ -722,6 +781,7 @@ export type SearchResultResolvers<
     items?: Resolver<ReadonlyArray<ResolversTypes['SearchHit']>, ParentType, ContextType>;
     matching?: Resolver<ResolversTypes['Matching'], ParentType, ContextType>;
     merchandising?: Resolver<ResolversTypes['Merchandising'], ParentType, ContextType>;
+    noResults?: Resolver<Maybe<ResolversTypes['NoResults']>, ParentType, ContextType>;
     page?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     pageSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     sort?: Resolver<ReadonlyArray<ResolversTypes['SortClause']>, ParentType, ContextType>;
@@ -822,12 +882,14 @@ export type Resolvers<ContextType = Context> = {
     Facet?: FacetResolvers<ContextType>;
     Merchandising?: MerchandisingResolvers<ContextType>;
     Money?: MoneyResolvers<ContextType>;
+    NoResults?: NoResultsResolvers<ContextType>;
     PriceRange?: PriceRangeResolvers<ContextType>;
     Product?: ProductResolvers<ContextType>;
     Query?: QueryResolvers<ContextType>;
     RangeBucket?: RangeBucketResolvers<ContextType>;
     RangeFacet?: RangeFacetResolvers<ContextType>;
     Rating?: RatingResolvers<ContextType>;
+    RelaxedSearch?: RelaxedSearchResolvers<ContextType>;
     RuleEffect?: RuleEffectResolvers<ContextType>;
     SearchHit?: SearchHitResolvers<ContextType>;
     SearchResult?: SearchResultResolvers<ContextType>;

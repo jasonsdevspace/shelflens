@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { withinOneEdit } from './edits.js';
+import { withinEdits, withinOneEdit } from './edits.js';
 
 describe('withinOneEdit', () => {
     it.each([
@@ -30,5 +30,32 @@ describe('withinOneEdit', () => {
     it('treats a swap of adjacent characters as one edit, and a swap at a distance as two', () => {
         expect(withinOneEdit('abcd', 'acbd')).toBe(true);
         expect(withinOneEdit('abcd', 'adcb')).toBe(false);
+    });
+});
+
+describe('within so many edits', () => {
+    it('counts substitutions, insertions, deletions and swaps, up to the limit', () => {
+        expect(withinEdits('jacket', 'jakkett', 2)).toBe(true);
+        expect(withinEdits('jacket', 'jakkett', 1)).toBe(false);
+        expect(withinEdits('sneaker', 'snaekers', 2)).toBe(true);
+        expect(withinEdits('boot', 'boat', 2)).toBe(true);
+        expect(withinEdits('boot', 'bottle', 2)).toBe(false);
+        expect(withinEdits('', 'ab', 2)).toBe(true);
+        expect(withinEdits('abc', 'xyz', 2)).toBe(false);
+        expect(withinEdits('shoe', 'shoes', 0)).toBe(false);
+        expect(withinEdits('shoe', 'shoe', 0)).toBe(true);
+    });
+
+    it('agrees with the one-edit comparison at a limit of one', () => {
+        for (const [a, b] of [
+            ['shoe', 'sohe'],
+            ['shoe', 'shoes'],
+            ['shoe', 'sho'],
+            ['shoe', 'shot'],
+            ['shoe', 'shoot'],
+            ['shoe', 'hose'],
+        ]) {
+            expect(withinEdits(a ?? '', b ?? '', 1)).toBe(withinOneEdit(a ?? '', b ?? ''));
+        }
     });
 });

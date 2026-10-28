@@ -1,6 +1,7 @@
 import { useId } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
+import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
     type SearchState,
@@ -17,6 +18,7 @@ import type { GraphQLClient } from '../client/graphql.js';
 import { SearchDocument } from '../generated/operations.js';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
+import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 
@@ -96,34 +98,19 @@ export const ResultsPage = ({
                     <nav className="crumbs" aria-label="Category">
                         <ol className="crumb-list">
                             <li>
-                                <a
-                                    href={serializeSearchState(allProducts) || '?'}
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        navigate(allProducts);
-                                    }}
-                                >
+                                <StateLink to={allProducts} navigate={navigate}>
                                     All products
-                                </a>
+                                </StateLink>
                             </li>
                             {crumbs.map((crumb) => (
                                 <li key={crumb.id}>
-                                    <a
-                                        aria-current={
-                                            crumb.id === state.category ? 'page' : undefined
-                                        }
-                                        href={serializeSearchState({
-                                            ...state,
-                                            category: crumb.id,
-                                            page: 1,
-                                        })}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            navigate({ ...state, category: crumb.id, page: 1 });
-                                        }}
+                                    <StateLink
+                                        to={{ ...state, category: crumb.id, page: 1 }}
+                                        navigate={navigate}
+                                        current={crumb.id === state.category}
                                     >
                                         {crumb.name}
-                                    </a>
+                                    </StateLink>
                                 </li>
                             ))}
                         </ol>
@@ -168,7 +155,7 @@ export const ResultsPage = ({
                     </p>
                 )}
                 {result.total === 0 ? (
-                    <p className="notice">Nothing matched. Try fewer filters or another phrase.</p>
+                    <NoResults state={state} navigate={navigate} offered={result.noResults} />
                 ) : (
                     <ul className="cards" aria-label="Products">
                         {result.items.map((hit, index) => (

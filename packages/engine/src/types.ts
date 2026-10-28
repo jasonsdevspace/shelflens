@@ -238,6 +238,26 @@ export interface SearchResult {
 }
 
 /**
+ * What a page can offer instead of nothing, when a search found nothing.
+ *
+ * Each part is computed from the request alone, so the engine stays pure,
+ * and each is present only when it would find something.
+ */
+export interface Recovery {
+    /** The phrase with each word nothing matched replaced by its nearest known word. */
+    readonly correction?: string;
+    /** The phrase with some of the shopper's words left out, and what it finds. */
+    readonly relaxed?: {
+        readonly query: string;
+        /** The words left out, as the shopper typed them. */
+        readonly dropped: readonly string[];
+        readonly total: number;
+    };
+    /** How many documents the same phrase finds with every filter removed. */
+    readonly foundWithoutFilters: number;
+}
+
+/**
  * A request the engine cannot carry out.
  *
  * Thrown for a request that names an attribute the config does not, which

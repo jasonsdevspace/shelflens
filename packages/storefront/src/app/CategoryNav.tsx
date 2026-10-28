@@ -1,5 +1,6 @@
 import { type CategoryTree, childrenOf } from './categories.js';
-import { EMPTY_STATE, type SearchState, serializeSearchState } from './url.js';
+import { StateLink } from './StateLink.jsx';
+import { EMPTY_STATE, type SearchState } from './url.js';
 import type { Navigate } from './useUrlState.js';
 
 /** The root categories, as the store's main navigation. */
@@ -22,17 +23,14 @@ export const CategoryNav = ({
                     const target: SearchState = { ...EMPTY_STATE, category: root.id };
                     return (
                         <li key={root.id}>
-                            <a
+                            <StateLink
                                 className="category-link"
-                                href={serializeSearchState(target)}
-                                aria-current={current === root.id ? 'page' : undefined}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    navigate(target);
-                                }}
+                                to={target}
+                                navigate={navigate}
+                                current={current === root.id}
                             >
                                 {root.name}
-                            </a>
+                            </StateLink>
                         </li>
                     );
                 })}

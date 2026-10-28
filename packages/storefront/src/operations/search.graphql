@@ -1,3 +1,27 @@
+fragment Card on Product {
+    sku
+    name
+    colors
+    brand {
+        name
+    }
+    price {
+        min {
+            amount
+            currency
+        }
+        max {
+            amount
+            currency
+        }
+    }
+    rating {
+        average
+        count
+    }
+    inStock
+}
+
 query Search($input: SearchInput!, $explain: Boolean = false) {
     search(input: $input) {
         total
@@ -29,27 +53,26 @@ query Search($input: SearchInput!, $explain: Boolean = false) {
                 }
             }
             product {
-                sku
-                name
-                colors
-                brand {
-                    name
-                }
-                price {
-                    min {
-                        amount
-                        currency
+                ...Card
+            }
+        }
+        noResults {
+            suggestion
+            foundWithoutFilters
+            relaxed {
+                phrase
+                dropped
+                result {
+                    total
+                    items {
+                        product {
+                            ...Card
+                        }
                     }
-                    max {
-                        amount
-                        currency
-                    }
                 }
-                rating {
-                    average
-                    count
-                }
-                inStock
+            }
+            popular {
+                ...Card
             }
         }
         facets {

@@ -38,6 +38,10 @@ The engine knows nothing about products. Whoever owns the catalog decides what b
 - **Exact first, then one typo.** The fuzzy pass, which allows one inserted, deleted, substituted
   or swapped character per word, runs only when the exact pass finds nothing. A correctly typed
   query is never diluted with corrections of itself, and the result says which pass it came from.
+- **Nothing is still an answer.** When a search finds nothing, `recover` offers what would: the
+  phrase with a word two typos off replaced by the nearest word in use, the phrase with the words
+  nothing matched left out, or failing that without its rarest word, and a count of what the same
+  phrase finds without its filters. Each is offered only if it finds something.
 - **Synonyms widen the query, not the index.** A rule can be one way or equivalent, and a
   multi-word synonym counts only where every word is present.
 - **The last word can be a prefix**, for search as you type, when the request says so.

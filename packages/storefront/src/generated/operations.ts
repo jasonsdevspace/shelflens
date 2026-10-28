@@ -137,6 +137,19 @@ export type ProductQuery = {
     } | null;
 };
 
+export type CardFragment = {
+    readonly sku: string;
+    readonly name: string;
+    readonly colors: ReadonlyArray<string>;
+    readonly inStock: boolean;
+    readonly brand: { readonly name: string };
+    readonly price: {
+        readonly min: { readonly amount: number; readonly currency: string };
+        readonly max: { readonly amount: number; readonly currency: string };
+    };
+    readonly rating: { readonly average: number; readonly count: number } | null;
+};
+
 export type SearchQueryVariables = Exact<{
     input: SearchInput;
     explain?: boolean | null | undefined;
@@ -182,6 +195,52 @@ export type SearchQuery = {
                 readonly rating: { readonly average: number; readonly count: number } | null;
             };
         }>;
+        readonly noResults: {
+            readonly suggestion: string | null;
+            readonly foundWithoutFilters: number;
+            readonly relaxed: {
+                readonly phrase: string;
+                readonly dropped: ReadonlyArray<string>;
+                readonly result: {
+                    readonly total: number;
+                    readonly items: ReadonlyArray<{
+                        readonly product: {
+                            readonly sku: string;
+                            readonly name: string;
+                            readonly colors: ReadonlyArray<string>;
+                            readonly inStock: boolean;
+                            readonly brand: { readonly name: string };
+                            readonly price: {
+                                readonly min: {
+                                    readonly amount: number;
+                                    readonly currency: string;
+                                };
+                                readonly max: {
+                                    readonly amount: number;
+                                    readonly currency: string;
+                                };
+                            };
+                            readonly rating: {
+                                readonly average: number;
+                                readonly count: number;
+                            } | null;
+                        };
+                    }>;
+                };
+            } | null;
+            readonly popular: ReadonlyArray<{
+                readonly sku: string;
+                readonly name: string;
+                readonly colors: ReadonlyArray<string>;
+                readonly inStock: boolean;
+                readonly brand: { readonly name: string };
+                readonly price: {
+                    readonly min: { readonly amount: number; readonly currency: string };
+                    readonly max: { readonly amount: number; readonly currency: string };
+                };
+                readonly rating: { readonly average: number; readonly count: number } | null;
+            }>;
+        } | null;
         readonly facets: ReadonlyArray<
             | {
                   readonly name: string;
@@ -264,7 +323,34 @@ export class TypedDocumentString<TResult, TVariables>
         return this.value;
     }
 }
-
+export const CardFragmentDoc = new TypedDocumentString(
+    `
+    fragment Card on Product {
+  sku
+  name
+  colors
+  brand {
+    name
+  }
+  price {
+    min {
+      amount
+      currency
+    }
+    max {
+      amount
+      currency
+    }
+  }
+  rating {
+    average
+    count
+  }
+  inStock
+}
+    `,
+    { fragmentName: 'Card' }
+) as unknown as TypedDocumentString<CardFragment, unknown>;
 export const CategoriesDocument = new TypedDocumentString(
     `
     query Categories {
@@ -357,27 +443,26 @@ export const SearchDocument = new TypedDocumentString(
         }
       }
       product {
-        sku
-        name
-        colors
-        brand {
-          name
-        }
-        price {
-          min {
-            amount
-            currency
+        ...Card
+      }
+    }
+    noResults {
+      suggestion
+      foundWithoutFilters
+      relaxed {
+        phrase
+        dropped
+        result {
+          total
+          items {
+            product {
+              ...Card
+            }
           }
-          max {
-            amount
-            currency
-          }
         }
-        rating {
-          average
-          count
-        }
-        inStock
+      }
+      popular {
+        ...Card
       }
     }
     facets {
@@ -404,8 +489,30 @@ export const SearchDocument = new TypedDocumentString(
     }
   }
 }
-    `,
-    { hash: 'cf00882d99ac23c39e83371aeba08bafcec357b69ad91da7b1115a10b4601510' }
+    fragment Card on Product {
+  sku
+  name
+  colors
+  brand {
+    name
+  }
+  price {
+    min {
+      amount
+      currency
+    }
+    max {
+      amount
+      currency
+    }
+  }
+  rating {
+    average
+    count
+  }
+  inStock
+}`,
+    { hash: '0bebbc779d4867b18ee013a7eefb37bf56cf6bdee71d8b03412d6edbd0dda16f' }
 ) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString(
     `

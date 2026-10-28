@@ -142,3 +142,21 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await expect(aside).toBeVisible();
     await expect(aside).toContainText('featured-jackets');
 });
+
+test('nothing matched still shows a page: a shorter phrase with results, or a spelling', async ({
+    page,
+}) => {
+    await page.goto('/?q=zzqx jacket');
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText(
+        'Showing results for "jacket" instead'
+    );
+    await expect(
+        page.getByRole('list', { name: 'Results for "jacket"' }).getByRole('link').first()
+    ).toBeVisible();
+    await audit(page);
+
+    await page.goto('/?q=jakkett');
+    await page.getByRole('link', { name: 'jacket', exact: true }).click();
+    await expect(page).toHaveURL(/\?q=jacket$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
+});
