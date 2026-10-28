@@ -7,37 +7,47 @@ import { STOPS } from './stops.js';
 import { Tour } from './Tour.jsx';
 
 describe('the tour panel', () => {
-    it('walks the stops, links each to its page, and finishes by closing', async () => {
+    it('shows the stop it is given, links it to its page, and asks for the next', async () => {
         const navigate = vi.fn();
         const onClose = vi.fn();
+        const onIndex = vi.fn();
         const user = userEvent.setup();
-        render(<Tour navigate={navigate} onClose={onClose} />);
-
-        const first = STOPS[0];
-        if (!first) throw new Error('expected a stop');
-        expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
-        expect(screen.getByText(`Stop 1 of ${STOPS.length}`)).toBeInTheDocument();
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(first.title);
-        expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
-
-        await user.click(screen.getByRole('button', { name: 'Next' }));
         const second = STOPS[1];
-        if (!second) throw new Error('expected a second stop');
+        if (!second?.to) throw new Error('expected a second stop with a page');
+        render(
+            <Tour index={1} onIndex={onIndex} navigate={navigate} onClose={onClose} takeFocus />
+        );
+
+        expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
+        expect(screen.getByText(`Stop 2 of ${STOPS.length}`)).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(second.title);
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
         expect(screen.getByRole('link', { name: 'Try it' })).toHaveAttribute(
             'href',
             serializeSearchState(second.to) || '?'
         );
         await user.click(screen.getByRole('link', { name: 'Try it' }));
         expect(navigate).toHaveBeenCalledWith(second.to);
-
+        await user.click(screen.getByRole('button', { name: 'Next' }));
+        expect(onIndex).toHaveBeenCalledWith(2);
         await user.click(screen.getByRole('button', { name: 'Previous' }));
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(first.title);
+        expect(onIndex).toHaveBeenCalledWith(0);
+    });
 
-        for (let i = 1; i < STOPS.length; i += 1) {
-            await user.click(screen.getByRole('button', { name: 'Next' }));
-        }
-        expect(screen.getByText(`Stop ${STOPS.length} of ${STOPS.length}`)).toBeInTheDocument();
+    it('has no link on the stop the page cannot reach, and finishes by closing', async () => {
+        const onClose = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <Tour
+                index={STOPS.length - 1}
+                onIndex={vi.fn()}
+                navigate={vi.fn()}
+                onClose={onClose}
+                takeFocus={false}
+            />
+        );
+        expect(screen.queryByRole('link', { name: 'Try it' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus();
         await user.click(screen.getByRole('button', { name: 'Finish' }));
         expect(onClose).toHaveBeenCalledOnce();
     });

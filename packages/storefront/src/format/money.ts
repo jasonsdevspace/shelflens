@@ -30,8 +30,23 @@ const formatterFor = (currency: string, locale: string, whole: boolean): Intl.Nu
 
 export const DEFAULT_LOCALE = 'en-US';
 
-export const formatMoney = ({ amount, currency }: Money, locale = DEFAULT_LOCALE): string =>
-    formatterFor(currency, locale, amount % 100 === 0).format(amount / 100);
+/** A locale tag the formatter accepts, or the default when the store's cannot be read. */
+export const safeLocale = (locale: string | undefined): string => {
+    try {
+        return Intl.getCanonicalLocales(locale ?? '')[0] ?? DEFAULT_LOCALE;
+    } catch {
+        return DEFAULT_LOCALE;
+    }
+};
+
+/** How many minor units make one of the currency: 100 for a dollar, 1 for a yen, 1000 for a dinar. */
+const minorUnitsOf = (currency: string, locale: string): number =>
+    10 ** (formatterFor(currency, locale, false).resolvedOptions().maximumFractionDigits ?? 2);
+
+export const formatMoney = ({ amount, currency }: Money, locale = DEFAULT_LOCALE): string => {
+    const units = minorUnitsOf(currency, locale);
+    return formatterFor(currency, locale, amount % units === 0).format(amount / units);
+};
 
 /** A single price, or the span when variants are priced differently. */
 export const formatPriceRange = (min: Money, max: Money, locale = DEFAULT_LOCALE): string =>

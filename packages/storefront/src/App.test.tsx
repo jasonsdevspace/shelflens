@@ -417,8 +417,23 @@ describe('the tour', () => {
         expect(screen.queryByRole('complementary', { name: 'Tour' })).toBeNull();
         expect(localStorage.getItem('shelflens.tour')).toBe('seen');
 
+        expect(screen.getByRole('button', { name: 'Tour' })).toHaveFocus();
+
         await user.click(screen.getByRole('button', { name: 'Tour' }));
-        expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
+        const reopened = screen.getByRole('complementary', { name: 'Tour' });
+        expect(within(reopened).getByRole('button', { name: 'Close' })).toHaveFocus();
+    });
+
+    it('resumes at the stop it was closed on', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open();
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        expect(tour).toHaveTextContent('Stop 3 of');
+        await user.click(within(tour).getByRole('button', { name: 'Close' }));
+        await user.click(screen.getByRole('button', { name: 'Tour' }));
+        expect(screen.getByRole('complementary', { name: 'Tour' })).toHaveTextContent('Stop 3 of');
     });
 
     it('leads to the page each stop describes, and stays open there', async () => {

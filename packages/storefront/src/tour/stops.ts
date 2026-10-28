@@ -13,8 +13,8 @@ export interface Stop {
     readonly title: string;
     /** What to do and what to look for, in two sentences. */
     readonly body: string;
-    /** The page state that sets the gotcha up. */
-    readonly to: SearchState;
+    /** The page state that sets the gotcha up, for every stop the page can reach. */
+    readonly to?: SearchState;
     /** The tests that prove it, as paths from the repository root. */
     readonly tests: readonly string[];
 }
@@ -124,7 +124,6 @@ export const STOPS: readonly Stop[] = [
         id: 'errors',
         title: 'A mistake is a validation error, not a 500',
         body: 'The one stop the page cannot reach. The demo accepts only its own operations, so nothing a browser sends can be malformed. The tests send the API a filter on an attribute it does not have and a query that nests too deep, and get a message with a code, never a stack.',
-        to: EMPTY_STATE,
         tests: ['packages/api/src/api.test.ts', 'packages/api/src/http.test.ts'],
     },
 ];

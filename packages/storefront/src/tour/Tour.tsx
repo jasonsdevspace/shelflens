@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { StateLink } from '../app/StateLink.jsx';
 import type { Navigate } from '../app/useUrlState.js';
@@ -10,26 +10,38 @@ import { STOPS } from './stops.js';
  *
  * It is a landmark beside the page, not a dialog over it, so a reviewer
  * can use the page while reading. The stop's text is a live region, so a
- * screen reader hears the next stop when it changes.
+ * screen reader hears the next stop when it changes. Which stop is open
+ * belongs to the app, so closing the panel and opening it again resumes
+ * where it was. When the panel is opened on request, focus moves into it.
  */
 
+export const TOUR_ID = 'tour';
+
 export interface TourProps {
+    readonly index: number;
+    readonly onIndex: (index: number) => void;
     readonly navigate: Navigate;
     readonly onClose: () => void;
+    /** Move focus into the panel as it appears. Not on a first visit, which the page owns. */
+    readonly takeFocus: boolean;
 }
 
-export const Tour = ({ navigate, onClose }: TourProps) => {
-    const [index, setIndex] = useState(0);
+export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps) => {
+    const closer = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (takeFocus) closer.current?.focus();
+    }, [takeFocus]);
+
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;
     const last = index === STOPS.length - 1;
     return (
-        <aside className="tour" aria-label="Tour">
+        <aside id={TOUR_ID} className="tour" aria-label="Tour">
             <div className="tour-head">
                 <p className="tour-count">
                     Stop {index + 1} of {STOPS.length}
                 </p>
-                <button type="button" className="tour-close" onClick={onClose}>
+                <button ref={closer} type="button" className="tour-close" onClick={onClose}>
                     Close
                 </button>
             </div>
@@ -47,21 +59,23 @@ export const Tour = ({ navigate, onClose }: TourProps) => {
                 </p>
             </div>
             <div className="tour-nav">
-                <StateLink className="tour-try" to={stop.to} navigate={navigate}>
-                    Try it
-                </StateLink>
+                {stop.to && (
+                    <StateLink className="tour-try" to={stop.to} navigate={navigate}>
+                        Try it
+                    </StateLink>
+                )}
                 <button
                     type="button"
                     className="tour-step"
                     disabled={index === 0}
-                    onClick={() => setIndex(index - 1)}
+                    onClick={() => onIndex(index - 1)}
                 >
                     Previous
                 </button>
                 <button
                     type="button"
                     className="tour-step"
-                    onClick={() => (last ? onClose() : setIndex(index + 1))}
+                    onClick={() => (last ? onClose() : onIndex(index + 1))}
                 >
                     {last ? 'Finish' : 'Next'}
                 </button>

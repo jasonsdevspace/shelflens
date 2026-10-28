@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { serializeSearchState } from '../app/url.js';
+import { EMPTY_STATE, serializeSearchState } from '../app/url.js';
 import { STOPS } from './stops.js';
 
 /*
@@ -23,27 +23,33 @@ describe('the tour', () => {
         }
     });
 
-    it('has a stop for each gotcha, each a page the URL can name', () => {
-        const ids = STOPS.map((stop) => stop.id);
-        expect(new Set(ids).size).toBe(ids.length);
-        expect(ids).toEqual(
-            expect.arrayContaining([
-                'stale',
-                'debounce',
-                'cache-key',
-                'paging',
-                'facets',
-                'normalization',
-                'url',
-                'edges',
-                'rules',
-                'errors',
-                'prices',
-                'combobox',
-            ])
-        );
+    it('has a stop for each gotcha, in the order a shopper meets them', () => {
+        expect(STOPS.map((stop) => stop.id)).toEqual([
+            'stale',
+            'debounce',
+            'combobox',
+            'cache-key',
+            'normalization',
+            'facets',
+            'url',
+            'paging',
+            'edges',
+            'rules',
+            'explain',
+            'nothing',
+            'prices',
+            'errors',
+        ]);
+    });
+
+    it('links every stop the page can reach, and only those', () => {
         for (const stop of STOPS) {
-            expect(() => serializeSearchState(stop.to), stop.id).not.toThrow();
+            if (stop.id === 'errors') {
+                expect(stop.to, stop.id).toBeUndefined();
+                continue;
+            }
+            expect(stop.to, stop.id).toBeDefined();
+            expect(() => serializeSearchState(stop.to ?? EMPTY_STATE)).not.toThrow();
         }
     });
 });

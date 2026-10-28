@@ -208,7 +208,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
     );
 };
 
-export const Facets = ({ ...props }: FacetsProps) => {
+export const Facets = (props: FacetsProps) => {
     const { facets, state, onChange } = props;
     const byName = new Map(facets.map((facet) => [facet.name, facet]));
     const facetFor = (name: string) => byName.get(name);

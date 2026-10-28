@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
@@ -12,12 +12,13 @@ import {
     type CustomerGroup,
     type GraphQLClient,
 } from './client/graphql.js';
+import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
-import { Tour } from './tour/Tour.jsx';
+import { Tour, TOUR_ID } from './tour/Tour.jsx';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -42,23 +43,27 @@ const Standby = ({ readiness }: { readonly readiness: Readiness }) => {
 
 /** What the store query says about the store, or the defaults until it has answered. */
 const storeInfoOf = (data: StoreQuery | undefined): StoreInfo =>
-    data ? { currency: data.store.currency, locale: data.store.locale } : DEFAULT_STORE_INFO;
+    data
+        ? { currency: data.store.currency, locale: safeLocale(data.store.locale) }
+        : DEFAULT_STORE_INFO;
 
-/** Opens and closes the tour, saying which it will do. */
+/** Opens and closes the tour, and says which panel it controls. */
 const TourToggle = ({
     touring,
-    onOpen,
-    onClose,
+    onToggle,
+    buttonRef,
 }: {
     readonly touring: boolean;
-    readonly onOpen: () => void;
-    readonly onClose: () => void;
+    readonly onToggle: () => void;
+    readonly buttonRef: RefObject<HTMLButtonElement | null>;
 }) => (
     <button
+        ref={buttonRef}
         type="button"
         className="tour-open"
         aria-expanded={touring}
-        onClick={touring ? onClose : onOpen}
+        aria-controls={TOUR_ID}
+        onClick={onToggle}
     >
         Tour
     </button>
@@ -95,7 +100,8 @@ interface MastheadProps {
     readonly group: CustomerGroup;
     readonly onGroup: (group: CustomerGroup) => void;
     readonly touring: boolean;
-    readonly onTour: (open: boolean) => void;
+    readonly onTour: () => void;
+    readonly tourButton: RefObject<HTMLButtonElement | null>;
 }
 
 const Masthead = ({
@@ -108,6 +114,7 @@ const Masthead = ({
     onGroup,
     touring,
     onTour,
+    tourButton,
 }: MastheadProps) => (
     <>
         <SearchBox
@@ -118,7 +125,7 @@ const Masthead = ({
             onPick={(sku) => navigate({ ...state, product: sku })}
         />
         <ViewerSwitch group={group} onChange={onGroup} />
-        <TourToggle touring={touring} onOpen={() => onTour(true)} onClose={() => onTour(false)} />
+        <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />
         <CategoryNav categories={categories} state={state} navigate={navigate} />
     </>
 );
@@ -128,9 +135,18 @@ export const App = ({ apiUrl, ready }: AppProps) => {
     const [state, navigate] = useUrlState();
     const [group, setGroup] = useState<CustomerGroup>('guest');
     const [touring, setTouring] = useState(() => !hasSeenTour());
-    const onTour = (open: boolean) => {
-        if (!open) markTourSeen();
-        setTouring(open);
+    const [tourStop, setTourStop] = useState(0);
+    // Whether the panel was asked for, as opposed to opening itself on a first visit.
+    const [tourAsked, setTourAsked] = useState(false);
+    const tourButton = useRef<HTMLButtonElement>(null);
+    const openTour = () => {
+        setTourAsked(true);
+        setTouring(true);
+    };
+    const closeTour = () => {
+        markTourSeen();
+        setTouring(false);
+        tourButton.current?.focus();
     };
     // One memory for both viewers: the viewer is in the key, so switching keeps both.
     const memory = useMemo(() => createClientMemory(), []);
@@ -178,12 +194,21 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                             group={group}
                             onGroup={setGroup}
                             touring={touring}
-                            onTour={onTour}
+                            onTour={touring ? closeTour : openTour}
+                            tourButton={tourButton}
                         />
                     )}
                 </div>
             </header>
-            {isReady && touring && <Tour navigate={navigate} onClose={() => onTour(false)} />}
+            {isReady && touring && (
+                <Tour
+                    index={tourStop}
+                    onIndex={setTourStop}
+                    navigate={navigate}
+                    onClose={closeTour}
+                    takeFocus={tourAsked}
+                />
+            )}
             <main className="content">
                 <Standby readiness={readiness} />
                 {isReady && state.product !== undefined && (
