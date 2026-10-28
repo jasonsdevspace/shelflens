@@ -1,5 +1,6 @@
 import { tokenize } from './normalize.js';
 import {
+    type AttributeKind,
     EngineError,
     type Filter,
     type Rule,
@@ -84,15 +85,40 @@ const checkRule = (rule: Rule, known: Known): void => {
         checkAdjustment(rule, adjustment, known);
     }
     if (rule.when?.filter) known.attribute(rule.id, rule.when.filter.attribute);
-    if (rule.active?.from && rule.active.to && rule.active.from > rule.active.to) {
+    checkWindow(rule);
+};
+
+/** An instant from a rule's window, or nothing when the window has no edge there. */
+const edge = (rule: Rule, which: 'from' | 'to'): number | undefined => {
+    const text = rule.active?.[which];
+    if (text === undefined) return undefined;
+    const at = Date.parse(text);
+    if (Number.isNaN(at)) {
+        throw new EngineError(
+            'invalid_rule',
+            `rule ${rule.id} has a window it cannot read: ${text}`
+        );
+    }
+    return at;
+};
+
+const checkWindow = (rule: Rule): void => {
+    const from = edge(rule, 'from');
+    const to = edge(rule, 'to');
+    if (from !== undefined && to !== undefined && from > to) {
         throw new EngineError('invalid_rule', `rule ${rule.id} ends before it starts`);
     }
 };
 
+/**
+ * Refuses a rule that could never do what it says: a document or an
+ * attribute the engine does not have, or an attribute a rule cannot match
+ * on, since a rule names a value as text and only a keyword attribute is one.
+ */
 export const checkRules = (
     rules: readonly Rule[],
     documentIds: ReadonlySet<string>,
-    attributes: ReadonlySet<string>
+    attributes: Readonly<Record<string, AttributeKind>>
 ): void => {
     const seen = new Set<string>();
     const known: Known = {
@@ -105,10 +131,16 @@ export const checkRules = (
             }
         },
         attribute: (ruleId, name) => {
-            if (!attributes.has(name)) {
+            if (!Object.hasOwn(attributes, name)) {
                 throw new EngineError(
                     'invalid_rule',
                     `rule ${ruleId} names an attribute the engine does not have: ${name}`
+                );
+            }
+            if (attributes[name] !== 'keyword') {
+                throw new EngineError(
+                    'invalid_rule',
+                    `rule ${ruleId} names an attribute a rule cannot match on: ${name}`
                 );
             }
         },
@@ -126,10 +158,10 @@ const isActive = (rule: Rule, now: Date | undefined): boolean => {
     if (!rule.active) return true;
     // A windowed rule needs to know the time. Without it, the rule waits.
     if (!now) return false;
-    const at = now.toISOString();
-    return (
-        (!rule.active.from || rule.active.from <= at) && (!rule.active.to || at < rule.active.to)
-    );
+    const at = now.getTime();
+    const from = edge(rule, 'from');
+    const to = edge(rule, 'to');
+    return (from === undefined || from <= at) && (to === undefined || at < to);
 };
 
 const filterHasValue = (filters: readonly Filter[], attribute: string, value: string): boolean =>

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 
-import { createStore, createStoreApi, viewerFromHeader } from '@shelflens/api';
+import { createStore, createStoreApi, parseRulesFile, viewerFromHeader } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
@@ -15,13 +15,11 @@ import { describe, expect, it } from 'vitest';
  */
 
 const file = new URL('../../public/rules.json', import.meta.url);
-const { rules } = JSON.parse(readFileSync(file, 'utf8')) as {
-    rules: readonly { id: string; pin?: string[]; hide?: string[]; active?: unknown }[];
-};
+const rules = parseRulesFile(JSON.parse(readFileSync(file, 'utf8')));
 
 describe('the shipped rules', () => {
     const catalog = generateCatalog();
-    const api = createStoreApi(createStore({ catalog, rules: rules as never }));
+    const api = createStoreApi(createStore({ catalog, rules }));
     const skus = async (phrase: string, now: Date) => {
         const response = await api.run(
             {
@@ -42,7 +40,7 @@ describe('the shipped rules', () => {
 
     it('validate against the shipped catalog', () => {
         expect(rules.length).toBeGreaterThan(0);
-        expect(() => createStore({ catalog, rules: rules as never })).not.toThrow();
+        expect(() => createStore({ catalog, rules })).not.toThrow();
     });
 
     it('put the featured jackets first and hide the sample', async () => {

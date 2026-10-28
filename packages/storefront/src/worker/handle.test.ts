@@ -4,21 +4,12 @@ import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type AnswerStore, createWorkerApi } from './handle.js';
+import { serving } from './serving.js';
 
 const catalog = generateCatalog({ seed: 42, products: 200 });
 const version = createStore({ catalog }).version;
 
-/** The URL a fetch was asked for, as text. */
-const urlOf = (input: RequestInfo | URL): string =>
-    typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-
-const servingCatalog = () =>
-    vi.fn<typeof fetch>().mockResolvedValue(
-        new Response(JSON.stringify(catalog), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-        })
-    );
+const servingCatalog = () => serving(catalog);
 
 const STORE = Object.keys(PERSISTED_OPERATIONS).find((hash) =>
     PERSISTED_OPERATIONS[hash]?.startsWith('query Store')
@@ -114,20 +105,11 @@ describe('the API inside the worker', () => {
     it('builds the store with the rules file beside the catalog, and reports a bad one', async () => {
         const jacket = catalog.products.find((p) => /jacket/i.test(p.name));
         if (!jacket) throw new Error('expected a jacket');
-        const serving = (rules: unknown) =>
-            vi.fn<typeof fetch>().mockImplementation((input) =>
-                Promise.resolve(
-                    new Response(JSON.stringify(urlOf(input) === 'rules.json' ? rules : catalog), {
-                        status: 200,
-                        headers: { 'content-type': 'application/json' },
-                    })
-                )
-            );
         const good = createWorkerApi({
             catalogUrl: 'catalog.json',
             rulesUrl: 'rules.json',
             base: BASE,
-            fetch: serving({
+            fetch: serving(catalog, {
                 rules: [{ id: 'top', when: { queries: ['jacket'] }, pin: [jacket.sku] }],
             }),
             allowFullQueries: true,
@@ -152,7 +134,7 @@ describe('the API inside the worker', () => {
             catalogUrl: 'catalog.json',
             rulesUrl: 'rules.json',
             base: BASE,
-            fetch: serving({ rules: [{ id: 'top', pin: ['SL-NOPE'] }] }),
+            fetch: serving(catalog, { rules: [{ id: 'top', pin: ['SL-NOPE'] }] }),
         });
         expect((await bad.handle(persisted({ op: STORE })))?.status).toBe(503);
     });

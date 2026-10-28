@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 import { App } from './App.jsx';
 import { createWorkerApi } from './worker/handle.js';
+import { serving } from './worker/serving.js';
 
 /*
  * The storefront end to end, in a document, over the real API.
@@ -23,23 +24,11 @@ if (!featured) throw new Error('expected a jacket in the catalog');
 /** One rule, so explain mode has a pin to show and a price sort has something to set aside. */
 const rules = [{ id: 'featured-jacket', when: { queries: ['jacket'] }, pin: [featured.sku] }];
 
-/** The URL a fetch was asked for, as text. */
-const urlOf = (input: RequestInfo | URL): string =>
-    typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-
-const serve = (body: unknown) =>
-    Promise.resolve(
-        new Response(JSON.stringify(body), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-        })
-    );
-
 beforeAll(() => {
     const worker = createWorkerApi({
         catalogUrl: 'catalog.json',
         rulesUrl: 'rules.json',
-        fetch: (input) => serve(urlOf(input) === 'rules.json' ? { rules } : catalog),
+        fetch: serving(catalog, { rules }),
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const response = await worker.handle(new Request(input, init));

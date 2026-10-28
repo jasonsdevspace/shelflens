@@ -159,13 +159,32 @@ describe('checking rules at startup', () => {
         expect(make({ id: 'r', boost: [{ ids: ['nope'], weight: 2 }] })).toThrow(/does not exist/);
     });
 
-    it('refuses a rule that names an attribute the engine does not have', () => {
+    it('refuses a rule that names an attribute the engine does not have, or cannot match on', () => {
         expect(
             make({ id: 'r', boost: [{ attribute: { name: 'colour', value: 'red' }, weight: 2 }] })
         ).toThrow(/attribute the engine does not have: colour/);
         expect(
             make({ id: 'r', when: { filter: { attribute: 'shelf', value: 'a' } }, pin: ['p1'] })
         ).toThrow(/attribute the engine does not have: shelf/);
+        const numeric = Object.entries(base.attributes).find(([, kind]) => kind !== 'keyword');
+        if (!numeric) throw new Error('expected an attribute that is not a keyword');
+        expect(
+            make({ id: 'r', boost: [{ attribute: { name: numeric[0], value: '5' }, weight: 2 }] })
+        ).toThrow(/cannot match on/);
+    });
+
+    it('refuses a window it cannot read, and reads one without milliseconds exactly', () => {
+        expect(make({ id: 'r', active: { from: 'yesterday' }, pin: ['p1'] })).toThrow(
+            /window it cannot read/
+        );
+        const engine = createEngine(documents, {
+            ...base,
+            rules: [{ id: 'r', active: { from: '2026-09-01T00:00:00Z' }, pin: ['p1'] }],
+        });
+        const at = (text: string) => engine.search({ query: 'parka', now: new Date(text) }).rules;
+        expect(at('2026-08-31T23:59:59.999Z').applied).toEqual([]);
+        expect(at('2026-09-01T00:00:00.000Z').applied).toEqual(['r']);
+        expect(at('2026-09-01T00:00:00.500Z').applied).toEqual(['r']);
     });
 
     it('refuses a rule that does nothing, a weight of zero, and a window that ends first', () => {

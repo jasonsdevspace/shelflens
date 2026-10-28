@@ -10,18 +10,29 @@ export interface ProductCardProps {
     readonly href: string;
     readonly onOpen: () => void;
     /** Why the product ranked where it did, shown in explain mode. */
-    readonly explain?: { readonly rank: number; readonly hit: Hit } | undefined;
+    readonly explain?: ExplainProps | undefined;
+}
+
+export interface ExplainProps {
+    readonly rank: number;
+    readonly hit: Hit;
+    /** Whether a phrase was typed, so "did not match it" means something. */
+    readonly phrase: boolean;
 }
 
 type Match = NonNullable<Hit['explanation']>['matches'][number];
 type Effect = NonNullable<Hit['explanation']>['rules'][number];
 
-const ROUTES: Record<Match['route'], (match: Match) => string> = {
+const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> = {
     EXACT: (m) => `"${m.typed}" matched "${m.matched}" in the ${m.field}`,
     PREFIX: (m) => `"${m.typed}" is the start of "${m.matched}" in the ${m.field}`,
     SYNONYM: (m) => `"${m.typed}" is a synonym of "${m.matched}" in the ${m.field}`,
     CORRECTED: (m) => `"${m.typed}" corrected to "${m.matched}" in the ${m.field}`,
 };
+
+/** A route the page does not know yet still reads as a match. */
+const matchText = (match: Match): string =>
+    (ROUTES[match.route] ?? ROUTES.EXACT ?? (() => ''))(match);
 
 const effectText = (effect: Effect): string => {
     const weight = effect.weight === null ? '' : ` by ${effect.weight}`;
@@ -31,7 +42,7 @@ const effectText = (effect: Effect): string => {
 };
 
 /** Why one result ranked where it did, in plain words. */
-const Explanation = ({ rank, hit }: { readonly rank: number; readonly hit: Hit }) => {
+const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
     const matches = hit.explanation?.matches ?? [];
     const rules = hit.explanation?.rules ?? [];
     return (
@@ -41,11 +52,13 @@ const Explanation = ({ rank, hit }: { readonly rank: number; readonly hit: Hit }
                 {hit.score !== undefined && `, score ${hit.score.toFixed(2)}`}
             </li>
             {matches.map((match, index) => (
-                <li key={index}>{ROUTES[match.route](match)}</li>
+                <li key={index}>{matchText(match)}</li>
             ))}
-            {matches.length === 0 && rules.length > 0 && <li>Did not match the phrase</li>}
-            {rules.map((effect) => (
-                <li key={effect.ruleId}>{effectText(effect)}</li>
+            {phrase && matches.length === 0 && rules.length > 0 && (
+                <li>Did not match the phrase</li>
+            )}
+            {rules.map((effect, index) => (
+                <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
             ))}
         </ul>
     );
@@ -77,6 +90,6 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                 {!product.inStock && <span className="card-stock">Out of stock</span>}
             </span>
         </a>
-        {explain && <Explanation rank={explain.rank} hit={explain.hit} />}
+        {explain && <Explanation {...explain} />}
     </li>
 );

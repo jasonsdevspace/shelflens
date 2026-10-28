@@ -3,7 +3,6 @@ import { useId } from 'react';
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import {
     activeFilterCount,
-    PAGE_SIZE,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -180,7 +179,11 @@ export const ResultsPage = ({
                                 onOpen={() => navigate({ ...state, product: hit.product.sku })}
                                 explain={
                                     state.explain
-                                        ? { rank: (result.page - 1) * PAGE_SIZE + index + 1, hit }
+                                        ? {
+                                              rank: (result.page - 1) * result.pageSize + index + 1,
+                                              hit,
+                                              phrase: state.phrase !== undefined,
+                                          }
                                         : undefined
                                 }
                             />

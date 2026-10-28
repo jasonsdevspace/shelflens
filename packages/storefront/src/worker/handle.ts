@@ -1,8 +1,8 @@
-import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createStore,
     createStoreApi,
     isApiPath,
+    parseRulesFile,
     PERSISTED_OPERATIONS,
     resolveRequest,
     responseHeaders,
@@ -79,11 +79,6 @@ const fresh = (response: Response, now: Date): boolean => {
 const mayKeep = (response: Response): boolean =>
     (response.headers.get('cache-control') ?? '').startsWith('public');
 
-/** The shape of the rules file: the rules, under one key so the file can grow. */
-interface RulesFile {
-    readonly rules: readonly Rule[];
-}
-
 const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
     const response = await fetchImpl(url);
     if (!response.ok) throw new Error(`the ${what} came back with status ${response.status}`);
@@ -107,10 +102,10 @@ export const createWorkerApi = ({
         store ??= Promise.all([
             fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
             rulesUrl === undefined
-                ? Promise.resolve({ rules: [] })
-                : fetchJson<RulesFile>(fetchImpl, rulesUrl, 'rules file'),
+                ? Promise.resolve([])
+                : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
         ])
-            .then(([catalog, { rules }]) =>
+            .then(([catalog, rules]) =>
                 withResponseCache(createStoreApi(createStore({ catalog, rules })))
             )
             .catch((error: unknown) => {

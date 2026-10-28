@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
-import { EMPTY_STATE } from './app/url.js';
+import { EMPTY_STATE, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
 import { useUrlState } from './app/useUrlState.js';
 import { createClient, createClientMemory, type CustomerGroup } from './client/graphql.js';
@@ -67,6 +67,8 @@ export const App = ({ apiUrl, ready }: AppProps) => {
     const categories = useQuery(client, CategoriesDocument, isReady ? {} : undefined);
     const store = useQuery(client, StoreDocument, isReady ? {} : undefined);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
+    // A new search starts over, except that explain mode is a way of looking, not a filter.
+    const fresh: SearchState = { ...EMPTY_STATE, ...(state.explain && { explain: true }) };
 
     useEffect(() => {
         ready.then(
@@ -84,7 +86,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         href="./"
                         onClick={(event) => {
                             event.preventDefault();
-                            navigate(EMPTY_STATE);
+                            navigate(fresh);
                         }}
                     >
                         ShelfLens
@@ -94,7 +96,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                             key={state.phrase ?? ''}
                             client={client}
                             initialPhrase={state.phrase ?? ''}
-                            onSearch={(phrase) => navigate({ ...EMPTY_STATE, phrase })}
+                            onSearch={(phrase) => navigate({ ...fresh, phrase })}
                             onPick={(sku) => navigate({ ...state, product: sku })}
                         />
                     )}

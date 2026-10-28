@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import type { Rule } from '@jasonsdevspace/shelflens';
-import { createStore, createStoreApi, withResponseCache } from '@shelflens/api';
+import { createStore, createStoreApi, parseRulesFile, withResponseCache } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 
 import { createServer } from './server.js';
@@ -21,7 +20,7 @@ const products = Number(process.env.PRODUCTS ?? 2000);
 const rules =
     process.env.RULES === undefined
         ? []
-        : (JSON.parse(readFileSync(process.env.RULES, 'utf8')) as { rules: Rule[] }).rules;
+        : parseRulesFile(JSON.parse(readFileSync(process.env.RULES, 'utf8')));
 
 const store = createStore({ catalog: generateCatalog({ products }), rules });
 const server = createServer({

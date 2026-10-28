@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 
-import type { Rule } from '@jasonsdevspace/shelflens';
-import { createStore, createStoreApi, isApiPath, withResponseCache } from '@shelflens/api';
+import {
+    createStore,
+    createStoreApi,
+    isApiPath,
+    parseRulesFile,
+    withResponseCache,
+} from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { createHandler } from '@shelflens/server';
 import type { Plugin } from 'vite';
@@ -18,12 +23,10 @@ import type { Plugin } from 'vite';
  */
 
 /** The rules file the production build ships, read here at startup. */
-const rules = (): readonly Rule[] =>
-    (
-        JSON.parse(readFileSync(new URL('../../public/rules.json', import.meta.url), 'utf8')) as {
-            rules: Rule[];
-        }
-    ).rules;
+const rules = () =>
+    parseRulesFile(
+        JSON.parse(readFileSync(new URL('../../public/rules.json', import.meta.url), 'utf8'))
+    );
 export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
