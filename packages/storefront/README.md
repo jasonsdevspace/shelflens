@@ -57,6 +57,18 @@ the page.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
   and no worker fighting hot reloading.
+- **Deployed by CI.** Once every check has passed on main, the workflow builds the page, the
+  catalog, the rules and the worker for the path the project site is served under and publishes
+  them to GitHub Pages at jasonsdevspace.com/shelflens/. A merge that fails a check is never
+  deployed. A returning visitor's page reloads once when a new worker takes over, so the page and
+  the worker answering it are from the same build, and a page that bypassed the worker, as a hard
+  reload does, asks it to take charge.
+- **The cold first visit is measured.** `npm run bench:cold` visits the production build in a
+  fresh browser, records when the page was ready to search, how long the worker spent downloading
+  the catalog and building the store, and how long the first suggestion took, and writes it to
+  [docs/benchmarks](../../docs/benchmarks/cold-visit.md).
+- **Lighthouse scores a hundred for accessibility**, on the home page, a results page in explain
+  mode, a category and a product, checked in CI by `npm run lighthouse` after the browser tests.
 - **A real browser in CI.** `npm run e2e` builds the production page, serves it, and runs
   Playwright against it on a desktop and a phone profile with the service worker answering, with
   an axe audit of each page it reaches. Nothing is mocked.

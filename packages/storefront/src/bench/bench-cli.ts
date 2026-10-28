@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { type PopoverBench, runPopoverBench } from './bench.js';
+import { gitCommit, today } from './record.js';
 
 /**
  * Measures what the popover waits for and writes the results.
@@ -20,14 +20,6 @@ const { values } = parseArgs({
         out: { type: 'string', default: 'docs/benchmarks/popover.json' },
     },
 });
-
-const gitCommit = (): string => {
-    try {
-        return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
-    } catch {
-        return 'unknown';
-    }
-};
 
 const machine = (): string => {
     const [first] = cpus();
@@ -77,7 +69,7 @@ const main = async () => {
         iterations: Number(values.iterations),
     });
     const recorded = {
-        date: new Date().toISOString().slice(0, 10),
+        date: today(),
         commit: gitCommit(),
         machine: machine(),
         node: process.version,
