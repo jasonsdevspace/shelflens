@@ -11,8 +11,8 @@ result ranked where it did. This repository holds the engine that does that, the
 tested against, the GraphQL API over both, and the storefront, which runs the whole API inside
 the browser.
 
-**Why I built it.** I spent eight years at Adobe, where I worked on a React storefront search
-experience backed by a GraphQL search API. Search looks simple until a shopper types "t shirt" and
+**Why I built it.** At Adobe I worked on a React storefront search experience backed by a
+GraphQL search API. Search looks simple until a shopper types "t shirt" and
 the Tees outrank the T-Shirts, or a member's price is served to the next guest from a cache. This
 is a small, complete example of how I approach that kind of problem: measure, write the check that
 would have caught the mistake, then fix it. It is built only from public documentation of how
