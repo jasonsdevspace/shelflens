@@ -14,9 +14,9 @@ can come back after the answer to "trail", and if it is shown the shopper sees s
 phrase they are no longer typing. Both behaviors are exactly the kind of thing a library handles
 somewhere inside, and this project exists to show them.
 
-Later milestones add a third: a cache whose key includes the customer group, so a member's
-price is never served to a guest. That is a cache-key bug that a normalized cache makes easy to
-introduce and hard to see.
+There is a third, which record 8 takes up: a cache whose key includes the customer group, so
+a member's price is never served to a guest. That is a cache-key bug that a normalized cache
+makes easy to introduce and hard to see.
 
 ## Options
 
@@ -27,9 +27,9 @@ configuration.
 **B. urql.** Smaller, with a document cache by default, and exchanges to customize. The same
 question about the key, answered in a different place.
 
-**C. A client written here.** One function that posts a typed document and returns the data or
+**C. A client written here.** One function that sends a typed document and returns the data or
 throws the errors. Stale handling and debouncing live beside it as small pieces with their own
-tests. The cache, when it comes, is a map with a key the project defines.
+tests. The cache is a memory with a key the project defines.
 
 ## Decision
 
@@ -45,12 +45,12 @@ Option C.
 - **Debouncing is visible.** The pause is a named constant beside the minimum phrase length,
   and a test proves a burst of keystrokes sends one request.
 - **The viewer travels in a header,** set once when the client is created. There is no way to
-  ask for another group's prices from a query, which is the shape the cache key will follow.
+  ask for another group's prices from a query, which is the shape the cache key follows.
 
 ## Consequences
 
-- No retries, no normalized cache and no devtools. The demo does not need the first two, and the
-  explain mode is the project's devtools.
+- No retries, no normalized cache and no devtools. The demo does not need the first two, the
+  memory it does have is record 8's, and the explain mode is the project's devtools.
 - Each new behavior is written rather than configured. That is the cost the project accepts for
   being able to point at the code when a reviewer asks how it works.
 - If a storefront built on this engine wanted Apollo, nothing stops it. The API is ordinary

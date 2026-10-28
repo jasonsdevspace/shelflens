@@ -48,9 +48,16 @@ and still never serve a stale price after an update.
 **A page past the end is empty, and a page size past the limit is reduced.** Both are stated in
 the schema's descriptions, so a client knows without trying.
 
+**Nothing is an answer with a shape.** `SearchResult.noResults` is null unless the search found
+nothing, and then carries what would find something: a spelling, a shorter phrase with its own
+result, what the same phrase finds without its filters, and the most rated products. The recovery is
+a few searches run once when the field is asked for. The shorter phrase's own result and the popular
+products are each resolved only when a client selects them.
+
 **Explanations are part of the hit.** `SearchHit.explanation` carries each matched word, its
-route and its score, and each rule that touched the result. Explain mode is a toggle that renders
-data every response already carries, not a second query.
+route and its score, and each rule that touched the result. Explain mode is the same search with
+one variable flipped: the storefront's operation includes the explanation and the score only when
+asked, so a results page pays for them only while a reviewer is looking.
 
 ## Consequences
 
@@ -66,5 +73,5 @@ data every response already carries, not a second query.
 - The schema builds, and every type it names is defined, in a test that runs on every build.
 - The generated server types are committed, and a check fails if the schema and the generated
   output disagree.
-- Validation tests in the next PR send each malformed request and assert the error is a
-  validation error rather than a failure.
+- Validation tests send each malformed request and assert the error is a validation error with
+  a code rather than a failure.

@@ -1,8 +1,25 @@
 {
     "name": "@jasonsdevspace/shelflens",
     "version": "0.1.0",
-    "private": true,
     "description": "A product search engine with typo tolerance, synonyms, facets, merchandising rules and an explanation for every result. No dependencies, runs anywhere JavaScript does.",
+    "keywords": [
+        "search",
+        "full-text",
+        "facets",
+        "typo-tolerance",
+        "ecommerce"
+    ],
+    "license": "MIT",
+    "author": "Jason Poteet",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jasonsdevspace/shelflens.git",
+        "directory": "packages/engine"
+    },
+    "homepage": "https://github.com/jasonsdevspace/shelflens/tree/main/packages/engine#readme",
+    "bugs": {
+        "url": "https://github.com/jasonsdevspace/shelflens/issues"
+    },
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -13,19 +30,21 @@
         }
     },
     "files": [
-        "dist"
+        "dist",
+        "src",
+        "!src/**/*.test.ts",
+        "CHANGELOG.md"
     ],
     "sideEffects": false,
+    "engines": {
+        "node": ">=24"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "type-check": "tsc -p tsconfig.json",
-        "build": "tsc -b tsconfig.build.json"
-    },
-    "keywords": [
-        "search",
-        "full-text",
-        "facets",
-        "typo-tolerance",
-        "ecommerce"
-    ],
-    "license": "MIT"
+        "build": "tsc -b tsconfig.build.json",
+        "prepack": "npm run build"
+    }
 }

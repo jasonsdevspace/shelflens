@@ -53,7 +53,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'cache-key',
         title: 'A cache key that forgets who is asking',
-        body: 'This product does not exist for a guest. Switch to member in the masthead and it appears, and every price drops. A cache keyed on the query alone would serve that member answer to the next guest, and a test proves it does.',
+        body: 'This product does not exist for a guest. Switch to member in the masthead and it appears, and the brands that give members a discount show lower prices. A cache keyed on the query alone would serve a member\u2019s answer to the next guest, and a test proves it does.',
         to: { ...EMPTY_STATE, product: MEMBERS_ONLY_SKU },
         tests: ['packages/api/src/cache.test.ts'],
     },

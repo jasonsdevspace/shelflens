@@ -4,6 +4,18 @@ A product search engine in plain TypeScript. Typo tolerance, synonyms, search as
 filters, sorting, stable pagination, and an explanation for every result. No dependencies, no I/O,
 so it runs the same in Node, in a browser and in a test.
 
+```bash
+npm install @jasonsdevspace/shelflens
+```
+
+It is the engine under [ShelfLens](https://github.com/jasonsdevspace/shelflens), a search demo
+with a [live storefront](https://jasonsdevspace.com/shelflens/) that runs this engine in a
+service worker. The decisions behind it, each with the alternative it rejected and the test
+behind it, are in that repository's
+[decision records](https://github.com/jasonsdevspace/shelflens/tree/main/docs/decisions). The
+package follows semantic versioning from its first release, and its
+[changelog](CHANGELOG.md) says what each version changed.
+
 ```ts
 import { createEngine } from '@jasonsdevspace/shelflens';
 
@@ -78,9 +90,9 @@ always widen a selection, while a filter on a different attribute narrows every 
 
 A rule names when it applies, to certain queries or inside a filter and optionally between two
 dates, and what it does: pin products to the top, boost or bury them, or hide them. Rules are
-checked when the engine is created, so a rule that names a product or an attribute that does not exist or does
-nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over the same
-index without rebuilding it.
+checked when the engine is created, so a rule that names a product or an attribute that does not
+exist or does nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over
+the same index without rebuilding it.
 
 Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and
 hides still apply under a sort scoped to the rule's own filter, which is how a category's
