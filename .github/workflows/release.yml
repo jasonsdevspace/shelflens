@@ -1,0 +1,98 @@
+name: Release
+
+# Publishes the engine to npm when a release tag is pushed, such as
+# engine-v0.2.0. The tag has to match the version in the engine's
+# package.json, and the changelog has to have an entry for it, or nothing
+# is published. Every check runs first. The publish uses npm's trusted
+# publishing: the workflow proves who it is with an OpenID Connect token,
+# so no npm token is stored anywhere, and each version carries provenance
+# that links it to the commit and the run that built it.
+on:
+    push:
+        tags:
+            - 'engine-v*'
+
+permissions:
+    contents: read
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: '24'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Verify
+              run: npm run verify
+
+            # The tag names the version, the package declares it, and the
+            # changelog explains it. All three have to agree.
+            - name: Check the tag, the version and the changelog agree
+              env:
+                  TAG: ${{ github.ref_name }}
+              run: |
+                  version="${TAG#engine-v}"
+                  declared=$(node -p "require('./packages/engine/package.json').version")
+                  if [ "$version" != "$declared" ]; then
+                      echo "the tag says $version but packages/engine/package.json says $declared"
+                      exit 1
+                  fi
+                  if ! grep -q "^## $version\$" packages/engine/CHANGELOG.md; then
+                      echo "packages/engine/CHANGELOG.md has no entry for $version"
+                      exit 1
+                  fi
+
+    publish:
+        needs: verify
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            id-token: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: '24'
+                  cache: 'npm'
+                  registry-url: 'https://registry.npmjs.org'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            - name: Publish to npm with provenance
+              run: npm publish --provenance --access public
+              working-directory: packages/engine
+
+            # A release on GitHub with the changelog entry as its notes, so
+            # the tag has a page a reader can land on.
+            - name: Create the GitHub release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TAG: ${{ github.ref_name }}
+              run: |
+                  version="${TAG#engine-v}"
+                  awk -v v="$version" '
+                      $0 == "## " v { on = 1; next }
+                      on && /^## / { exit }
+                      on { print }
+                  ' packages/engine/CHANGELOG.md > notes.md
+                  gh release create "$TAG" --title "@jasonsdevspace/shelflens $version" --notes-file notes.md

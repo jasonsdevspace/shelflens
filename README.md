@@ -162,6 +162,12 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
   --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
 ```
 
+To release the engine, bump the version in `packages/engine/package.json`, add the entry to
+`packages/engine/CHANGELOG.md`, merge that, then push a tag named for the version, such as
+`engine-v0.2.0`. The release workflow runs every check, confirms the tag, the version and the
+changelog agree, publishes to npm with provenance through npm's trusted publishing, and creates
+the GitHub release with the changelog entry as its notes. Nothing is published by hand.
+
 The schema is `packages/api/schema.graphql` and the storefront's operations are in
 `packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
 committing the generated types and the persisted operations, which CI checks. The demo's
