@@ -34,19 +34,23 @@ test proves what it must contain.
 
 Option B. The key is `cacheKey` in `@shelflens/api`, and it is made of:
 
-- **The store version.** The catalog's version and the rules' version, folded together when
-  the store is built, so an import or a rule change changes every key at once. Nothing has to
-  be invalidated, because nothing is asked for under the old key again.
-- **The viewer's group.** The part a request-only key leaves out. It comes from the request's
-  header, as the API already does for pricing, so the key and the resolvers read the same source.
+- **The store version.** The catalog's version and a fingerprint of the rules, folded together
+  when the store is built, so an import or a rule change changes every key at once. The rules
+  part is derived from the rules themselves rather than remembered, so it cannot be stale by
+  omission. Nothing has to be invalidated, because nothing is asked for under the old key again.
+- **The whole viewer.** The part a request-only key leaves out. It comes from the request's
+  header, as the API already does for pricing, so the key and the resolvers read the same
+  source. The key takes every field of the viewer, not the group by name, so a field added
+  later is in the key from the day it exists.
 - **The operation and its variables,** with the query's insignificant GraphQL characters removed
   and the variables written with their object keys sorted, so a request means the same key however
   it was spelled without changing whitespace inside a value.
 
 The first cache on that key is `withResponseCache`, which wraps the API in the handler. It keeps
 the most recently used answers up to a count and an age, shares one run between identical
-requests in flight, and never keeps an answer with errors. The service worker, the Node server
-and the dev server all wrap the API with it.
+requests in flight however long it takes, and never keeps an answer with errors. The key is not
+an option a host can replace, so the one definition cannot be bypassed from outside the package.
+The service worker, the Node server and the dev server all wrap the API with it.
 
 What the key does not contain is the time, so a rule with a time window may stay in effect for
 up to the cache's age limit after its window closes. That is the age limit's job, and the
@@ -60,6 +64,9 @@ default is five minutes.
   asked for again, and the count limit evicts them as the new ones arrive.
 - The key is as long as the query. For an in-memory map that costs nothing. A cache that needs
   a short key, such as a URL, hashes this one rather than defining another.
+- Building the key means lexing the query, which would cost each hit the work the cache is
+  meant to save. A storefront sends the same few query texts over and over, so the canonical
+  form of each is remembered and a hit costs a map lookup.
 
 ## How it is tested
 
@@ -68,6 +75,7 @@ default is five minutes.
   product. The test runs both keys through the same wrapper, so the key is the only difference.
 - The key is one string for one request however the whitespace and the variable order fall,
   and a different string for a different viewer, version, operation or variables.
-- A rebuilt store, with a new rules version, produces a different key for the same request.
+- A store built with different rules has a different version without being told, and so a
+  different key for the same request.
 - The cache itself: a second identical request is a hit, two in flight share one run, an
   entry past its age or past the count is gone, and an answer with errors is never kept.

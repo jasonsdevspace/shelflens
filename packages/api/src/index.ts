@@ -23,4 +23,5 @@ export {
     type StoreRequest,
     type StoreResponse,
 } from './execute.js';
+export { canonical, fingerprint } from './fingerprint.js';
 export { buildStoreSchema, schemaSource } from './schema.js';

@@ -2,6 +2,8 @@ import type { Engine, Rule } from '@jasonsdevspace/shelflens';
 import type { Brand, Catalog, Category, CustomerGroup, Product } from '@shelflens/catalog';
 import { type Completions, createCompletions, createStoreEngine } from '@shelflens/search';
 
+import { fingerprint } from './fingerprint.js';
+
 /**
  * What every resolver can reach.
  *
@@ -37,7 +39,11 @@ export interface StoreOptions {
     readonly name?: string;
     readonly catalog: Catalog;
     readonly rules?: readonly Rule[];
-    /** A version for the rules, folded into the store version. */
+    /**
+     * A version for the rules, folded into the store version. Without one
+     * the rules are fingerprinted, so a change to them changes the version
+     * whether or not anyone remembered to say so.
+     */
     readonly rulesVersion?: string;
 }
 
@@ -45,7 +51,7 @@ export const createStore = ({
     name = 'ShelfLens',
     catalog,
     rules = [],
-    rulesVersion = '0',
+    rulesVersion = fingerprint(rules),
 }: StoreOptions): Store => {
     const base = createStoreEngine(catalog);
     const engine = rules.length > 0 ? base.reconfigure({ rules }) : base;

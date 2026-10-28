@@ -8,9 +8,9 @@ import type { StoreApi, StoreRequest, StoreResponse } from './execute.js';
  * A storefront asks the same few questions over and over: the same
  * category page, the same facet counts, the same popular phrase. Each is
  * answered once per key and served from memory after that, for a while
- * and up to a count, with the most recently used kept longest. Two
- * identical requests in flight share one run. An answer with errors is
- * not kept, so a failure is retried on the next ask.
+ * and up to a count, with the most recently used kept longest. Identical
+ * requests in flight share one run, however long it takes. An answer with
+ * errors is not kept, so a failure is retried on the next ask.
  *
  * The key is the project's one definition, so this layer cannot serve one
  * group's answer to another. Rules with a time window are the one thing
@@ -20,10 +20,8 @@ import type { StoreApi, StoreRequest, StoreResponse } from './execute.js';
 export interface ResponseCacheOptions {
     /** How many answers to keep. */
     readonly maxEntries?: number;
-    /** How long an answer may be served, in milliseconds. */
+    /** How long an answer may be served after it arrived, in milliseconds. */
     readonly maxAgeMs?: number;
-    /** The key definition. Only a test should pass another. */
-    readonly key?: CacheKey;
 }
 
 export interface ResponseCache {
@@ -38,23 +36,31 @@ export interface CachedStoreApi extends StoreApi {
 }
 
 interface Entry {
-    readonly at: number;
+    /** When the answer arrived, or when it was asked for while in flight. */
+    at: number;
+    settled: boolean;
     readonly response: Promise<StoreResponse>;
 }
 
-export const withResponseCache = (
+/**
+ * The cache with its key supplied, which only the leak test should do.
+ * Not exported from the package, so a host cannot bypass the one key.
+ */
+export const createResponseCache = (
     api: StoreApi,
-    { maxEntries = 1000, maxAgeMs = 5 * 60_000, key = cacheKey }: ResponseCacheOptions = {}
+    { maxEntries = 1000, maxAgeMs = 5 * 60_000 }: ResponseCacheOptions,
+    key: CacheKey
 ): CachedStoreApi => {
     const entries = new Map<string, Entry>();
     let hits = 0;
     let misses = 0;
 
     const run = (request: StoreRequest, viewer: Viewer, now?: Date): Promise<StoreResponse> => {
-        const at = (now ?? new Date()).getTime();
+        const clock = now ?? new Date();
+        const at = clock.getTime();
         const id = key({ version: api.version, viewer, request });
         const found = entries.get(id);
-        if (found && at - found.at < maxAgeMs) {
+        if (found && (!found.settled || at - found.at < maxAgeMs)) {
             hits += 1;
             entries.delete(id);
             entries.set(id, found);
@@ -62,17 +68,27 @@ export const withResponseCache = (
         }
         if (found) entries.delete(id);
         misses += 1;
-        const response = api.run(request, viewer, now).then(
+        const settle = (entry: Entry | undefined, keep: boolean) => {
+            // Only this run's own entry. It may have been evicted and replaced.
+            if (entry?.response !== response) return;
+            if (keep) {
+                entry.settled = true;
+                entry.at = at;
+            } else {
+                entries.delete(id);
+            }
+        };
+        const response: Promise<StoreResponse> = api.run(request, viewer, clock).then(
             (answer) => {
-                if (answer.errors && entries.get(id)?.response === response) entries.delete(id);
+                settle(entries.get(id), !answer.errors);
                 return answer;
             },
             (error: unknown) => {
-                if (entries.get(id)?.response === response) entries.delete(id);
+                settle(entries.get(id), false);
                 throw error;
             }
         );
-        entries.set(id, { at, response });
+        entries.set(id, { at, settled: false, response });
         while (entries.size > maxEntries) {
             const oldest = entries.keys().next().value;
             if (oldest === undefined) break;
@@ -101,3 +117,8 @@ export const withResponseCache = (
         },
     };
 };
+
+export const withResponseCache = (
+    api: StoreApi,
+    options: ResponseCacheOptions = {}
+): CachedStoreApi => createResponseCache(api, options, cacheKey);

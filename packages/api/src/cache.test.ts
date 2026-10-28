@@ -1,10 +1,11 @@
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
-import { withResponseCache } from './cache.js';
+import { createResponseCache, withResponseCache } from './cache.js';
 import { type CacheKey, cacheKey } from './cache-key.js';
-import { createStore, viewerFromHeader } from './context.js';
+import { createStore, type Viewer, viewerFromHeader } from './context.js';
 import { createStoreApi, type StoreResponse } from './execute.js';
+import { canonical, fingerprint } from './fingerprint.js';
 
 /*
  * The cache key, and the cache built on it.
@@ -26,24 +27,33 @@ if (!discounted || !membersOnly)
 
 const PRODUCT = `query Product($sku: ID!) { product(sku: $sku) { sku price { min { amount } } } }`;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const product = (response: StoreResponse): any => {
+interface ProductAnswer {
+    readonly price: { readonly min: { readonly amount: number } };
+}
+
+const product = (response: StoreResponse): ProductAnswer | null => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
-    return (response.data as { product: unknown }).product;
+    return (response.data as { product: ProductAnswer | null }).product;
+};
+
+const price = (response: StoreResponse): number => {
+    const answer = product(response);
+    if (!answer) throw new Error('expected a product');
+    return answer.price.min.amount;
 };
 
 describe('the cache key', () => {
     it('leaks a member price and a hidden product to a guest when it forgets the viewer', async () => {
         const naive: CacheKey = ({ request }) =>
             `${request.query}${JSON.stringify(request.variables ?? {})}`;
-        const leaky = withResponseCache(api, { key: naive });
+        const leaky = createResponseCache(api, {}, naive);
         const safe = withResponseCache(api);
 
-        const price = { query: PRODUCT, variables: { sku: discounted.sku } };
-        const memberPrice = product(await leaky.run(price, member)).price.min.amount;
-        expect(product(await leaky.run(price, guest)).price.min.amount).toBe(memberPrice);
-        expect(product(await safe.run(price, member)).price.min.amount).toBe(memberPrice);
-        expect(product(await safe.run(price, guest)).price.min.amount).toBeGreaterThan(memberPrice);
+        const priced = { query: PRODUCT, variables: { sku: discounted.sku } };
+        const memberPrice = price(await leaky.run(priced, member));
+        expect(price(await leaky.run(priced, guest))).toBe(memberPrice);
+        expect(price(await safe.run(priced, member))).toBe(memberPrice);
+        expect(price(await safe.run(priced, guest))).toBeGreaterThan(memberPrice);
 
         const hidden = { query: PRODUCT, variables: { sku: membersOnly.sku } };
         expect(product(await leaky.run(hidden, member))).not.toBeNull();
@@ -127,18 +137,68 @@ describe('the cache key', () => {
         );
     });
 
-    it('carries the catalog and rules versions, so a rebuilt store misses', () => {
-        const rebuilt = createStoreApi(createStore({ catalog, rulesVersion: '1' }));
+    it('takes the whole viewer, so a field added later is in the key', () => {
         const request = { query: '{ store { name } }' };
-        expect(rebuilt.version).not.toBe(api.version);
-        expect(cacheKey({ version: rebuilt.version, viewer: guest, request })).not.toBe(
+        const richer = { ...guest, tier: 'gold' } as unknown as Viewer;
+        expect(cacheKey({ version: '1', viewer: richer, request })).not.toBe(
+            cacheKey({ version: '1', viewer: guest, request })
+        );
+    });
+
+    it('writes a hole in an array as null rather than nothing', () => {
+        expect(canonical([undefined, 1])).toBe('[null,1]');
+        expect(canonical([undefined])).not.toBe(canonical([]));
+        expect(canonical({ a: undefined })).toBe(canonical({}));
+    });
+});
+
+describe('the store version', () => {
+    const rule = { id: 'promo', when: { queries: ['jacket'] }, pin: [discounted.sku] };
+
+    it('changes with the rules without being told, and holds when they are the same', () => {
+        const plain = createStore({ catalog });
+        const ruled = createStore({ catalog, rules: [rule] });
+        const again = createStore({ catalog, rules: [{ ...rule }] });
+        expect(ruled.version).not.toBe(plain.version);
+        expect(again.version).toBe(ruled.version);
+        expect(createStore({ catalog, rulesVersion: '7' }).version).toBe(
+            `${catalog.version}+rules.7`
+        );
+    });
+
+    it('gives a different key for the same request', () => {
+        const request = { query: '{ store { name } }' };
+        const ruled = createStoreApi(createStore({ catalog, rules: [rule] }));
+        expect(cacheKey({ version: ruled.version, viewer: guest, request })).not.toBe(
             cacheKey({ version: api.version, viewer: guest, request })
         );
+    });
+
+    it('fingerprints a value by what it means, not how it is spelled', () => {
+        expect(fingerprint({ b: 1, a: [1, 2] })).toBe(fingerprint({ a: [1, 2], b: 1 }));
+        expect(fingerprint({ a: 1 })).not.toBe(fingerprint({ a: 2 }));
+        expect(fingerprint([])).toMatch(/^[0-9a-f]{8}$/);
     });
 });
 
 describe('the response cache', () => {
     const request = { query: '{ search(input: { phrase: "boot" }) { total } }' };
+    const at = (ms: number) => new Date(ms);
+
+    /** An API whose answers wait until the test releases them. */
+    const delayed = () => {
+        const settle: ((response: StoreResponse) => void)[] = [];
+        const clocks: Date[] = [];
+        const stub = {
+            ...api,
+            run: (_request: unknown, _viewer: unknown, now?: Date) =>
+                new Promise<StoreResponse>((resolve) => {
+                    if (now) clocks.push(now);
+                    settle.push(resolve);
+                }),
+        };
+        return { stub, settle, clocks };
+    };
 
     it('answers the second identical request from memory', async () => {
         const cached = withResponseCache(api);
@@ -150,27 +210,34 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ hits: 1, misses: 2, size: 2 });
     });
 
-    it('shares one run between identical requests in flight', async () => {
-        let runs = 0;
-        const counted = {
-            ...api,
-            run: (...args: Parameters<typeof api.run>) => {
-                runs += 1;
-                return api.run(...args);
-            },
-        };
-        const cached = withResponseCache(counted);
-        const [first, second] = await Promise.all([
-            cached.run(request, guest),
-            cached.run(request, guest),
-        ]);
-        expect(runs).toBe(1);
-        expect(second).toEqual(first);
+    it('shares one run between identical requests in flight, however long it takes', async () => {
+        const { stub, settle } = delayed();
+        const cached = withResponseCache(stub, { maxAgeMs: 1 });
+        const first = cached.run(request, guest, at(0));
+        const second = cached.run(request, guest, at(5000));
+        expect(settle).toHaveLength(1);
+        settle[0]?.({ data: { ok: true } });
+        expect(await second).toEqual(await first);
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 1, size: 1 });
+    });
+
+    it('ages an answer from when it arrived, by the clock it was answered at', async () => {
+        const { stub, settle, clocks } = delayed();
+        const cached = withResponseCache(stub, { maxAgeMs: 1000 });
+        const first = cached.run(request, guest, at(0));
+        settle[0]?.({ data: { ok: true } });
+        await first;
+        await cached.run(request, guest, at(999));
+        void cached.run(request, guest, at(1000));
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 2 });
+        expect(clocks.map((clock) => clock.getTime())).toEqual([0, 1000]);
+
+        void withResponseCache(stub).run(request, guest);
+        expect(clocks[2]?.getTime()).toBeGreaterThan(0);
     });
 
     it('forgets an answer after its age, and the oldest when full', async () => {
         const cached = withResponseCache(api, { maxEntries: 2, maxAgeMs: 1000 });
-        const at = (ms: number) => new Date(ms);
         await cached.run(request, guest, at(0));
         await cached.run(request, guest, at(999));
         await cached.run(request, guest, at(1000));
@@ -190,7 +257,6 @@ describe('the response cache', () => {
 
     it('keeps a recomputed expired answer as the most recently used', async () => {
         const cached = withResponseCache(api, { maxEntries: 2, maxAgeMs: 1000 });
-        const at = (ms: number) => new Date(ms);
         const second = { query: '{ store { name } }' };
         const third = { query: '{ categories { id } }' };
 
@@ -203,27 +269,22 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ hits: 1, misses: 4, size: 2 });
     });
 
-    it('does not let an expired failure delete its replacement', async () => {
-        const settle: ((response: StoreResponse) => void)[] = [];
-        const delayed = {
-            ...api,
-            run: () =>
-                new Promise<StoreResponse>((resolve) => {
-                    settle.push(resolve);
-                }),
-        };
-        const cached = withResponseCache(delayed, { maxAgeMs: 1 });
-        const at = (ms: number) => new Date(ms);
+    it('does not let an evicted failure delete its replacement', async () => {
+        const { stub, settle } = delayed();
+        const cached = withResponseCache(stub, { maxEntries: 1 });
+        const other = { query: '{ store { name } }' };
 
         const first = cached.run(request, guest, at(0));
-        const replacement = cached.run(request, guest, at(1));
+        const evictor = cached.run(other, guest, at(0));
+        const replacement = cached.run(request, guest, at(0));
         settle[0]?.({ errors: [{ message: 'old failure' }] });
         await first;
-        settle[1]?.({ data: { ok: true } });
+        settle[1]?.({ data: { other: true } });
+        await evictor;
+        settle[2]?.({ data: { ok: true } });
         await replacement;
-        await cached.run(request, guest, at(1));
-
-        expect(cached.cache).toMatchObject({ hits: 1, misses: 2, size: 1 });
+        expect(await cached.run(request, guest, at(0))).toEqual({ data: { ok: true } });
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 3, size: 1 });
     });
 
     it('does not keep an answer with errors', async () => {

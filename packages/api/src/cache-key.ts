@@ -2,6 +2,7 @@ import { stripIgnoredCharacters } from 'graphql';
 
 import type { Viewer } from './context.js';
 import type { StoreRequest } from './execute.js';
+import { canonical } from './fingerprint.js';
 
 /**
  * The one definition of what a cached answer is an answer to.
@@ -12,9 +13,11 @@ import type { StoreRequest } from './execute.js';
  *
  * - The store version, which changes with the catalog or the rules, so an
  *   update can never be followed by a stale answer.
- * - The viewer's group, so a member's price is never served to a guest.
- *   This is the part a key built from the request alone leaves out, and
- *   the leak test in `cache.test.ts` shows what happens without it.
+ * - The whole viewer, so a member's price is never served to a guest, and
+ *   so a field added to the viewer later is in the key without anyone
+ *   remembering to put it there. This is the part a key built from the
+ *   request alone leaves out, and the leak test in `cache.test.ts` shows
+ *   what happens without it.
  * - The operation and its variables, written so that the same request
  *   gives the same key however it was spelled.
  */
@@ -28,33 +31,38 @@ export interface CacheKeyInput {
 
 export type CacheKey = (input: CacheKeyInput) => string;
 
-/** JSON with object keys in one order, so equal values are equal text. */
-const canonical = (value: unknown): string => {
-    if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-    if (value !== null && typeof value === 'object') {
-        const fields = Object.entries(value as Record<string, unknown>)
-            .filter(([, inner]) => inner !== undefined)
-            .sort(([a], [b]) => (a < b ? -1 : 1))
-            .map(([name, inner]) => `${JSON.stringify(name)}:${canonical(inner)}`);
-        return `{${fields.join(',')}}`;
-    }
-    return JSON.stringify(value);
-};
+/** How many distinct query texts to remember the canonical form of. */
+const QUERY_MEMO_SIZE = 64;
+const queryMemo = new Map<string, string>();
 
-/** Remove only GraphQL's insignificant text, preserving values inside strings. */
+/**
+ * The query with only GraphQL's insignificant characters removed, so the
+ * text inside a string value is left alone. A storefront sends the same
+ * few query texts over and over, so the work is done once per text. A
+ * query that cannot be lexed is kept as it is, so it still reaches the
+ * API and comes back as the parse error it is.
+ */
 const canonicalQuery = (query: string): string => {
+    const known = queryMemo.get(query);
+    if (known !== undefined) return known;
+    let stripped: string;
     try {
-        return stripIgnoredCharacters(query);
+        stripped = stripIgnoredCharacters(query);
     } catch {
-        // Invalid requests still need to reach the API and come back as GraphQL errors.
-        return query;
+        stripped = query;
     }
+    if (queryMemo.size >= QUERY_MEMO_SIZE) {
+        const oldest = queryMemo.keys().next().value;
+        if (oldest !== undefined) queryMemo.delete(oldest);
+    }
+    queryMemo.set(query, stripped);
+    return stripped;
 };
 
 export const cacheKey: CacheKey = ({ version, viewer, request }) =>
     JSON.stringify([
         version,
-        viewer.group,
+        canonical(viewer),
         request.operationName ?? null,
         canonical(request.variables ?? {}),
         canonicalQuery(request.query),
