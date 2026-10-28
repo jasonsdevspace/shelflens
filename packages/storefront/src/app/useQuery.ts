@@ -7,10 +7,11 @@ import type { TypedDocumentString } from '../generated/operations.js';
 /**
  * One query, kept current.
  *
- * The variables are the key. When they change a new request starts and the
- * one before is abandoned, so only the newest answer is ever shown. The
- * previous answer stays available while the next is in flight, so a page
- * can dim rather than empty itself between two filters.
+ * The variables and the client are the key. When either changes a new
+ * request starts and the one before is abandoned, so only the newest
+ * answer is ever shown. The previous answer stays available while the
+ * next is in flight, so a page can dim rather than empty itself between
+ * two filters, or between two viewers.
  */
 
 export interface QueryState<Result> {
@@ -28,9 +29,15 @@ export const useQuery = <Result, Variables>(
     variables: Variables | undefined
 ): QueryState<Result> => {
     const key = variables === undefined ? undefined : JSON.stringify(variables);
-    const [answered, setAnswered] = useState<{ key: string; data: Result }>();
-    const [failed, setFailed] = useState<{ key: string; message: string }>();
+    const [answered, setAnswered] = useState<{
+        client: GraphQLClient;
+        key: string;
+        data: Result;
+    }>();
+    const [failed, setFailed] = useState<{ client: GraphQLClient; key: string; message: string }>();
     const latest = useRef(createLatest());
+    const current = (asked: { client: GraphQLClient; key: string } | undefined) =>
+        asked?.client === client && asked.key === key;
 
     useEffect(() => {
         if (key === undefined) {
@@ -40,10 +47,11 @@ export const useQuery = <Result, Variables>(
         void latest.current
             .run((signal) => client.query(document, JSON.parse(key) as Variables, { signal }))
             .then((outcome) => {
-                if (!outcome.stale) setAnswered({ key, data: outcome.value });
+                if (!outcome.stale) setAnswered({ client, key, data: outcome.value });
             })
             .catch((error: unknown) => {
                 setFailed({
+                    client,
                     key,
                     message: error instanceof Error ? error.message : 'the request failed',
                 });
@@ -52,7 +60,7 @@ export const useQuery = <Result, Variables>(
 
     return {
         data: key === undefined ? undefined : answered?.data,
-        loading: key !== undefined && answered?.key !== key && failed?.key !== key,
-        error: failed !== undefined && failed.key === key ? failed.message : undefined,
+        loading: key !== undefined && !current(answered) && !current(failed),
+        error: current(failed) ? failed?.message : undefined,
     };
 };

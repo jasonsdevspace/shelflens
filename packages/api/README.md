@@ -10,9 +10,17 @@ answer it over `@shelflens/search`.
 - **The viewer comes from the request.** Prices and visibility follow the customer group in the
   `shelflens-customer-group` header. There is no argument that asks for another group's prices.
 - **One cache key.** `cacheKey` is the only definition of what an answer is an answer to: the
-  store version, the viewer's group, and the operation with its variables. `withResponseCache`
+  store version, the whole viewer, and the operation with its variables. `withResponseCache`
   remembers answers on that key, and a test shows the leak a key without the viewer causes.
+  `cacheKeyOf` builds the same key from parts, with the operation's persisted name standing for
+  its text, for a page with nothing from GraphQL in it.
   [Decision record 8](../../docs/decisions/0008-one-cache-key.md).
+- **One shape over HTTP.** `resolveRequest` says what a request means and `responseHeaders` what
+  its answer may be cached as, so the Node server and the service worker cannot disagree. A
+  persisted operation is a `GET` naming one of the storefront's operations by hash, from the
+  manifest `npm run codegen` writes, with its variables and the version it expects in the URL.
+  A full query is a `POST`, which a host may refuse. An answer is cacheable only under the version
+  that answered it, and the viewer is a header the cache varies on.
 - **Requests have limits.** Depth and width are checked at validation. A client's own mistake
   comes back with a message and a code. A resolver's failure comes back as one fixed message
   with a path, never the reason.

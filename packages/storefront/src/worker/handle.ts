@@ -1,10 +1,11 @@
 import {
     createStore,
     createStoreApi,
-    GROUP_HEADER,
-    isStoreRequest,
+    isApiPath,
+    PERSISTED_OPERATIONS,
+    resolveRequest,
+    responseHeaders,
     type StoreApi,
-    viewerFromHeader,
     withResponseCache,
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
@@ -13,18 +14,40 @@ import type { Catalog } from '@shelflens/catalog';
  * The API as a `fetch` handler, which is all a service worker needs.
  *
  * The store is built once, from the catalog the site ships beside it, the
- * first time anything asks. Every `POST` to `/graphql` after that is
- * answered in the page, so the client makes a real network request and
- * gets a real response, and only the hop to a server is missing. Answers
- * are cached on the project's key, so a page the shopper returns to costs
- * nothing. Anything that is not a request for the API is left to the
- * network.
+ * first time anything asks. Every request for `graphql` under the base
+ * after that is answered in the page, so the client makes a real network
+ * request and gets a real response, and only the hop to a server is
+ * missing. Only the storefront's own operations are accepted, by name.
+ * Anything that is not a request for the API is left to the network.
+ *
+ * Answers are cached twice. In memory, on the project's key, for the life
+ * of the worker. And, when the worker is given one, in a store of
+ * responses keyed by URL, the way a browser cache would keep them: an
+ * answer a worker makes up never enters the browser's own HTTP cache, so
+ * the worker keeps what the headers say may be kept, for as long as they
+ * say, and matches on the viewer header the answer varies on. A new
+ * store version is a new URL, and the old URLs are dropped when the store
+ * is built.
  */
 
 export interface WorkerApiOptions {
     /** Where the catalog JSON is served from. */
     readonly catalogUrl: string;
+    /** The path the site is served under, where `graphql` is answered. */
+    readonly base?: string;
     readonly fetch?: typeof fetch;
+    /** Accept full query text as well as persisted operations. The demo does not. */
+    readonly allowFullQueries?: boolean;
+    /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
+    readonly answers?: () => Promise<AnswerStore>;
+}
+
+/** The part of the Cache API the worker uses. */
+export interface AnswerStore {
+    match(request: Request): Promise<Response | undefined>;
+    put(request: Request, response: Response): Promise<void>;
+    keys(): Promise<readonly Request[]>;
+    delete(request: Request): Promise<boolean>;
 }
 
 export interface WorkerApi {
@@ -34,20 +57,34 @@ export interface WorkerApi {
     handle(request: Request): Promise<Response | undefined>;
 }
 
-const json = (status: number, body: unknown): Response =>
-    new Response(JSON.stringify(body), {
-        status,
-        headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
+const json = (
+    status: number,
+    body: unknown,
+    headers: Record<string, string> = { 'content-type': 'application/json; charset=utf-8' }
+): Response => new Response(JSON.stringify(body), { status, headers });
 
-const isApiRequest = (request: Request): boolean =>
-    request.method === 'POST' && new URL(request.url).pathname.endsWith('/graphql');
+/** Whether a kept answer is still within the age its headers allow. */
+const fresh = (response: Response, now: Date): boolean => {
+    const maxAge = /max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1];
+    const date = Date.parse(response.headers.get('date') ?? '');
+    if (maxAge === undefined || Number.isNaN(date)) return false;
+    return now.getTime() - date < Number(maxAge) * 1000;
+};
+
+const mayKeep = (response: Response): boolean =>
+    (response.headers.get('cache-control') ?? '').startsWith('public');
 
 export const createWorkerApi = ({
     catalogUrl,
+    base = '/',
     fetch: fetchImpl = fetch,
+    allowFullQueries = false,
+    answers,
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<StoreApi> | undefined;
+
+    const isApiRequest = (request: Request): boolean =>
+        (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
 
     const load = (): Promise<StoreApi> => {
         store ??= fetchImpl(catalogUrl)
@@ -65,29 +102,57 @@ export const createWorkerApi = ({
         return store;
     };
 
+    /** Drops every kept answer that is not for this store's version. */
+    const dropOthers = async (api: StoreApi) => {
+        if (!answers) return;
+        const kept = await answers();
+        for (const request of await kept.keys()) {
+            if (new URL(request.url).searchParams.get('v') !== api.version) {
+                await kept.delete(request);
+            }
+        }
+    };
+
+    const answer = async (request: Request): Promise<Response> => {
+        const resolved = resolveRequest(
+            {
+                method: request.method,
+                url: request.url,
+                body: request.method === 'POST' ? await request.text() : undefined,
+                header: (name) => request.headers.get(name),
+            },
+            { persisted: PERSISTED_OPERATIONS, persistedOnly: !allowFullQueries }
+        );
+        if (resolved.kind === 'refused') {
+            return json(resolved.status, { errors: [{ message: resolved.message }] });
+        }
+        let api: StoreApi;
+        try {
+            api = await load();
+        } catch {
+            return json(503, { errors: [{ message: 'the store is not ready' }] });
+        }
+        const now = new Date();
+        const response = await api.run(resolved.request, resolved.viewer, now);
+        return json(
+            200,
+            response,
+            responseHeaders({ version: api.version, now, expected: resolved.expected, response })
+        );
+    };
+
     return {
         warm: async () => {
-            await load();
+            await dropOthers(await load());
         },
         handle: async (request) => {
             if (!isApiRequest(request)) return undefined;
-            let body: unknown;
-            try {
-                body = await request.json();
-            } catch {
-                return json(400, { errors: [{ message: 'the request body is not JSON' }] });
-            }
-            if (!isStoreRequest(body)) {
-                return json(400, { errors: [{ message: 'the request needs a query' }] });
-            }
-            let api: StoreApi;
-            try {
-                api = await load();
-            } catch {
-                return json(503, { errors: [{ message: 'the store is not ready' }] });
-            }
-            const viewer = viewerFromHeader(request.headers.get(GROUP_HEADER));
-            return json(200, await api.run(body, viewer, new Date()));
+            const kept = request.method === 'GET' && answers ? await answers() : undefined;
+            const held = await kept?.match(request);
+            if (held && fresh(held, new Date())) return held;
+            const response = await answer(request);
+            if (kept && mayKeep(response)) await kept.put(request, response.clone());
+            return response;
         },
     };
 };

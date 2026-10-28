@@ -5,17 +5,27 @@ import {
     type ServerResponse,
 } from 'node:http';
 
-import { GROUP_HEADER, isStoreRequest, type StoreApi, viewerFromHeader } from '@shelflens/api';
+import {
+    GROUP_HEADER,
+    isApiPath,
+    PERSISTED_OPERATIONS,
+    resolveRequest,
+    responseHeaders,
+    type StoreApi,
+    viewerFromHeader,
+} from '@shelflens/api';
 
 /**
  * The API over HTTP, for local runs and for anything that cannot host a
  * service worker.
  *
- * One endpoint, `POST /graphql`, and a health check. The customer group
- * arrives in a header, standing in for the session a real store would
- * have. Requests are rate limited per group and address before any work
- * is done, bodies are bounded, and a failure reaches the client as a
- * request id to quote, never as a stack.
+ * One endpoint, `/graphql`, and a health check. A persisted operation is
+ * a `GET` naming one of the storefront's operations, and a full query is
+ * a `POST`, which the host may refuse. The customer group arrives in a
+ * header, standing in for the session a real store would have. Requests
+ * are rate limited per group and address before any work is done, bodies
+ * are bounded, each answer says what may be cached, and a failure reaches
+ * the client as a request id to quote, never as a stack.
  */
 
 const BODY_LIMIT_BYTES = 16 * 1024;
@@ -25,6 +35,14 @@ export interface ServerOptions {
     /** Requests each client may make per minute. */
     readonly rateLimitPerMinute?: number;
     readonly now?: () => Date;
+    /** The operations a client may name. The storefront's, unless told otherwise. */
+    readonly persisted?: Readonly<Record<string, string>>;
+    /** Refuse full query text, as the public demo does. */
+    readonly persistedOnly?: boolean;
+    /** How long a cacheable answer may be served, in seconds. */
+    readonly maxAgeSeconds?: number;
+    /** The path the API is served under, so `graphql` is answered only there. */
+    readonly base?: string;
 }
 
 /**
@@ -65,13 +83,25 @@ const readBody = (request: IncomingMessage): Promise<string | undefined> =>
         request.on('error', () => resolve(undefined));
     });
 
-const send = (response: ServerResponse, status: number, body: unknown, requestId: string) => {
-    response.writeHead(status, {
-        'content-type': 'application/json; charset=utf-8',
-        'x-request-id': requestId,
-    });
+interface Reply {
+    readonly status: number;
+    readonly body: unknown;
+    readonly requestId: string;
+    readonly headers?: Record<string, string>;
+}
+
+const send = (
+    response: ServerResponse,
+    { status, body, requestId, headers = JSON_HEADERS }: Reply
+) => {
+    response.writeHead(status, { ...headers, 'x-request-id': requestId });
     response.end(JSON.stringify(body));
 };
+
+const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+
+const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
+    send(response, { status, body: { errors: [{ message }] }, requestId });
 
 export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 
@@ -83,17 +113,22 @@ export const createHandler = ({
     api,
     rateLimitPerMinute = 600,
     now = () => new Date(),
+    persisted = PERSISTED_OPERATIONS,
+    persistedOnly = false,
+    maxAgeSeconds,
+    base = '/',
 }: ServerOptions): RequestHandler => {
     const allow = createRateLimit(rateLimitPerMinute, now);
 
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
-        if (request.method === 'GET' && request.url === '/health') {
-            send(response, 200, { status: 'ok' }, requestId);
+        const url = request.url ?? '/';
+        if (request.method === 'GET' && url === '/health') {
+            send(response, { status: 200, body: { status: 'ok' }, requestId });
             return;
         }
-        if (request.method !== 'POST' || request.url !== '/graphql') {
-            send(response, 404, { errors: [{ message: 'not found' }] }, requestId);
+        if (!isApiPath(url, base)) {
+            refuse(response, 404, 'not found', requestId);
             return;
         }
 
@@ -101,51 +136,57 @@ export const createHandler = ({
         const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
         if (!allow(client)) {
             response.setHeader('retry-after', '60');
-            send(response, 429, { errors: [{ message: 'too many requests' }] }, requestId);
+            refuse(response, 429, 'too many requests', requestId);
             return;
         }
 
-        const body = await readBody(request);
-        if (body === undefined) {
-            send(
-                response,
-                413,
-                { errors: [{ message: 'the request body is too large' }] },
-                requestId
-            );
-            return;
+        let body: string | undefined;
+        if (request.method === 'POST') {
+            body = await readBody(request);
+            if (body === undefined) {
+                refuse(response, 413, 'the request body is too large', requestId);
+                return;
+            }
         }
-        let parsed: unknown;
-        try {
-            parsed = JSON.parse(body);
-        } catch {
-            send(
-                response,
-                400,
-                { errors: [{ message: 'the request body is not JSON' }] },
-                requestId
-            );
-            return;
-        }
-        if (!isStoreRequest(parsed)) {
-            send(response, 400, { errors: [{ message: 'the request needs a query' }] }, requestId);
+        const resolved = resolveRequest(
+            {
+                method: request.method ?? 'GET',
+                url,
+                body,
+                header: (name) => request.headers[name]?.toString(),
+            },
+            { persisted, persistedOnly }
+        );
+        if (resolved.kind === 'refused') {
+            refuse(response, resolved.status, resolved.message, requestId);
             return;
         }
 
         try {
-            send(response, 200, await api.run(parsed, viewer, now()), requestId);
+            const answer = await api.run(resolved.request, resolved.viewer, now());
+            send(response, {
+                status: 200,
+                body: answer,
+                requestId,
+                headers: responseHeaders({
+                    version: api.version,
+                    now: now(),
+                    expected: resolved.expected,
+                    response: answer,
+                    maxAgeSeconds,
+                }),
+            });
         } catch (error) {
             console.error(`request ${requestId} failed`, error);
-            send(
-                response,
-                500,
-                {
+            send(response, {
+                status: 500,
+                body: {
                     errors: [
                         { message: 'Something went wrong on our side.', extensions: { requestId } },
                     ],
                 },
-                requestId
-            );
+                requestId,
+            });
         }
     };
 };

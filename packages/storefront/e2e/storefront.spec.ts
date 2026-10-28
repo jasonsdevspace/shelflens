@@ -71,3 +71,53 @@ test('browsing a category sorts by position, and a facet narrows the results in 
     await expect(page).toHaveURL(/\?category=shoes$/);
     await expect(brand).not.toBeChecked();
 });
+
+interface ShippedCatalog {
+    readonly products: readonly {
+        readonly sku: string;
+        readonly name: string;
+        readonly visibleTo: readonly string[];
+        readonly price: {
+            readonly guest: { readonly min: number };
+            readonly member: { readonly min: number };
+        };
+    }[];
+}
+
+const amount = (text: string | null) =>
+    Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
+
+test('a member sees the product guests cannot, and pays less, from the same page', async ({
+    page,
+    request,
+}) => {
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
+    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+
+    await page.goto(`/?product=${membersOnly.sku}`);
+    await expect(page.getByRole('alert')).toContainText('There is no product');
+    await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(membersOnly.name);
+    await audit(page);
+
+    await page.goto(`/?product=${discounted.sku}`);
+    const price = page.locator('.product-price');
+    await expect(price).toBeVisible();
+    const asGuest = amount(await price.textContent());
+    await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
+    await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
+});
+
+test('answers travel as named operations the browser may keep', async ({ page }) => {
+    await page.goto('/?category=shoes');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shoes');
+    const answered = page.waitForResponse(
+        (response) => response.url().includes('op=') && response.url().includes('v=')
+    );
+    await page.getByRole('group', { name: 'Brand' }).getByRole('checkbox').first().check();
+    const response = await answered;
+    expect(response.request().method()).toBe('GET');
+    expect(response.headers()['cache-control']).toBe('public, max-age=300');
+});

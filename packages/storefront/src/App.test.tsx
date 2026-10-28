@@ -53,6 +53,12 @@ const open = async (search = '') => {
 const heading = () => screen.getByRole('heading', { level: 1 });
 const cards = () => within(screen.getByRole('list', { name: 'Products' })).getAllByRole('link');
 const facet = (title: string) => screen.getByRole('group', { name: title });
+const amount = (text: string | null | undefined) =>
+    Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
+const shownPrice = () => amount(document.querySelector('.product-price')?.textContent);
+const shopAs = (user: ReturnType<typeof userEvent.setup>, group: 'guest' | 'member') =>
+    user.selectOptions(screen.getByRole('combobox', { name: 'Shopping as' }), group);
+
 const settled = () =>
     waitFor(() =>
         expect(document.querySelector('.results-layout')).not.toHaveAttribute('aria-busy', 'true')
@@ -276,5 +282,31 @@ describe('on a phone', () => {
         expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
         await user.tab({ shift: true });
         expect(done).toHaveFocus();
+    });
+});
+
+describe('as a member', () => {
+    const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    if (!discounted || !membersOnly) throw new Error('expected a discount and a hidden product');
+
+    it('pays less on a discounted product, from the moment the viewer changes', async () => {
+        const user = await open(`?product=${discounted.sku}`);
+        await screen.findByRole('heading', { level: 1, name: discounted.name });
+        const asGuest = shownPrice();
+        expect(asGuest).toBeGreaterThan(0);
+        await shopAs(user, 'member');
+        await waitFor(() => expect(shownPrice()).toBeLessThan(asGuest));
+        await shopAs(user, 'guest');
+        await waitFor(() => expect(shownPrice()).toBe(asGuest));
+    });
+
+    it('sees a product a guest is told does not exist', async () => {
+        window.history.replaceState(null, '', `/?product=${membersOnly.sku}`);
+        render(<App apiUrl="http://store.test/graphql" ready={Promise.resolve()} />);
+        const user = userEvent.setup();
+        expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');
+        await shopAs(user, 'member');
+        await screen.findByRole('heading', { level: 1, name: membersOnly.name });
     });
 });
