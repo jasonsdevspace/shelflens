@@ -188,5 +188,5 @@ test('says whose demo it is before anything else, and follows the theme the port
     expect(background).toBe('rgb(18, 18, 18)');
 
     await expect(page.getByRole('contentinfo')).toContainText('portfolio project by Jason Poteet');
-    expect(await new AxeBuilder({ page }).analyze()).toHaveProperty('violations', []);
+    await audit(page);
 });
