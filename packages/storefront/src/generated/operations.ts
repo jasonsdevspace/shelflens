@@ -33,6 +33,14 @@ export type MatchInput =
           readonly range: RangeInput;
       };
 
+export type MatchRoute =
+    /** The matched term is one typo from the typed word. */
+    | 'CORRECTED'
+    | 'EXACT'
+    /** The typed word is the start of the matched one. */
+    | 'PREFIX'
+    | 'SYNONYM';
+
 export type Matching =
     /** No phrase was given, so everything matched. */
     'ALL' | 'CORRECTED' | 'EXACT' | 'NONE';
@@ -45,6 +53,8 @@ export type RangeInput = {
     readonly from?: number | null | undefined;
     readonly to?: number | null | undefined;
 };
+
+export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
 export type SearchInput = {
     /** Which facets to count, by name. Every facet when omitted, none when empty. */
@@ -129,6 +139,7 @@ export type ProductQuery = {
 
 export type SearchQueryVariables = Exact<{
     input: SearchInput;
+    explain?: boolean | null | undefined;
 }>;
 
 export type SearchQuery = {
@@ -139,7 +150,25 @@ export type SearchQuery = {
         readonly totalPages: number;
         readonly matching: Matching;
         readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
+        readonly merchandising: {
+            readonly applied: ReadonlyArray<string>;
+            readonly setAsideBySort: ReadonlyArray<string>;
+        };
         readonly items: ReadonlyArray<{
+            readonly score?: number;
+            readonly explanation?: {
+                readonly matches: ReadonlyArray<{
+                    readonly typed: string;
+                    readonly matched: string;
+                    readonly field: string;
+                    readonly route: MatchRoute;
+                }>;
+                readonly rules: ReadonlyArray<{
+                    readonly ruleId: string;
+                    readonly action: RuleAction;
+                    readonly weight: number | null;
+                }>;
+            };
             readonly product: {
                 readonly sku: string;
                 readonly name: string;
@@ -297,7 +326,7 @@ export const ProductDocument = new TypedDocumentString(
 ) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
 export const SearchDocument = new TypedDocumentString(
     `
-    query Search($input: SearchInput!) {
+    query Search($input: SearchInput!, $explain: Boolean = false) {
   search(input: $input) {
     total
     page
@@ -308,7 +337,25 @@ export const SearchDocument = new TypedDocumentString(
       by
       direction
     }
+    merchandising {
+      applied
+      setAsideBySort
+    }
     items {
+      score @include(if: $explain)
+      explanation @include(if: $explain) {
+        matches {
+          typed
+          matched
+          field
+          route
+        }
+        rules {
+          ruleId
+          action
+          weight
+        }
+      }
       product {
         sku
         name
@@ -358,7 +405,7 @@ export const SearchDocument = new TypedDocumentString(
   }
 }
     `,
-    { hash: '5ca215916918fe839a1d2b2c5e64b4dda59c7492f84cbee4efe0ab401b3e7375' }
+    { hash: 'cf00882d99ac23c39e83371aeba08bafcec357b69ad91da7b1115a10b4601510' }
 ) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString(
     `

@@ -8,6 +8,10 @@ import { type AnswerStore, createWorkerApi } from './handle.js';
 const catalog = generateCatalog({ seed: 42, products: 200 });
 const version = createStore({ catalog }).version;
 
+/** The URL a fetch was asked for, as text. */
+const urlOf = (input: RequestInfo | URL): string =>
+    typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
 const servingCatalog = () =>
     vi.fn<typeof fetch>().mockResolvedValue(
         new Response(JSON.stringify(catalog), {
@@ -105,6 +109,52 @@ describe('the API inside the worker', () => {
         const full = await api.handle(posted({ query: '{ store { name } }' }));
         expect(await full?.json()).toEqual({ data: { store: { name: 'ShelfLens' } } });
         expect((await api.handle(posted('{ not json')))?.status).toBe(400);
+    });
+
+    it('builds the store with the rules file beside the catalog, and reports a bad one', async () => {
+        const jacket = catalog.products.find((p) => /jacket/i.test(p.name));
+        if (!jacket) throw new Error('expected a jacket');
+        const serving = (rules: unknown) =>
+            vi.fn<typeof fetch>().mockImplementation((input) =>
+                Promise.resolve(
+                    new Response(JSON.stringify(urlOf(input) === 'rules.json' ? rules : catalog), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    })
+                )
+            );
+        const good = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            rulesUrl: 'rules.json',
+            base: BASE,
+            fetch: serving({
+                rules: [{ id: 'top', when: { queries: ['jacket'] }, pin: [jacket.sku] }],
+            }),
+            allowFullQueries: true,
+        });
+        const answer = await good.handle(
+            posted({
+                query: '{ search(input: { phrase: "jacket" }) { items { product { sku } } merchandising { applied } } }',
+            })
+        );
+        const { data } = (await answer?.json()) as {
+            data: {
+                search: {
+                    items: { product: { sku: string } }[];
+                    merchandising: { applied: string[] };
+                };
+            };
+        };
+        expect(data.search.items[0]?.product.sku).toBe(jacket.sku);
+        expect(data.search.merchandising.applied).toEqual(['top']);
+
+        const bad = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            rulesUrl: 'rules.json',
+            base: BASE,
+            fetch: serving({ rules: [{ id: 'top', pin: ['SL-NOPE'] }] }),
+        });
+        expect((await bad.handle(persisted({ op: STORE })))?.status).toBe(503);
     });
 
     it('leaves anything that is not an API request to the network', async () => {

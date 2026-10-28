@@ -159,6 +159,15 @@ describe('checking rules at startup', () => {
         expect(make({ id: 'r', boost: [{ ids: ['nope'], weight: 2 }] })).toThrow(/does not exist/);
     });
 
+    it('refuses a rule that names an attribute the engine does not have', () => {
+        expect(
+            make({ id: 'r', boost: [{ attribute: { name: 'colour', value: 'red' }, weight: 2 }] })
+        ).toThrow(/attribute the engine does not have: colour/);
+        expect(
+            make({ id: 'r', when: { filter: { attribute: 'shelf', value: 'a' } }, pin: ['p1'] })
+        ).toThrow(/attribute the engine does not have: shelf/);
+    });
+
     it('refuses a rule that does nothing, a weight of zero, and a window that ends first', () => {
         expect(make({ id: 'r' })).toThrow(/does nothing/);
         expect(make({ id: 'r', boost: [{ ids: ['p1'], weight: 0 }] })).toThrow(/above zero/);

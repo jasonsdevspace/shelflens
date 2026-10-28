@@ -1,0 +1,85 @@
+{
+    "rules": [
+        {
+            "id": "featured-jackets",
+            "name": "Featured jackets",
+            "when": {
+                "queries": ["jacket", "jackets"]
+            },
+            "pin": ["SL-00141", "SL-00060"]
+        },
+        {
+            "id": "racer-sample",
+            "name": "The cafe racer is a sample, not for sale",
+            "when": {
+                "queries": ["jacket", "jackets"]
+            },
+            "hide": ["SL-00064"]
+        },
+        {
+            "id": "ridgeback-boots",
+            "name": "Ridgeback boots first",
+            "when": {
+                "queries": ["boot", "boots"],
+                "filter": {
+                    "attribute": "category",
+                    "value": "boots"
+                }
+            },
+            "boost": [
+                {
+                    "attribute": {
+                        "name": "brand",
+                        "value": "Ridgeback"
+                    },
+                    "weight": 1.5
+                }
+            ]
+        },
+        {
+            "id": "slip-dress-clearance",
+            "name": "Slip dresses are on the way out",
+            "when": {
+                "queries": ["dress", "dresses"]
+            },
+            "bury": [
+                {
+                    "ids": ["SL-00049"],
+                    "weight": 0.5
+                }
+            ]
+        },
+        {
+            "id": "autumn-knits",
+            "name": "Autumn knits",
+            "when": {
+                "queries": ["sweater", "sweaters"]
+            },
+            "active": {
+                "from": "2026-09-01T00:00:00Z",
+                "to": "2027-03-01T00:00:00Z"
+            },
+            "boost": [
+                {
+                    "attribute": {
+                        "name": "brand",
+                        "value": "Northwind"
+                    },
+                    "weight": 1.4
+                }
+            ]
+        },
+        {
+            "id": "spring-sandals",
+            "name": "Spring sandals",
+            "when": {
+                "queries": ["sandal", "sandals"]
+            },
+            "active": {
+                "from": "2027-03-01T00:00:00Z",
+                "to": "2027-06-01T00:00:00Z"
+            },
+            "pin": ["SL-00050"]
+        }
+    ]
+}

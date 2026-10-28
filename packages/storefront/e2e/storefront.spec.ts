@@ -121,3 +121,23 @@ test('answers travel as named operations the browser may keep', async ({ page })
     expect(response.request().method()).toBe('GET');
     expect(response.headers()['cache-control']).toBe('public, max-age=300');
 });
+
+test('explain mode says why the featured jacket is first, and a price sort sets the rule aside', async ({
+    page,
+}) => {
+    await page.goto('/?q=jacket&explain=1');
+    // The explanation is a list inside each card, so the cards are the direct children.
+    const cards = page.locator('.cards > .card');
+    await expect(cards.first()).toContainText('Ridgeback Relaxed Puffer Jacket');
+    await expect(cards.first().getByRole('list', { name: 'Why this is result 1' })).toContainText(
+        'Pinned to the top by rule featured-jackets'
+    );
+    await expect(cards.nth(2).getByRole('list', { name: 'Why this is result 3' })).toContainText(
+        '"jacket" matched "jacket" in the name'
+    );
+    await audit(page);
+
+    await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
+    await expect(page.getByRole('status')).toContainText('set aside the merchandising');
+    await expect(page.getByRole('status')).toContainText('featured-jackets');
+});

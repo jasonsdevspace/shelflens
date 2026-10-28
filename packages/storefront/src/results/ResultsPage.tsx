@@ -3,6 +3,7 @@ import { useId } from 'react';
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import {
     activeFilterCount,
+    PAGE_SIZE,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -54,6 +55,7 @@ export const ResultsPage = ({
     const id = useId();
     const { data, loading, error } = useQuery(client, SearchDocument, {
         input: toSearchInput(state),
+        explain: state.explain ?? false,
     });
     const narrow = useMediaQuery(NARROW);
     const result = data?.search;
@@ -70,6 +72,7 @@ export const ResultsPage = ({
     const crumbs = ancestry(categories, state.category);
     const { category: _current, ...allProducts } = { ...state, page: 1 };
     const sortKey = state.sort ?? sortKeyOf(result.sort);
+    const setAside = result.merchandising.setAsideBySort;
     const facets = (
         <Facets
             facets={result.facets}
@@ -134,6 +137,14 @@ export const ResultsPage = ({
                             <span className="results-note"> showing close matches</span>
                         )}
                     </h1>
+                    <button
+                        type="button"
+                        className="explain-toggle"
+                        aria-pressed={state.explain ?? false}
+                        onClick={() => navigate({ ...state, explain: !state.explain })}
+                    >
+                        Explain ranking
+                    </button>
                     <label className="sort">
                         <span className="sort-label">Sort by</span>
                         <select
@@ -151,16 +162,27 @@ export const ResultsPage = ({
                         </select>
                     </label>
                 </div>
+                {setAside.length > 0 && (
+                    <p className="results-aside" role="status">
+                        Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the merchandising:{' '}
+                        {setAside.join(', ')}. Pins and boosts apply under relevance only.
+                    </p>
+                )}
                 {result.total === 0 ? (
                     <p className="notice">Nothing matched. Try fewer filters or another phrase.</p>
                 ) : (
                     <ul className="cards" aria-label="Products">
-                        {result.items.map(({ product }) => (
+                        {result.items.map((hit, index) => (
                             <ProductCard
-                                key={product.sku}
-                                product={product}
-                                href={serializeSearchState({ ...state, product: product.sku })}
-                                onOpen={() => navigate({ ...state, product: product.sku })}
+                                key={hit.product.sku}
+                                product={hit.product}
+                                href={serializeSearchState({ ...state, product: hit.product.sku })}
+                                onOpen={() => navigate({ ...state, product: hit.product.sku })}
+                                explain={
+                                    state.explain
+                                        ? { rank: (result.page - 1) * PAGE_SIZE + index + 1, hit }
+                                        : undefined
+                                }
                             />
                         ))}
                     </ul>

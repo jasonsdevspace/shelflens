@@ -1,4 +1,4 @@
-query Search($input: SearchInput!) {
+query Search($input: SearchInput!, $explain: Boolean = false) {
     search(input: $input) {
         total
         page
@@ -9,7 +9,25 @@ query Search($input: SearchInput!) {
             by
             direction
         }
+        merchandising {
+            applied
+            setAsideBySort
+        }
         items {
+            score @include(if: $explain)
+            explanation @include(if: $explain) {
+                matches {
+                    typed
+                    matched
+                    field
+                    route
+                }
+                rules {
+                    ruleId
+                    action
+                    weight
+                }
+            }
             product {
                 sku
                 name

@@ -1,3 +1,4 @@
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createStore,
     createStoreApi,
@@ -13,8 +14,10 @@ import type { Catalog } from '@shelflens/catalog';
 /**
  * The API as a `fetch` handler, which is all a service worker needs.
  *
- * The store is built once, from the catalog the site ships beside it, the
- * first time anything asks. Every request for `graphql` under the base
+ * The store is built once, from the catalog and the rules the site ships
+ * beside it, the first time anything asks. A rules file that names a
+ * product or an attribute the store does not have fails the build of the
+ * store, so a merchandiser's mistake is reported, not shipped. Every request for `graphql` under the base
  * after that is answered in the page, so the client makes a real network
  * request and gets a real response, and only the hop to a server is
  * missing. Only the storefront's own operations are accepted, by name.
@@ -33,6 +36,8 @@ import type { Catalog } from '@shelflens/catalog';
 export interface WorkerApiOptions {
     /** Where the catalog JSON is served from. */
     readonly catalogUrl: string;
+    /** Where the merchandising rules JSON is served from, if the store has any. */
+    readonly rulesUrl?: string;
     /** The path the site is served under, where `graphql` is answered. */
     readonly base?: string;
     readonly fetch?: typeof fetch;
@@ -74,8 +79,20 @@ const fresh = (response: Response, now: Date): boolean => {
 const mayKeep = (response: Response): boolean =>
     (response.headers.get('cache-control') ?? '').startsWith('public');
 
+/** The shape of the rules file: the rules, under one key so the file can grow. */
+interface RulesFile {
+    readonly rules: readonly Rule[];
+}
+
+const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
+    const response = await fetchImpl(url);
+    if (!response.ok) throw new Error(`the ${what} came back with status ${response.status}`);
+    return response.json() as Promise<T>;
+};
+
 export const createWorkerApi = ({
     catalogUrl,
+    rulesUrl,
     base = '/',
     fetch: fetchImpl = fetch,
     allowFullQueries = false,
@@ -87,13 +104,15 @@ export const createWorkerApi = ({
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
 
     const load = (): Promise<StoreApi> => {
-        store ??= fetchImpl(catalogUrl)
-            .then((response) => {
-                if (!response.ok)
-                    throw new Error(`the catalog came back with status ${response.status}`);
-                return response.json() as Promise<Catalog>;
-            })
-            .then((catalog) => withResponseCache(createStoreApi(createStore({ catalog }))))
+        store ??= Promise.all([
+            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
+            rulesUrl === undefined
+                ? Promise.resolve({ rules: [] })
+                : fetchJson<RulesFile>(fetchImpl, rulesUrl, 'rules file'),
+        ])
+            .then(([catalog, { rules }]) =>
+                withResponseCache(createStoreApi(createStore({ catalog, rules })))
+            )
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
                 store = undefined;

@@ -57,9 +57,12 @@ const EMPTY_PLAN: RulePlan = {
  * Run when the engine is created, so a mistake in a rules file is reported
  * at startup rather than discovered by a shopper.
  */
-type KnownId = (ruleId: string, id: string) => void;
+interface Known {
+    id(ruleId: string, id: string): void;
+    attribute(ruleId: string, name: string): void;
+}
 
-const checkAdjustment = (rule: Rule, adjustment: RuleAdjustment, knownId: KnownId): void => {
+const checkAdjustment = (rule: Rule, adjustment: RuleAdjustment, known: Known): void => {
     if (!(adjustment.weight > 0)) {
         throw new EngineError(
             'invalid_rule',
@@ -69,37 +72,53 @@ const checkAdjustment = (rule: Rule, adjustment: RuleAdjustment, knownId: KnownI
     if (!adjustment.ids && !adjustment.attribute) {
         throw new EngineError('invalid_rule', `rule ${rule.id} adjusts nothing`);
     }
-    for (const id of adjustment.ids ?? []) knownId(rule.id, id);
+    for (const id of adjustment.ids ?? []) known.id(rule.id, id);
+    if (adjustment.attribute) known.attribute(rule.id, adjustment.attribute.name);
 };
 
-const checkRule = (rule: Rule, knownId: KnownId): void => {
+const checkRule = (rule: Rule, known: Known): void => {
     const actions = [rule.pin, rule.boost, rule.bury, rule.hide].filter((a) => a && a.length > 0);
     if (actions.length === 0) throw new EngineError('invalid_rule', `rule ${rule.id} does nothing`);
-    for (const id of [...(rule.pin ?? []), ...(rule.hide ?? [])]) knownId(rule.id, id);
+    for (const id of [...(rule.pin ?? []), ...(rule.hide ?? [])]) known.id(rule.id, id);
     for (const adjustment of [...(rule.boost ?? []), ...(rule.bury ?? [])]) {
-        checkAdjustment(rule, adjustment, knownId);
+        checkAdjustment(rule, adjustment, known);
     }
+    if (rule.when?.filter) known.attribute(rule.id, rule.when.filter.attribute);
     if (rule.active?.from && rule.active.to && rule.active.from > rule.active.to) {
         throw new EngineError('invalid_rule', `rule ${rule.id} ends before it starts`);
     }
 };
 
-export const checkRules = (rules: readonly Rule[], documentIds: ReadonlySet<string>): void => {
+export const checkRules = (
+    rules: readonly Rule[],
+    documentIds: ReadonlySet<string>,
+    attributes: ReadonlySet<string>
+): void => {
     const seen = new Set<string>();
-    const knownId: KnownId = (ruleId, id) => {
-        if (!documentIds.has(id)) {
-            throw new EngineError(
-                'invalid_rule',
-                `rule ${ruleId} names a document that does not exist: ${id}`
-            );
-        }
+    const known: Known = {
+        id: (ruleId, id) => {
+            if (!documentIds.has(id)) {
+                throw new EngineError(
+                    'invalid_rule',
+                    `rule ${ruleId} names a document that does not exist: ${id}`
+                );
+            }
+        },
+        attribute: (ruleId, name) => {
+            if (!attributes.has(name)) {
+                throw new EngineError(
+                    'invalid_rule',
+                    `rule ${ruleId} names an attribute the engine does not have: ${name}`
+                );
+            }
+        },
     };
     for (const rule of rules) {
         if (seen.has(rule.id)) {
             throw new EngineError('invalid_rule', `two rules share the id ${rule.id}`);
         }
         seen.add(rule.id);
-        checkRule(rule, knownId);
+        checkRule(rule, known);
     }
 };
 
