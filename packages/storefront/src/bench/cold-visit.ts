@@ -63,7 +63,8 @@ const visit = async (): Promise<Run> => {
 
     const typedAt = await page.evaluate(() => performance.now());
     await search.fill('trail');
-    await page.getByRole('listbox', { name: 'Suggestions' }).waitFor();
+    // The listbox can appear before it has anything in it. A suggestion is the answer.
+    await page.getByRole('option').first().waitFor();
     const shownAt = await page.evaluate(() => performance.now());
     const marks = await page.evaluate(
         () => (window as unknown as { marks: Record<string, number> }).marks

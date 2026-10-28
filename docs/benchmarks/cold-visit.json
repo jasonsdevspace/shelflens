@@ -1,0 +1,43 @@
+{
+    "recorded": {
+        "date": "2026-10-28",
+        "commit": "2612da7"
+    },
+    "sizes": {
+        "catalog": 341270,
+        "page": 80905,
+        "worker": 66390
+    },
+    "runs": [
+        {
+            "readyMs": 222,
+            "downloadMs": 39.69999999925494,
+            "buildMs": 57.600000001490116,
+            "firstSuggestionMs": 192.19999999925494
+        },
+        {
+            "readyMs": 210.40000000037253,
+            "downloadMs": 37.40000000037253,
+            "buildMs": 54.09999999962747,
+            "firstSuggestionMs": 188.80000000074506
+        },
+        {
+            "readyMs": 209.5,
+            "downloadMs": 37.90000000037253,
+            "buildMs": 54.69999999925494,
+            "firstSuggestionMs": 190.59999999962747
+        },
+        {
+            "readyMs": 210.09999999962747,
+            "downloadMs": 37.600000001490116,
+            "buildMs": 55.09999999962747,
+            "firstSuggestionMs": 190.09999999962747
+        },
+        {
+            "readyMs": 211.2999999988824,
+            "downloadMs": 38,
+            "buildMs": 55.09999999962747,
+            "firstSuggestionMs": 191.2000000011176
+        }
+    ]
+}
