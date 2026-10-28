@@ -90,9 +90,9 @@ always widen a selection, while a filter on a different attribute narrows every 
 
 A rule names when it applies, to certain queries or inside a filter and optionally between two
 dates, and what it does: pin products to the top, boost or bury them, or hide them. Rules are
-checked when the engine is created, so a rule that names a product or an attribute that does not exist or does
-nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over the same
-index without rebuilding it.
+checked when the engine is created, so a rule that names a product or an attribute that does not
+exist or does nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over
+the same index without rebuilding it.
 
 Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and
 hides still apply under a sort scoped to the rule's own filter, which is how a category's
