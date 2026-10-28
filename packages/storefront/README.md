@@ -24,6 +24,11 @@ the page.
   something, and the page shows it: a phrase a typo or two away, a shorter phrase with its
   results, the same phrase without the filters, and the most rated products as a last resort.
   Each is one click away, and each changes the URL like anything else.
+- **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit
+  and walks the gotchas the project exists to show, one stop each, with a link that puts the page
+  in the state that shows it and the name of the test that proves it. A test checks every named
+  test exists. The brief's exit check for Release 1 is that a reviewer can trigger every
+  headline gotcha from the tour.
 - **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
   prices change, a product only members may see appears, and nothing in the URL or the query
   asked for it: the viewer travels in a header, and every cache keys on it.

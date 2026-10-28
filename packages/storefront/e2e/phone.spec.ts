@@ -8,6 +8,11 @@ import { expect, test } from '@playwright/test';
 
 test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
+// The tour opens itself on a first visit. These are not that visit.
+test.beforeEach(({ page }) =>
+    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
+);
+
 test('the facets open in a drawer, narrow the results, and close back to them', async ({
     page,
 }) => {

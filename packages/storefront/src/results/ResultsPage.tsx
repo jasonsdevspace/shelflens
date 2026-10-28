@@ -35,7 +35,6 @@ export interface ResultsPageProps {
     readonly state: SearchState;
     readonly navigate: Navigate;
     readonly categories: CategoryTree;
-    readonly currency: string;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -46,13 +45,7 @@ const headingFor = (state: SearchState, categories: CategoryTree, total: number)
     return leaf ? leaf.name : 'All products';
 };
 
-export const ResultsPage = ({
-    client,
-    state,
-    navigate,
-    categories,
-    currency,
-}: ResultsPageProps) => {
+export const ResultsPage = ({ client, state, navigate, categories }: ResultsPageProps) => {
     const id = useId();
     const { data, loading, error } = useQuery(client, SearchDocument, {
         input: toSearchInput(state),
@@ -75,13 +68,7 @@ export const ResultsPage = ({
     const sortKey = state.sort ?? sortKeyOf(result.sort);
     const setAside = result.merchandising.setAsideBySort;
     const facets = (
-        <Facets
-            facets={result.facets}
-            state={state}
-            categories={categories}
-            currency={currency}
-            onChange={navigate}
-        />
+        <Facets facets={result.facets} state={state} categories={categories} onChange={navigate} />
     );
 
     return (

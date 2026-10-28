@@ -1,4 +1,5 @@
 import { type CategoryTree, childrenOf } from '../app/categories.js';
+import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
 import { formatMoney } from '../format/money.js';
 import type { SearchQuery } from '../generated/operations.js';
@@ -47,8 +48,8 @@ const bandOf = (bucket: { from: number | null; to: number | null }): PriceBand =
     ...(bucket.to !== null && { to: bucket.to }),
 });
 
-const priceLabel = (band: PriceBand, currency: string): string => {
-    const money = (amount: number) => formatMoney({ amount, currency });
+const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string => {
+    const money = (amount: number) => formatMoney({ amount, currency }, locale);
     if (band.from === undefined && band.to !== undefined) return `Under ${money(band.to)}`;
     if (band.from !== undefined && band.to === undefined) return `${money(band.from)} and up`;
     if (band.from !== undefined && band.to !== undefined)
@@ -133,12 +134,8 @@ const ListFacet = ({
     );
 };
 
-const PriceFacet = ({
-    facet,
-    state,
-    onChange,
-    currency,
-}: FacetsProps & { readonly facet: Facet; readonly currency: string }) => {
+const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: Facet }) => {
+    const store = useStoreInfo();
     if (!('ranges' in facet)) return null;
     const bands = facet.ranges.filter((bucket) => bucket.count > 0);
     if (bands.length === 0) return null;
@@ -160,14 +157,14 @@ const PriceFacet = ({
             {bands.map((bucket) => {
                 const band = bandOf(bucket);
                 return (
-                    <label key={priceLabel(band, currency)} className="facet-option">
+                    <label key={priceLabel(band, store)} className="facet-option">
                         <input
                             type="radio"
                             name="price"
                             checked={sameBand(state.price, band)}
                             onChange={() => choose(band)}
                         />
-                        <span className="facet-label">{priceLabel(band, currency)}</span>
+                        <span className="facet-label">{priceLabel(band, store)}</span>
                         <span className="facet-count">{bucket.count}</span>
                     </label>
                 );
@@ -211,7 +208,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
     );
 };
 
-export const Facets = ({ currency, ...props }: FacetsProps & { readonly currency: string }) => {
+export const Facets = (props: FacetsProps) => {
     const { facets, state, onChange } = props;
     const byName = new Map(facets.map((facet) => [facet.name, facet]));
     const facetFor = (name: string) => byName.get(name);
@@ -240,7 +237,7 @@ export const Facets = ({ currency, ...props }: FacetsProps & { readonly currency
                     <ListFacet key={name} {...props} facet={facet} name={name} />
                 ) : null;
             })}
-            {price && <PriceFacet {...props} facet={price} currency={currency} />}
+            {price && <PriceFacet {...props} facet={price} />}
             {rating && <RatingFacet {...props} facet={rating} />}
         </form>
     );

@@ -11,6 +11,11 @@ import { expect, type Page, test } from '@playwright/test';
 
 test.skip(({ isMobile }) => isMobile, 'the phone has its own spec');
 
+// The tour opens itself on a first visit. These are not that visit.
+test.beforeEach(({ page }) =>
+    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
+);
+
 const audit = async (page: Page) => {
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);

@@ -242,6 +242,94 @@ body {
     gap: 1rem;
 }
 
+.tour-open {
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.tour-open[aria-expanded='true'] {
+    background: var(--highlight);
+    border-color: var(--accent);
+}
+
+.tour {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 5;
+    width: min(24rem, calc(100vw - 2rem));
+    padding: 1rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.15);
+}
+
+.tour-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.tour-count {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.tour-title {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1.05rem;
+}
+
+.tour-body {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+}
+
+.tour-test {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+}
+
+.tour-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tour-try {
+    margin-right: auto;
+    font-weight: 500;
+}
+
+.tour-close,
+.tour-step {
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.tour-step:disabled {
+    color: var(--muted);
+    cursor: default;
+}
+
 .viewer {
     display: flex;
     align-items: center;
@@ -632,6 +720,16 @@ body {
 }
 
 @media (max-width: 48rem) {
+    .tour {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        border-radius: 0.5rem 0.5rem 0 0;
+        max-height: 50dvh;
+        overflow: auto;
+    }
+
     .results-layout {
         grid-template-columns: 1fr;
         gap: 1rem;
