@@ -242,7 +242,9 @@ describe('the answers the worker keeps', () => {
         kept.set(`${old}|`, stale.clone());
 
         const api = withStore(store);
-        await api.warm();
+        const startup = await api.warm();
+        expect(startup.downloadMs).toBeGreaterThanOrEqual(0);
+        expect(startup.buildMs).toBeGreaterThan(0);
         expect(kept.has(`${old}|`)).toBe(false);
         expect(kept.has(`${url}|`)).toBe(true);
         const fresh = await api.handle(persisted({ op: STORE, v: version }));

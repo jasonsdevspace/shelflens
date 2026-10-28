@@ -89,6 +89,11 @@ jobs:
             - name: Browser tests
               run: npm run e2e
 
+            # Lighthouse's accessibility audit, which must score a hundred on
+            # each page it checks. Runs against the build the browser tests made.
+            - name: Accessibility audit
+              run: npm run lighthouse
+
             - name: Keep the report when something fails
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

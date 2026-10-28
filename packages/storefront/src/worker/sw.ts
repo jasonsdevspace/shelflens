@@ -9,8 +9,17 @@ import { createWorkerApi } from './handle.js';
  *
  * It claims the page as soon as it activates, so the first visit works
  * without a reload, and it builds the store during install so the first
- * search does not wait for the index.
+ * search does not wait for the index. Once it has claimed the page it
+ * tells it how long starting the store took, which is how the cold visit
+ * is measured.
  */
+
+/** What the worker tells the page once it is in charge. */
+export interface StartedMessage {
+    readonly type: 'shelflens:started';
+    readonly downloadMs: number;
+    readonly buildMs: number;
+}
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -21,13 +30,25 @@ const api = createWorkerApi({
     answers: () => caches.open('shelflens-answers'),
 });
 
+let started: StartedMessage | undefined;
+
 self.addEventListener('install', (event) => {
     void self.skipWaiting();
-    event.waitUntil(api.warm());
+    event.waitUntil(
+        api.warm().then((startup) => {
+            started = { type: 'shelflens:started', ...startup };
+        })
+    );
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        self.clients.claim().then(async () => {
+            for (const client of await self.clients.matchAll({ type: 'window' })) {
+                if (started) client.postMessage(started);
+            }
+        })
+    );
 });
 
 self.addEventListener('fetch', (event) => {

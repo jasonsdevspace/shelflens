@@ -55,9 +55,17 @@ export interface AnswerStore {
     delete(request: Request): Promise<boolean>;
 }
 
+/** How long starting the store took, for the cold visit measurement. */
+export interface Startup {
+    /** Downloading the catalog and the rules, in milliseconds. */
+    readonly downloadMs: number;
+    /** Building the index and the completions from them, in milliseconds. */
+    readonly buildMs: number;
+}
+
 export interface WorkerApi {
-    /** Build the store now rather than on the first request. */
-    warm(): Promise<void>;
+    /** Build the store now rather than on the first request, and say how long it took. */
+    warm(): Promise<Startup>;
     /** The response for an API request, or nothing for any other request. */
     handle(request: Request): Promise<Response | undefined>;
 }
@@ -94,20 +102,28 @@ export const createWorkerApi = ({
     answers,
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<StoreApi> | undefined;
+    let startup: Startup = { downloadMs: 0, buildMs: 0 };
 
     const isApiRequest = (request: Request): boolean =>
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
 
     const load = (): Promise<StoreApi> => {
+        const began = performance.now();
         store ??= Promise.all([
             fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
             rulesUrl === undefined
                 ? Promise.resolve([])
                 : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
         ])
-            .then(([catalog, rules]) =>
-                withResponseCache(createStoreApi(createStore({ catalog, rules })))
-            )
+            .then(([catalog, rules]) => {
+                const downloaded = performance.now();
+                const api = withResponseCache(createStoreApi(createStore({ catalog, rules })));
+                startup = {
+                    downloadMs: downloaded - began,
+                    buildMs: performance.now() - downloaded,
+                };
+                return api;
+            })
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
                 store = undefined;
@@ -158,6 +174,7 @@ export const createWorkerApi = ({
     return {
         warm: async () => {
             await dropOthers(await load());
+            return startup;
         },
         handle: async (request) => {
             if (!isApiRequest(request)) return undefined;

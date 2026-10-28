@@ -2,19 +2,50 @@
  * Registers the service worker and waits until it controls the page.
  *
  * A page that registers a worker is not controlled by it until the worker
- * activates and claims it. Until then a request to `/graphql` would go to
+ * activates and claims it. Until then a request to `graphql` would go to
  * the network and find nothing there, so the storefront waits for control
  * before it lets the shopper search.
+ *
+ * A worker that takes over a page already controlled is a new build. The
+ * page reloads once, so the page and the worker answering it come from
+ * the same build, rather than a returning visitor keeping the old worker
+ * until the next reload.
  */
-export const controlledByWorker = async (scriptUrl: string, scope: string): Promise<void> => {
-    if (!('serviceWorker' in navigator)) {
+
+export interface WorkerHost {
+    readonly serviceWorker: ServiceWorkerContainer | undefined;
+    reload(): void;
+}
+
+const browserHost = (): WorkerHost => ({
+    serviceWorker: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
+    reload: () => window.location.reload(),
+});
+
+export const controlledByWorker = async (
+    scriptUrl: string,
+    scope: string,
+    host: WorkerHost = browserHost()
+): Promise<void> => {
+    const { serviceWorker } = host;
+    if (!serviceWorker) {
         throw new Error('this browser cannot run the demo, which needs a service worker');
     }
-    const { serviceWorker } = navigator;
-    if (serviceWorker.controller) return;
+    let controlled = serviceWorker.controller !== null;
+    let reloaded = false;
     const claimed = new Promise<void>((resolve) => {
-        serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true });
+        serviceWorker.addEventListener('controllerchange', () => {
+            if (!controlled) {
+                controlled = true;
+                resolve();
+                return;
+            }
+            if (!reloaded) {
+                reloaded = true;
+                host.reload();
+            }
+        });
     });
     await serviceWorker.register(scriptUrl, { type: 'module', scope });
-    await claimed;
+    if (!controlled) await claimed;
 };
