@@ -40,8 +40,8 @@ Option B.
 
 ## Consequences
 
-- About fifteen hundred lines to own, with tests. The golden queries guard the behavior and the
-  benchmark guards the cost, so a change that makes either worse fails the build.
+- An engine to own, with its tests. The golden queries guard the behavior and the benchmark
+  guards the cost, so a change that makes either worse fails the build.
 - The first version was slow and heavy, which record 2 describes. A library would have been
   tuned already. Measuring and fixing it was part of the work, and the before-and-after is on the
   record.
@@ -55,3 +55,4 @@ Option B.
 - The engine's own tests, which include breaking each headline behavior on purpose and watching
   the right test fail.
 - The benchmark in `docs/benchmarks/`.
+- The tour in the storefront, whose every stop names the test behind the gotcha it shows.

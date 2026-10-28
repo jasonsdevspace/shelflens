@@ -49,7 +49,7 @@ Option B, with three details that the same investigation settled.
   query of "tshirt" and of "t shirt".
 - The explanation on a hit names the phrase the synonym stood in for, not a single word.
 - Where two rules could apply at one position, the longer phrase wins. A merchandiser wanting a
-  different precedence would need a rule order, which does not exist yet.
+  different precedence would need a rule order, which does not exist.
 
 ## How it is tested
 
