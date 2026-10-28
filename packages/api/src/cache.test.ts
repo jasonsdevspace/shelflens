@@ -91,7 +91,8 @@ describe('the cache key', () => {
 
     it('lets an invalid query reach the API for its error response', async () => {
         const cached = withResponseCache(api);
-        await expect(cached.run({ query: '{' }, guest)).resolves.toMatchObject({
+        const unterminated = { query: '{ search(input: { phrase: "boot }' };
+        await expect(cached.run(unterminated, guest)).resolves.toMatchObject({
             errors: [{ extensions: { code: 'GRAPHQL_PARSE_FAILED' } }],
         });
     });
