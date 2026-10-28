@@ -53,6 +53,22 @@ describe('recovering from no results', () => {
             foundWithoutFilters: 0,
         });
         expect(engine.recover({ query: 'xqzv' })).toEqual({ foundWithoutFilters: 0 });
+        // One word nothing matched and one rare word: both go, in that order.
+        expect(engine.recover({ query: 'xqzv parka runner' })).toEqual({
+            relaxed: { query: 'runner', dropped: ['xqzv', 'parka'], total: 3 },
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('shows and searches the words as typed, never their stems', () => {
+        expect(engine.recover({ query: 'xqzv Runners' })).toEqual({
+            relaxed: { query: 'Runners', dropped: ['xqzv'], total: 3 },
+            foundWithoutFilters: 0,
+        });
+        expect(engine.recover({ query: 'swaetters' })).toEqual({
+            correction: 'sweater',
+            foundWithoutFilters: 0,
+        });
     });
 
     it('counts what the same phrase finds without its filters', () => {

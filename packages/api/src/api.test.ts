@@ -177,6 +177,15 @@ describe('searching', () => {
         });
         expect(filtered.noResults.foundWithoutFilters).toBeGreaterThan(0);
 
+        // A browsed category is kept: nothing is offered that leaves it.
+        const browsing = await ask({
+            phrase: 'sweater',
+            filters: [{ attribute: 'CATEGORY', match: { eq: 'shoes' } }],
+        });
+        expect(browsing.total).toBe(0);
+        expect(browsing.noResults.foundWithoutFilters).toBe(0);
+        expect(browsing.noResults.relaxed).toBeNull();
+
         const hopeless = await ask({ phrase: 'xqzv' });
         expect(hopeless.noResults.relaxed).toBeNull();
         const counts = hopeless.noResults.popular.map((p: Loose) => p.rating.count);

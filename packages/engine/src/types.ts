@@ -246,9 +246,10 @@ export interface SearchResult {
 export interface Recovery {
     /** The phrase with each word nothing matched replaced by its nearest known word. */
     readonly correction?: string;
-    /** The phrase with some words left out, and what it finds. */
+    /** The phrase with some of the shopper's words left out, and what it finds. */
     readonly relaxed?: {
         readonly query: string;
+        /** The words left out, as the shopper typed them. */
         readonly dropped: readonly string[];
         readonly total: number;
     };

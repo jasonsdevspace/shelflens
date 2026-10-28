@@ -53,12 +53,26 @@ const engineFilters = (filters: readonly Filter[], group: CustomerGroup): Filter
         filter.attribute === 'price' ? { ...filter, attribute: priceAttribute(group) } : filter
     );
 
-/** What to offer when a search found nothing, with the group's visibility kept throughout. */
-export const recoverStore = (engine: Engine, request: StoreSearchRequest): Recovery => {
+/**
+ * What to offer when a search found nothing. The group's visibility is
+ * kept throughout, and so is any filter on the attributes named as fixed,
+ * such as the category a shopper is browsing, which is a place rather
+ * than a filter they chose.
+ */
+export const recoverStore = (
+    engine: Engine,
+    request: StoreSearchRequest,
+    fixedAttributes: readonly string[] = []
+): Recovery => {
     const { group, filters = [], sort: _sort, facets: _facets, ...rest } = request;
-    return engine.recover({ ...rest, filters: engineFilters(filters, group) }, [
-        { attribute: 'visibleTo', eq: group },
-    ]);
+    const named = engineFilters(filters, group);
+    return engine.recover(
+        { ...rest, filters: named.filter((filter) => !fixedAttributes.includes(filter.attribute)) },
+        [
+            { attribute: 'visibleTo', eq: group },
+            ...named.filter((filter) => fixedAttributes.includes(filter.attribute)),
+        ]
+    );
 };
 
 export const searchStore = (engine: Engine, request: StoreSearchRequest): SearchResult => {

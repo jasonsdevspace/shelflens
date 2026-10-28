@@ -48,16 +48,6 @@ export const withinOneEdit = (a: string, b: string): boolean => {
     return false;
 };
 
-/**
- * Whether two terms are within so many edits of each other, counting a
- * swap of adjacent characters as one.
- *
- * The general question, for the suggestion a page makes when a search
- * found nothing: the one-typo pass has already failed by then, and two
- * typos is as far as a suggestion is believable. Computed row by row
- * with the usual table, and abandoned as soon as a whole row is past the
- * limit, since most of the vocabulary is nowhere near.
- */
 /** One row of the edit table: the cost of each prefix of `b` against the first `i` characters of `a`. */
 interface Rows {
     readonly previous2: number[];
@@ -80,9 +70,20 @@ const nextRow = (a: string, b: string, i: number, { previous2, previous }: Rows)
     return current;
 };
 
+/**
+ * Whether two terms are within so many edits of each other, counting a
+ * swap of adjacent characters as one.
+ *
+ * The general question, for the suggestion a page makes when a search
+ * found nothing: the one-typo pass has already failed by then, and two
+ * typos is as far as a suggestion is believable. Computed row by row
+ * with the usual table, and abandoned as soon as a whole row is past the
+ * limit, since most of the vocabulary is nowhere near.
+ */
 export const withinEdits = (a: string, b: string, max: number): boolean => {
     if (Math.abs(a.length - b.length) > max) return false;
-    if (max <= 1) return withinOneEdit(a, b);
+    if (max <= 0) return a === b;
+    if (max === 1) return withinOneEdit(a, b);
     let previous2: number[] = [];
     let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
     for (let i = 1; i <= a.length; i += 1) {

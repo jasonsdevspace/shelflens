@@ -42,6 +42,8 @@ describe('within so many edits', () => {
         expect(withinEdits('boot', 'bottle', 2)).toBe(false);
         expect(withinEdits('', 'ab', 2)).toBe(true);
         expect(withinEdits('abc', 'xyz', 2)).toBe(false);
+        expect(withinEdits('shoe', 'shoes', 0)).toBe(false);
+        expect(withinEdits('shoe', 'shoe', 0)).toBe(true);
     });
 
     it('agrees with the one-edit comparison at a limit of one', () => {

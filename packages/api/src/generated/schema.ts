@@ -5,7 +5,7 @@ import type {
     Brand as BrandModel,
     Category as CategoryModel,
 } from '@shelflens/catalog';
-import type { HitModel, SearchResultModel } from '../resolvers.js';
+import type { HitModel, SearchResultModel, NoResultsModel, RelaxedModel } from '../resolvers.js';
 import type { Facet as FacetModel } from '@jasonsdevspace/shelflens';
 import type { Context } from '../context.js';
 export type Maybe<T> = T | null;
@@ -527,12 +527,7 @@ export type ResolversTypes = {
     Matching: Matching;
     Merchandising: ResolverTypeWrapper<Merchandising>;
     Money: ResolverTypeWrapper<Money>;
-    NoResults: ResolverTypeWrapper<
-        Omit<NoResults, 'popular' | 'relaxed'> & {
-            popular: ReadonlyArray<ResolversTypes['Product']>;
-            relaxed?: Maybe<ResolversTypes['RelaxedSearch']>;
-        }
-    >;
+    NoResults: ResolverTypeWrapper<NoResultsModel>;
     PriceRange: ResolverTypeWrapper<PriceRange>;
     Product: ResolverTypeWrapper<ProductModel>;
     Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -540,9 +535,7 @@ export type ResolversTypes = {
     RangeFacet: ResolverTypeWrapper<FacetModel>;
     RangeInput: RangeInput;
     Rating: ResolverTypeWrapper<Rating>;
-    RelaxedSearch: ResolverTypeWrapper<
-        Omit<RelaxedSearch, 'result'> & { result: ResolversTypes['SearchResult'] }
-    >;
+    RelaxedSearch: ResolverTypeWrapper<RelaxedModel>;
     RuleAction: RuleAction;
     RuleEffect: ResolverTypeWrapper<RuleEffect>;
     SearchHit: ResolverTypeWrapper<HitModel>;
@@ -579,10 +572,7 @@ export type ResolversParentTypes = {
     MatchInput: MatchInput;
     Merchandising: Merchandising;
     Money: Money;
-    NoResults: Omit<NoResults, 'popular' | 'relaxed'> & {
-        popular: ReadonlyArray<ResolversParentTypes['Product']>;
-        relaxed?: Maybe<ResolversParentTypes['RelaxedSearch']>;
-    };
+    NoResults: NoResultsModel;
     PriceRange: PriceRange;
     Product: ProductModel;
     Query: Record<PropertyKey, never>;
@@ -590,7 +580,7 @@ export type ResolversParentTypes = {
     RangeFacet: FacetModel;
     RangeInput: RangeInput;
     Rating: Rating;
-    RelaxedSearch: Omit<RelaxedSearch, 'result'> & { result: ResolversParentTypes['SearchResult'] };
+    RelaxedSearch: RelaxedModel;
     RuleEffect: RuleEffect;
     SearchHit: HitModel;
     SearchInput: SearchInput;

@@ -383,6 +383,13 @@ describe('when nothing matches', () => {
         expect(cards().length).toBeGreaterThan(0);
     });
 
+    it('never offers to leave the category being browsed', async () => {
+        await open('?q=jacket&category=shoes');
+        await settled();
+        expect(screen.getByText(/Nothing matched "jacket"\./)).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Clear the filters' })).toBeNull();
+    });
+
     it('falls back to popular products when nothing else helps', async () => {
         await open('?q=zzqx');
         await settled();

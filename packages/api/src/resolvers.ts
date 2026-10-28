@@ -1,4 +1,10 @@
-import { EngineError, type Facet, type Hit, type SearchResult } from '@jasonsdevspace/shelflens';
+import {
+    EngineError,
+    type Facet,
+    type Hit,
+    type Recovery,
+    type SearchResult,
+} from '@jasonsdevspace/shelflens';
 import type { Category, CustomerGroup, Product } from '@shelflens/catalog';
 import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
 
@@ -36,10 +42,24 @@ export interface SearchResultModel {
     readonly input: SearchInput;
 }
 
+/** What an empty result offers instead. Each part is resolved only when asked for. */
+export interface NoResultsModel {
+    readonly input: SearchInput;
+    readonly recovery: Recovery;
+}
+
+export interface RelaxedModel {
+    readonly input: SearchInput;
+    readonly phrase: string;
+    readonly dropped: readonly string[];
+}
+
 const MAX_SUGGESTIONS = 20;
 /** How many products stand in for nothing. */
 const POPULAR = 8;
 const RELAXED_PAGE_SIZE = 12;
+/** A browsed category is a place, not a filter the shopper chose, so it is never offered up. */
+const FIXED_ATTRIBUTES = ['category'];
 
 const hitsOf = (result: SearchResult, context: Context): HitModel[] =>
     result.hits.flatMap((hit) => {
@@ -74,46 +94,31 @@ const runSearch = (input: SearchInput, context: Context): SearchResultModel => {
     }
 };
 
-/** The most rated products the viewer may see, in the category being browsed. */
+/**
+ * The most rated products the viewer may see, in the category being
+ * browsed. Found through the store like any search, so what a rule hides
+ * stays hidden here too.
+ */
 const popularFor = (input: SearchInput, context: Context): Product[] => {
-    const category = (input.filters ?? []).find(
-        (filter) => filter.attribute === 'CATEGORY' && filter.match.eq !== undefined
-    )?.match.eq;
-    return context.store.catalog.products
-        .filter(
-            (product) =>
-                product.visibleTo.includes(context.viewer.group) &&
-                (category === undefined || product.categoryPath.includes(category))
-        )
-        .sort(
-            (a, b) =>
-                b.rating.count - a.rating.count ||
-                b.rating.average - a.rating.average ||
-                a.sku.localeCompare(b.sku)
-        )
-        .slice(0, POPULAR);
+    const result = searchStore(context.store.engine, {
+        group: context.viewer.group,
+        filters: (input.filters ?? []).filter((f) => f.attribute === 'CATEGORY').map(toFilter),
+        sort: [
+            { by: 'ratingCount', direction: 'desc' },
+            { by: 'rating', direction: 'desc' },
+        ],
+        pageSize: POPULAR,
+        facets: [],
+        now: context.now,
+    });
+    return hitsOf(result, context).map((hit) => hit.product);
 };
 
-/** What to offer instead of nothing, computed only when asked and only when nothing was found. */
-const whenEmpty = (input: SearchInput, context: Context) => {
-    const recovery = recoverStore(context.store.engine, toStoreRequest(input, context));
-    const { relaxed } = recovery;
-    return {
-        suggestion: recovery.correction ?? null,
-        relaxed: relaxed
-            ? {
-                  phrase: relaxed.query,
-                  dropped: relaxed.dropped,
-                  result: runSearch(
-                      { ...input, phrase: relaxed.query, page: 1, pageSize: RELAXED_PAGE_SIZE },
-                      context
-                  ),
-              }
-            : null,
-        foundWithoutFilters: recovery.foundWithoutFilters,
-        popular: popularFor(input, context),
-    };
-};
+/** What to offer instead of nothing, asked for only when nothing was found. */
+const whenEmpty = (input: SearchInput, context: Context): NoResultsModel => ({
+    input,
+    recovery: recoverStore(context.store.engine, toStoreRequest(input, context), FIXED_ATTRIBUTES),
+});
 
 const priceFor = (product: Product, group: CustomerGroup, currency: string) => ({
     min: { amount: product.price[group].min, currency },
@@ -170,6 +175,23 @@ export const resolvers: Resolvers = {
         merchandising: ({ result }) => result.rules,
         noResults: ({ result, input }, _args, context) =>
             result.total > 0 ? null : whenEmpty(input, context),
+    },
+
+    NoResults: {
+        suggestion: ({ recovery }) => recovery.correction ?? null,
+        foundWithoutFilters: ({ recovery }) => recovery.foundWithoutFilters,
+        relaxed: ({ input, recovery }) =>
+            recovery.relaxed
+                ? { input, phrase: recovery.relaxed.query, dropped: recovery.relaxed.dropped }
+                : null,
+        popular: ({ input }, _args, context) => popularFor(input, context),
+    },
+
+    RelaxedSearch: {
+        phrase: ({ phrase }) => phrase,
+        dropped: ({ dropped }) => dropped,
+        result: ({ input, phrase }, _args, context) =>
+            runSearch({ ...input, phrase, page: 1, pageSize: RELAXED_PAGE_SIZE }, context),
     },
 
     SearchHit: {

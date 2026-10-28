@@ -1,3 +1,4 @@
+import { StateLink } from '../app/StateLink.jsx';
 import { hasFilters, type SearchState, serializeSearchState, withoutFilters } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
@@ -17,26 +18,6 @@ export interface NoResultsProps {
     readonly navigate: Navigate;
     readonly offered: SearchQuery['search']['noResults'];
 }
-
-const Link = ({
-    to,
-    navigate,
-    children,
-}: {
-    readonly to: SearchState;
-    readonly navigate: Navigate;
-    readonly children: string;
-}) => (
-    <a
-        href={serializeSearchState(to) || '?'}
-        onClick={(event) => {
-            event.preventDefault();
-            navigate(to);
-        }}
-    >
-        {children}
-    </a>
-);
 
 const Cards = ({
     label,
@@ -73,20 +54,20 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
             {offered?.suggestion && (
                 <p className="no-results-offer">
                     Did you mean{' '}
-                    <Link
+                    <StateLink
                         to={{ ...state, phrase: offered.suggestion, page: 1 }}
                         navigate={navigate}
                     >
                         {offered.suggestion}
-                    </Link>
+                    </StateLink>
                     ?
                 </p>
             )}
             {offered && offered.foundWithoutFilters > 0 && (
                 <p className="no-results-offer">
-                    <Link to={withoutFilters(state)} navigate={navigate}>
+                    <StateLink to={withoutFilters(state)} navigate={navigate}>
                         Clear the filters
-                    </Link>{' '}
+                    </StateLink>{' '}
                     to see {offered.foundWithoutFilters} products.
                 </p>
             )}
@@ -97,12 +78,12 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
                     </h2>
                     <p className="no-results-offer">
                         Without &quot;{relaxed.dropped.join('", "')}&quot;.{' '}
-                        <Link
+                        <StateLink
                             to={{ ...state, phrase: relaxed.phrase, page: 1 }}
                             navigate={navigate}
                         >
                             {`See all ${relaxed.result.total} results`}
-                        </Link>
+                        </StateLink>
                     </p>
                     <Cards
                         label={`Results for "${relaxed.phrase}"`}

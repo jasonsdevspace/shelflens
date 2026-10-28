@@ -418,54 +418,65 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const finds = (query: string, filters: readonly Filter[], now: Date | undefined): number =>
         search({ query, filters, pageSize: 1, facets: [], ...(now && { now }) }).total;
 
-    /** The most used indexed term within reach of a typed word, if any. */
-    const nearest = (term: string): string | undefined => {
-        let best: string | undefined;
-        let bestFrequency = 0;
+    /** The indexed terms within reach of a typed word, most used first. */
+    const nearestTerms = (term: string): string[] => {
         const lengths = [-SUGGESTION_EDITS, -1, 0, 1, SUGGESTION_EDITS].map((d) => term.length + d);
+        const found: { term: string; frequency: number }[] = [];
         for (const candidate of lengths.flatMap(
             (length) => index.termsByLength.get(length) ?? []
         )) {
             if (candidate === term || !withinEdits(term, candidate, SUGGESTION_EDITS)) continue;
-            const frequency = index.postings.get(candidate)?.docs.length ?? 0;
-            if (frequency > bestFrequency) {
-                best = candidate;
-                bestFrequency = frequency;
-            }
+            found.push({
+                term: candidate,
+                frequency: index.postings.get(candidate)?.docs.length ?? 0,
+            });
         }
-        return best;
-    };
-
-    /** What each word finds on its own, under only the fixed filters. */
-    interface Words {
-        readonly terms: readonly string[];
-        readonly alone: ReadonlyMap<string, number>;
-        readonly filters: readonly Filter[];
-        readonly now: Date | undefined;
-    }
-
-    /** The phrase with each word nothing matched replaced, if that finds something. */
-    const correctionFor = ({ terms, alone, filters, now }: Words): string | undefined => {
-        if (![...alone.values()].includes(0)) return undefined;
-        const corrected = terms.map((term) => (alone.get(term) === 0 ? nearest(term) : term));
-        if (corrected.some((term) => term === undefined)) return undefined;
-        const phrase = corrected.join(' ');
-        return finds(phrase, filters, now) > 0 ? phrase : undefined;
+        return found.sort((a, b) => b.frequency - a.frequency).map((entry) => entry.term);
     };
 
     /**
-     * The phrase without the words nothing matched, or failing that without
-     * its rarest word, as long as what is left finds something.
+     * The words as the shopper typed them, and what each finds on its own
+     * under the fixed filters. The shopper's words are what is shown and
+     * searched, so a suggestion never reads as a stem.
      */
-    const relaxedFor = ({ terms, alone, filters, now }: Words): Recovery['relaxed'] => {
-        const unmatched = terms.filter((term) => alone.get(term) === 0);
-        const rarest = [...terms].sort((a, b) => (alone.get(a) ?? 0) - (alone.get(b) ?? 0));
-        const attempts = [unmatched, ...(terms.length > 1 ? rarest.map((term) => [term]) : [])];
-        for (const dropped of attempts) {
-            const kept = terms.filter((term) => !dropped.includes(term));
-            if (kept.length === 0 || dropped.length === 0) continue;
-            const query = kept.join(' ');
-            const total = finds(query, filters, now);
+    interface Words {
+        readonly typed: readonly string[];
+        readonly alone: ReadonlyMap<string, number>;
+        readonly fixed: readonly Filter[];
+        readonly all: readonly Filter[];
+        readonly now: Date | undefined;
+    }
+
+    /** A word in use for one the shopper typed, the most used that finds something. */
+    const replacement = (word: string, { fixed, now }: Words): string | undefined => {
+        const [term, ...more] = tokenize(word);
+        if (term === undefined || more.length > 0) return undefined;
+        return nearestTerms(term).find((candidate) => finds(candidate, fixed, now) > 0);
+    };
+
+    /** The phrase with each word nothing matched replaced, if that finds something. */
+    const correctionFor = (words: Words): string | undefined => {
+        const { typed, alone, all, now } = words;
+        if (![...alone.values()].includes(0)) return undefined;
+        const corrected = typed.map((word) =>
+            alone.get(word) === 0 ? replacement(word, words) : word
+        );
+        if (corrected.some((word) => word === undefined)) return undefined;
+        const phrase = corrected.join(' ');
+        return finds(phrase, all, now) > 0 ? phrase : undefined;
+    };
+
+    /**
+     * The phrase without the words nothing matched, then without the rarest
+     * of the rest, one more each time, until what is left finds something.
+     */
+    const relaxedFor = ({ typed, alone, all, now }: Words): Recovery['relaxed'] => {
+        const rarestFirst = [...typed].sort((a, b) => (alone.get(a) ?? 0) - (alone.get(b) ?? 0));
+        const unmatched = typed.filter((word) => alone.get(word) === 0).length;
+        for (let count = Math.max(1, unmatched); count < typed.length; count += 1) {
+            const dropped = rarestFirst.slice(0, count);
+            const query = typed.filter((word) => !dropped.includes(word)).join(' ');
+            const total = finds(query, all, now);
             if (total > 0) return { query, dropped, total };
         }
         return undefined;
@@ -476,11 +487,15 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         // may see what, never are.
         const own = request.filters ?? [];
         const { now } = request;
-        const terms = tokenize(request.query ?? '');
+        const typed = (request.query ?? '')
+            .trim()
+            .split(/\s+/)
+            .filter((word) => word.length > 0);
         const words: Words = {
-            terms,
-            alone: new Map(terms.map((term) => [term, finds(term, fixedFilters, now)])),
-            filters: [...fixedFilters, ...own],
+            typed,
+            alone: new Map(typed.map((word) => [word, finds(word, fixedFilters, now)])),
+            fixed: fixedFilters,
+            all: [...fixedFilters, ...own],
             now,
         };
         const correction = correctionFor(words);

@@ -1,6 +1,7 @@
 import { useId } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
+import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
     type SearchState,
@@ -97,34 +98,19 @@ export const ResultsPage = ({
                     <nav className="crumbs" aria-label="Category">
                         <ol className="crumb-list">
                             <li>
-                                <a
-                                    href={serializeSearchState(allProducts) || '?'}
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        navigate(allProducts);
-                                    }}
-                                >
+                                <StateLink to={allProducts} navigate={navigate}>
                                     All products
-                                </a>
+                                </StateLink>
                             </li>
                             {crumbs.map((crumb) => (
                                 <li key={crumb.id}>
-                                    <a
-                                        aria-current={
-                                            crumb.id === state.category ? 'page' : undefined
-                                        }
-                                        href={serializeSearchState({
-                                            ...state,
-                                            category: crumb.id,
-                                            page: 1,
-                                        })}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            navigate({ ...state, category: crumb.id, page: 1 });
-                                        }}
+                                    <StateLink
+                                        to={{ ...state, category: crumb.id, page: 1 }}
+                                        navigate={navigate}
+                                        current={crumb.id === state.category}
                                     >
                                         {crumb.name}
-                                    </a>
+                                    </StateLink>
                                 </li>
                             ))}
                         </ol>
