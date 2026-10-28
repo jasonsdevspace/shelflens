@@ -3,6 +3,7 @@ export { priceAttribute, storeConfig, toDocument, toDocuments } from './document
 export { GOLDEN_CASES, type GoldenCase } from './golden.js';
 export {
     createStoreEngine,
+    recoverStore,
     searchStore,
     SHOPPER_FACETS,
     type StoreSearchRequest,

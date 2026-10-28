@@ -20,6 +20,10 @@ the page.
   catalog when the store is built and validated then: a rule that names a product or an attribute
   the store does not have fails the build, in the worker, the Node server and the dev server
   alike. A test runs the shipped rules against the shipped catalog.
+- **Nothing is still a page.** When a search finds nothing, the API says what would find
+  something, and the page shows it: a phrase a typo or two away, a shorter phrase with its
+  results, the same phrase without the filters, and the most rated products as a last resort.
+  Each is one click away, and each changes the URL like anything else.
 - **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
   prices change, a product only members may see appears, and nothing in the URL or the query
   asked for it: the viewer travels in a header, and every cache keys on it.

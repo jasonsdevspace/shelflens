@@ -148,6 +148,11 @@ type SearchResult {
     items: [SearchHit!]!
 
     """
+    What to show instead of nothing. Null unless the search found nothing.
+    """
+    noResults: NoResults
+
+    """
     Matching products in all, before the limit on how far a query can page.
     """
     total: Int!
@@ -173,6 +178,46 @@ type SearchResult {
     Which merchandising rules shaped this result, and which the sort set aside.
     """
     merchandising: Merchandising!
+}
+
+"""
+What a page can offer instead of an empty one. Each part is present only
+when it would find something.
+"""
+type NoResults {
+    """
+    The phrase with each word nothing matched replaced by the nearest word
+    in use, when that finds something under the same filters.
+    """
+    suggestion: String
+
+    """
+    The phrase with some words left out, when that finds something under
+    the same filters.
+    """
+    relaxed: RelaxedSearch
+
+    """
+    How many products the same phrase finds with every filter removed.
+    """
+    foundWithoutFilters: Int!
+
+    """
+    The most rated products the viewer may see, within the category being
+    browsed. A stand-in for popularity until the store collects events.
+    """
+    popular: [Product!]!
+}
+
+type RelaxedSearch {
+    phrase: String!
+
+    """
+    The words left out of the phrase as typed.
+    """
+    dropped: [String!]!
+
+    result: SearchResult!
 }
 
 enum Matching {

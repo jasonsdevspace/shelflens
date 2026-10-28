@@ -22,12 +22,17 @@ const manifestPath = join(root, 'packages', 'api', 'src', 'generated', 'persiste
 
 const source = readFileSync(operationsPath, 'utf8');
 const manifest = new Map();
-const named = source.replace(/new TypedDocumentString\(`([^`]*)`(?:, \{[^}]*\})?\)/g, (_, text) => {
-    const document = stripIgnoredCharacters(text);
-    const hash = createHash('sha256').update(document).digest('hex');
-    manifest.set(hash, document);
-    return `new TypedDocumentString(\`${text}\`, { hash: '${hash}' })`;
-});
+// A fragment is generated as a document too, but only an operation can be
+// sent, so only operations are named. Their text carries the fragments.
+const named = source.replace(
+    /(export const \w+Document = new TypedDocumentString\()`([^`]*)`(?:, \{[^}]*\})?\)/g,
+    (_, head, text) => {
+        const document = stripIgnoredCharacters(text);
+        const hash = createHash('sha256').update(document).digest('hex');
+        manifest.set(hash, document);
+        return `${head}\`${text}\`, { hash: '${hash}' })`;
+    }
+);
 
 const expected = (source.match(/^export const \w+Document = /gm) ?? []).length;
 if (manifest.size !== expected) {

@@ -1,4 +1,4 @@
-export { withinOneEdit } from './edits.js';
+export { withinEdits, withinOneEdit } from './edits.js';
 export { foldAccents, normalize, stem, tokenize } from './normalize.js';
 export { createEngine, type Engine } from './search.js';
 export {
@@ -14,6 +14,7 @@ export {
     type MatchKind,
     type MatchMode,
     type RangeBucket,
+    type Recovery,
     type Rule,
     type RuleAdjustment,
     type RuleEffect,

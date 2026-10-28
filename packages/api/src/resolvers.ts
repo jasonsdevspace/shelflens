@@ -1,6 +1,6 @@
 import { EngineError, type Facet, type Hit, type SearchResult } from '@jasonsdevspace/shelflens';
 import type { Category, CustomerGroup, Product } from '@shelflens/catalog';
-import { searchStore } from '@shelflens/search';
+import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
@@ -32,9 +32,14 @@ export interface HitModel {
 export interface SearchResultModel {
     readonly result: SearchResult;
     readonly items: readonly HitModel[];
+    /** What was asked, kept so an empty result can say what to offer instead. */
+    readonly input: SearchInput;
 }
 
 const MAX_SUGGESTIONS = 20;
+/** How many products stand in for nothing. */
+const POPULAR = 8;
+const RELAXED_PAGE_SIZE = 12;
 
 const hitsOf = (result: SearchResult, context: Context): HitModel[] =>
     result.hits.flatMap((hit) => {
@@ -48,23 +53,66 @@ const asUserError = (error: unknown): never => {
     throw error;
 };
 
+const toStoreRequest = (input: SearchInput, context: Context): StoreSearchRequest => ({
+    group: context.viewer.group,
+    ...(input.phrase !== null && input.phrase !== undefined && { query: input.phrase }),
+    prefixLastTerm: input.partial ?? false,
+    filters: (input.filters ?? []).map(toFilter),
+    sort: (input.sort ?? []).map(toSort),
+    page: input.page ?? 1,
+    pageSize: input.pageSize ?? 20,
+    ...(input.facets !== null && input.facets !== undefined && { facets: input.facets }),
+    now: context.now,
+});
+
 const runSearch = (input: SearchInput, context: Context): SearchResultModel => {
     try {
-        const result = searchStore(context.store.engine, {
-            group: context.viewer.group,
-            ...(input.phrase !== null && input.phrase !== undefined && { query: input.phrase }),
-            prefixLastTerm: input.partial ?? false,
-            filters: (input.filters ?? []).map(toFilter),
-            sort: (input.sort ?? []).map(toSort),
-            page: input.page ?? 1,
-            pageSize: input.pageSize ?? 20,
-            ...(input.facets !== null && input.facets !== undefined && { facets: input.facets }),
-            now: context.now,
-        });
-        return { result, items: hitsOf(result, context) };
+        const result = searchStore(context.store.engine, toStoreRequest(input, context));
+        return { result, items: hitsOf(result, context), input };
     } catch (error) {
         return asUserError(error);
     }
+};
+
+/** The most rated products the viewer may see, in the category being browsed. */
+const popularFor = (input: SearchInput, context: Context): Product[] => {
+    const category = (input.filters ?? []).find(
+        (filter) => filter.attribute === 'CATEGORY' && filter.match.eq !== undefined
+    )?.match.eq;
+    return context.store.catalog.products
+        .filter(
+            (product) =>
+                product.visibleTo.includes(context.viewer.group) &&
+                (category === undefined || product.categoryPath.includes(category))
+        )
+        .sort(
+            (a, b) =>
+                b.rating.count - a.rating.count ||
+                b.rating.average - a.rating.average ||
+                a.sku.localeCompare(b.sku)
+        )
+        .slice(0, POPULAR);
+};
+
+/** What to offer instead of nothing, computed only when asked and only when nothing was found. */
+const whenEmpty = (input: SearchInput, context: Context) => {
+    const recovery = recoverStore(context.store.engine, toStoreRequest(input, context));
+    const { relaxed } = recovery;
+    return {
+        suggestion: recovery.correction ?? null,
+        relaxed: relaxed
+            ? {
+                  phrase: relaxed.query,
+                  dropped: relaxed.dropped,
+                  result: runSearch(
+                      { ...input, phrase: relaxed.query, page: 1, pageSize: RELAXED_PAGE_SIZE },
+                      context
+                  ),
+              }
+            : null,
+        foundWithoutFilters: recovery.foundWithoutFilters,
+        popular: popularFor(input, context),
+    };
 };
 
 const priceFor = (product: Product, group: CustomerGroup, currency: string) => ({
@@ -120,6 +168,8 @@ export const resolvers: Resolvers = {
         sort: ({ result }) => result.sort.map(fromSort),
         facets: ({ result }) => result.facets,
         merchandising: ({ result }) => result.rules,
+        noResults: ({ result, input }, _args, context) =>
+            result.total > 0 ? null : whenEmpty(input, context),
     },
 
     SearchHit: {

@@ -1,11 +1,11 @@
 import { formatPriceRange } from '../format/money.js';
-import type { SearchQuery } from '../generated/operations.js';
+import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
 
 export type Hit = SearchQuery['search']['items'][number];
 
 export interface ProductCardProps {
-    readonly product: Hit['product'];
+    readonly product: CardFragment;
     /** Where the card leads, so it is a real link that opens in a new tab too. */
     readonly href: string;
     readonly onOpen: () => void;

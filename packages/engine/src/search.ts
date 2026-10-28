@@ -1,3 +1,4 @@
+import { withinEdits } from './edits.js';
 import { checkFacets, computeFacet } from './facets.js';
 import { checkFilter, matchesFilter } from './filters.js';
 import { attributeOf, buildIndex, type Index } from './index-builder.js';
@@ -13,6 +14,7 @@ import {
     type Filter,
     type Hit,
     type MatchMode,
+    type Recovery,
     type RuleEffect,
     type SearchRequest,
     type SearchResult,
@@ -37,10 +39,18 @@ import {
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MAX_RESULTS = 10_000;
+/** How far a suggested word may be from the typed one. One typo is corrected without asking. */
+const SUGGESTION_EDITS = 2;
 const RELEVANCE: SortClause = { by: 'relevance', direction: 'desc' };
 
 export interface Engine {
     search(request: SearchRequest): SearchResult;
+    /**
+     * What to offer instead of nothing: a corrected phrase, a shorter one,
+     * or the same one without its filters, each only if it finds something.
+     * Costs a few searches, so a caller asks only after a search found nothing.
+     */
+    recover(request: SearchRequest, fixedFilters?: readonly Filter[]): Recovery;
     /**
      * The same index under different synonyms or rules.
      *
@@ -404,13 +414,99 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         };
     };
 
+    /** How many documents a query finds, as a plain count. */
+    const finds = (query: string, filters: readonly Filter[], now: Date | undefined): number =>
+        search({ query, filters, pageSize: 1, facets: [], ...(now && { now }) }).total;
+
+    /** The most used indexed term within reach of a typed word, if any. */
+    const nearest = (term: string): string | undefined => {
+        let best: string | undefined;
+        let bestFrequency = 0;
+        const lengths = [-SUGGESTION_EDITS, -1, 0, 1, SUGGESTION_EDITS].map((d) => term.length + d);
+        for (const candidate of lengths.flatMap(
+            (length) => index.termsByLength.get(length) ?? []
+        )) {
+            if (candidate === term || !withinEdits(term, candidate, SUGGESTION_EDITS)) continue;
+            const frequency = index.postings.get(candidate)?.docs.length ?? 0;
+            if (frequency > bestFrequency) {
+                best = candidate;
+                bestFrequency = frequency;
+            }
+        }
+        return best;
+    };
+
+    /** What each word finds on its own, under only the fixed filters. */
+    interface Words {
+        readonly terms: readonly string[];
+        readonly alone: ReadonlyMap<string, number>;
+        readonly filters: readonly Filter[];
+        readonly now: Date | undefined;
+    }
+
+    /** The phrase with each word nothing matched replaced, if that finds something. */
+    const correctionFor = ({ terms, alone, filters, now }: Words): string | undefined => {
+        if (![...alone.values()].includes(0)) return undefined;
+        const corrected = terms.map((term) => (alone.get(term) === 0 ? nearest(term) : term));
+        if (corrected.some((term) => term === undefined)) return undefined;
+        const phrase = corrected.join(' ');
+        return finds(phrase, filters, now) > 0 ? phrase : undefined;
+    };
+
+    /**
+     * The phrase without the words nothing matched, or failing that without
+     * its rarest word, as long as what is left finds something.
+     */
+    const relaxedFor = ({ terms, alone, filters, now }: Words): Recovery['relaxed'] => {
+        const unmatched = terms.filter((term) => alone.get(term) === 0);
+        const rarest = [...terms].sort((a, b) => (alone.get(a) ?? 0) - (alone.get(b) ?? 0));
+        const attempts = [unmatched, ...(terms.length > 1 ? rarest.map((term) => [term]) : [])];
+        for (const dropped of attempts) {
+            const kept = terms.filter((term) => !dropped.includes(term));
+            if (kept.length === 0 || dropped.length === 0) continue;
+            const query = kept.join(' ');
+            const total = finds(query, filters, now);
+            if (total > 0) return { query, dropped, total };
+        }
+        return undefined;
+    };
+
+    const recover = (request: SearchRequest, fixedFilters: readonly Filter[] = []): Recovery => {
+        // The shopper's filters may be dropped. The fixed ones, such as who
+        // may see what, never are.
+        const own = request.filters ?? [];
+        const { now } = request;
+        const terms = tokenize(request.query ?? '');
+        const words: Words = {
+            terms,
+            alone: new Map(terms.map((term) => [term, finds(term, fixedFilters, now)])),
+            filters: [...fixedFilters, ...own],
+            now,
+        };
+        const correction = correctionFor(words);
+        const relaxed = relaxedFor(words);
+        const foundWithoutFilters =
+            own.length > 0 ? finds(request.query ?? '', fixedFilters, now) : 0;
+        return {
+            ...(correction !== undefined && { correction }),
+            ...(relaxed && { relaxed }),
+            foundWithoutFilters,
+        };
+    };
+
     const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine => {
         const next = { ...config, ...changes };
         checkRules(next.rules ?? [], new Set(byId.keys()), next.attributes);
         return createFromIndex(index, next);
     };
 
-    return { search, reconfigure, size: index.documents.length, terms: index.terms.length };
+    return {
+        search,
+        recover,
+        reconfigure,
+        size: index.documents.length,
+        terms: index.terms.length,
+    };
 };
 
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {

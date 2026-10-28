@@ -17,6 +17,7 @@ import type { GraphQLClient } from '../client/graphql.js';
 import { SearchDocument } from '../generated/operations.js';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
+import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 
@@ -168,7 +169,7 @@ export const ResultsPage = ({
                     </p>
                 )}
                 {result.total === 0 ? (
-                    <p className="notice">Nothing matched. Try fewer filters or another phrase.</p>
+                    <NoResults state={state} navigate={navigate} offered={result.noResults} />
                 ) : (
                     <ul className="cards" aria-label="Products">
                         {result.items.map((hit, index) => (

@@ -144,6 +144,46 @@ describe('searching', () => {
         expect(browsing.search.sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
     });
 
+    it('offers something instead of nothing, and nothing when it found something', async () => {
+        const NOTHING = `
+            query Nothing($input: SearchInput!) {
+                search(input: $input) {
+                    total
+                    noResults {
+                        suggestion foundWithoutFilters
+                        relaxed { phrase dropped result { total items { product { name } } } }
+                        popular { sku rating { count } }
+                    }
+                }
+            }`;
+        const ask = async (input: Record<string, unknown>) =>
+            data(await run(NOTHING, { input })).search;
+
+        expect((await ask({ phrase: 'jacket' })).noResults).toBeNull();
+
+        const shorter = await ask({ phrase: 'xqzv sweater' });
+        expect(shorter.total).toBe(0);
+        expect(shorter.noResults.relaxed).toMatchObject({ phrase: 'sweater', dropped: ['xqzv'] });
+        expect(shorter.noResults.relaxed.result.total).toBeGreaterThan(0);
+        expect(shorter.noResults.relaxed.result.items[0].product.name).toMatch(/sweater/i);
+        expect(shorter.noResults.suggestion).toBeNull();
+
+        const misspelled = await ask({ phrase: 'swaetter' });
+        expect(misspelled.noResults.suggestion).toBe('sweater');
+
+        const filtered = await ask({
+            phrase: 'jacket',
+            filters: [{ attribute: 'PRICE', match: { range: { from: 0, to: 1 } } }],
+        });
+        expect(filtered.noResults.foundWithoutFilters).toBeGreaterThan(0);
+
+        const hopeless = await ask({ phrase: 'xqzv' });
+        expect(hopeless.noResults.relaxed).toBeNull();
+        const counts = hopeless.noResults.popular.map((p: Loose) => p.rating.count);
+        expect(counts).toHaveLength(8);
+        expect(counts).toEqual([...counts].sort((a: number, b: number) => b - a));
+    });
+
     it('reduces an oversized page rather than refusing it', async () => {
         const { search } = data(await run(RESULTS, { input: { pageSize: 500 } }));
         expect(search.pageSize).toBe(100);

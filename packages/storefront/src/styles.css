@@ -513,6 +513,16 @@ body {
     border-color: var(--accent);
 }
 
+.no-results-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.75rem;
+}
+
+.no-results-offer {
+    margin: 0.5rem 0;
+}
+
 .results-aside {
     margin: 0 0 1rem;
     padding: 0.6rem 0.8rem;

@@ -347,3 +347,46 @@ describe('explain mode', () => {
         );
     });
 });
+
+describe('when nothing matches', () => {
+    it('shows the results of a shorter phrase, one click from searching it', async () => {
+        const user = await open('?q=zzqx jacket');
+        await settled();
+        expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
+        expect(screen.getByText(/Nothing matched "zzqx jacket"/)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+            'Showing results for "jacket" instead'
+        );
+        const offered = within(screen.getByRole('list', { name: 'Results for "jacket"' }));
+        expect(offered.getAllByRole('link').length).toBeGreaterThan(0);
+        await user.click(screen.getByRole('link', { name: /See all \d+ results/ }));
+        await settled();
+        expect(window.location.search).toBe('?q=jacket');
+        expect(heading()).toHaveTextContent(/results for "jacket"/);
+    });
+
+    it('suggests a spelling two typos away', async () => {
+        const user = await open('?q=jakkett');
+        await settled();
+        await user.click(screen.getByRole('link', { name: 'jacket' }));
+        await settled();
+        expect(window.location.search).toBe('?q=jacket');
+    });
+
+    it('offers to clear the filters, and falls back to popular products', async () => {
+        const user = await open('?q=jacket&price=0-1');
+        await settled();
+        expect(screen.getByText(/Nothing matched "jacket" with these filters/)).toBeInTheDocument();
+        await user.click(screen.getByRole('link', { name: 'Clear the filters' }));
+        await settled();
+        expect(window.location.search).toBe('?q=jacket');
+        expect(cards().length).toBeGreaterThan(0);
+
+        await open('?q=zzqx');
+        await settled();
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Popular products');
+        expect(
+            within(screen.getByRole('list', { name: 'Popular products' })).getAllByRole('link')
+        ).toHaveLength(8);
+    });
+});

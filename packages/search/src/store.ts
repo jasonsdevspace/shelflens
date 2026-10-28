@@ -3,6 +3,7 @@ import {
     type Engine,
     type Facet,
     type Filter,
+    type Recovery,
     type SearchRequest,
     type SearchResult,
     type SortClause,
@@ -46,6 +47,20 @@ const asShopperFacet = (facet: Facet, group: CustomerGroup): Facet =>
 export const createStoreEngine = (catalog: Catalog): Engine =>
     createEngine(toDocuments(catalog), storeConfig());
 
+/** The shopper's filters as the engine names them, prices by the group's column. */
+const engineFilters = (filters: readonly Filter[], group: CustomerGroup): Filter[] =>
+    filters.map((filter) =>
+        filter.attribute === 'price' ? { ...filter, attribute: priceAttribute(group) } : filter
+    );
+
+/** What to offer when a search found nothing, with the group's visibility kept throughout. */
+export const recoverStore = (engine: Engine, request: StoreSearchRequest): Recovery => {
+    const { group, filters = [], sort: _sort, facets: _facets, ...rest } = request;
+    return engine.recover({ ...rest, filters: engineFilters(filters, group) }, [
+        { attribute: 'visibleTo', eq: group },
+    ]);
+};
+
 export const searchStore = (engine: Engine, request: StoreSearchRequest): SearchResult => {
     const { group, filters = [], sort = [], facets = [...SHOPPER_FACETS], ...rest } = request;
     const result = engine.search({
@@ -54,11 +69,7 @@ export const searchStore = (engine: Engine, request: StoreSearchRequest): Search
             // A product the group may not see is not merely hidden from the
             // page. It is out of the results, the counts and the totals.
             { attribute: 'visibleTo', eq: group },
-            ...filters.map((filter) =>
-                filter.attribute === 'price'
-                    ? { ...filter, attribute: priceAttribute(group) }
-                    : filter
-            ),
+            ...engineFilters(filters, group),
         ],
         sort: sort.map((clause) =>
             clause.by === 'price' ? { ...clause, by: priceAttribute(group) } : clause
