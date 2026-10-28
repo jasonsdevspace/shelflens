@@ -6,9 +6,13 @@ name: Release
 # is published. Every check CI runs, runs first. The publish uses npm's
 # trusted publishing: the workflow proves who it is with an OpenID Connect
 # token, so no npm token is stored anywhere, and each version carries
-# provenance that links it to the commit and the run that built it. A
-# prerelease version, one with a hyphen, is published under the "next"
-# tag and marked as a prerelease on GitHub, so "latest" stays a release.
+# provenance that links it to the commit and the run that built it.
+#
+# The version is staged, not released. npm holds it until Jason promotes
+# it on the package page, so a tag, a green run and a click are all needed
+# before anyone can install it, and nothing that happens in CI alone can
+# change what "latest" points at. A prerelease version, one with a hyphen,
+# is staged under the "next" tag and marked as a prerelease on GitHub.
 on:
     push:
         tags:
@@ -102,7 +106,7 @@ jobs:
 
             # The engine builds itself on pack. A version already on npm is
             # left alone, so a run can be repeated after a later step failed.
-            - name: Publish to npm with provenance
+            - name: Stage the version on npm with provenance
               working-directory: packages/engine
               run: |
                   if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
@@ -111,10 +115,11 @@ jobs:
                   fi
                   tag=latest
                   [ "$PRERELEASE" = "true" ] && tag=next
-                  npm publish --provenance --access public --tag "$tag"
+                  npm stage publish --provenance --access public --tag "$tag"
 
             # A release on GitHub with the changelog entry as its notes, so
             # the tag has a page a reader can land on. Left alone if it exists.
+            # The notes say the version is live once promoted on npm.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}
