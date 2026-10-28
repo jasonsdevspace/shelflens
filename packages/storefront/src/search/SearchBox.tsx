@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useId, useMemo, useState } from 'react';
 
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { GraphQLClient } from '../client/graphql.js';
 import { formatPriceRange } from '../format/money.js';
 import { Swatch } from './Swatch.jsx';
@@ -45,6 +46,7 @@ export const SearchBox = ({
     placeholder,
     initialPhrase = '',
 }: SearchBoxProps) => {
+    const { locale } = useStoreInfo();
     const id = useId();
     const [phrase, setPhrase] = useState(initialPhrase);
     const [open, setOpen] = useState(false);
@@ -194,7 +196,8 @@ export const SearchBox = ({
                                         {' · '}
                                         {formatPriceRange(
                                             option.product.price.min,
-                                            option.product.price.max
+                                            option.product.price.max,
+                                            locale
                                         )}
                                     </span>
                                 </span>

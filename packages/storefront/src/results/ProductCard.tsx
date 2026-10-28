@@ -1,3 +1,4 @@
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import { formatPriceRange } from '../format/money.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
@@ -64,32 +65,36 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
     );
 };
 
-export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps) => (
-    <li className="card">
-        <a
-            className="card-link"
-            href={href}
-            onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-                event.preventDefault();
-                onOpen();
-            }}
-        >
-            <Swatch color={product.colors[0]} brand={product.brand.name} size={64} />
-            <span className="card-text">
-                <span className="card-name">{product.name}</span>
-                <span className="card-meta">{product.brand.name}</span>
-                <span className="card-price">
-                    {formatPriceRange(product.price.min, product.price.max)}
-                </span>
-                {product.rating && (
-                    <span className="card-rating">
-                        {product.rating.average.toFixed(1)} from {product.rating.count} ratings
+export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps) => {
+    const { locale } = useStoreInfo();
+    return (
+        <li className="card">
+            <a
+                className="card-link"
+                href={href}
+                onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+                        return;
+                    event.preventDefault();
+                    onOpen();
+                }}
+            >
+                <Swatch color={product.colors[0]} brand={product.brand.name} size={64} />
+                <span className="card-text">
+                    <span className="card-name">{product.name}</span>
+                    <span className="card-meta">{product.brand.name}</span>
+                    <span className="card-price">
+                        {formatPriceRange(product.price.min, product.price.max, locale)}
                     </span>
-                )}
-                {!product.inStock && <span className="card-stock">Out of stock</span>}
-            </span>
-        </a>
-        {explain && <Explanation {...explain} />}
-    </li>
-);
+                    {product.rating && (
+                        <span className="card-rating">
+                            {product.rating.average.toFixed(1)} from {product.rating.count} ratings
+                        </span>
+                    )}
+                    {!product.inStock && <span className="card-stock">Out of stock</span>}
+                </span>
+            </a>
+            {explain && <Explanation {...explain} />}
+        </li>
+    );
+};

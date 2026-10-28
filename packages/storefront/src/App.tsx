@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { treeOf } from './app/categories.js';
+import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
+import { DEFAULT_STORE_INFO, type StoreInfo, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
-import { useUrlState } from './app/useUrlState.js';
-import { createClient, createClientMemory, type CustomerGroup } from './client/graphql.js';
-import { CategoriesDocument, StoreDocument } from './generated/operations.js';
+import { type Navigate, useUrlState } from './app/useUrlState.js';
+import {
+    createClient,
+    createClientMemory,
+    type CustomerGroup,
+    type GraphQLClient,
+} from './client/graphql.js';
+import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
+import { hasSeenTour, markTourSeen } from './tour/seen.js';
+import { Tour } from './tour/Tour.jsx';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -32,6 +40,30 @@ const Standby = ({ readiness }: { readonly readiness: Readiness }) => {
     return null;
 };
 
+/** What the store query says about the store, or the defaults until it has answered. */
+const storeInfoOf = (data: StoreQuery | undefined): StoreInfo =>
+    data ? { currency: data.store.currency, locale: data.store.locale } : DEFAULT_STORE_INFO;
+
+/** Opens and closes the tour, saying which it will do. */
+const TourToggle = ({
+    touring,
+    onOpen,
+    onClose,
+}: {
+    readonly touring: boolean;
+    readonly onOpen: () => void;
+    readonly onClose: () => void;
+}) => (
+    <button
+        type="button"
+        className="tour-open"
+        aria-expanded={touring}
+        onClick={touring ? onClose : onOpen}
+    >
+        Tour
+    </button>
+);
+
 /** Who the reviewer is shopping as. A real store would take this from the session. */
 const ViewerSwitch = ({
     group,
@@ -53,10 +85,53 @@ const ViewerSwitch = ({
     </label>
 );
 
+/** The masthead once the store is ready: the search box, the viewer switch and the tour. */
+interface MastheadProps {
+    readonly client: GraphQLClient;
+    readonly state: SearchState;
+    readonly fresh: SearchState;
+    readonly navigate: Navigate;
+    readonly categories: CategoryTree;
+    readonly group: CustomerGroup;
+    readonly onGroup: (group: CustomerGroup) => void;
+    readonly touring: boolean;
+    readonly onTour: (open: boolean) => void;
+}
+
+const Masthead = ({
+    client,
+    state,
+    fresh,
+    navigate,
+    categories,
+    group,
+    onGroup,
+    touring,
+    onTour,
+}: MastheadProps) => (
+    <>
+        <SearchBox
+            key={state.phrase ?? ''}
+            client={client}
+            initialPhrase={state.phrase ?? ''}
+            onSearch={(phrase) => navigate({ ...fresh, phrase })}
+            onPick={(sku) => navigate({ ...state, product: sku })}
+        />
+        <ViewerSwitch group={group} onChange={onGroup} />
+        <TourToggle touring={touring} onOpen={() => onTour(true)} onClose={() => onTour(false)} />
+        <CategoryNav categories={categories} state={state} navigate={navigate} />
+    </>
+);
+
 export const App = ({ apiUrl, ready }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     const [group, setGroup] = useState<CustomerGroup>('guest');
+    const [touring, setTouring] = useState(() => !hasSeenTour());
+    const onTour = (open: boolean) => {
+        if (!open) markTourSeen();
+        setTouring(open);
+    };
     // One memory for both viewers: the viewer is in the key, so switching keeps both.
     const memory = useMemo(() => createClientMemory(), []);
     const client = useMemo(
@@ -77,8 +152,10 @@ export const App = ({ apiUrl, ready }: AppProps) => {
         );
     }, [ready]);
 
+    const info = useMemo(() => storeInfoOf(store.data), [store.data]);
+
     return (
-        <>
+        <StoreProvider value={info}>
             <header className="masthead">
                 <div className="masthead-row">
                     <a
@@ -92,18 +169,21 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         ShelfLens
                     </a>
                     {isReady && (
-                        <SearchBox
-                            key={state.phrase ?? ''}
+                        <Masthead
                             client={client}
-                            initialPhrase={state.phrase ?? ''}
-                            onSearch={(phrase) => navigate({ ...fresh, phrase })}
-                            onPick={(sku) => navigate({ ...state, product: sku })}
+                            state={state}
+                            fresh={fresh}
+                            navigate={navigate}
+                            categories={tree}
+                            group={group}
+                            onGroup={setGroup}
+                            touring={touring}
+                            onTour={onTour}
                         />
                     )}
-                    {isReady && <ViewerSwitch group={group} onChange={setGroup} />}
                 </div>
-                {isReady && <CategoryNav categories={tree} state={state} navigate={navigate} />}
             </header>
+            {isReady && touring && <Tour navigate={navigate} onClose={() => onTour(false)} />}
             <main className="content">
                 <Standby readiness={readiness} />
                 {isReady && state.product !== undefined && (
@@ -120,10 +200,9 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         state={state}
                         navigate={navigate}
                         categories={tree}
-                        currency={store.data?.store.currency ?? 'USD'}
                     />
                 )}
             </main>
-        </>
+        </StoreProvider>
     );
 };

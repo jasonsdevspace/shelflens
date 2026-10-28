@@ -1,3 +1,4 @@
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { SearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
@@ -22,6 +23,7 @@ export interface ProductPageProps {
 
 export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) => {
     const { data, loading, error } = useQuery(client, ProductDocument, { sku });
+    const { locale } = useStoreInfo();
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);
@@ -70,7 +72,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                             ` · ${product.rating.average.toFixed(1)} from ${product.rating.count} ratings`}
                     </p>
                     <p className="product-price">
-                        {formatPriceRange(product.price.min, product.price.max)}
+                        {formatPriceRange(product.price.min, product.price.max, locale)}
                     </p>
                     {!product.inStock && <p className="card-stock">Out of stock</p>}
                 </div>
@@ -91,7 +93,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                         <tr key={variant.sku}>
                             <td>{variant.color}</td>
                             <td>{variant.size}</td>
-                            <td>{formatMoney(variant.price)}</td>
+                            <td>{formatMoney(variant.price, locale)}</td>
                             <td>{variant.inStock ? 'In stock' : 'Out of stock'}</td>
                         </tr>
                     ))}

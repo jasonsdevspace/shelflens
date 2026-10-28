@@ -4,25 +4,37 @@ export interface Money {
     readonly currency: string;
 }
 
+/**
+ * Amounts formatted for the store's currency and locale.
+ *
+ * The currency travels with every amount and the locale comes from the
+ * store, so nothing on the page types a symbol or guesses a separator. A
+ * formatter is kept per currency and locale, since making one is slow.
+ */
 const formatters = new Map<string, Intl.NumberFormat>();
 
-const formatterFor = (currency: string): Intl.NumberFormat => {
-    let formatter = formatters.get(currency);
+/** A whole amount shows no fraction, and any other shows the currency's usual digits. */
+const formatterFor = (currency: string, locale: string, whole: boolean): Intl.NumberFormat => {
+    const key = `${locale}/${currency}/${whole ? 'whole' : 'fraction'}`;
+    let formatter = formatters.get(key);
     if (!formatter) {
-        formatter = new Intl.NumberFormat('en-US', {
+        formatter = new Intl.NumberFormat(locale, {
             style: 'currency',
             currency,
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
+            ...(whole && { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
         });
-        formatters.set(currency, formatter);
+        formatters.set(key, formatter);
     }
     return formatter;
 };
 
-export const formatMoney = ({ amount, currency }: Money): string =>
-    formatterFor(currency).format(amount / 100);
+export const DEFAULT_LOCALE = 'en-US';
+
+export const formatMoney = ({ amount, currency }: Money, locale = DEFAULT_LOCALE): string =>
+    formatterFor(currency, locale, amount % 100 === 0).format(amount / 100);
 
 /** A single price, or the span when variants are priced differently. */
-export const formatPriceRange = (min: Money, max: Money): string =>
-    min.amount === max.amount ? formatMoney(min) : `${formatMoney(min)} to ${formatMoney(max)}`;
+export const formatPriceRange = (min: Money, max: Money, locale = DEFAULT_LOCALE): string =>
+    min.amount === max.amount
+        ? formatMoney(min, locale)
+        : `${formatMoney(min, locale)} to ${formatMoney(max, locale)}`;
