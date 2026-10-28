@@ -4,6 +4,11 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.1.1
+
+The same engine as 0.1.0, published by the release workflow from a tag on main, with provenance
+linking the package to the commit and the run that built it. Nothing in the code changed.
+
 ## 0.1.0
 
 The first release.
