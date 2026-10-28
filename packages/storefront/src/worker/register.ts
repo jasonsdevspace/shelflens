@@ -4,7 +4,8 @@
  * A page that registers a worker is not controlled by it until the worker
  * activates and claims it. Until then a request to `graphql` would go to
  * the network and find nothing there, so the storefront waits for control
- * before it lets the shopper search.
+ * before it lets the shopper search. A page that bypassed an active
+ * worker, as a hard reload does, asks that worker to claim it.
  *
  * A worker that takes over a page already controlled is a new build. The
  * page reloads once, so the page and the worker answering it come from
@@ -16,6 +17,9 @@ export interface WorkerHost {
     readonly serviceWorker: ServiceWorkerContainer | undefined;
     reload(): void;
 }
+
+/** What the page sends a worker that is active but not in charge of it. */
+export const CLAIM_MESSAGE = { type: 'shelflens:claim' } as const;
 
 const browserHost = (): WorkerHost => ({
     serviceWorker: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
@@ -46,6 +50,9 @@ export const controlledByWorker = async (
             }
         });
     });
-    await serviceWorker.register(scriptUrl, { type: 'module', scope });
-    if (!controlled) await claimed;
+    const registration = await serviceWorker.register(scriptUrl, { type: 'module', scope });
+    if (controlled) return;
+    // Already active and not in charge: nothing is going to claim this page unasked.
+    registration.active?.postMessage(CLAIM_MESSAGE);
+    await claimed;
 };

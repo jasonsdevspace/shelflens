@@ -1,8 +1,11 @@
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 import { chromium } from '@playwright/test';
+
+import type { StartedMessage } from '../worker/handle.js';
+import { startPreview } from './preview.js';
+import { gitCommit, today } from './record.js';
 
 /**
  * Measures a cold first visit to the built demo, as a shopper has it.
@@ -17,7 +20,6 @@ import { chromium } from '@playwright/test';
  */
 
 const PORT = 4175;
-const ORIGIN = `http://localhost:${PORT}`;
 const RUNS = Number(process.env.RUNS ?? 5);
 const OUT = 'docs/benchmarks/cold-visit';
 
@@ -28,35 +30,24 @@ interface Run {
     readonly firstSuggestionMs: number;
 }
 
-const startPreview = (): Promise<ChildProcess> =>
-    new Promise((resolve, reject) => {
-        const child = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
-            cwd: 'packages/storefront',
-            stdio: ['ignore', 'pipe', 'inherit'],
-        });
-        child.stdout.on('data', (chunk: Buffer) => {
-            if (chunk.toString().includes(String(PORT))) resolve(child);
-        });
-        child.on('exit', (code) => reject(new Error(`the preview exited with ${code}`)));
-    });
+interface Marks {
+    started?: StartedMessage;
+}
 
-const visit = async (): Promise<Run> => {
+const visit = async (origin: string): Promise<Run> => {
     const browser = await chromium.launch();
     const context = await browser.newContext();
     const page = await context.newPage();
     // Listen for the worker before the page registers it, so the message is not missed.
     await page.addInitScript(() => {
-        const marks: Record<string, number> = {};
-        (window as unknown as { marks: Record<string, number> }).marks = marks;
+        const marks: Marks = {};
+        (window as unknown as { marks: Marks }).marks = marks;
         navigator.serviceWorker.addEventListener('message', (event: MessageEvent<unknown>) => {
-            const data = event.data as { type?: string; downloadMs?: number; buildMs?: number };
-            if (data.type === 'shelflens:started') {
-                marks.downloadMs = data.downloadMs ?? 0;
-                marks.buildMs = data.buildMs ?? 0;
-            }
+            const data = event.data as { type?: unknown };
+            if (data.type === 'shelflens:started') marks.started = data as StartedMessage;
         });
     });
-    await page.goto(`${ORIGIN}/`);
+    await page.goto(`${origin}/`);
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await search.waitFor();
     const readyMs = await page.evaluate(() => performance.now());
@@ -66,14 +57,13 @@ const visit = async (): Promise<Run> => {
     // The listbox can appear before it has anything in it. A suggestion is the answer.
     await page.getByRole('option').first().waitFor();
     const shownAt = await page.evaluate(() => performance.now());
-    const marks = await page.evaluate(
-        () => (window as unknown as { marks: Record<string, number> }).marks
-    );
+    const { started } = await page.evaluate(() => (window as unknown as { marks: Marks }).marks);
     await browser.close();
+    if (!started) throw new Error('the worker never said how the store started');
     return {
         readyMs,
-        downloadMs: marks.downloadMs ?? 0,
-        buildMs: marks.buildMs ?? 0,
+        downloadMs: started.downloadMs,
+        buildMs: started.buildMs,
         firstSuggestionMs: shownAt - typedAt,
     };
 };
@@ -115,36 +105,30 @@ ${runs
 
 "Ready to search" is measured from the start of navigation to the search box appearing, which
 happens once the worker has claimed the page. The worker reports its own two timings. The first
-suggestion is measured from typing to the suggestions appearing, and includes the popover's
+suggestion is measured from typing to the first suggestion appearing, and includes the popover's
 pause for the typing to stop.
 `;
 
 const gzipped = (path: string): number => gzipSync(readFileSync(path)).length;
 
 const main = async () => {
-    const preview = await startPreview();
+    const preview = await startPreview(PORT);
     try {
         const runs: Run[] = [];
-        for (let i = 0; i < RUNS; i += 1) runs.push(await visit());
+        for (let i = 0; i < RUNS; i += 1) runs.push(await visit(preview.origin));
         const dist = 'packages/storefront/dist';
-        const assets = execFileSync('ls', [`${dist}/assets`], { encoding: 'utf8' }).split('\n');
-        const pageFile = assets.find((name) => name.endsWith('.js')) ?? '';
+        const pageFile = readdirSync(`${dist}/assets`).find((name) => name.endsWith('.js'));
         const sizes = {
             catalog: gzipped(`${dist}/catalog.json`),
             page: pageFile ? gzipped(`${dist}/assets/${pageFile}`) : 0,
             worker: gzipped(`${dist}/sw.js`),
         };
-        const recorded = {
-            date: new Date().toISOString().slice(0, 10),
-            commit: execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
-                encoding: 'utf8',
-            }).trim(),
-        };
+        const recorded = { date: today(), commit: gitCommit() };
         writeFileSync(`${OUT}.json`, `${JSON.stringify({ recorded, sizes, runs }, null, 2)}\n`);
         writeFileSync(`${OUT}.md`, report(runs, sizes, recorded));
         console.log(report(runs, sizes, recorded));
     } finally {
-        preview.kill();
+        preview.stop();
     }
 };
 

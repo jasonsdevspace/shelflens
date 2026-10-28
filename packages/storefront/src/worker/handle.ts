@@ -63,6 +63,11 @@ export interface Startup {
     readonly buildMs: number;
 }
 
+/** What the worker tells the page once it is in charge of it. */
+export interface StartedMessage extends Startup {
+    readonly type: 'shelflens:started';
+}
+
 export interface WorkerApi {
     /** Build the store now rather than on the first request, and say how long it took. */
     warm(): Promise<Startup>;

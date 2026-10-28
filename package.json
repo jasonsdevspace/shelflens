@@ -26,7 +26,7 @@
         "bench": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/search/src/bench-cli.ts && prettier --write docs/benchmarks",
         "bench:popover": "npm run build && tsx packages/storefront/src/bench/bench-cli.ts && prettier --write docs/benchmarks",
         "bench:cold": "npm run storefront && tsx packages/storefront/src/bench/cold-visit.ts && prettier --write docs/benchmarks",
-        "lighthouse": "node packages/storefront/scripts/lighthouse.mjs",
+        "lighthouse": "tsx packages/storefront/src/bench/lighthouse.ts",
         "api": "npm run build && node packages/server/dist/main.js",
         "dev": "npm run build && npm run dev --workspace=@shelflens/storefront",
         "storefront": "npm run build && npm run catalog -- --compact --out packages/storefront/public/catalog.json && npm run bundle --workspace=@shelflens/storefront",
