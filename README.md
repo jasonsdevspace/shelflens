@@ -178,7 +178,7 @@ The schema is `packages/api/schema.graphql` and the storefront's operations are 
 committing the generated types and the persisted operations, which CI checks. The demo's
 merchandising is `packages/storefront/public/rules.json`, validated when the store is built.
 
-## Layout
+## Project layout
 
 ```
 packages/
