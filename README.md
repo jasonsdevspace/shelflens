@@ -1,7 +1,8 @@
 # ShelfLens
 
-A product search engine, and the store built on it. **[Try the demo](https://jasonsdevspace.com/shelflens/)**,
-which opens a tour of the interesting parts on a first visit.
+A product search engine, and the store built on it. **[Try the
+demo](https://jasonsdevspace.com/shelflens/)**, which opens a tour of the interesting parts on a
+first visit.
 
 ShelfLens is a fictional store. Its search has to do what a real store's does: find the right
 product from a few typed letters, forgive a typo, know that trainers are sneakers, count how many
@@ -27,8 +28,9 @@ stops with the test behind each.
    list. This one never does. A burst of keystrokes costs one request, and the popover is a
    combobox you can drive from the keyboard.
 2. [Open the product a guest cannot see.](https://jasonsdevspace.com/shelflens/?product=SL-00008)
-   Switch to member in the masthead: it appears, and every price drops. A cache keyed on the query
-   alone would serve that member answer to the next guest, and a test proves it does.
+   Switch to member in the masthead: it appears, and back on the results the brands that give
+   members a discount show lower prices. A cache keyed on the query alone would serve a member's
+   answer to the next guest, and a test proves it does.
 3. [Search "jacket" in explain mode.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    Two jackets are pinned first by a rule, and every card says which word matched which term in
    which field and what the rule did. Sort by price and the pin is set aside, and the page says so.
@@ -67,14 +69,14 @@ without its filters, each only if it finds something.
 
 ## What is here
 
-| Package                                        | What it is                                                                                                                                                                                                             |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, on npm: one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies. |
-| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                      |
-| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                             |
-| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, and the shape over HTTP. Nothing from Node, so it runs in a service worker                       |
-| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                  |
-| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the tour, and the service worker that is the API in the browser                                         |
+| Package                                        | What it is                                                                                                                                                                                                                       |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, packaged for npm: one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies. |
+| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                                |
+| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                                       |
+| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, and the shape over HTTP. Nothing from Node, so it runs in a service worker                                 |
+| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                            |
+| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the tour, and the service worker that is the API in the browser                                                   |
 
 ## What was measured
 
@@ -180,8 +182,8 @@ packages/
     └── src/     app (the URL as state, categories, the store context), client (the GraphQL
                  client, its memory and the latest-request helper), search (the popover),
                  results (facets, sort, pages, explain mode, nothing), product, tour, worker
-                 (the API as a service worker), bench (the measurements and the audit),
-                 operations, generated
+                 (the API as a service worker), dev (the API inside the dev server), bench
+                 (the measurements and the audit), operations, generated
 docs/
 ├── benchmarks/  the recorded measurements
 └── decisions/   the decision records

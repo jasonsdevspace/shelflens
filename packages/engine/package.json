@@ -31,11 +31,13 @@
     },
     "files": [
         "dist",
+        "src",
+        "!src/**/*.test.ts",
         "CHANGELOG.md"
     ],
     "sideEffects": false,
     "engines": {
-        "node": ">=20"
+        "node": ">=24"
     },
     "publishConfig": {
         "access": "public"

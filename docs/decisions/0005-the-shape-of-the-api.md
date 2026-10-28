@@ -50,8 +50,9 @@ the schema's descriptions, so a client knows without trying.
 
 **Nothing is an answer with a shape.** `SearchResult.noResults` is null unless the search found
 nothing, and then carries what would find something: a spelling, a shorter phrase with its own
-result, what the same phrase finds without its filters, and the most rated products. Each part is
-resolved only when a client asks for it.
+result, what the same phrase finds without its filters, and the most rated products. The recovery is
+a few searches run once when the field is asked for. The shorter phrase's own result and the popular
+products are each resolved only when a client selects them.
 
 **Explanations are part of the hit.** `SearchHit.explanation` carries each matched word, its
 route and its score, and each rule that touched the result. Explain mode is the same search with
