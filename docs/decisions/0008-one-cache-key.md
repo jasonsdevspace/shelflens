@@ -39,8 +39,9 @@ Option B. The key is `cacheKey` in `@shelflens/api`, and it is made of:
   be invalidated, because nothing is asked for under the old key again.
 - **The viewer's group.** The part a request-only key leaves out. It comes from the request's
   header, as the API already does for pricing, so the key and the resolvers read the same source.
-- **The operation and its variables,** with the query's whitespace collapsed and the variables
-  written with their object keys sorted, so a request means the same key however it was spelled.
+- **The operation and its variables,** with the query's insignificant GraphQL characters removed
+  and the variables written with their object keys sorted, so a request means the same key however
+  it was spelled without changing whitespace inside a value.
 
 The first cache on that key is `withResponseCache`, which wraps the API in the handler. It keeps
 the most recently used answers up to a count and an age, shares one run between identical

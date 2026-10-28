@@ -60,14 +60,15 @@ export const withResponseCache = (
             entries.set(id, found);
             return found.response;
         }
+        if (found) entries.delete(id);
         misses += 1;
         const response = api.run(request, viewer, now).then(
             (answer) => {
-                if (answer.errors) entries.delete(id);
+                if (answer.errors && entries.get(id)?.response === response) entries.delete(id);
                 return answer;
             },
             (error: unknown) => {
-                entries.delete(id);
+                if (entries.get(id)?.response === response) entries.delete(id);
                 throw error;
             }
         );

@@ -1,3 +1,5 @@
+import { stripIgnoredCharacters } from 'graphql';
+
 import type { Viewer } from './context.js';
 import type { StoreRequest } from './execute.js';
 
@@ -39,11 +41,21 @@ const canonical = (value: unknown): string => {
     return JSON.stringify(value);
 };
 
+/** Remove only GraphQL's insignificant text, preserving values inside strings. */
+const canonicalQuery = (query: string): string => {
+    try {
+        return stripIgnoredCharacters(query);
+    } catch {
+        // Invalid requests still need to reach the API and come back as GraphQL errors.
+        return query;
+    }
+};
+
 export const cacheKey: CacheKey = ({ version, viewer, request }) =>
-    [
+    JSON.stringify([
         version,
         viewer.group,
-        request.operationName ?? '',
+        request.operationName ?? null,
         canonical(request.variables ?? {}),
-        request.query.replace(/\s+/g, ' ').trim(),
-    ].join('\n');
+        canonicalQuery(request.query),
+    ]);

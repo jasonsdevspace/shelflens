@@ -69,6 +69,33 @@ describe('the cache key', () => {
         expect(spaced).toBe(compact);
     });
 
+    it('preserves meaningful whitespace inside GraphQL strings', () => {
+        const request = (brand: string) => ({
+            query: `{ search(input: { filters: [{ attribute: BRAND, match: { eq: "${brand}" } }] }) { total } }`,
+        });
+        expect(cacheKey({ version: '1', viewer: guest, request: request('Cobble Lane') })).not.toBe(
+            cacheKey({ version: '1', viewer: guest, request: request('Cobble  Lane') })
+        );
+    });
+
+    it('distinguishes an omitted operation name from an empty one', () => {
+        const request = { query: '{ store { name } }' };
+        expect(cacheKey({ version: '1', viewer: guest, request })).not.toBe(
+            cacheKey({
+                version: '1',
+                viewer: guest,
+                request: { ...request, operationName: '' },
+            })
+        );
+    });
+
+    it('lets an invalid query reach the API for its error response', async () => {
+        const cached = withResponseCache(api);
+        await expect(cached.run({ query: '{' }, guest)).resolves.toMatchObject({
+            errors: [{ extensions: { code: 'GRAPHQL_PARSE_FAILED' } }],
+        });
+    });
+
     it('changes with the viewer, the version, the operation and the variables', () => {
         const request = { query: '{ store { name } }', variables: { a: 1 } };
         const base = cacheKey({ version: '1', viewer: guest, request });
@@ -158,6 +185,44 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ misses: 5, size: 2 });
         cached.cache.clear();
         expect(cached.cache.size).toBe(0);
+    });
+
+    it('keeps a recomputed expired answer as the most recently used', async () => {
+        const cached = withResponseCache(api, { maxEntries: 2, maxAgeMs: 1000 });
+        const at = (ms: number) => new Date(ms);
+        const second = { query: '{ store { name } }' };
+        const third = { query: '{ categories { id } }' };
+
+        await cached.run(request, guest, at(0));
+        await cached.run(second, guest, at(0));
+        await cached.run(request, guest, at(1000));
+        await cached.run(third, guest, at(1000));
+        await cached.run(request, guest, at(1000));
+
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 4, size: 2 });
+    });
+
+    it('does not let an expired failure delete its replacement', async () => {
+        const settle: ((response: StoreResponse) => void)[] = [];
+        const delayed = {
+            ...api,
+            run: () =>
+                new Promise<StoreResponse>((resolve) => {
+                    settle.push(resolve);
+                }),
+        };
+        const cached = withResponseCache(delayed, { maxAgeMs: 1 });
+        const at = (ms: number) => new Date(ms);
+
+        const first = cached.run(request, guest, at(0));
+        const replacement = cached.run(request, guest, at(1));
+        settle[0]?.({ errors: [{ message: 'old failure' }] });
+        await first;
+        settle[1]?.({ data: { ok: true } });
+        await replacement;
+        await cached.run(request, guest, at(1));
+
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 2, size: 1 });
     });
 
     it('does not keep an answer with errors', async () => {
