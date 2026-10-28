@@ -138,6 +138,7 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await audit(page);
 
     await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
-    await expect(page.getByRole('status')).toContainText('set aside the merchandising');
-    await expect(page.getByRole('status')).toContainText('featured-jackets');
+    const aside = page.getByText(/set aside the merchandising/);
+    await expect(aside).toBeVisible();
+    await expect(aside).toContainText('featured-jackets');
 });
