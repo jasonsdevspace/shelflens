@@ -1,4 +1,4 @@
-# 8. One cache key, defined once
+# 8. One cache key, defined once, for three layers
 
 **Status:** accepted
 
@@ -56,6 +56,27 @@ What the key does not contain is the time, so a rule with a time window may stay
 up to the cache's age limit after its window closes. That is the age limit's job, and the
 default is five minutes.
 
+### The three layers
+
+Three caches share the key, and each holds it in the form its medium allows.
+
+- **The page.** The client remembers answers in memory, with the operation's persisted name
+  standing for its text, which is how a page with nothing from GraphQL in it builds the same
+  key. Every answer carries the store version in a header, and an answer from a new version
+  empties the memory, so after a catalog change nothing stale is shown past the next answer.
+- **The browser, or an edge.** The storefront's operations are persisted: each is named at
+  build time by the hash of its text, and the client sends the name in a `GET` with the
+  variables and the version it last saw in the URL, and the viewer in a header the cache varies
+  on. An answer is marked cacheable only when the URL named the version that answered and
+  nothing failed. So the URL is the key, a new version is a new URL, and nothing is ever purged.
+  The public demo accepts only these named operations. A full query is refused, so nothing a
+  browser can send runs a query the storefront did not ship.
+- **The handler.** `withResponseCache`, above, in the service worker and the Node server.
+
+The handler's cache keys on the query text and the page's on the name. They are the same key
+in different spellings: the manifest maps each name to exactly the text the handler sees, and a
+test holds the two together.
+
 ## Consequences
 
 - Any other cache in the project calls the same function. A page cache or an edge cache that
@@ -70,6 +91,15 @@ default is five minutes.
 
 ## How it is tested
 
+- The persisted manifest: every document the page can send has a name, and the name stands for
+  exactly the text of that document with GraphQL's insignificant characters removed.
+- Over HTTP: a persisted operation resolves from its name, variables and expected version, an
+  unknown name is refused, a full query is refused where the host says so, and an answer is
+  marked cacheable only under the version that answered and with no errors.
+- The page's cache: a repeated question is asked once, a guest and a member are kept apart, an
+  answer with errors is not remembered, and an answer from a new version empties the memory.
+- As a member, on the page and in a real browser: a product guests are told does not exist
+  appears, and a discounted product costs less, from the moment the viewer changes.
 - The leak: the same cache, keyed on the request alone, serves a member's price and a
   members-only product to a guest. Keyed on `cacheKey`, the guest sees the guest price and no
   product. The test runs both keys through the same wrapper, so the key is the only difference.

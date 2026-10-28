@@ -43,11 +43,14 @@ const suggestionsFor = (phrase: string): Suggestions => ({
 
 const createNetwork = () => {
     const pending: Pending[] = [];
-    const fetchImpl: typeof fetch = (_url, init) =>
+    const fetchImpl: typeof fetch = (url, init) =>
         new Promise((resolve, reject) => {
-            const { variables } = JSON.parse(init?.body as string) as {
-                variables: { phrase: string };
-            };
+            // The client names the operation in a GET, with the variables in the URL.
+            const encoded = new URL(
+                typeof url === 'string' ? url : url instanceof URL ? url.href : url.url,
+                'http://local'
+            ).searchParams.get('variables');
+            const variables = JSON.parse(encoded ?? '{}') as { phrase: string };
             const signal = init?.signal ?? undefined;
             signal?.addEventListener('abort', () => reject(new Error('aborted')));
             pending.push({

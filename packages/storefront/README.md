@@ -3,11 +3,17 @@
 The demo: the store's search as a shopper sees it, deployed to GitHub Pages with the API inside
 the page.
 
-- **The client is written here.** `src/client` posts typed documents, generated as strings from
-  the operations in `src/operations`, and holds the latest-request helper that gives each request
-  a ticket, aborts the one before, and marks a late answer stale.
+- **The client is written here.** `src/client` sends typed documents, generated as strings from
+  the operations in `src/operations` and named at build time by the hash of their text. A named
+  operation goes as a `GET` with its variables and the store version in the URL, so the browser
+  can keep the answer. The client remembers answers too, on the API's one cache key, and forgets
+  them all when an answer arrives from a new version. Beside it is the latest-request helper
+  that gives each request a ticket, aborts the one before, and marks a late answer stale.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
-  Apollo or urql.
+  Apollo or urql, and [decision record 8](../../docs/decisions/0008-one-cache-key.md) the key.
+- **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
+  prices change, a product only members may see appears, and nothing in the URL or the query
+  asked for it: the viewer travels in a header, and every cache keys on it.
 - **The URL is the page.** `src/app` holds the state every page reads from the query string:
   the phrase, the category, each facet, the sort, the page and the product being looked at.
   Parse and serialize are pure and tested. A filter is a history entry, so the back button
@@ -25,8 +31,10 @@ the page.
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.
 - **The API is a service worker.** `src/worker` builds the store from the shipped catalog during
-  install, claims the page on activation, and answers `POST /graphql` from inside the page, with
-  answers cached on the API's one cache key. Its handler is tested with plain fetch requests.
+  install, claims the page on activation, and answers `/graphql` from inside the page. It accepts
+  only the storefront's own operations, by name, caches answers on the API's one cache key, and
+  marks each answer with what the browser may keep. Its handler is tested with plain fetch
+  requests.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
   and no worker fighting hot reloading.

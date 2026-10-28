@@ -9,12 +9,17 @@ import { createServer } from './server.js';
  *   npm run api
  *   curl localhost:8080/graphql --header 'content-type: application/json' \
  *     --data '{ "query": "{ store { name catalogVersion } }" }'
+ *
+ * `PERSISTED_ONLY=true` refuses full queries, as the public demo does.
  */
 const port = Number(process.env.PORT ?? 8080);
 const products = Number(process.env.PRODUCTS ?? 2000);
 
 const store = createStore({ catalog: generateCatalog({ products }) });
-const server = createServer({ api: withResponseCache(createStoreApi(store)) });
+const server = createServer({
+    api: withResponseCache(createStoreApi(store)),
+    persistedOnly: process.env.PERSISTED_ONLY === 'true',
+});
 
 server.listen(port, () => {
     console.log(`listening on ${port}, ${products} products, catalog ${store.version}`);

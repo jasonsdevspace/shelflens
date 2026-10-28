@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
 
+import { isApiPath } from '@shelflens/api';
+
 import { createWorkerApi } from './handle.js';
 
 /**
@@ -25,6 +27,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    if (request.method !== 'POST' || !request.url.startsWith(self.registration.scope)) return;
+    if (!request.url.startsWith(self.registration.scope) || !isApiPath(request.url)) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

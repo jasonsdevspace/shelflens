@@ -4,7 +4,13 @@ export {
     type ResponseCacheOptions,
     withResponseCache,
 } from './cache.js';
-export { type CacheKey, cacheKey, type CacheKeyInput } from './cache-key.js';
+export {
+    type CacheKey,
+    cacheKey,
+    type CacheKeyInput,
+    cacheKeyOf,
+    type CacheKeyParts,
+} from './cache-key.js';
 export {
     type Context,
     createStore,
@@ -24,4 +30,15 @@ export {
     type StoreResponse,
 } from './execute.js';
 export { canonical, fingerprint } from './fingerprint.js';
+export { PERSISTED_OPERATIONS } from './generated/persisted.js';
+export {
+    type HttpOptions,
+    type HttpRequest,
+    isApiPath,
+    type Resolution,
+    resolveRequest,
+    type ResponseHeaderInput,
+    responseHeaders,
+    VERSION_HEADER,
+} from './http.js';
 export { buildStoreSchema, schemaSource } from './schema.js';

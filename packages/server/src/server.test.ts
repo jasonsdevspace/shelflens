@@ -1,6 +1,12 @@
 import type { AddressInfo } from 'node:net';
 
-import { createStore, createStoreApi, GROUP_HEADER } from '@shelflens/api';
+import {
+    createStore,
+    createStoreApi,
+    GROUP_HEADER,
+    PERSISTED_OPERATIONS,
+    VERSION_HEADER,
+} from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -8,15 +14,25 @@ import { createServer } from './server.js';
 
 const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
 const server = createServer({ api, rateLimitPerMinute: 5 });
+const demo = createServer({ api, persistedOnly: true });
 let base = '';
+let demoBase = '';
+
+const STORE = Object.keys(PERSISTED_OPERATIONS).find((hash) =>
+    PERSISTED_OPERATIONS[hash]?.startsWith('query Store')
+);
+if (!STORE) throw new Error('expected the Store operation to be persisted');
 
 beforeAll(async () => {
     await new Promise<void>((resolve) => server.listen(0, resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    await new Promise<void>((resolve) => demo.listen(0, resolve));
+    demoBase = `http://127.0.0.1:${(demo.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve) => demo.close(() => resolve()));
 });
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
@@ -47,6 +63,34 @@ describe('the API over HTTP', () => {
     it('refuses a body that is not JSON, or has no query', async () => {
         expect((await post('{ not json')).status).toBe(400);
         expect((await post({ variables: {} })).status).toBe(400);
+    });
+
+    it('answers a persisted operation by GET, and says what may be cached', async () => {
+        const params = new URLSearchParams({ op: STORE, v: api.version });
+        const versioned = await fetch(`${demoBase}/graphql?${params.toString()}`);
+        expect(versioned.status).toBe(200);
+        expect(await versioned.json()).toMatchObject({
+            data: { store: { name: 'ShelfLens', catalogVersion: api.version } },
+        });
+        expect(versioned.headers.get('cache-control')).toBe('public, max-age=300');
+        expect(versioned.headers.get('vary')).toBe(GROUP_HEADER);
+        expect(versioned.headers.get(VERSION_HEADER)).toBe(api.version);
+
+        const unversioned = await fetch(`${demoBase}/graphql?op=${STORE}`);
+        expect(unversioned.headers.get('cache-control')).toBe('no-store');
+        expect((await fetch(`${demoBase}/graphql?op=unknown`)).status).toBe(404);
+    });
+
+    it('refuses full queries when told to accept persisted operations only', async () => {
+        const response = await fetch(`${demoBase}/graphql`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ query: '{ store { name } }' }),
+        });
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            errors: [{ message: 'this store accepts persisted operations only' }],
+        });
     });
 
     it('answers health without counting it against anyone', async () => {

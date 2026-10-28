@@ -1,4 +1,4 @@
-import { createStore, createStoreApi, withResponseCache } from '@shelflens/api';
+import { createStore, createStoreApi, isApiPath, withResponseCache } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { createHandler } from '@shelflens/server';
 import type { Plugin } from 'vite';
@@ -16,12 +16,11 @@ export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
     configureServer(server) {
-        const base = server.config.base;
         const handle = createHandler({
             api: withResponseCache(createStoreApi(createStore({ catalog: generateCatalog() }))),
         });
         server.middlewares.use((request, response, next) => {
-            if (request.url === `${base}graphql`) {
+            if (request.url !== undefined && isApiPath(request.url)) {
                 void handle(request, response);
             } else {
                 next();

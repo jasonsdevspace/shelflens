@@ -236,7 +236,8 @@ export class TypedDocumentString<TResult, TVariables>
     }
 }
 
-export const CategoriesDocument = new TypedDocumentString(`
+export const CategoriesDocument = new TypedDocumentString(
+    `
     query Categories {
   categories {
     id
@@ -244,8 +245,11 @@ export const CategoriesDocument = new TypedDocumentString(`
     path
   }
 }
-    `) as unknown as TypedDocumentString<CategoriesQuery, CategoriesQueryVariables>;
-export const ProductDocument = new TypedDocumentString(`
+    `,
+    { hash: '463ddcc741f6ba20223714607b778a7cdb236fc1d16e2939567560d699374587' }
+) as unknown as TypedDocumentString<CategoriesQuery, CategoriesQueryVariables>;
+export const ProductDocument = new TypedDocumentString(
+    `
     query Product($sku: ID!) {
   product(sku: $sku) {
     sku
@@ -288,8 +292,11 @@ export const ProductDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
-export const SearchDocument = new TypedDocumentString(`
+    `,
+    { hash: 'e114771ac0930e0456c5aa1f17b1a8981e24d8006db7c6006ef81f048b9ccfca' }
+) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
+export const SearchDocument = new TypedDocumentString(
+    `
     query Search($input: SearchInput!) {
   search(input: $input) {
     total
@@ -350,8 +357,11 @@ export const SearchDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
-export const StoreDocument = new TypedDocumentString(`
+    `,
+    { hash: '5ca215916918fe839a1d2b2c5e64b4dda59c7492f84cbee4efe0ab401b3e7375' }
+) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
+export const StoreDocument = new TypedDocumentString(
+    `
     query Store {
   store {
     name
@@ -363,8 +373,11 @@ export const StoreDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
-export const SuggestDocument = new TypedDocumentString(`
+    `,
+    { hash: '3960ca1d5ba26a4c79028bb83a879f117652f124db84228f33c8300e60c387c9' }
+) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
+export const SuggestDocument = new TypedDocumentString(
+    `
     query Suggest($phrase: String!, $limit: Int!) {
   suggest(phrase: $phrase, limit: $limit) {
     queries
@@ -390,4 +403,6 @@ export const SuggestDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<SuggestQuery, SuggestQueryVariables>;
+    `,
+    { hash: '731d13d2ca8459eba1de835dc3f7c739878280e52319d26aa64680f88b443116' }
+) as unknown as TypedDocumentString<SuggestQuery, SuggestQueryVariables>;
