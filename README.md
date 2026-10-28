@@ -162,6 +162,17 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
   --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
 ```
 
+To release the engine, bump the version in `packages/engine/package.json`, run
+`npm install --package-lock-only` so the lock file carries it, add the entry to
+`packages/engine/CHANGELOG.md`, merge that, then push a tag named for the version, such as
+`engine-v0.2.0`. The release workflow confirms the tag, the version and the changelog agree and
+that the commit is on main, runs every check CI runs, stages the version on npm with provenance
+through npm's trusted publishing, and creates the GitHub release with the changelog entry as its
+notes. The version goes live when it is promoted on the package page on npmjs.com, so a release
+needs a tag from main, a green run and one click, and nothing that happens in CI alone can
+change what `latest` points at. A version with a hyphen, such as `0.2.0-rc.1`, is staged under
+the `next` tag and marked as a prerelease.
+
 The schema is `packages/api/schema.graphql` and the storefront's operations are in
 `packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
 committing the generated types and the persisted operations, which CI checks. The demo's
