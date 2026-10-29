@@ -47,10 +47,10 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
     const relaxed = offered?.relaxed;
     return (
         <section className="no-results">
-            <p className="notice">
-                Nothing matched{phrase}
-                {hasFilters(state) && ' with these filters'}.
-            </p>
+            {/* The heading already says nothing was found. The filters are the news. */}
+            {hasFilters(state) && (
+                <p className="notice">Nothing matched{phrase} with these filters.</p>
+            )}
             {offered?.suggestion && (
                 <p className="no-results-offer">
                     Did you mean{' '}

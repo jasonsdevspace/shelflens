@@ -67,19 +67,25 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
     const { category: _current, ...allProducts } = { ...state, page: 1 };
     const sortKey = state.sort ?? sortKeyOf(result.sort);
     const setAside = result.merchandising.setAsideBySort;
+    const empty = result.total === 0;
     const facets = (
         <Facets facets={result.facets} state={state} categories={categories} onChange={navigate} />
     );
 
     return (
-        <div className={`results-layout${loading ? ' is-loading' : ''}`} aria-busy={loading}>
-            {narrow ? (
-                <FacetDrawer active={activeFilterCount(state)} total={result.total}>
-                    {facets}
-                </FacetDrawer>
-            ) : (
-                <aside className="results-side">{facets}</aside>
-            )}
+        <div
+            className={`results-layout${loading ? ' is-loading' : ''}${empty ? ' is-empty' : ''}`}
+            aria-busy={loading}
+        >
+            {/* Nothing found means nothing to narrow, so the facets stay out of the way. */}
+            {!empty &&
+                (narrow ? (
+                    <FacetDrawer active={activeFilterCount(state)} total={result.total}>
+                        {facets}
+                    </FacetDrawer>
+                ) : (
+                    <aside className="results-side">{facets}</aside>
+                ))}
             <section className="results-main" aria-labelledby={`${id}-heading`}>
                 {crumbs.length > 0 && (
                     <nav className="crumbs" aria-label="Category">
@@ -141,7 +147,7 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
                         {setAside.join(', ')}. Pins and boosts apply under relevance only.
                     </p>
                 )}
-                {result.total === 0 ? (
+                {empty ? (
                     <NoResults state={state} navigate={navigate} offered={result.noResults} />
                 ) : (
                     <ul className="cards" aria-label="Products">

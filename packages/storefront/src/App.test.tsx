@@ -355,7 +355,9 @@ describe('when nothing matches', () => {
         const user = await open('?q=zzqx jacket');
         await settled();
         expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
-        expect(screen.getByText(/Nothing matched "zzqx jacket"/)).toBeInTheDocument();
+        // The heading has said it, and with nothing to narrow the facets stay out of the way.
+        expect(screen.queryByText(/Nothing matched/)).toBeNull();
+        expect(screen.queryByRole('group', { name: 'Brand' })).toBeNull();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
             'Showing results for "jacket" instead'
         );
@@ -388,7 +390,8 @@ describe('when nothing matches', () => {
     it('never offers to leave the category being browsed', async () => {
         await open('?q=jacket&category=shoes');
         await settled();
-        expect(screen.getByText(/Nothing matched "jacket"\./)).toBeInTheDocument();
+        expect(heading()).toHaveTextContent('0 results for "jacket"');
+        expect(screen.queryByText(/Nothing matched/)).toBeNull();
         expect(screen.queryByRole('link', { name: 'Clear the filters' })).toBeNull();
     });
 
