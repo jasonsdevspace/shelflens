@@ -42,25 +42,30 @@ const effectText = (effect: Effect): string => {
     return `Buried${weight} by rule ${effect.ruleId}`;
 };
 
-/** Why one result ranked where it did, in plain words. */
+/**
+ * Why one result ranked where it did, in plain words, in the order the
+ * question is asked: where it landed, what a rule did to it, then what it
+ * matched. Rendered only once the answer carrying the explanation has
+ * landed, so turning explain mode on never shows a bare rank.
+ */
 const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
-    const matches = hit.explanation?.matches ?? [];
-    const rules = hit.explanation?.rules ?? [];
+    if (!hit.explanation) return null;
+    const { matches, rules } = hit.explanation;
     return (
         <ul className="card-explain" aria-label={`Why this is result ${rank}`}>
             <li>
                 Result {rank}
                 {hit.score !== undefined && `, score ${hit.score.toFixed(2)}`}
             </li>
+            {rules.map((effect, index) => (
+                <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
+            ))}
             {matches.map((match, index) => (
                 <li key={index}>{matchText(match)}</li>
             ))}
             {phrase && matches.length === 0 && rules.length > 0 && (
                 <li>Did not match the phrase</li>
             )}
-            {rules.map((effect, index) => (
-                <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
-            ))}
         </ul>
     );
 };

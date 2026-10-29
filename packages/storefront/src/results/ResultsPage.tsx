@@ -1,9 +1,10 @@
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
+    hasFilters,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -45,6 +46,26 @@ const headingFor = (state: SearchState, categories: CategoryTree, total: number)
     return leaf ? leaf.name : 'All products';
 };
 
+/** The facets beside the results, or in a drawer where there is no room beside them. */
+const FacetColumn = ({
+    narrow,
+    active,
+    total,
+    children,
+}: {
+    readonly narrow: boolean;
+    readonly active: number;
+    readonly total: number;
+    readonly children: ReactNode;
+}) =>
+    narrow ? (
+        <FacetDrawer active={active} total={total}>
+            {children}
+        </FacetDrawer>
+    ) : (
+        <aside className="results-side">{children}</aside>
+    );
+
 export const ResultsPage = ({ client, state, navigate, categories }: ResultsPageProps) => {
     const id = useId();
     const { data, loading, error } = useQuery(client, SearchDocument, {
@@ -67,18 +88,23 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
     const { category: _current, ...allProducts } = { ...state, page: 1 };
     const sortKey = state.sort ?? sortKeyOf(result.sort);
     const setAside = result.merchandising.setAsideBySort;
+    const empty = result.total === 0;
+    // Nothing found and nothing ticked means nothing to narrow. With a filter on, the
+    // facets stay, since unticking it is the way out, and the drawer stays open mid-use.
+    const facetless = empty && !hasFilters(state);
     const facets = (
         <Facets facets={result.facets} state={state} categories={categories} onChange={navigate} />
     );
 
     return (
-        <div className={`results-layout${loading ? ' is-loading' : ''}`} aria-busy={loading}>
-            {narrow ? (
-                <FacetDrawer active={activeFilterCount(state)} total={result.total}>
+        <div
+            className={`results-layout${loading ? ' is-loading' : ''}${facetless ? ' is-empty' : ''}`}
+            aria-busy={loading}
+        >
+            {!facetless && (
+                <FacetColumn narrow={narrow} active={activeFilterCount(state)} total={result.total}>
                     {facets}
-                </FacetDrawer>
-            ) : (
-                <aside className="results-side">{facets}</aside>
+                </FacetColumn>
             )}
             <section className="results-main" aria-labelledby={`${id}-heading`}>
                 {crumbs.length > 0 && (
@@ -141,7 +167,7 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
                         {setAside.join(', ')}. Pins and boosts apply under relevance only.
                     </p>
                 )}
-                {result.total === 0 ? (
+                {empty ? (
                     <NoResults state={state} navigate={navigate} offered={result.noResults} />
                 ) : (
                     <ul className="cards" aria-label="Products">
