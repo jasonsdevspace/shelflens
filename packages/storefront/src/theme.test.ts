@@ -12,7 +12,8 @@ import { describe, expect, it } from 'vitest';
  */
 describe('the theme the portfolio saved', () => {
     const html = readFileSync(join(__dirname, '..', 'index.html'), 'utf8');
-    const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+    // The one inline script in the head, by its position rather than a pattern.
+    const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
 
     it('is read from the shared key before the first paint, with both values', () => {
         expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('</head>'));
