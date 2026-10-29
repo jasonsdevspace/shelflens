@@ -26,22 +26,18 @@ export const ViewerNotice = ({
 };
 
 const AS_GUEST =
-    'Shopping as a guest. Prices are list prices, and products for members only are not shown.';
+    'Shopping as a guest: prices are list prices, and products for members only are not shown.';
 
 const asMember = (items: readonly Hit[]): string => {
-    const lower = items.filter((hit) => hit.product.price.memberPrice).length;
+    const discounted = items.filter((hit) => hit.product.price.memberPrice).length;
     const hidden = items.filter((hit) => hit.product.membersOnly).length;
     const prices =
-        lower === 0
-            ? 'Every price on this page is the list price'
-            : lower === 1
-              ? 'One price on this page is a member price'
-              : `${lower} prices on this page are member prices`;
+        discounted === 0
+            ? 'every product on this page is at list price'
+            : `${discounted} ${discounted === 1 ? 'product' : 'products'} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
     const products =
         hidden === 0
-            ? 'nothing on it is hidden from guests'
-            : hidden === 1
-              ? 'one product guests cannot see is on it'
-              : `${hidden} products guests cannot see are on it`;
-    return `Shopping as a member. ${prices}, and ${products}.`;
+            ? 'none is for members only'
+            : `${hidden} ${hidden === 1 ? 'is' : 'are'} shown to members only`;
+    return `Shopping as a member: ${prices}, and ${products}.`;
 };
