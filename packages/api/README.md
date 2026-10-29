@@ -9,6 +9,8 @@ answer it over `@shelflens/search`.
   [number 5](../../docs/decisions/0005-the-shape-of-the-api.md).
 - **The viewer comes from the request.** Prices and visibility follow the customer group in the
   `shelflens-customer-group` header. There is no argument that asks for another group's prices.
+  A price says whether it is below list and a product says whether it is for members only, and
+  both stay inside the viewer's own view: a guest never receives either as true.
 - **One cache key.** `cacheKey` is the only definition of what an answer is an answer to: the
   store version, the whole viewer, and the operation with its variables. `withResponseCache`
   remembers answers on that key, and a test shows the leak a key without the viewer causes.
