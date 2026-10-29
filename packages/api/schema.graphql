@@ -19,6 +19,16 @@ type Query {
     product(sku: ID!): Product
 
     """
+    What to show beside a product: the products viewed with it, filled to the
+    limit with the most rated in its category, never the product itself. The
+    tab asking is taken to have viewed the product already, so what it viewed
+    before counts from the first visit. Nothing when the viewer may not see
+    the product. The answer reads the events collected so far, so it is never
+    cached.
+    """
+    recommendations(sku: ID!, limit: Int = 6, session: String): Recommendations
+
+    """
     The category tree, roots first. Each category's children follow it.
     """
     categories: [Category!]!
@@ -459,6 +469,33 @@ type Rating {
 type Brand {
     id: ID!
     name: String!
+}
+
+"""
+What stands beside a product, and where it came from.
+"""
+type Recommendations {
+    source: RecommendationSource!
+
+    """
+    The product's leaf category, which the fallback draws from.
+    """
+    category: Category!
+
+    items: [Product!]!
+}
+
+enum RecommendationSource {
+    """
+    At least one product viewed in the same tab as this one leads the list.
+    """
+    VIEWED_TOGETHER
+
+    """
+    Nothing has been viewed with this product yet, so the list is the
+    category's most rated.
+    """
+    CATEGORY_BESTSELLERS
 }
 
 type Category {

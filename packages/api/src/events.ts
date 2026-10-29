@@ -1,8 +1,9 @@
 /**
  * The events a storefront collects, and where they land.
  *
- * Three kinds: a search, a click on a result, and a view of a product. Each
- * is a closed set of fields, and a batch with anything else in it is
+ * Three kinds: a search, a click on a result, and a view of a product, each
+ * carrying the tab it happened in as a random id that dies with the tab.
+ * Each is a closed set of fields, and a batch with anything else in it is
  * refused whole, so nothing a page did not mean to send can arrive by
  * accident. A phrase is folded to lower case, collapsed and capped, so a
  * name typed into the search box arrives as a few words and never as a
@@ -32,6 +33,11 @@ export interface StoreEvent {
     readonly sku?: string;
     /** Where on the page a clicked result stood, from one. */
     readonly position?: number;
+    /**
+     * The tab the event happened in, as a random id the page made and keeps
+     * until the tab closes. What was viewed together is read from it.
+     */
+    readonly session?: string;
 }
 
 /** Where a host keeps events. Each id is kept once however often it arrives. */
@@ -54,7 +60,16 @@ const ID_LIMIT = 64;
 const SKU_LIMIT = 32;
 const PHRASE_LIMIT = 80;
 const KINDS: ReadonlySet<string> = new Set<EventKind>(['search', 'click', 'view']);
-const FIELDS: ReadonlySet<string> = new Set(['id', 'kind', 'at', 'phrase', 'sku', 'position']);
+const SESSION_LIMIT = 64;
+const FIELDS: ReadonlySet<string> = new Set([
+    'id',
+    'kind',
+    'at',
+    'phrase',
+    'sku',
+    'position',
+    'session',
+]);
 
 /** A phrase as the store keeps it: lower case, one space between words, capped. */
 export const foldPhrase = (phrase: string): string =>
@@ -79,7 +94,7 @@ const parseRequired = (value: Record<string, unknown>): Mutable | undefined => {
 
 /** Adds the optional fields that are present. False when one is present and wrong. */
 const parseOptional = (value: Record<string, unknown>, event: Mutable): boolean => {
-    const { phrase, sku, position } = value;
+    const { phrase, sku, position, session } = value;
     if (phrase !== undefined) {
         if (typeof phrase !== 'string') return false;
         const folded = foldPhrase(phrase);
@@ -93,6 +108,11 @@ const parseOptional = (value: Record<string, unknown>, event: Mutable): boolean 
     if (position !== undefined) {
         if (!Number.isInteger(position) || (position as number) < 1) return false;
         event.position = position as number;
+    }
+    if (session !== undefined) {
+        const sessionText = text(session, SESSION_LIMIT);
+        if (sessionText === undefined) return false;
+        event.session = sessionText;
     }
     return true;
 };

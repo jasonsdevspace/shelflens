@@ -120,7 +120,8 @@ test('a member sees the product guests cannot, and pays less, from the same page
     const asGuest = amount(await price.textContent());
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
-    await expect(page.getByText('Member price', { exact: true })).toBeVisible();
+    // The product's own line, since the rail beneath it may carry member prices too.
+    await expect(page.locator('.product-member')).toHaveText('Member price');
 });
 
 test('answers travel as named operations the browser may keep', async ({ page }) => {
@@ -278,7 +279,28 @@ test('what the shopper did reaches the worker, through a beacon, and outlives th
     expect(events.find((event) => event.kind === 'view')).toMatchObject({ sku });
     for (const event of events) {
         expect(Object.keys(event).sort()).toEqual(
-            ['at', 'id', 'kind', 'phrase', 'position', 'sku'].filter((key) => key in event).sort()
+            ['at', 'id', 'kind', 'phrase', 'position', 'session', 'sku']
+                .filter((key) => key in event)
+                .sort()
         );
     }
+});
+
+test('a second product shows the first beside it, and the first shows its category', async ({
+    page,
+}) => {
+    await page.goto('/?product=SL-00001');
+    const first = page.getByRole('heading', { level: 1 });
+    await expect(first).toBeFocused();
+    const firstName = await first.textContent();
+    const rail = page.getByRole('region', { name: /Popular in|Viewed this/ });
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(/^Popular in /);
+    await expect(rail.locator('.card-link[data-sku="SL-00001"]')).toHaveCount(0);
+    await audit(page);
+
+    await page.goto('/?product=SL-00002');
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText('Viewed this, also viewed');
+    await expect(rail.getByRole('link').first()).toContainText(firstName ?? '');
+    await audit(page);
 });

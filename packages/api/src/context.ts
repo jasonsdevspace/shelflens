@@ -2,6 +2,7 @@ import type { Engine, Rule } from '@jasonsdevspace/shelflens';
 import type { Brand, Catalog, Category, CustomerGroup, Product } from '@shelflens/catalog';
 import { type Completions, createCompletions, createStoreEngine } from '@shelflens/search';
 
+import type { EventStore } from './events.js';
 import { fingerprint } from './fingerprint.js';
 
 /**
@@ -28,11 +29,23 @@ export interface Viewer {
     readonly group: CustomerGroup;
 }
 
+/** What a request's resolvers say about the answer as a whole. */
+export interface Answer {
+    /**
+     * The answer depends on something the cache key does not see, such as
+     * the events collected so far, so no layer may keep it.
+     */
+    volatile: boolean;
+}
+
 export interface Context {
     readonly store: Store;
     readonly viewer: Viewer;
     /** The time, for rules with a window. Supplied by the caller, never read here. */
     readonly now: Date;
+    /** The events the host collected, when it keeps any. */
+    readonly events: EventStore | undefined;
+    readonly answer: Answer;
 }
 
 export interface StoreOptions {

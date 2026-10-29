@@ -1,3 +1,4 @@
+import { createMemoryEventStore } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -24,11 +25,19 @@ if (!featured) throw new Error('expected a jacket in the catalog');
 /** One rule, so explain mode has a pin to show and a price sort has something to set aside. */
 const rules = [{ id: 'featured-jacket', when: { queries: ['jacket'] }, pin: [featured.sku] }];
 
+let events = createMemoryEventStore();
+
 beforeAll(() => {
     const worker = createWorkerApi({
         catalogUrl: 'catalog.json',
         rulesUrl: 'rules.json',
         fetch: serving(catalog, { rules }),
+        // The same store the API reads, replaced before each test, so no test
+        // sees what another viewed.
+        events: {
+            append: (batch) => events.append(batch),
+            all: () => events.all(),
+        },
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const response = await worker.handle(new Request(input, init));
@@ -37,6 +46,8 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+    events = createMemoryEventStore();
+    sessionStorage.clear();
     window.history.replaceState(null, '', '/');
     // The tour opens itself on a first visit. These tests are not that visit.
     localStorage.setItem('shelflens.tour', 'seen');
@@ -386,10 +397,11 @@ describe('as a member', () => {
         expect(asGuest).toBeGreaterThan(0);
         await shopAs(user, 'member');
         await waitFor(() => expect(shownPrice()).toBeLessThan(asGuest));
-        expect(screen.getByText('Member price')).toBeInTheDocument();
+        // The product's own line, not a card's in the rail beneath it.
+        expect(document.querySelector('.product-member')).toHaveTextContent('Member price');
         await shopAs(user, 'guest');
         await waitFor(() => expect(shownPrice()).toBe(asGuest));
-        expect(screen.queryByText('Member price')).toBeNull();
+        expect(document.querySelector('.product-member')).toBeNull();
     });
 
     it('is told what the switch changed on the page, once, until the next search', async () => {
@@ -466,6 +478,54 @@ describe('explain mode', () => {
         expect(screen.getByText(/set aside the merchandising/)).toHaveTextContent(
             'Sorting by price, low to high set aside the merchandising: featured-jacket.'
         );
+    });
+});
+
+describe('beside a product', () => {
+    const subject = catalog.products.find((p) => p.visibleTo.length === 2);
+    if (!subject) throw new Error('expected a product every viewer may see');
+    const peer = catalog.products.find(
+        (p) =>
+            p.sku !== subject.sku && p.categoryId === subject.categoryId && p.visibleTo.length === 2
+    );
+    if (!peer) throw new Error('expected a second product in the category');
+    const rail = () => screen.queryByRole('region', { name: /Viewed this|Popular in/ });
+    const railSkus = () =>
+        within(rail() ?? document.body)
+            .getAllByRole('link')
+            .map((link) => link.getAttribute('data-sku'));
+
+    it('shows the category’s most rated with no history, and never the product itself', async () => {
+        await open(`?product=${subject.sku}`);
+        await screen.findByRole('heading', { level: 1, name: subject.name });
+        await waitFor(() => expect(rail()).not.toBeNull());
+        expect(screen.getByRole('heading', { level: 2, name: /^Popular in / })).toHaveTextContent(
+            catalog.categories.find((c) => c.id === subject.categoryId)?.name ?? ''
+        );
+        const skus = railSkus();
+        expect(skus).not.toContain(subject.sku);
+        expect(skus.length).toBeGreaterThan(0);
+        expect(skus.length).toBeLessThanOrEqual(6);
+    });
+
+    it('leads with what this tab viewed before, once a view has arrived', async () => {
+        sessionStorage.setItem('shelflens.session', 'tab-1');
+        const posted = await fetch('http://store.test/events', {
+            method: 'POST',
+            body: JSON.stringify([
+                { id: 'v1', kind: 'view', at: 1, sku: peer.sku, session: 'tab-1' },
+            ]),
+        });
+        expect(posted.status).toBe(204);
+        const user = await open(`?product=${subject.sku}`);
+        await screen.findByRole('heading', { level: 1, name: subject.name });
+        await screen.findByRole('heading', { level: 2, name: 'Viewed this, also viewed' });
+        expect(railSkus()[0]).toBe(peer.sku);
+
+        // A rail card opens its product in place, over the same results.
+        await user.click(within(rail() ?? document.body).getAllByRole('link')[0] as HTMLElement);
+        await screen.findByRole('heading', { level: 1, name: peer.name });
+        expect(window.location.search).toBe(`?product=${peer.sku}`);
     });
 });
 

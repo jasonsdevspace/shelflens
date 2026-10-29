@@ -13,6 +13,7 @@ import {
 } from 'graphql';
 
 import type { Context, Store, Viewer } from './context.js';
+import type { EventStore } from './events.js';
 import type { Resolvers } from './generated/schema.js';
 import { resolvers } from './resolvers.js';
 import { buildStoreSchema } from './schema.js';
@@ -39,6 +40,10 @@ export interface StoreResponse {
         readonly extensions?: Readonly<Record<string, unknown>>;
         readonly path?: readonly (string | number)[];
     }[];
+    readonly extensions?: {
+        /** The answer depends on the events collected so far, so no cache may keep it. */
+        readonly volatile?: boolean;
+    };
 }
 
 export interface Limits {
@@ -149,7 +154,16 @@ const shaped = (
     };
 };
 
-export const createStoreApi = (store: Store, limits: Limits = DEFAULT_LIMITS): StoreApi => {
+export interface StoreApiOptions {
+    readonly limits?: Limits;
+    /** The events the host collected, for the fields that read them. */
+    readonly events?: EventStore | undefined;
+}
+
+export const createStoreApi = (
+    store: Store,
+    { limits = DEFAULT_LIMITS, events }: StoreApiOptions = {}
+): StoreApi => {
     const schema = attach(buildStoreSchema(), resolvers);
     const rules = [...specifiedRules, withinLimits(limits)];
 
@@ -169,7 +183,7 @@ export const createStoreApi = (store: Store, limits: Limits = DEFAULT_LIMITS): S
         const problems = validate(schema, document, rules);
         if (problems.length > 0) return { errors: problems.map(shaped) };
 
-        const context: Context = { store, viewer, now };
+        const context: Context = { store, viewer, now, events, answer: { volatile: false } };
         const result = await execute({
             schema,
             document,
@@ -180,6 +194,7 @@ export const createStoreApi = (store: Store, limits: Limits = DEFAULT_LIMITS): S
         return {
             ...(result.data !== undefined && { data: result.data }),
             ...(result.errors && { errors: result.errors.map(shaped) }),
+            ...(context.answer.volatile && { extensions: { volatile: true } }),
         };
     };
 

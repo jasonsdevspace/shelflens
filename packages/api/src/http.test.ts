@@ -152,5 +152,12 @@ describe('the answer', () => {
                 response: { errors: [{ message: 'no' }] },
             })['cache-control']
         ).toBe('no-store');
+        expect(
+            responseHeaders({
+                version: '7',
+                expected: '7',
+                response: { data: {}, extensions: { volatile: true } },
+            })['cache-control']
+        ).toBe('no-store');
     });
 });

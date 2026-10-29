@@ -10,6 +10,7 @@ import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/s
 
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
+import { recommend, type RecommendationsModel } from './recommend.js';
 import {
     attributeEnum,
     badInput,
@@ -155,6 +156,13 @@ export const resolvers: Resolvers = {
             return product?.visibleTo.includes(context.viewer.group) ? product : null;
         },
 
+        recommendations: async (_root, { sku, limit, session }, context) => {
+            // Read from the events as they are now, which no cache key covers.
+            context.answer.volatile = true;
+            const events = (await context.events?.all()) ?? [];
+            return recommend({ sku, limit, session: session ?? undefined }, events, context);
+        },
+
         categories: (_root, _args, context) => [...context.store.categories.values()],
 
         store: (_root, _args, context) => ({
@@ -256,6 +264,12 @@ export const resolvers: Resolvers = {
             amount: context.viewer.group === 'member' ? variant.memberPrice : variant.price,
             currency: context.store.catalog.currency,
         }),
+    },
+
+    Recommendations: {
+        source: (model: RecommendationsModel) => model.source,
+        category: (model: RecommendationsModel) => model.category,
+        items: (model: RecommendationsModel) => model.items,
     },
 
     Category: {

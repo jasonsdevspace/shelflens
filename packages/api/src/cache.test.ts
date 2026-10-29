@@ -287,6 +287,16 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ hits: 1, misses: 3, size: 1 });
     });
 
+    it('does not keep an answer that says it is volatile', async () => {
+        const cached = withResponseCache(api);
+        const sku = catalog.products[0]?.sku ?? '';
+        const rail = { query: `{ recommendations(sku: "${sku}") { source } }` };
+        const first = await cached.run(rail, guest);
+        expect(first.extensions).toEqual({ volatile: true });
+        await cached.run(rail, guest);
+        expect(cached.cache).toMatchObject({ hits: 0, misses: 2, size: 0 });
+    });
+
     it('does not keep an answer with errors', async () => {
         const cached = withResponseCache(api);
         const broken = { query: '{ nothing }' };

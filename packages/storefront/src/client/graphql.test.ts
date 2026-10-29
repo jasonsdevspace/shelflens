@@ -156,6 +156,15 @@ describe('the client', () => {
         });
     });
 
+    it('remembers nothing of an answer that says it is volatile', async () => {
+        const fetchImpl = respond({ ...SUGGEST, extensions: { volatile: true } }, '1');
+        const client = createClient({ url: '/graphql', fetch: fetchImpl });
+        await client.query(SuggestDocument, variables);
+        await client.query(SuggestDocument, variables);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+        expect(client.remembered).toBe(0);
+    });
+
     it('throws the errors the API returned, keeping their codes, and remembers nothing', async () => {
         const client = createClient({
             url: '/graphql',

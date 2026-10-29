@@ -29,10 +29,11 @@ const rules =
         : parseRulesFile(JSON.parse(readFileSync(process.env.RULES, 'utf8')));
 
 const store = createStore({ catalog: generateCatalog({ products }), rules });
+const events = createMemoryEventStore();
 const server = createServer({
-    api: withResponseCache(createStoreApi(store)),
+    api: withResponseCache(createStoreApi(store, { events })),
     persistedOnly: process.env.PERSISTED_ONLY === 'true',
-    events: createMemoryEventStore(),
+    events,
 });
 
 server.listen(port, () => {

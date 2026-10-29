@@ -1,0 +1,12 @@
+query Recommendations($sku: ID!, $limit: Int = 6, $session: String) {
+    recommendations(sku: $sku, limit: $limit, session: $session) {
+        source
+        category {
+            id
+            name
+        }
+        items {
+            ...Card
+        }
+    }
+}

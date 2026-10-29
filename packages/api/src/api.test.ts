@@ -2,6 +2,7 @@ import { generateCatalog } from '@shelflens/catalog';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createStore, viewerFromHeader } from './context.js';
+import { createMemoryEventStore } from './events.js';
 import { createStoreApi, type StoreApi, type StoreResponse } from './execute.js';
 
 /*
@@ -230,6 +231,51 @@ describe('the viewer', () => {
         expect(viewerFromHeader(' member ').group).toBe('member');
         expect(viewerFromHeader('admin').group).toBe('guest');
         expect(viewerFromHeader(null).group).toBe('guest');
+    });
+});
+
+describe('recommendations', () => {
+    it('answers beside a product from the events the host collected, and says the answer is volatile', async () => {
+        const events = createMemoryEventStore();
+        const withEvents = createStoreApi(createStore({ catalog }), { events });
+        const [a, b] = catalog.products.filter((p) => p.visibleTo.length === 2);
+        if (!a || !b) throw new Error('expected two products');
+        const ask = (session?: string) =>
+            withEvents.run(
+                {
+                    query: `query ($sku: ID!, $session: String) {
+                        recommendations(sku: $sku, limit: 3, session: $session) {
+                            source category { id } items { sku }
+                        }
+                    }`,
+                    variables: { sku: b.sku, ...(session && { session }) },
+                },
+                guest
+            );
+        const cold = await ask();
+        expect(cold.extensions).toEqual({ volatile: true });
+        expect(data(cold).recommendations).toMatchObject({
+            source: 'CATEGORY_BESTSELLERS',
+            category: { id: b.categoryId },
+        });
+        expect(data(cold).recommendations.items).toHaveLength(3);
+
+        await events.append([{ id: 'v1', kind: 'view', at: 1, sku: a.sku, session: 't1' }]);
+        const warm = await ask('t1');
+        expect(data(warm).recommendations.source).toBe('VIEWED_TOGETHER');
+        expect(data(warm).recommendations.items[0].sku).toBe(a.sku);
+    });
+
+    it('is nothing for a product the viewer may not see', async () => {
+        const hidden = catalog.products.find((p) => p.visibleTo.length === 1);
+        if (!hidden) throw new Error('expected a members-only product');
+        const query = `query ($sku: ID!) { recommendations(sku: $sku) { source } }`;
+        expect(data(await run(query, { sku: hidden.sku })).recommendations).toBeNull();
+        expect(data(await run(query, { sku: hidden.sku }, member)).recommendations).toMatchObject({
+            source: 'CATEGORY_BESTSELLERS',
+        });
+        const plain = await run('{ store { name } }');
+        expect(plain.extensions).toBeUndefined();
     });
 });
 

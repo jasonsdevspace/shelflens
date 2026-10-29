@@ -20,7 +20,7 @@ such systems behave, with its own names and its own schema.
 
 ## Two minutes with the demo
 
-Each step is a link into the live storefront. The tour button in the masthead walks all fifteen
+Each step is a link into the live storefront. The tour button in the masthead walks all sixteen
 stops with the test behind each.
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
@@ -31,7 +31,9 @@ stops with the test behind each.
    Switch to member in the masthead: it appears, marked as members only, and back on the results
    every price that dropped says it is a member price, with one line saying what the switch
    changed on the page. A cache keyed on the query alone would serve a member's answer to the
-   next guest, and a test proves it does.
+   next guest, and a test proves it does. Beneath any product is a rail: the most rated in its
+   category until you have viewed a second product, then what you viewed, under a heading that
+   says which it is.
 3. [Search "jacket" in explain mode.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    Two jackets are pinned first by a rule, and every card says which word matched which term in
    which field and what the rule did. Sort by price and the pin is set aside, and the page says so.
@@ -47,23 +49,27 @@ stops with the test behind each.
 The project exists for these. Each one that claims a failure has a test that fails on the naive
 version, and the tour's stops name them.
 
-| Gotcha                                                                                                                                 | Where it is tested                                                                     |
-| -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| A late answer to an earlier phrase must not win                                                                                        | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it |
-| A burst of keystrokes is one request                                                                                                   | `packages/storefront/src/search/SearchBox.test.tsx`                                    |
-| The popover is a combobox: arrow keys, Escape, announcements, an accessibility audit                                                   | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`         |
-| A cache keyed on the query alone serves a member's price to a guest                                                                    | `packages/api/src/cache.test.ts`                                                       |
-| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                                                    | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                            |
-| Choosing "Red" never zeroes "Blue"                                                                                                     | `packages/engine/src/facets.test.ts`                                                   |
-| The URL is the page, and a value it cannot read is ignored                                                                             | `packages/storefront/src/app/url.test.ts`                                              |
-| Paging never shows a product twice or skips one                                                                                        | `packages/engine/src/search.test.ts`                                                   |
-| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                   | `packages/engine/src/search.test.ts`, `rules.test.ts`                                  |
-| Pins and boosts disappear under a sort, and the page says so                                                                           | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`            |
-| A malformed request is a validation error with a code, never a 500                                                                     | `packages/api/src/api.test.ts`, `http.test.ts`                                         |
-| A product with variants shows a range, in the store's currency and locale                                                              | `packages/storefront/src/format/money.test.ts`                                         |
-| Telemetry never blocks the page, counts a twice delivered batch once, carries nothing personal, and stops under Global Privacy Control | `packages/storefront/src/events/collector.test.ts`, `packages/api/src/events.test.ts`  |
+| Gotcha                                                                                                                                           | Where it is tested                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| A late answer to an earlier phrase must not win                                                                                                  | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it |
+| A burst of keystrokes is one request                                                                                                             | `packages/storefront/src/search/SearchBox.test.tsx`                                    |
+| The popover is a combobox: arrow keys, Escape, announcements, an accessibility audit                                                             | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`         |
+| A cache keyed on the query alone serves a member's price to a guest                                                                              | `packages/api/src/cache.test.ts`                                                       |
+| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                                                              | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                            |
+| Choosing "Red" never zeroes "Blue"                                                                                                               | `packages/engine/src/facets.test.ts`                                                   |
+| The URL is the page, and a value it cannot read is ignored                                                                                       | `packages/storefront/src/app/url.test.ts`                                              |
+| Paging never shows a product twice or skips one                                                                                                  | `packages/engine/src/search.test.ts`                                                   |
+| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                             | `packages/engine/src/search.test.ts`, `rules.test.ts`                                  |
+| Pins and boosts disappear under a sort, and the page says so                                                                                     | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`            |
+| A malformed request is a validation error with a code, never a 500                                                                               | `packages/api/src/api.test.ts`, `http.test.ts`                                         |
+| A product with variants shows a range, in the store's currency and locale                                                                        | `packages/storefront/src/format/money.test.ts`                                         |
+| The rail beside a product is never empty, never the product itself, and says whether it is what was viewed together or the category's most rated | `packages/api/src/recommend.test.ts`, `packages/storefront/src/App.test.tsx`           |
+| Telemetry never blocks the page, counts a twice delivered batch once, carries nothing personal, and stops under Global Privacy Control           | `packages/storefront/src/events/collector.test.ts`, `packages/api/src/events.test.ts`  |
 
-Two product additions carry the rest of the story. **Explain mode** turns the engine's internal
+Three product additions carry the rest of the story. **The rail** beside a product is built from
+what this browser viewed together, kept in the browser and nowhere else, which is all the
+intelligence the ranking here has, and the heading says plainly when it is showing the category's
+most rated instead. **Explain mode** turns the engine's internal
 state, kept on every hit, into a line under each card: the tool a merchandiser needs to answer
 "why is this product first". **Nothing is still a page**: when a search finds nothing, the engine
 offers a spelling two typos away, a shorter phrase with its results and what the same phrase finds
@@ -71,14 +77,14 @@ without its filters, each only if it finds something.
 
 ## What is here
 
-| Package                                        | What it is                                                                                                                                                                                                                                                                        |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, [on npm](https://www.npmjs.com/package/@jasonsdevspace/shelflens): one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies. |
-| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                                                                                 |
-| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                                                                                        |
-| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, the shape over HTTP, and the receiver for the shopper's events. Nothing from Node, so it runs in a service worker                                           |
-| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                                                                             |
-| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the tour, the collector that sends what the shopper did, and the service worker that is the API in the browser and keeps those events                              |
+| Package                                        | What it is                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, [on npm](https://www.npmjs.com/package/@jasonsdevspace/shelflens): one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies.    |
+| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                                                                                    |
+| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                                                                                           |
+| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, the shape over HTTP, and the receiver for the shopper's events. Nothing from Node, so it runs in a service worker                                              |
+| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                                                                                |
+| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the product page with its rail, the tour, the collector that sends what the shopper did, and the service worker that is the API in the browser and keeps those events |
 
 ## What was measured
 
@@ -94,9 +100,9 @@ without its filters, each only if it finds something.
   waits 100 ms for the typing to pause, and the slowest suggestion on the demo catalog takes well
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
-  second served locally, with the worker spending 40 ms downloading the catalog and the rules and
-  57 ms building the store. The catalog ships at 333 KB compressed, the page at 81 KB, the worker
-  at 66 KB. [The record](docs/benchmarks/cold-visit.md).
+  second served locally, with the worker spending 38 ms downloading the catalog and the rules and
+  55 ms building the store. The catalog ships at 333 KB compressed, the page at 82 KB, the worker
+  at 67 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** The catalog stays under 400 KB compressed, the API bundled for a
   browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
   fails. The storefront runs in a real browser on a desktop and a phone profile with an

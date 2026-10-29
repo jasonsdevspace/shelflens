@@ -6,16 +6,24 @@ import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
 import { useRecord } from '../events/EventsContext.jsx';
+import { sessionId } from '../events/session.js';
 import { formatMoney, formatPriceRange } from '../format/money.js';
-import { ProductDocument } from '../generated/operations.js';
+import { ProductDocument, RecommendationsDocument } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
+import { Rail } from './Rail.jsx';
 
 /**
  * One product, over the results it was found in.
  *
  * The results state stays in the URL beneath the product, so closing it
- * returns to the same page, filters and all.
+ * returns to the same page, filters and all. What stands beside the
+ * product is asked for on its own, once the product has answered, so the
+ * product's answer stays one every cache may keep while the rail's, which
+ * reads the events collected so far, is asked for every time.
  */
+
+/** How many products stand beside one. */
+export const RAIL_SIZE = 6;
 
 export interface ProductPageProps {
     readonly client: GraphQLClient;
@@ -41,6 +49,11 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
     useEffect(() => {
         if (viewed !== undefined) record({ kind: 'view', sku: viewed });
     }, [record, viewed]);
+    const rail = useQuery(
+        client,
+        RecommendationsDocument,
+        viewed === undefined ? undefined : { sku: viewed, limit: RAIL_SIZE, session: sessionId() }
+    );
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);
@@ -118,6 +131,9 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                     ))}
                 </tbody>
             </table>
+            {rail.data?.recommendations && (
+                <Rail rail={rail.data.recommendations} state={state} navigate={navigate} />
+            )}
         </article>
     );
 };

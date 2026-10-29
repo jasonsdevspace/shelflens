@@ -27,6 +27,7 @@ const collector = (over: Partial<Parameters<typeof createCollector>[0]> = {}) =>
         send,
         now: () => 1_700_000_000_000,
         id: () => `e${(n += 1)}`,
+        session: () => 'tab',
         ...over,
     });
     return { ...made, send };
@@ -40,14 +41,13 @@ describe('the collector', () => {
         const { record, send } = collector();
         record({ kind: 'search', phrase: 'jacket' });
         record({ kind: 'click', phrase: 'jacket', sku: 'SL-00001', position: 2 });
-        record({ kind: 'view', sku: 'SL-00001', phrase: undefined });
         await vi.advanceTimersByTimeAsync(PAUSE_MS - 1);
         expect(send).not.toHaveBeenCalled();
         await vi.advanceTimersByTimeAsync(1);
         expect(send).toHaveBeenCalledTimes(1);
         const [body] = sentBodies(send);
         expect(body).toEqual([
-            { id: 'e1', kind: 'search', at: 1_700_000_000_000, phrase: 'jacket' },
+            { id: 'e1', kind: 'search', at: 1_700_000_000_000, phrase: 'jacket', session: 'tab' },
             {
                 id: 'e2',
                 kind: 'click',
@@ -55,19 +55,33 @@ describe('the collector', () => {
                 phrase: 'jacket',
                 sku: 'SL-00001',
                 position: 2,
+                session: 'tab',
             },
-            { id: 'e3', kind: 'view', at: 1_700_000_000_000, sku: 'SL-00001' },
         ]);
-        expect(parseEventBatch(body)).toHaveLength(3);
+        expect(parseEventBatch(body)).toHaveLength(2);
         expect(send.mock.calls[0]?.[0]).toBe('/events');
     });
 
     it('serializes nothing beyond the closed set of fields', async () => {
-        const { record, send } = collector();
+        const { record, send } = collector({ session: () => undefined });
         record({ kind: 'search', phrase: 'jacket' });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         const [body] = sentBodies(send) as [Record<string, unknown>[]];
         expect(Object.keys(body[0] ?? {}).sort()).toEqual(['at', 'id', 'kind', 'phrase']);
+    });
+
+    it('sends a view at once, with whatever was queued before it', async () => {
+        const { record, send } = collector();
+        await vi.advanceTimersByTimeAsync(0);
+        record({ kind: 'search', phrase: 'jacket' });
+        record({ kind: 'view', sku: 'SL-00001' });
+        expect(send).toHaveBeenCalledTimes(1);
+        expect((sentBodies(send)[0] as { kind: string }[]).map((e) => e.kind)).toEqual([
+            'search',
+            'view',
+        ]);
+        await vi.advanceTimersByTimeAsync(PAUSE_MS);
+        expect(send).toHaveBeenCalledTimes(1);
     });
 
     it('sends nothing until the host is ready, then everything queued', async () => {
@@ -102,24 +116,24 @@ describe('the collector', () => {
         const { record, send, attach } = collector();
         const detach = attach(target);
         await vi.advanceTimersByTimeAsync(0);
-        record({ kind: 'view', sku: 'SL-00001' });
+        record({ kind: 'search', phrase: 'one' });
         vi.stubGlobal('document', { visibilityState: 'hidden' });
         target.dispatchEvent(new Event('visibilitychange'));
         expect(send).toHaveBeenCalledTimes(1);
-        record({ kind: 'view', sku: 'SL-00002' });
+        record({ kind: 'search', phrase: 'two' });
         target.dispatchEvent(new Event('pagehide'));
         expect(send).toHaveBeenCalledTimes(2);
-        record({ kind: 'view', sku: 'SL-00003' });
+        record({ kind: 'search', phrase: 'three' });
         detach();
         expect(send).toHaveBeenCalledTimes(3);
-        record({ kind: 'view', sku: 'SL-00004' });
+        record({ kind: 'search', phrase: 'four' });
         target.dispatchEvent(new Event('pagehide'));
         expect(send).toHaveBeenCalledTimes(3);
     });
 
     it('drains a long queue batch by batch in one flush', async () => {
         const { record, send } = collector();
-        for (let i = 0; i < 250; i += 1) record({ kind: 'view', sku: `SL-${i}` });
+        for (let i = 0; i < 250; i += 1) record({ kind: 'click', sku: `SL-${i}` });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).toHaveBeenCalledTimes(2);
         expect((sentBodies(send)[0] as unknown[]).length).toBe(100);
@@ -153,10 +167,10 @@ describe('the collector', () => {
     it('holds only so many events while they cannot be sent', async () => {
         const { record, send } = collector({ queueLimit: 3 });
         send.mockReturnValue(false);
-        for (let i = 0; i < 5; i += 1) record({ kind: 'view', sku: `SL-0000${i}` });
+        for (let i = 0; i < 5; i += 1) record({ kind: 'click', sku: `SL-0000${i}` });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         send.mockReturnValue(true);
-        record({ kind: 'view', sku: 'SL-00009' });
+        record({ kind: 'click', sku: 'SL-00009' });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         const last = sentBodies(send).at(-1) as { sku: string }[];
         expect(last.map((e) => e.sku)).toEqual(['SL-00003', 'SL-00004', 'SL-00009']);

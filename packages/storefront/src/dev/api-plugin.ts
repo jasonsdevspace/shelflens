@@ -33,12 +33,15 @@ export const storeApi = (): Plugin => ({
     apply: 'serve',
     configureServer(server) {
         const base = server.config.base;
+        const events = createMemoryEventStore();
         const handle = createHandler({
             api: withResponseCache(
-                createStoreApi(createStore({ catalog: generateCatalog(), rules: rules() }))
+                createStoreApi(createStore({ catalog: generateCatalog(), rules: rules() }), {
+                    events,
+                })
             ),
             base,
-            events: createMemoryEventStore(),
+            events,
         });
         server.middlewares.use((request, response, next) => {
             if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
