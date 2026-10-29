@@ -232,6 +232,51 @@ describe('searching and looking', () => {
     });
 });
 
+describe('keeping its place', () => {
+    const announced = () =>
+        screen
+            .getAllByRole('status')
+            .map((region) => region.textContent)
+            .join('|');
+
+    it('announces the results once they land, after a search and after a filter', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
+        const [brand] = within(facet('Brand')).getAllByRole('checkbox');
+        if (!brand) throw new Error('expected a brand');
+        await user.click(brand);
+        await settled();
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
+    });
+
+    it('keeps focus in the search box after Enter, and says nothing about suggestions', async () => {
+        const user = await open();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.type(box, 'jacket{Enter}');
+        await settled();
+        expect(heading()).toHaveTextContent('results for "jacket"');
+        expect(box).toHaveFocus();
+        expect(box).toHaveValue('jacket');
+        expect(document.querySelector('.searchbox-status')?.textContent).toBe('');
+    });
+
+    it('moves focus to the product heading on open, and back to its card on close', async () => {
+        const user = await open();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        const sku = first.getAttribute('data-sku');
+        const name = first.querySelector('.card-name')?.textContent ?? '';
+        await user.click(first);
+        await screen.findByRole('heading', { level: 1, name });
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+
+        await user.click(screen.getByRole('button', { name: 'Back to results' }));
+        await settled();
+        await waitFor(() => expect(document.activeElement).toHaveAttribute('data-sku', sku));
+    });
+});
+
 describe('on a phone', () => {
     const narrow = () => {
         vi.stubGlobal('matchMedia', (query: string) => ({
@@ -241,6 +286,13 @@ describe('on a phone', () => {
             removeEventListener: () => {},
         }));
     };
+
+    it('leaves focus alone when the results mount', async () => {
+        narrow();
+        await open();
+        await settled();
+        expect(screen.getByRole('button', { name: /Filters/ })).not.toHaveFocus();
+    });
 
     it('keeps the facets in a drawer that is modal while open', async () => {
         narrow();

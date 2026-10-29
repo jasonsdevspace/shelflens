@@ -24,11 +24,16 @@ export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => {
     const [open, setOpen] = useState(false);
     const opener = useRef<HTMLButtonElement>(null);
     const closer = useRef<HTMLButtonElement>(null);
+    // Focus goes back to the opener after a close, and only then. On mount the drawer
+    // is closed and nothing was opened, so the results keep whatever focus they had.
+    const wasOpen = useRef(false);
 
     useEffect(() => {
         if (open) {
+            wasOpen.current = true;
             closer.current?.focus();
-        } else {
+        } else if (wasOpen.current) {
+            wasOpen.current = false;
             opener.current?.focus({ preventScroll: true });
         }
     }, [open]);

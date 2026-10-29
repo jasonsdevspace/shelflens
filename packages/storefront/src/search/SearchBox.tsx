@@ -49,6 +49,13 @@ export const SearchBox = ({
     const { locale } = useStoreInfo();
     const id = useId();
     const [phrase, setPhrase] = useState(initialPhrase);
+    // The page's phrase changes under the box when a search lands or history moves. The
+    // box follows it without being remounted, so focus stays where the visitor put it.
+    const [followed, setFollowed] = useState(initialPhrase);
+    if (followed !== initialPhrase) {
+        setFollowed(initialPhrase);
+        setPhrase(initialPhrase);
+    }
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(-1);
     const { answered, loading, error } = useSuggestions(client, phrase);
@@ -102,22 +109,26 @@ export const SearchBox = ({
                 submit();
                 break;
             case 'Escape':
-                if (expanded) {
-                    event.preventDefault();
-                    setOpen(false);
-                    setActive(-1);
-                }
+                // Always handled here: a search field would otherwise clear itself on
+                // Escape, wiping the phrase the visitor just searched for.
+                event.preventDefault();
+                setOpen(false);
+                setActive(-1);
                 break;
             default:
                 break;
         }
     };
 
-    const status = !isAskable(phrase)
-        ? ''
-        : loading && options.length === 0
-          ? 'Searching'
-          : (error ?? `${options.length} suggestions`);
+    // Announced only while the popover is open, so a landed search is not talked over
+    // by a suggestion count the visitor did not ask for. While it is open, a count of
+    // none and an error are news too.
+    const status =
+        !open || !isAskable(phrase)
+            ? ''
+            : loading && options.length === 0
+              ? 'Searching'
+              : (error ?? `${options.length} suggestions`);
 
     return (
         <div className="searchbox">
@@ -127,7 +138,8 @@ export const SearchBox = ({
             <input
                 id={`${id}-input`}
                 className="searchbox-input"
-                type="text"
+                type="search"
+                enterKeyHint="search"
                 role="combobox"
                 autoComplete="off"
                 spellCheck={false}

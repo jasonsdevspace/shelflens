@@ -126,6 +126,21 @@ body {
     color: var(--muted);
 }
 
+/* Read by a screen reader, taking no room on the screen. */
+.visually-hidden,
+.searchbox-label,
+.searchbox-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* The search box and its popover. */
 
 .searchbox {
@@ -134,17 +149,9 @@ body {
     max-width: 36rem;
 }
 
-.searchbox-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-}
-
 .searchbox-input {
     width: 100%;
+    appearance: none;
     font: inherit;
     font-size: 1rem;
     padding: 0.6rem 0.8rem;
@@ -157,15 +164,6 @@ body {
 .searchbox-input:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
-}
-
-.searchbox-status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
 }
 
 .searchbox-popover {
@@ -375,8 +373,21 @@ body {
 }
 
 .tour-try {
+    display: inline-block;
     margin-right: auto;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.9rem;
     font-weight: 500;
+    text-decoration: none;
+}
+
+.tour-try:hover,
+.tour-try:focus-visible {
+    border-color: var(--accent);
 }
 
 .tour-close,
@@ -494,6 +505,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: 1.5rem;
     font-size: 0.95rem;
     cursor: pointer;
 }
@@ -517,8 +529,10 @@ body {
 
 .facet-link {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
     width: 100%;
+    min-height: 1.5rem;
     font: inherit;
     font-size: 0.95rem;
     text-align: left;
@@ -748,14 +762,16 @@ body {
 
 /* One product. */
 
+/* The way back is a button like the page's other buttons, not a bare link among them. */
 .back {
     font: inherit;
-    color: var(--accent);
-    background: none;
-    border: none;
-    padding: 0;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    color: var(--fg);
     cursor: pointer;
-    text-decoration: underline;
 }
 
 .product-head {
@@ -811,6 +827,11 @@ body {
         border-radius: 0.5rem 0.5rem 0 0;
         max-height: 50dvh;
         overflow: auto;
+    }
+
+    /* The last cards and the pagination can still scroll above the tour. */
+    .content.has-tour {
+        padding-bottom: calc(50dvh + 1rem);
     }
 
     .results-layout {
@@ -882,6 +903,12 @@ body {
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
+}
+
+/* Rows a thumb can hit. */
+.drawer-body .facet-option,
+.drawer-body .facet-link {
+    min-height: 2.75rem;
 }
 
 .drawer-done {

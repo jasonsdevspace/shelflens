@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { SearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
@@ -24,6 +26,14 @@ export interface ProductPageProps {
 export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) => {
     const { data, loading, error } = useQuery(client, ProductDocument, { sku });
     const { locale } = useStoreInfo();
+    // A new view: focus lands on its heading, or on the notice when there is no
+    // product, so a keyboard or screen reader user starts where the page starts
+    // rather than on the body. Again after every load, since loading unmounts both.
+    const heading = useRef<HTMLHeadingElement>(null);
+    const missing = useRef<HTMLElement>(null);
+    useEffect(() => {
+        if (!loading) (heading.current ?? missing.current)?.focus();
+    }, [loading, data]);
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);
@@ -40,7 +50,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
     const { product } = data;
     if (!product) {
         return (
-            <section className="product">
+            <section className="product" ref={missing} tabIndex={-1}>
                 <p className="notice" role="alert">
                     There is no product {sku} in this store.
                 </p>
@@ -61,7 +71,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                     <p className="product-crumbs">
                         {product.categoryPath.map((category) => category.name).join(' / ')}
                     </p>
-                    <h1 id="product-heading" className="product-name">
+                    <h1 id="product-heading" className="product-name" ref={heading} tabIndex={-1}>
                         {product.name}
                     </h1>
                     <p className="product-meta">
