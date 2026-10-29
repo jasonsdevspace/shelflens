@@ -165,3 +165,28 @@ test('nothing matched still shows a page: a shorter phrase with results, or a sp
     await expect(page).toHaveURL(/\?q=jacket$/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
 });
+
+test('says whose demo it is before anything else, and follows the theme the portfolio saved', async ({
+    page,
+}) => {
+    await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+    const strip = page.getByRole('navigation', { name: 'Portfolio' });
+    await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
+        'href',
+        'https://jasonsdevspace.com/#work'
+    );
+    await expect(strip.getByRole('link', { name: 'Source on GitHub' })).toBeVisible();
+    // The first Tab from the top lands on the way back, before the storefront's own chrome.
+    await page.keyboard.press('Tab');
+    await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toBeFocused();
+
+    // The saved choice wins over the system, with no flash: the attribute is set before paint.
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(background).toBe('rgb(18, 18, 18)');
+
+    await expect(page.getByRole('contentinfo')).toContainText('portfolio project by Jason Poteet');
+    await audit(page);
+});

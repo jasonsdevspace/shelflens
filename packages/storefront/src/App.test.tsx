@@ -450,3 +450,40 @@ describe('the tour', () => {
         expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
     });
 });
+
+describe('whose demo this is', () => {
+    it('says so above the masthead and below the content, with the portfolio and the source', async () => {
+        await open();
+        const strip = screen.getByRole('navigation', { name: 'Portfolio' });
+        expect(within(strip).getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
+            'href',
+            'https://jasonsdevspace.com/#work'
+        );
+        expect(within(strip).getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute(
+            'href',
+            'https://github.com/jasonsdevspace/shelflens'
+        );
+        // The strip comes first in reading order, so it is the first thing a screen reader hears.
+        expect(strip.compareDocumentPosition(screen.getByRole('banner'))).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING
+        );
+        // No new tab: the way back is the way the visitor came.
+        for (const link of within(strip).getAllByRole('link')) {
+            expect(link).not.toHaveAttribute('target');
+        }
+
+        const footer = screen.getByRole('contentinfo');
+        expect(within(footer).getByRole('link', { name: 'Jason Poteet' })).toHaveAttribute(
+            'href',
+            'https://jasonsdevspace.com/'
+        );
+        expect(within(footer).getByRole('link', { name: 'more work' })).toHaveAttribute(
+            'href',
+            'https://github.com/jasonsdevspace'
+        );
+        expect(within(footer).getByRole('link', { name: 'MIT license' })).toHaveAttribute(
+            'href',
+            expect.stringContaining('/LICENSE')
+        );
+    });
+});
