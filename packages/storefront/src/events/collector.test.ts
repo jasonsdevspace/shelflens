@@ -99,6 +99,17 @@ describe('the collector', () => {
         expect(sentBodies(send)[0]).toHaveLength(1);
     });
 
+    it('tries a declined view again after the pause', async () => {
+        const { record, send } = collector();
+        await vi.advanceTimersByTimeAsync(0);
+        send.mockReturnValueOnce(false);
+        record({ kind: 'view', sku: 'SL-00001' });
+        expect(send).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(PAUSE_MS);
+        expect(send).toHaveBeenCalledTimes(2);
+        expect((sentBodies(send)[1] as unknown[]).length).toBe(1);
+    });
+
     it('keeps a batch the browser refused and sends it with the next', async () => {
         const { record, send } = collector();
         send.mockReturnValueOnce(false);

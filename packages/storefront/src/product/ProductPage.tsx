@@ -19,7 +19,9 @@ import { Rail } from './Rail.jsx';
  * returns to the same page, filters and all. What stands beside the
  * product is asked for on its own, once the product has answered, so the
  * product's answer stays one every cache may keep while the rail's, which
- * reads the events collected so far, is asked for every time.
+ * reads the events collected so far, is asked for every time. While the
+ * rail for a new product is on its way nothing is shown, since the last
+ * product's rail would be the wrong one, and could hold this product.
  */
 
 /** How many products stand beside one. */
@@ -131,7 +133,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                     ))}
                 </tbody>
             </table>
-            {rail.data?.recommendations && (
+            {!rail.loading && rail.data?.recommendations && (
                 <Rail rail={rail.data.recommendations} state={state} navigate={navigate} />
             )}
         </article>

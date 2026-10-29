@@ -158,7 +158,8 @@ export const createCollector = ({
             queue.push(stripUndefined(event, id(), now(), session()));
             if (queue.length > queueLimit) queue = queue.slice(queue.length - queueLimit);
             if (AT_ONCE.has(event.kind)) flush();
-            else schedule();
+            // Whatever the browser declined, or did not get asked for, waits for the pause.
+            if (queue.length > 0) schedule();
         },
         flush,
         attach: (target) => {

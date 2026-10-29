@@ -65,7 +65,8 @@ showing what was viewed together or the category's most rated.
 - The receiver takes no viewer, so an event is not tied to a group. Pricing and visibility are
   applied when recommendations are read, not when events are written.
 - Each event carries the tab it happened in, as a random id kept in session storage until the
-  tab closes, which is what "viewed together" means. The tab asking for a rail is taken to have
+  tab closes, which is what "viewed together" means. A tab duplicated or opened from the page
+  starts with a copy of that storage and shares the id, which counts as the same visit. The tab asking for a rail is taken to have
   viewed the product already, since its own view may still be on its way, and a view is sent at
   once rather than after the pause for the same reason.
 - An answer built from the events says it is volatile, and the handler, the browser's kept

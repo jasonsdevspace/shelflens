@@ -276,6 +276,11 @@ describe('recommendations', () => {
         });
         const plain = await run('{ store { name } }');
         expect(plain.extensions).toBeUndefined();
+        const nulled = await run(
+            `query ($sku: ID!) { recommendations(sku: $sku, limit: null) { items { sku } } }`,
+            { sku: catalog.products[0]?.sku ?? '' }
+        );
+        expect(data(nulled).recommendations.items).toHaveLength(6);
     });
 });
 

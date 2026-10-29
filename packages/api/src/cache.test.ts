@@ -297,6 +297,16 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ hits: 0, misses: 2, size: 0 });
     });
 
+    it('makes room only for an answer that stays, so a volatile one pushes nothing out', async () => {
+        const cached = withResponseCache(api, { maxEntries: 1 });
+        const kept = { query: '{ store { name } }' };
+        await cached.run(kept, guest);
+        const sku = catalog.products[0]?.sku ?? '';
+        await cached.run({ query: `{ recommendations(sku: "${sku}") { source } }` }, guest);
+        await cached.run(kept, guest);
+        expect(cached.cache).toMatchObject({ hits: 1, misses: 2, size: 1 });
+    });
+
     it('does not keep an answer with errors', async () => {
         const cached = withResponseCache(api);
         const broken = { query: '{ nothing }' };

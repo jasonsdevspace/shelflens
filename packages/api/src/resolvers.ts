@@ -10,7 +10,7 @@ import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/s
 
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
-import { recommend, type RecommendationsModel } from './recommend.js';
+import { recommend } from './recommend.js';
 import {
     attributeEnum,
     badInput,
@@ -59,6 +59,15 @@ const MAX_SUGGESTIONS = 20;
 /** How many products stand in for nothing. */
 const POPULAR = 8;
 const RELAXED_PAGE_SIZE = 12;
+/** How many products stand beside one when the request does not say. */
+const RAIL_DEFAULT = 6;
+
+/**
+ * The generated type says the schema's default always applies, but a null
+ * sent on purpose reaches the resolver as null, and means the same as
+ * nothing sent.
+ */
+const railLimit = (limit: number | null | undefined): number => limit ?? RAIL_DEFAULT;
 /** A browsed category is a place, not a filter the shopper chose, so it is never offered up. */
 const FIXED_ATTRIBUTES = ['category'];
 
@@ -160,7 +169,11 @@ export const resolvers: Resolvers = {
             // Read from the events as they are now, which no cache key covers.
             context.answer.volatile = true;
             const events = (await context.events?.all()) ?? [];
-            return recommend({ sku, limit, session: session ?? undefined }, events, context);
+            return recommend(
+                { sku, limit: railLimit(limit), session: session ?? undefined },
+                events,
+                context
+            );
         },
 
         categories: (_root, _args, context) => [...context.store.categories.values()],
@@ -264,12 +277,6 @@ export const resolvers: Resolvers = {
             amount: context.viewer.group === 'member' ? variant.memberPrice : variant.price,
             currency: context.store.catalog.currency,
         }),
-    },
-
-    Recommendations: {
-        source: (model: RecommendationsModel) => model.source,
-        category: (model: RecommendationsModel) => model.category,
-        items: (model: RecommendationsModel) => model.items,
     },
 
     Category: {

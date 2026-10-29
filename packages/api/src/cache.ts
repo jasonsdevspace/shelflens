@@ -76,6 +76,13 @@ export const createResponseCache = (
             if (keep) {
                 entry.settled = true;
                 entry.at = at;
+                // Room is made only for an answer that stays, so one that is
+                // not kept, such as a volatile one, pushes nothing out.
+                while (entries.size > maxEntries) {
+                    const oldest = entries.keys().next().value;
+                    if (oldest === undefined) break;
+                    entries.delete(oldest);
+                }
             } else {
                 entries.delete(id);
             }
@@ -91,11 +98,6 @@ export const createResponseCache = (
             }
         );
         entries.set(id, { at, settled: false, response });
-        while (entries.size > maxEntries) {
-            const oldest = entries.keys().next().value;
-            if (oldest === undefined) break;
-            entries.delete(oldest);
-        }
         return response;
     };
 

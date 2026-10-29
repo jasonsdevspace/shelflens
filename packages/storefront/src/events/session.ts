@@ -1,11 +1,13 @@
 /**
  * The tab, as a random id that lives as long as it does.
  *
- * Kept in session storage, which a browser scopes to one tab and clears
- * when the tab closes, so two tabs are two sessions and a tab reopened
- * tomorrow is a new one. It names nobody. It is what lets the store say
- * which products were viewed together, and it is sent with each event and
- * with the question of what to show beside a product.
+ * Kept in session storage, which a browser scopes to a tab and clears
+ * when the tab closes, so a tab reopened tomorrow is a new one. A tab
+ * duplicated, or opened from a link on the page, starts with a copy and
+ * shares the id, which is close enough to one visit to count as one. It
+ * names nobody. It is what lets the store say which products were viewed
+ * together, and it is sent with each event and with the question of what
+ * to show beside a product.
  */
 
 const KEY = 'shelflens.session';
