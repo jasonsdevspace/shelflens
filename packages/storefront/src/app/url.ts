@@ -118,7 +118,6 @@ export const parseSearchState = (search: string): SearchState => {
     };
 };
 
-/** The query string for a state, with a leading "?" or nothing at all for the empty state. */
 /**
  * The search a page answers, as a key: the phrase, the category, the
  * filters and the page, without the sort, explain mode or an open product,
@@ -129,6 +128,7 @@ export const searchKey = (state: SearchState): string => {
     return serializeSearchState(search);
 };
 
+/** The query string for a state, with a leading "?" or nothing at all for the empty state. */
 export const serializeSearchState = (state: SearchState): string => {
     const params = new URLSearchParams();
     if (state.phrase) params.set('q', state.phrase);
