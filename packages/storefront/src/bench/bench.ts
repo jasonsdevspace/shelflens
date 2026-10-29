@@ -86,6 +86,13 @@ const timeEach = async (
 ): Promise<Timing> => {
     const guest = viewerFromHeader(undefined);
     const durations: number[] = [];
+    // One pass untimed first, so the engine's code is compiled and its caches are
+    // filled the way they are after the first keystroke, rather than the samples
+    // carrying the one-time cost of a cold start.
+    for (const phrase of phrases) {
+        const response = await api.run({ query, variables: { phrase } }, guest);
+        if (response.errors) throw new Error(JSON.stringify(response.errors));
+    }
     for (let round = 0; round < iterations; round += 1) {
         for (const phrase of phrases) {
             const started = performance.now();

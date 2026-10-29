@@ -9,7 +9,7 @@ real, but there is no server and no network between the page and the answer.
 
 | Recorded   | Commit    | Machine                | Node    |
 | ---------- | --------- | ---------------------- | ------- |
-| 2026-10-27 | `c15acf2` | Apple M2 Max, 12 cores | v24.3.0 |
+| 2026-10-29 | `5862173` | Apple M2 Max, 12 cores | v24.3.0 |
 
 ## Starting the store
 
@@ -18,7 +18,7 @@ and the completions from it.
 
 | Products | Catalog (uncompressed) | Parse   | Build    |
 | -------- | ---------------------- | ------- | -------- |
-| 2000     | 3.6 MB                 | 9.58 ms | 64.91 ms |
+| 2000     | 3.6 MB                 | 8.99 ms | 65.05 ms |
 
 ## Answering
 
@@ -26,7 +26,7 @@ Every prefix of every golden query, from the second character on, as a suggestio
 the queries and five products. And every golden query as a search for the first page with its
 facets, which is what Enter asks for.
 
-| Request                        | Samples | p50     | p95     | Max      |
-| ------------------------------ | ------- | ------- | ------- | -------- |
-| Suggest, while typing          | 2600    | 0.21 ms | 0.8 ms  | 12.87 ms |
-| Search, first page with facets | 340     | 0.33 ms | 0.54 ms | 1.84 ms  |
+| Request                        | Samples | p50     | p95     | Max     |
+| ------------------------------ | ------- | ------- | ------- | ------- |
+| Suggest, while typing          | 2600    | 0.21 ms | 0.85 ms | 3.2 ms  |
+| Search, first page with facets | 340     | 0.33 ms | 0.48 ms | 2.44 ms |
