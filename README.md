@@ -28,9 +28,10 @@ stops with the test behind each.
    list. This one never does. A burst of keystrokes costs one request, and the popover is a
    combobox you can drive from the keyboard.
 2. [Open the product a guest cannot see.](https://jasonsdevspace.com/shelflens/?product=SL-00008)
-   Switch to member in the masthead: it appears, and back on the results the brands that give
-   members a discount show lower prices. A cache keyed on the query alone would serve a member's
-   answer to the next guest, and a test proves it does.
+   Switch to member in the masthead: it appears, marked as members only, and back on the results
+   every price that dropped says it is a member price, with one line saying what the switch
+   changed on the page. A cache keyed on the query alone would serve a member's answer to the
+   next guest, and a test proves it does.
 3. [Search "jacket" in explain mode.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    Two jackets are pinned first by a rule, and every card says which word matched which term in
    which field and what the rule did. Sort by price and the pin is set aside, and the page says so.
@@ -46,20 +47,20 @@ stops with the test behind each.
 The project exists for these. Each one that claims a failure has a test that fails on the naive
 version, and the tour's stops name them.
 
-| Gotcha                                                                                               | Where it is tested                                                               |
-| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| A late answer to an earlier phrase must not win                                                      | `packages/storefront/src/client/latest.test.ts`, `src/search/SearchBox.test.tsx` |
-| A burst of keystrokes is one request                                                                 | `packages/storefront/src/search/SearchBox.test.tsx`                              |
-| The popover is a combobox: arrow keys, Escape, announcements, an accessibility audit                 | `packages/storefront/src/search/SearchBox.test.tsx`, `e2e/storefront.spec.ts`    |
-| A cache keyed on the query alone serves a member's price to a guest                                  | `packages/api/src/cache.test.ts`                                                 |
-| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                  | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                      |
-| Choosing "Red" never zeroes "Blue"                                                                   | `packages/engine/src/facets.test.ts`                                             |
-| The URL is the page, and a value it cannot read is ignored                                           | `packages/storefront/src/app/url.test.ts`                                        |
-| Paging never shows a product twice or skips one                                                      | `packages/engine/src/search.test.ts`                                             |
-| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead | `packages/engine/src/search.test.ts`, `rules.test.ts`                            |
-| Pins and boosts disappear under a sort, and the page says so                                         | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`      |
-| A malformed request is a validation error with a code, never a 500                                   | `packages/api/src/api.test.ts`, `http.test.ts`                                   |
-| A product with variants shows a range, in the store's currency and locale                            | `packages/storefront/src/format/money.test.ts`                                   |
+| Gotcha                                                                                               | Where it is tested                                                                     |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| A late answer to an earlier phrase must not win                                                      | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it |
+| A burst of keystrokes is one request                                                                 | `packages/storefront/src/search/SearchBox.test.tsx`                                    |
+| The popover is a combobox: arrow keys, Escape, announcements, an accessibility audit                 | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`         |
+| A cache keyed on the query alone serves a member's price to a guest                                  | `packages/api/src/cache.test.ts`                                                       |
+| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                  | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                            |
+| Choosing "Red" never zeroes "Blue"                                                                   | `packages/engine/src/facets.test.ts`                                                   |
+| The URL is the page, and a value it cannot read is ignored                                           | `packages/storefront/src/app/url.test.ts`                                              |
+| Paging never shows a product twice or skips one                                                      | `packages/engine/src/search.test.ts`                                                   |
+| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead | `packages/engine/src/search.test.ts`, `rules.test.ts`                                  |
+| Pins and boosts disappear under a sort, and the page says so                                         | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`            |
+| A malformed request is a validation error with a code, never a 500                                   | `packages/api/src/api.test.ts`, `http.test.ts`                                         |
+| A product with variants shows a range, in the store's currency and locale                            | `packages/storefront/src/format/money.test.ts`                                         |
 
 Two product additions carry the rest of the story. **Explain mode** turns the engine's internal
 state, kept on every hit, into a line under each card: the tool a merchandiser needs to answer
@@ -192,7 +193,8 @@ packages/
     ├── public/  the rules file, and the catalog the build writes beside it
     └── src/     app (the URL as state, categories, the store context), client (the GraphQL
                  client, its memory and the latest-request helper), search (the popover),
-                 results (facets, sort, pages, explain mode, nothing), product, tour, worker
+                 results (facets, sort, pages, explain mode, nothing), product, format (money
+                 in the store's locale), tour, worker
                  (the API as a service worker), dev (the API inside the dev server), bench
                  (the measurements and the audit), operations, generated
 docs/

@@ -30,7 +30,8 @@ the page.
   test exists. The brief's exit check for Release 1 is that a reviewer can trigger every
   headline gotcha from the tour.
 - **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
-  prices change, a product only members may see appears, and nothing in the URL or the query
+  prices change and say so, a product only members may see appears and says so, one line under
+  the toolbar says what the switch changed on the page, and nothing in the URL or the query
   asked for it: the viewer travels in a header, and every cache keys on it.
 - **The URL is the page.** `src/app` holds the state every page reads from the query string:
   the phrase, the category, each facet, the sort, the page and the product being looked at.

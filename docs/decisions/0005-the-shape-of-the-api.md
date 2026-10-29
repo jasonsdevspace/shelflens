@@ -18,7 +18,9 @@ copied from any vendor's schema.
 some products, the catalog. If a query could name a group, any caller could ask for any group's
 prices. The group is read from the request, the way a session would be, and `store.viewer`
 reports it. Every price in a response is the viewer's price, and there is no other price to ask
-for.
+for. Since Release 1.1 a price carries `memberPrice`, whether the viewer pays below list, and a
+product carries `membersOnly`. Both describe the viewer's own view: a guest never receives either
+as true, and neither names what another group would see.
 
 **Facets are an interface with three types, not a union and not one flat type.** A keyword
 facet has value buckets, a range facet has banded buckets, and a stats facet has bounds. One flat
