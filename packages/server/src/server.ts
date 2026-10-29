@@ -6,9 +6,12 @@ import {
 } from 'node:http';
 
 import {
+    type EventStore,
     GROUP_HEADER,
     isApiPath,
+    isEventsPath,
     PERSISTED_OPERATIONS,
+    receiveEvents,
     resolveRequest,
     responseHeaders,
     type StoreApi,
@@ -19,7 +22,8 @@ import {
  * The API over HTTP, for local runs and for anything that cannot host a
  * service worker.
  *
- * One endpoint, `/graphql`, and a health check. A persisted operation is
+ * One endpoint, `/graphql`, a receiver for the storefront's events at
+ * `/events`, and a health check. A persisted operation is
  * a `GET` naming one of the storefront's operations, and a full query is
  * a `POST`, which the host may refuse. The customer group arrives in a
  * header, standing in for the session a real store would have. Requests
@@ -43,6 +47,8 @@ export interface ServerOptions {
     readonly maxAgeSeconds?: number;
     /** The path the API is served under, so `graphql` is answered only there. */
     readonly base?: string;
+    /** Where to keep the events the storefront sends. Without one, events are refused. */
+    readonly events?: EventStore;
 }
 
 /**
@@ -117,8 +123,39 @@ export const createHandler = ({
     persistedOnly = false,
     maxAgeSeconds,
     base = '/',
+    events,
 }: ServerOptions): RequestHandler => {
     const allow = createRateLimit(rateLimitPerMinute, now);
+
+    const receive = async (
+        request: IncomingMessage,
+        response: ServerResponse,
+        requestId: string
+    ) => {
+        if (!events) {
+            refuse(response, 404, 'this store keeps no events', requestId);
+            return;
+        }
+        const body = request.method === 'POST' ? await readBody(request) : undefined;
+        if (request.method === 'POST' && body === undefined) {
+            refuse(response, 413, 'the request body is too large', requestId);
+            return;
+        }
+        const receipt = await receiveEvents(
+            {
+                method: request.method ?? 'GET',
+                body,
+                header: (name) => request.headers[name]?.toString(),
+            },
+            events
+        );
+        if (receipt.status === 204) {
+            response.writeHead(204, { 'x-request-id': requestId });
+            response.end();
+            return;
+        }
+        refuse(response, receipt.status, receipt.message ?? 'refused', requestId);
+    };
 
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
@@ -127,13 +164,17 @@ export const createHandler = ({
             send(response, { status: 200, body: { status: 'ok' }, requestId });
             return;
         }
+        const viewer = viewerFromHeader(request.headers[GROUP_HEADER]?.toString());
+        const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
+        if (isEventsPath(url, base)) {
+            if (allow(client)) await receive(request, response, requestId);
+            else refuse(response, 429, 'too many requests', requestId);
+            return;
+        }
         if (!isApiPath(url, base)) {
             refuse(response, 404, 'not found', requestId);
             return;
         }
-
-        const viewer = viewerFromHeader(request.headers[GROUP_HEADER]?.toString());
-        const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
         if (!allow(client)) {
             response.setHeader('retry-after', '60');
             refuse(response, 429, 'too many requests', requestId);

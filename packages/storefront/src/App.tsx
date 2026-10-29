@@ -13,6 +13,8 @@ import {
     type CustomerGroup,
     type GraphQLClient,
 } from './client/graphql.js';
+import { createCollector } from './events/collector.js';
+import { EventsProvider } from './events/EventsContext.jsx';
 import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
@@ -23,6 +25,8 @@ import { Tour, TOUR_ID } from './tour/Tour.jsx';
 
 export interface AppProps {
     readonly apiUrl: string;
+    /** Where the shopper's events go. Beside the API unless told otherwise. */
+    readonly eventsUrl?: string | undefined;
     /** Resolves once the API can answer, which on a first visit is after the worker claims the page. */
     readonly ready: Promise<void>;
 }
@@ -130,7 +134,11 @@ const Masthead = ({
     </>
 );
 
-export const App = ({ apiUrl, ready }: AppProps) => {
+export const App = ({
+    apiUrl,
+    eventsUrl = apiUrl.replace(/graphql$/, 'events'),
+    ready,
+}: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     // The product that just closed, by any route, so the results can put focus back on its card.
@@ -186,70 +194,76 @@ export const App = ({ apiUrl, ready }: AppProps) => {
 
     const info = useMemo(() => storeInfoOf(store.data), [store.data]);
 
+    // What the shopper does, sent in batches once the store answers, and never awaited.
+    const collector = useMemo(() => createCollector({ url: eventsUrl, ready }), [eventsUrl, ready]);
+    useEffect(() => () => collector.dispose(), [collector]);
+
     return (
-        <StoreProvider value={info}>
-            <PortfolioStrip />
-            <header className="masthead">
-                <div className="masthead-row">
-                    <a
-                        className="brand"
-                        href="./"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            navigate(fresh);
-                        }}
-                    >
-                        ShelfLens
-                    </a>
-                    {isReady && (
-                        <Masthead
+        <EventsProvider value={collector.record}>
+            <StoreProvider value={info}>
+                <PortfolioStrip />
+                <header className="masthead">
+                    <div className="masthead-row">
+                        <a
+                            className="brand"
+                            href="./"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                navigate(fresh);
+                            }}
+                        >
+                            ShelfLens
+                        </a>
+                        {isReady && (
+                            <Masthead
+                                client={client}
+                                state={state}
+                                fresh={fresh}
+                                navigate={navigate}
+                                categories={tree}
+                                group={group}
+                                onGroup={switchGroup}
+                                touring={touring}
+                                onTour={touring ? closeTour : openTour}
+                                tourButton={tourButton}
+                            />
+                        )}
+                    </div>
+                </header>
+                {isReady && touring && (
+                    <Tour
+                        index={tourStop}
+                        onIndex={setTourStop}
+                        navigate={navigate}
+                        onClose={closeTour}
+                        takeFocus={tourAsked}
+                    />
+                )}
+                <main className={`content${touring ? ' has-tour' : ''}`}>
+                    <Standby readiness={readiness} />
+                    {isReady && state.product !== undefined && (
+                        <ProductPage
                             client={client}
+                            sku={state.product}
                             state={state}
-                            fresh={fresh}
                             navigate={navigate}
-                            categories={tree}
-                            group={group}
-                            onGroup={switchGroup}
-                            touring={touring}
-                            onTour={touring ? closeTour : openTour}
-                            tourButton={tourButton}
                         />
                     )}
-                </div>
-            </header>
-            {isReady && touring && (
-                <Tour
-                    index={tourStop}
-                    onIndex={setTourStop}
-                    navigate={navigate}
-                    onClose={closeTour}
-                    takeFocus={tourAsked}
-                />
-            )}
-            <main className={`content${touring ? ' has-tour' : ''}`}>
-                <Standby readiness={readiness} />
-                {isReady && state.product !== undefined && (
-                    <ProductPage
-                        client={client}
-                        sku={state.product}
-                        state={state}
-                        navigate={navigate}
-                    />
-                )}
-                {isReady && state.product === undefined && (
-                    <ResultsPage
-                        client={client}
-                        state={state}
-                        navigate={navigate}
-                        categories={tree}
-                        focusSku={closedSku}
-                        onFocused={focused}
-                        group={group}
-                        switchedOn={switchedOn}
-                    />
-                )}
-            </main>
-            <DemoFooter />
-        </StoreProvider>
+                    {isReady && state.product === undefined && (
+                        <ResultsPage
+                            client={client}
+                            state={state}
+                            navigate={navigate}
+                            categories={tree}
+                            focusSku={closedSku}
+                            onFocused={focused}
+                            group={group}
+                            switchedOn={switchedOn}
+                        />
+                    )}
+                </main>
+                <DemoFooter />
+            </StoreProvider>
+        </EventsProvider>
     );
 };

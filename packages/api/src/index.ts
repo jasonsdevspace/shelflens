@@ -21,6 +21,22 @@ export {
     viewerFromHeader,
 } from './context.js';
 export {
+    BATCH_LIMIT,
+    createMemoryEventStore,
+    EVENT_LIMIT,
+    type EventKind,
+    type EventsRequest,
+    type EventStore,
+    foldPhrase,
+    GPC_HEADER,
+    isEventsPath,
+    type MemoryEventStoreOptions,
+    parseEventBatch,
+    type Receipt,
+    receiveEvents,
+    type StoreEvent,
+} from './events.js';
+export {
     createStoreApi,
     DEFAULT_LIMITS,
     isStoreRequest,

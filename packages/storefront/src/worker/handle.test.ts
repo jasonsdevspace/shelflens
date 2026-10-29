@@ -1,5 +1,12 @@
 // @vitest-environment node
-import { createStore, GROUP_HEADER, PERSISTED_OPERATIONS, VERSION_HEADER } from '@shelflens/api';
+import {
+    createMemoryEventStore,
+    createStore,
+    GPC_HEADER,
+    GROUP_HEADER,
+    PERSISTED_OPERATIONS,
+    VERSION_HEADER,
+} from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -249,5 +256,41 @@ describe('the answers the worker keeps', () => {
         expect(kept.has(`${url}|`)).toBe(true);
         const fresh = await api.handle(persisted({ op: STORE, v: version }));
         expect(await fresh?.json()).not.toEqual({ data: { stale: true } });
+    });
+});
+
+describe('events inside the worker', () => {
+    const batch = (headers: Record<string, string> = {}) =>
+        new Request('https://example.test/shelflens/events', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify([{ id: 'e1', kind: 'search', at: 1, phrase: 'jacket' }]),
+        });
+
+    it('keeps a posted batch in the store it was given, and nothing under Global Privacy Control', async () => {
+        const events = createMemoryEventStore();
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            events,
+        });
+        const kept = await api.handle(batch());
+        expect(kept?.status).toBe(204);
+        const dropped = await api.handle(batch({ [GPC_HEADER]: '1' }));
+        expect(dropped?.status).toBe(204);
+        expect((await events.all()).map((event) => event.id)).toEqual(['e1']);
+    });
+
+    it('refuses events when it has nowhere to keep them, and leaves other paths to the network', async () => {
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+        });
+        expect((await api.handle(batch()))?.status).toBe(404);
+        expect(
+            await api.handle(new Request('https://example.test/shelflens/other'))
+        ).toBeUndefined();
     });
 });

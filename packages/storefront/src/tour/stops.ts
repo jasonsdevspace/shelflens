@@ -121,6 +121,16 @@ export const STOPS: readonly Stop[] = [
         tests: ['packages/storefront/src/format/money.test.ts'],
     },
     {
+        id: 'telemetry',
+        title: 'Telemetry that cannot hurt the page',
+        body: 'Search, open a product, then look in DevTools under Application, IndexedDB, shelflens-events. What you did is sent in batches with sendBeacon, so it never blocks the page, a batch delivered twice counts once, nothing in it could name you, and with Global Privacy Control on nothing is sent at all.',
+        to: EMPTY_STATE,
+        tests: [
+            'packages/storefront/src/events/collector.test.ts',
+            'packages/api/src/events.test.ts',
+        ],
+    },
+    {
         id: 'errors',
         title: 'A mistake is a validation error, not a 500',
         body: 'The one stop the page cannot reach. The demo accepts only its own operations, so nothing a browser sends can be malformed. The tests send the API a filter on an attribute it does not have and a query that nests too deep, and get a message with a code, never a stack.',

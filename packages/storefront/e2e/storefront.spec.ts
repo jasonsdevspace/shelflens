@@ -220,3 +220,65 @@ test('keeps its place: a search is announced, a product takes focus, and back la
     await expect(page.locator(`.card-link[data-sku="${sku ?? ''}"]`)).toBeFocused();
     await audit(page);
 });
+
+test('what the shopper did reaches the worker, through a beacon, and outlives the page', async ({
+    page,
+}) => {
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search the store' });
+    await box.fill('jacket');
+    await box.press('Enter');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
+    // The cards of the page before stay, dimmed, until the answer lands.
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const first = page.getByRole('list', { name: 'Products' }).getByRole('link').first();
+    const sku = await first.getAttribute('data-sku');
+    await first.click();
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+
+    // The page shares the worker's IndexedDB, so the test reads what arrived.
+    const kept = () =>
+        page.evaluate(
+            () =>
+                new Promise<{ kind: string; sku?: string; phrase?: string; position?: number }[]>(
+                    (resolve, reject) => {
+                        const opening = indexedDB.open('shelflens-events');
+                        opening.onerror = () =>
+                            reject(opening.error ?? new Error('could not open'));
+                        opening.onsuccess = () => {
+                            const db = opening.result;
+                            if (!db.objectStoreNames.contains('events')) {
+                                db.close();
+                                resolve([]);
+                                return;
+                            }
+                            const read = db.transaction('events').objectStore('events').getAll();
+                            read.onsuccess = () => {
+                                db.close();
+                                resolve(read.result);
+                            };
+                            read.onerror = () => {
+                                db.close();
+                                reject(read.error ?? new Error('could not read'));
+                            };
+                        };
+                    }
+                )
+        );
+    await expect
+        .poll(async () => (await kept()).map((event) => event.kind).sort(), { timeout: 10_000 })
+        .toEqual(['click', 'search', 'view']);
+    const events = await kept();
+    expect(events.find((event) => event.kind === 'search')).toMatchObject({ phrase: 'jacket' });
+    expect(events.find((event) => event.kind === 'click')).toMatchObject({
+        phrase: 'jacket',
+        sku,
+        position: 1,
+    });
+    expect(events.find((event) => event.kind === 'view')).toMatchObject({ sku });
+    for (const event of events) {
+        expect(Object.keys(event).sort()).toEqual(
+            ['at', 'id', 'kind', 'phrase', 'position', 'sku'].filter((key) => key in event).sort()
+        );
+    }
+});
