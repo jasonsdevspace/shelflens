@@ -126,7 +126,18 @@ describe('narrowing', () => {
         await settled();
         await user.click(within(facet('Brand')).getByRole('button', { name: 'Show fewer' }));
         expect(brands()).toHaveLength(7);
-        expect(brands().at(-1)).toBeChecked();
+        const kept = brands().at(-1);
+        if (!kept) throw new Error('expected the ticked brand');
+        expect(kept).toBeChecked();
+        // Unticking it leaves it in place, under the same focus, until the list is folded again.
+        await user.click(kept);
+        await settled();
+        expect(brands()).toHaveLength(7);
+        expect(brands().at(-1)).not.toBeChecked();
+        expect(within(facet('Brand')).getByRole('button', { name: /Show all/ })).toHaveAttribute(
+            'aria-controls',
+            facet('Brand').id
+        );
     });
 
     it('filters by a brand and keeps counting the other brands', async () => {
@@ -384,6 +395,16 @@ describe('as a member', () => {
         const notice = await screen.findByText(/Shopping as a member/);
         expect(notice).toHaveAttribute('role', 'status');
         expect(notice.textContent).toMatch(/member price/);
+        // A way of looking at the same page keeps it, and a product opened and closed keeps it.
+        await user.click(screen.getByRole('button', { name: 'Explain ranking' }));
+        await settled();
+        expect(screen.getByText(/Shopping as a member/)).toBeInTheDocument();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        await user.click(first);
+        await user.click(await screen.findByRole('button', { name: 'Back to results' }));
+        await settled();
+        expect(screen.getByText(/Shopping as a member/)).toBeInTheDocument();
         await user.type(screen.getByRole('combobox', { name: 'Search the store' }), 'boot{Enter}');
         await settled();
         expect(screen.queryByText(/Shopping as a member/)).toBeNull();

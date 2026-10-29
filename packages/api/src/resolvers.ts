@@ -123,7 +123,9 @@ const whenEmpty = (input: SearchInput, context: Context): NoResultsModel => ({
 const priceFor = (product: Product, group: CustomerGroup, currency: string) => ({
     min: { amount: product.price[group].min, currency },
     max: { amount: product.price[group].max, currency },
-    memberPrice: product.price[group].min < product.price.guest.min,
+    memberPrice:
+        product.price[group].min < product.price.guest.min ||
+        product.price[group].max < product.price.guest.max,
 });
 
 const categoryOf = (id: string, context: Context): Category => {

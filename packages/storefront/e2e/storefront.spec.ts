@@ -120,7 +120,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     const asGuest = amount(await price.textContent());
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
-    await expect(page.locator('.product-member')).toHaveText('Member price');
+    await expect(page.getByText('Member price', { exact: true })).toBeVisible();
 });
 
 test('answers travel as named operations the browser may keep', async ({ page }) => {

@@ -466,6 +466,9 @@ body {
     top: 1rem;
     max-height: calc(100dvh - 2rem);
     overflow-y: auto;
+    /* A scrolling box clips what spills past its edge, so the focus ring gets room inside it. */
+    padding: 0.25rem;
+    margin: -0.25rem;
 }
 
 /* Nothing found: no facets to show, so the results take the whole width. */

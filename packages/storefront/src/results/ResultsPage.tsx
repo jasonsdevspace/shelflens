@@ -5,6 +5,7 @@ import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
     hasFilters,
+    searchKey,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -42,6 +43,8 @@ export interface ResultsPageProps {
     readonly focusSku: string | undefined;
     readonly onFocused: () => void;
     readonly group: CustomerGroup;
+    /** The search the viewer was last switched on, so this page can say what changed. */
+    readonly switchedOn: string | undefined;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -122,6 +125,7 @@ export const ResultsPage = ({
     focusSku,
     onFocused,
     group,
+    switchedOn,
 }: ResultsPageProps) => {
     const id = useId();
     const main = useRef<HTMLElement>(null);
@@ -243,8 +247,7 @@ export const ResultsPage = ({
                     <ViewerNotice
                         group={group}
                         items={result.items}
-                        pageKey={serializeSearchState(state)}
-                        loading={loading}
+                        shown={!loading && switchedOn === searchKey(state)}
                     />
                     {setAside.length > 0 && (
                         <p className="results-aside" role="status">

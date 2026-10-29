@@ -1,38 +1,23 @@
-import { useState } from 'react';
-
 import type { CustomerGroup } from '../client/graphql.js';
 import type { Hit } from './ProductCard.jsx';
 
 /**
  * What the viewer switch changed on this page, said once, after a switch.
  * Read from the answer in hand: which prices are member prices and which
- * products are for members only. Quiet on a first visit, and cleared by
- * the next search, since that page was never seen as the other viewer.
+ * products are for members only. The app says whether this page is the one
+ * the switch happened on, so the line survives opening a product and goes
+ * quiet on the next search, which was never seen as the other viewer.
  */
 export const ViewerNotice = ({
     group,
     items,
-    pageKey,
-    loading,
+    shown,
 }: {
     readonly group: CustomerGroup;
     readonly items: readonly Hit[];
-    /** The search this page answers, so a new search starts quiet. */
-    readonly pageKey: string;
-    readonly loading: boolean;
+    readonly shown: boolean;
 }) => {
-    const [seenGroup, setSeenGroup] = useState(group);
-    const [seenKey, setSeenKey] = useState(pageKey);
-    const [switched, setSwitched] = useState(false);
-    if (seenGroup !== group) {
-        setSeenGroup(group);
-        setSwitched(true);
-    }
-    if (seenKey !== pageKey) {
-        setSeenKey(pageKey);
-        setSwitched(false);
-    }
-    if (!switched || loading) return null;
+    if (!shown || items.length === 0) return null;
     return (
         <p className="results-aside" role="status">
             {group === 'member' ? asMember(items) : AS_GUEST}
