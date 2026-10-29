@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
@@ -119,7 +119,6 @@ const Masthead = ({
 }: MastheadProps) => (
     <>
         <SearchBox
-            key={state.phrase ?? ''}
             client={client}
             initialPhrase={state.phrase ?? ''}
             onSearch={(phrase) => navigate({ ...fresh, phrase })}
@@ -134,6 +133,16 @@ const Masthead = ({
 export const App = ({ apiUrl, ready }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
+    // The product that just closed, by any route, so the results can put focus back on its card.
+    const [closedSku, setClosedSku] = useState<string>();
+    const lastProduct = useRef(state.product);
+    useEffect(() => {
+        if (lastProduct.current !== undefined && state.product === undefined) {
+            setClosedSku(lastProduct.current);
+        }
+        lastProduct.current = state.product;
+    }, [state.product]);
+    const focused = useCallback(() => setClosedSku(undefined), []);
     const [group, setGroup] = useState<CustomerGroup>('guest');
     const [touring, setTouring] = useState(() => !hasSeenTour());
     const [tourStop, setTourStop] = useState(0);
@@ -227,6 +236,8 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         state={state}
                         navigate={navigate}
                         categories={tree}
+                        focusSku={closedSku}
+                        onFocused={focused}
                     />
                 )}
             </main>

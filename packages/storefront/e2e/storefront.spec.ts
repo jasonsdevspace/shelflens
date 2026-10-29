@@ -190,3 +190,25 @@ test('says whose demo it is before anything else, and follows the theme the port
     await expect(page.getByRole('contentinfo')).toContainText('portfolio project by Jason Poteet');
     await audit(page);
 });
+
+test('keeps its place: a search is announced, a product takes focus, and back lands on its card', async ({
+    page,
+}) => {
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search the store' });
+    await box.fill('jacket');
+    await box.press('Enter');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
+    await expect(box).toBeFocused();
+    await expect(page.getByRole('status').filter({ hasText: 'results for "jacket"' })).toHaveCount(
+        1
+    );
+
+    const first = page.getByRole('list', { name: 'Products' }).getByRole('link').first();
+    const sku = await first.getAttribute('data-sku');
+    await first.click();
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    await page.getByRole('button', { name: 'Back to results' }).click();
+    await expect(page.locator(`.card-link[data-sku="${sku ?? ''}"]`)).toBeFocused();
+    await audit(page);
+});

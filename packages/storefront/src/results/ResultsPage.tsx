@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useRef } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { StateLink } from '../app/StateLink.jsx';
@@ -22,6 +22,7 @@ import { Facets } from './Facets.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
+import { useReturnFocus } from './useReturnFocus.js';
 
 /**
  * The results page: everything the URL says, answered by one request.
@@ -36,6 +37,9 @@ export interface ResultsPageProps {
     readonly state: SearchState;
     readonly navigate: Navigate;
     readonly categories: CategoryTree;
+    /** The product that just closed, so focus returns to its card, and what to call once it has. */
+    readonly focusSku: string | undefined;
+    readonly onFocused: () => void;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -66,14 +70,46 @@ const FacetColumn = ({
         <aside className="results-side">{children}</aside>
     );
 
-export const ResultsPage = ({ client, state, navigate, categories }: ResultsPageProps) => {
+/** The heading, and the same words again for a screen reader once each change has landed. */
+const ResultsHeading = ({
+    id,
+    text,
+    corrected,
+    loading,
+}: {
+    readonly id: string;
+    readonly text: string;
+    readonly corrected: boolean;
+    readonly loading: boolean;
+}) => (
+    <>
+        <h1 id={id} className="results-heading" tabIndex={-1}>
+            {text}
+            {corrected && <span className="results-note"> showing close matches</span>}
+        </h1>
+        <p className="visually-hidden" role="status">
+            {loading ? '' : text}
+        </p>
+    </>
+);
+
+export const ResultsPage = ({
+    client,
+    state,
+    navigate,
+    categories,
+    focusSku,
+    onFocused,
+}: ResultsPageProps) => {
     const id = useId();
+    const main = useRef<HTMLElement>(null);
     const { data, loading, error } = useQuery(client, SearchDocument, {
         input: toSearchInput(state),
         explain: state.explain ?? false,
     });
     const narrow = useMediaQuery(NARROW);
     const result = data?.search;
+    useReturnFocus(main, focusSku, !loading && result !== undefined, onFocused);
 
     if (error) {
         return (
@@ -106,7 +142,7 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
                     {facets}
                 </FacetColumn>
             )}
-            <section className="results-main" aria-labelledby={`${id}-heading`}>
+            <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
                 {crumbs.length > 0 && (
                     <nav className="crumbs" aria-label="Category">
                         <ol className="crumb-list">
@@ -130,12 +166,12 @@ export const ResultsPage = ({ client, state, navigate, categories }: ResultsPage
                     </nav>
                 )}
                 <div className="results-toolbar">
-                    <h1 id={`${id}-heading`} className="results-heading">
-                        {headingFor(state, categories, result.total)}
-                        {result.matching === 'CORRECTED' && (
-                            <span className="results-note"> showing close matches</span>
-                        )}
-                    </h1>
+                    <ResultsHeading
+                        id={`${id}-heading`}
+                        text={headingFor(state, categories, result.total)}
+                        corrected={result.matching === 'CORRECTED'}
+                        loading={loading}
+                    />
                     <button
                         type="button"
                         className="explain-toggle"

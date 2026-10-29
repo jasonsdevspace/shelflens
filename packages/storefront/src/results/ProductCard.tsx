@@ -77,6 +77,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
             <a
                 className="card-link"
                 href={href}
+                data-sku={product.sku}
                 onClick={(event) => {
                     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
                         return;

@@ -49,6 +49,13 @@ export const SearchBox = ({
     const { locale } = useStoreInfo();
     const id = useId();
     const [phrase, setPhrase] = useState(initialPhrase);
+    // The page's phrase changes under the box when a search lands or history moves. The
+    // box follows it without being remounted, so focus stays where the visitor put it.
+    const [followed, setFollowed] = useState(initialPhrase);
+    if (followed !== initialPhrase) {
+        setFollowed(initialPhrase);
+        setPhrase(initialPhrase);
+    }
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(-1);
     const { answered, loading, error } = useSuggestions(client, phrase);
@@ -113,7 +120,9 @@ export const SearchBox = ({
         }
     };
 
-    const status = !isAskable(phrase)
+    // Announced only while the popover is open, so a landed search is not talked over
+    // by a suggestion count the visitor did not ask for.
+    const status = !expanded
         ? ''
         : loading && options.length === 0
           ? 'Searching'
@@ -127,7 +136,8 @@ export const SearchBox = ({
             <input
                 id={`${id}-input`}
                 className="searchbox-input"
-                type="text"
+                type="search"
+                enterKeyHint="search"
                 role="combobox"
                 autoComplete="off"
                 spellCheck={false}
