@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net';
 
 import {
+    createMemoryEventStore,
     createStore,
     createStoreApi,
     GROUP_HEADER,
@@ -14,9 +15,13 @@ import { createServer } from './server.js';
 
 const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
 const server = createServer({ api, rateLimitPerMinute: 5 });
-const demo = createServer({ api, persistedOnly: true });
+const events = createMemoryEventStore();
+const demo = createServer({ api, persistedOnly: true, events });
+/** A host given nowhere to keep events. */
+const bare = createServer({ api });
 let base = '';
 let demoBase = '';
+let bareBase = '';
 
 const STORE = Object.keys(PERSISTED_OPERATIONS).find((hash) =>
     PERSISTED_OPERATIONS[hash]?.startsWith('query Store')
@@ -28,11 +33,14 @@ beforeAll(async () => {
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     await new Promise<void>((resolve) => demo.listen(0, resolve));
     demoBase = `http://127.0.0.1:${(demo.address() as AddressInfo).port}`;
+    await new Promise<void>((resolve) => bare.listen(0, resolve));
+    bareBase = `http://127.0.0.1:${(bare.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await new Promise<void>((resolve) => demo.close(() => resolve()));
+    await new Promise<void>((resolve) => bare.close(() => resolve()));
 });
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
@@ -116,5 +124,24 @@ describe('the API over HTTP', () => {
         expect(
             (await post({ query: '{ store { name } }' }, { [GROUP_HEADER]: 'member' })).status
         ).toBe(200);
+    });
+});
+
+describe('events over HTTP', () => {
+    it('keeps a posted batch where the demo refuses every other post, and refuses the rest', async () => {
+        const post = (body: string) =>
+            fetch(`${demoBase}/events`, { method: 'POST', body, headers: {} });
+        const kept = await post(JSON.stringify([{ id: 'e1', kind: 'view', at: 1, sku: 'SL-1' }]));
+        expect(kept.status).toBe(204);
+        expect(kept.headers.get('x-request-id')).toMatch(/[0-9a-f-]{36}/);
+        expect((await events.all()).map((event) => event.id)).toEqual(['e1']);
+
+        const refused = await post('not json');
+        expect(refused.status).toBe(400);
+        expect(await refused.json()).toEqual({ errors: [{ message: 'the batch is not JSON' }] });
+        const got = await fetch(`${demoBase}/events`);
+        expect(got.status).toBe(405);
+        const nowhere = await fetch(`${bareBase}/events`, { method: 'POST', body: '[]' });
+        expect(nowhere.status).toBe(404);
     });
 });

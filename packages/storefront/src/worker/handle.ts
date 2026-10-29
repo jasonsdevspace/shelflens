@@ -1,9 +1,12 @@
 import {
     createStore,
     createStoreApi,
+    type EventStore,
     isApiPath,
+    isEventsPath,
     parseRulesFile,
     PERSISTED_OPERATIONS,
+    receiveEvents,
     resolveRequest,
     responseHeaders,
     type StoreApi,
@@ -31,6 +34,10 @@ import type { Catalog } from '@shelflens/catalog';
  * say, and matches on the viewer header the answer varies on. A new
  * store version is a new URL, and the old URLs are dropped when the store
  * is built.
+ *
+ * Events the page sends to `events` beside `graphql` are kept in the
+ * store the worker is given, and answered with nothing, since the page
+ * never waits for them.
  */
 
 export interface WorkerApiOptions {
@@ -45,6 +52,8 @@ export interface WorkerApiOptions {
     readonly allowFullQueries?: boolean;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
+    /** Where to keep the events the page sends. Without one, events are refused. */
+    readonly events?: EventStore;
 }
 
 /** The part of the Cache API the worker uses. */
@@ -105,12 +114,27 @@ export const createWorkerApi = ({
     fetch: fetchImpl = fetch,
     allowFullQueries = false,
     answers,
+    events,
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<StoreApi> | undefined;
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
 
     const isApiRequest = (request: Request): boolean =>
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
+
+    const receive = async (request: Request): Promise<Response> => {
+        if (!events) return json(404, { errors: [{ message: 'this store keeps no events' }] });
+        const receipt = await receiveEvents(
+            {
+                method: request.method,
+                body: await request.text(),
+                header: (name) => request.headers.get(name),
+            },
+            events
+        );
+        if (receipt.status === 204) return new Response(null, { status: 204 });
+        return json(receipt.status, { errors: [{ message: receipt.message }] });
+    };
 
     const load = (): Promise<StoreApi> => {
         const began = performance.now();
@@ -182,6 +206,7 @@ export const createWorkerApi = ({
             return startup;
         },
         handle: async (request) => {
+            if (isEventsPath(request.url, base)) return receive(request);
             if (!isApiRequest(request)) return undefined;
             const kept = request.method === 'GET' && answers ? await answers() : undefined;
             const held = await kept?.match(request);

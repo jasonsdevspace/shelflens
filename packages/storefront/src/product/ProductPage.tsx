@@ -5,6 +5,7 @@ import type { SearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
+import { useRecord } from '../events/EventsContext.jsx';
 import { formatMoney, formatPriceRange } from '../format/money.js';
 import { ProductDocument } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
@@ -34,6 +35,12 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
     useEffect(() => {
         if (!loading) (heading.current ?? missing.current)?.focus();
     }, [loading, data]);
+    // A view, once the product has answered, so a missing product is not one.
+    const record = useRecord();
+    const viewed = data?.product?.sku;
+    useEffect(() => {
+        if (viewed !== undefined) record({ kind: 'view', sku: viewed });
+    }, [record, viewed]);
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);

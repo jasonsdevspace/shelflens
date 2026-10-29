@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
-import { isApiPath } from '@shelflens/api';
+import { routeOf } from '@shelflens/api';
 
+import { createIndexedDbEventStore } from './event-db.js';
 import { createWorkerApi, type StartedMessage } from './handle.js';
 import { CLAIM_MESSAGE } from './register.js';
 
@@ -22,6 +23,7 @@ const api = createWorkerApi({
     rulesUrl: new URL('rules.json', self.registration.scope).href,
     base: new URL(self.registration.scope).pathname,
     answers: () => caches.open('shelflens-answers'),
+    events: createIndexedDbEventStore(),
 });
 
 /** Tells every page this worker is in charge of how the store started. */
@@ -51,6 +53,6 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    if (!isApiPath(request.url, new URL(self.registration.scope).pathname)) return;
+    if (routeOf(request.url, new URL(self.registration.scope).pathname) === undefined) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });
