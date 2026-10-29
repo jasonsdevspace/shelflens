@@ -118,6 +118,16 @@ export const parseSearchState = (search: string): SearchState => {
     };
 };
 
+/**
+ * The search a page answers, as a key: the phrase, the category, the
+ * filters and the page, without the sort, explain mode or an open product,
+ * which are ways of looking at the same page rather than a new one.
+ */
+export const searchKey = (state: SearchState): string => {
+    const { sort: _sort, explain: _explain, product: _product, ...search } = state;
+    return serializeSearchState(search);
+};
+
 /** The query string for a state, with a leading "?" or nothing at all for the empty state. */
 export const serializeSearchState = (state: SearchState): string => {
     const params = new URLSearchParams();

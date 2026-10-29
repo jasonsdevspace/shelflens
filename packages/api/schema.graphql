@@ -407,6 +407,12 @@ type Product {
     inStock: Boolean!
 
     """
+    Shown to members only. A guest never receives such a product, so for a
+    guest this is always false, and it never names what a guest would see.
+    """
+    membersOnly: Boolean!
+
+    """
     When the product was added, as an ISO 8601 instant.
     """
     addedAt: String!
@@ -415,6 +421,12 @@ type Product {
 type PriceRange {
     min: Money!
     max: Money!
+
+    """
+    True when the viewer's group pays below the list price. A guest pays list,
+    so for a guest this is always false, and the other price is never sent.
+    """
+    memberPrice: Boolean!
 }
 
 """

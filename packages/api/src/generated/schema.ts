@@ -134,6 +134,11 @@ export type NoResults = {
 export type PriceRange = {
     readonly __typename?: 'PriceRange';
     readonly max: Money;
+    /**
+     * True when the viewer's group pays below the list price. A guest pays list,
+     * so for a guest this is always false, and the other price is never sent.
+     */
+    readonly memberPrice: Scalars['Boolean']['output'];
     readonly min: Money;
 };
 
@@ -151,6 +156,11 @@ export type Product = {
     /** Whether any variant is in stock. */
     readonly inStock: Scalars['Boolean']['output'];
     readonly material: Scalars['String']['output'];
+    /**
+     * Shown to members only. A guest never receives such a product, so for a
+     * guest this is always false, and it never names what a guest would see.
+     */
+    readonly membersOnly: Scalars['Boolean']['output'];
     readonly name: Scalars['String']['output'];
     /** The viewer's price. A range when variants are priced differently. */
     readonly price: PriceRange;
@@ -669,6 +679,7 @@ export type PriceRangeResolvers<
     ParentType extends ResolversParentTypes['PriceRange'] = ResolversParentTypes['PriceRange'],
 > = {
     max?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+    memberPrice?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     min?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
 };
 
@@ -684,6 +695,7 @@ export type ProductResolvers<
     description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     inStock?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     material?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    membersOnly?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     price?: Resolver<ResolversTypes['PriceRange'], ParentType, ContextType>;
     rating?: Resolver<Maybe<ResolversTypes['Rating']>, ParentType, ContextType>;

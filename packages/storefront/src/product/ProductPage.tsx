@@ -84,6 +84,8 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                     <p className="product-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </p>
+                    {product.price.memberPrice && <p className="product-member">Member price</p>}
+                    {product.membersOnly && <p className="product-member">Members only</p>}
                     {!product.inStock && <p className="card-stock">Out of stock</p>}
                 </div>
             </div>

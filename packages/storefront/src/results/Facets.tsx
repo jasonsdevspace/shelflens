@@ -1,3 +1,5 @@
+import { useId, useState } from 'react';
+
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
@@ -59,12 +61,14 @@ const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string =>
 
 const Group = ({
     title,
+    id,
     children,
 }: {
     readonly title: string;
+    readonly id?: string | undefined;
     readonly children: React.ReactNode;
 }) => (
-    <fieldset className="facet">
+    <fieldset className="facet" id={id}>
         <legend className="facet-title">{title}</legend>
         {children}
     </fieldset>
@@ -102,16 +106,34 @@ const CategoryFacet = ({
     );
 };
 
+/** How many of a list show before the rest are a click away. */
+const SHOWN = 6;
+
 const ListFacet = ({
     facet,
     name,
     state,
     onChange,
 }: FacetsProps & { readonly facet: Facet; readonly name: ListName }) => {
+    const id = useId();
+    const [all, setAll] = useState(false);
+    // Entries past the first few that a tick brought into view. They stay until the list
+    // is folded again, so unticking one does not pull the control out from under focus.
+    const [revealed, setRevealed] = useState<readonly string[]>([]);
+    const ticked = state[name].filter((value) => !revealed.includes(value));
+    if (ticked.length > 0) setRevealed([...revealed, ...ticked]);
     if (!('buckets' in facet) || facet.buckets.length === 0) return null;
+    const buckets = all
+        ? facet.buckets
+        : facet.buckets.filter((bucket, index) => index < SHOWN || revealed.includes(bucket.value));
+    const title = TITLES[name] ?? name;
+    const fold = () => {
+        setAll(!all);
+        setRevealed(state[name]);
+    };
     return (
-        <Group title={TITLES[name] ?? name}>
-            {facet.buckets.map((bucket) => (
+        <Group title={title} id={id}>
+            {buckets.map((bucket) => (
                 <label key={bucket.value} className="facet-option">
                     <input
                         type="checkbox"
@@ -130,6 +152,19 @@ const ListFacet = ({
                     <span className="facet-count">{bucket.count}</span>
                 </label>
             ))}
+            {facet.buckets.length > SHOWN && (
+                <button
+                    type="button"
+                    className="facet-more"
+                    aria-expanded={all}
+                    aria-controls={id}
+                    onClick={fold}
+                >
+                    {all
+                        ? 'Show fewer'
+                        : `Show all ${facet.buckets.length} ${title.toLowerCase()}s`}
+                </button>
+            )}
         </Group>
     );
 };

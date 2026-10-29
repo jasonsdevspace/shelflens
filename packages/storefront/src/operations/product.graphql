@@ -14,7 +14,9 @@ query Product($sku: ID!) {
             id
             name
         }
+        membersOnly
         price {
+            memberPrice
             min {
                 amount
                 currency

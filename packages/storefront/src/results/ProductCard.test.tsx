@@ -9,9 +9,14 @@ const product: CardFragment = {
     name: 'Ridgeback Relaxed Puffer Jacket',
     brand: { name: 'Ridgeback' },
     colors: ['Charcoal'],
-    price: { min: { amount: 34500, currency: 'USD' }, max: { amount: 36000, currency: 'USD' } },
+    price: {
+        min: { amount: 34500, currency: 'USD' },
+        max: { amount: 36000, currency: 'USD' },
+        memberPrice: false,
+    },
     rating: { average: 5, count: 544 },
     inStock: true,
+    membersOnly: false,
 };
 
 const hitWith = (explanation: Hit['explanation']): Hit =>
@@ -48,9 +53,39 @@ describe('the explanation on a card', () => {
         ]);
     });
 
+    it('says when the product is shown to members only, before the rules', () => {
+        card({
+            ...hitWith({ matches: [], rules: [] }),
+            product: { ...product, membersOnly: true },
+        });
+        expect(screen.getByText('Shown to members only')).toBeInTheDocument();
+    });
+
     it('waits for the answer that carries it, rather than showing a bare rank', () => {
         card(hitWith(undefined));
         expect(screen.queryByRole('list', { name: /Why this is result/ })).toBeNull();
         expect(screen.queryByText(/Result 1/)).toBeNull();
+    });
+});
+
+describe('the price on a card', () => {
+    it('is marked as a member price only when the viewer pays below list', () => {
+        const { unmount } = render(
+            <ul>
+                <ProductCard product={product} href="/" onOpen={() => undefined} />
+            </ul>
+        );
+        expect(screen.queryByText('Member price')).toBeNull();
+        unmount();
+        render(
+            <ul>
+                <ProductCard
+                    product={{ ...product, price: { ...product.price, memberPrice: true } }}
+                    href="/"
+                    onOpen={() => undefined}
+                />
+            </ul>
+        );
+        expect(screen.getByText('Member price')).toBeInTheDocument();
     });
 });

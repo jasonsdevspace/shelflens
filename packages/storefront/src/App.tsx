@@ -4,7 +4,7 @@ import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
 import { DEFAULT_STORE_INFO, type StoreInfo, StoreProvider } from './app/StoreContext.jsx';
-import { EMPTY_STATE, type SearchState } from './app/url.js';
+import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
 import { type Navigate, useUrlState } from './app/useUrlState.js';
 import {
@@ -144,6 +144,12 @@ export const App = ({ apiUrl, ready }: AppProps) => {
     }, [state.product]);
     const focused = useCallback(() => setClosedSku(undefined), []);
     const [group, setGroup] = useState<CustomerGroup>('guest');
+    // The search the viewer was last switched on, so its results can say what changed.
+    const [switchedOn, setSwitchedOn] = useState<string>();
+    const switchGroup = (next: CustomerGroup) => {
+        setGroup(next);
+        setSwitchedOn(searchKey(state));
+    };
     const [touring, setTouring] = useState(() => !hasSeenTour());
     const [tourStop, setTourStop] = useState(0);
     // Whether the panel was asked for, as opposed to opening itself on a first visit.
@@ -203,7 +209,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                             navigate={navigate}
                             categories={tree}
                             group={group}
-                            onGroup={setGroup}
+                            onGroup={switchGroup}
                             touring={touring}
                             onTour={touring ? closeTour : openTour}
                             tourButton={tourButton}
@@ -238,6 +244,8 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         categories={tree}
                         focusSku={closedSku}
                         onFocused={focused}
+                        group={group}
+                        switchedOn={switchedOn}
                     />
                 )}
             </main>

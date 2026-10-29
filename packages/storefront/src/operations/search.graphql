@@ -5,7 +5,9 @@ fragment Card on Product {
     brand {
         name
     }
+    membersOnly
     price {
+        memberPrice
         min {
             amount
             currency

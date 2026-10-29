@@ -5,6 +5,7 @@ import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
     hasFilters,
+    searchKey,
     type SearchState,
     serializeSearchState,
     type SortKey,
@@ -15,7 +16,7 @@ import {
 import { NARROW, useMediaQuery } from '../app/useMediaQuery.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
-import type { GraphQLClient } from '../client/graphql.js';
+import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
 import { SearchDocument } from '../generated/operations.js';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
@@ -23,6 +24,7 @@ import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { useReturnFocus } from './useReturnFocus.js';
+import { ViewerNotice } from './ViewerNotice.jsx';
 
 /**
  * The results page: everything the URL says, answered by one request.
@@ -40,6 +42,9 @@ export interface ResultsPageProps {
     /** The product that just closed, so focus returns to its card, and what to call once it has. */
     readonly focusSku: string | undefined;
     readonly onFocused: () => void;
+    readonly group: CustomerGroup;
+    /** The search the viewer was last switched on, so this page can say what changed. */
+    readonly switchedOn: string | undefined;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -119,6 +124,8 @@ export const ResultsPage = ({
     categories,
     focusSku,
     onFocused,
+    group,
+    switchedOn,
 }: ResultsPageProps) => {
     const id = useId();
     const main = useRef<HTMLElement>(null);
@@ -237,6 +244,11 @@ export const ResultsPage = ({
                             </select>
                         </label>
                     </div>
+                    <ViewerNotice
+                        group={group}
+                        items={result.items}
+                        shown={!loading && switchedOn === searchKey(state)}
+                    />
                     {setAside.length > 0 && (
                         <p className="results-aside" role="status">
                             Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the
