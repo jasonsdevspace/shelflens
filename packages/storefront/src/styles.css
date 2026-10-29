@@ -41,13 +41,22 @@ body {
 }
 
 /* Whose demo this is, above the masthead: two links, one line, scrolls away. */
+/*
+ * The strip and the masthead keep their borders across the whole viewport
+ * and line their content up with the column below, so the page reads as
+ * one column from the first line to the footer.
+ */
+.portfolio,
+.masthead {
+    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + 1rem);
+}
+
 .portfolio {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 0 1rem;
-    padding: 0 1rem;
     border-bottom: 1px solid var(--line);
     font-size: 0.9rem;
 }
@@ -89,7 +98,7 @@ body {
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
+    padding-block: 1rem;
     border-bottom: 1px solid var(--line);
 }
 
