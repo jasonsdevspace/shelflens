@@ -48,7 +48,13 @@ afterEach(() => {
 
 const open = async (search = '') => {
     window.history.replaceState(null, '', `/${search}`);
-    render(<App apiUrl="http://store.test/graphql" ready={Promise.resolve()} />);
+    render(
+        <App
+            apiUrl="http://store.test/graphql"
+            eventsUrl="http://store.test/events"
+            ready={Promise.resolve()}
+        />
+    );
     await screen.findByRole('heading', { level: 1 });
     return userEvent.setup();
 };
@@ -412,7 +418,13 @@ describe('as a member', () => {
 
     it('sees a product a guest is told does not exist', async () => {
         window.history.replaceState(null, '', `/?product=${membersOnly.sku}`);
-        render(<App apiUrl="http://store.test/graphql" ready={Promise.resolve()} />);
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                ready={Promise.resolve()}
+            />
+        );
         const user = userEvent.setup();
         expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');
         await shopAs(user, 'member');

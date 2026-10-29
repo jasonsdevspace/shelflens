@@ -13,7 +13,7 @@ if (!root) throw new Error('the page has no root element');
 const render = (ready: Promise<void>) => {
     createRoot(root).render(
         <StrictMode>
-            <App apiUrl={`${base}graphql`} ready={ready} />
+            <App apiUrl={`${base}graphql`} eventsUrl={`${base}events`} ready={ready} />
         </StrictMode>
     );
 };

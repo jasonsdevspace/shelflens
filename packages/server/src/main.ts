@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 
-import { createStore, createStoreApi, parseRulesFile, withResponseCache } from '@shelflens/api';
+import {
+    createMemoryEventStore,
+    createStore,
+    createStoreApi,
+    parseRulesFile,
+    withResponseCache,
+} from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 
 import { createServer } from './server.js';
@@ -26,6 +32,7 @@ const store = createStore({ catalog: generateCatalog({ products }), rules });
 const server = createServer({
     api: withResponseCache(createStoreApi(store)),
     persistedOnly: process.env.PERSISTED_ONLY === 'true',
+    events: createMemoryEventStore(),
 });
 
 server.listen(port, () => {

@@ -21,3 +21,6 @@ so the evidence was still fresh.
 8. [One cache key, defined once, for three layers](0008-one-cache-key.md): the store version,
    the viewer and the request, in the page, the browser and the handler, and the test that shows
    a member's price reaching a guest without the viewer.
+9. [Events land beside the API, and stay in the browser](0009-events-stay-in-the-browser.md): a
+   plain post rather than a mutation, IndexedDB in the worker rather than memory, and no seeded
+   history, so the cold start stays something the demo can show.

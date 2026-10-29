@@ -17,6 +17,7 @@ import { NARROW, useMediaQuery } from '../app/useMediaQuery.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
+import { useRecord } from '../events/EventsContext.jsx';
 import { SearchDocument } from '../generated/operations.js';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
@@ -136,6 +137,8 @@ export const ResultsPage = ({
     const narrow = useMediaQuery(NARROW);
     const result = data?.search;
     useReturnFocus(main, focusSku, !loading, onFocused);
+    const record = useRecord();
+    const phrase = state.phrase;
     const announced = announcement(state, categories, result, loading);
 
     const status = <LiveStatus text={announced} />;
@@ -268,7 +271,16 @@ export const ResultsPage = ({
                                         ...state,
                                         product: hit.product.sku,
                                     })}
-                                    onOpen={() => navigate({ ...state, product: hit.product.sku })}
+                                    onOpen={() => {
+                                        record({
+                                            kind: 'click',
+                                            phrase,
+                                            sku: hit.product.sku,
+                                            position:
+                                                (result.page - 1) * result.pageSize + index + 1,
+                                        });
+                                        navigate({ ...state, product: hit.product.sku });
+                                    }}
                                     explain={
                                         state.explain
                                             ? {

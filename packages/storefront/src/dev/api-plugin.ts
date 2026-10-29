@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 
 import {
+    createMemoryEventStore,
     createStore,
     createStoreApi,
-    isApiPath,
     parseRulesFile,
+    routeOf,
     withResponseCache,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
@@ -37,9 +38,10 @@ export const storeApi = (): Plugin => ({
                 createStoreApi(createStore({ catalog: generateCatalog(), rules: rules() }))
             ),
             base,
+            events: createMemoryEventStore(),
         });
         server.middlewares.use((request, response, next) => {
-            if (request.url !== undefined && isApiPath(request.url, base)) {
+            if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
                 void handle(request, response);
             } else {
                 next();
