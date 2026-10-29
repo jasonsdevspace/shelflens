@@ -124,30 +124,45 @@ export interface MemoryEventStoreOptions {
     readonly limit?: number;
 }
 
-/** Events kept in memory, for tests and for the Node server. */
+/**
+ * Events kept in memory, for tests and for the Node server. Oldest first
+ * by the event's own time, which is what the worker's store does too, so
+ * the two hosts keep the same events past the limit.
+ */
 export const createMemoryEventStore = ({
     limit = EVENT_LIMIT,
 }: MemoryEventStoreOptions = {}): EventStore => {
-    const events = new Map<string, StoreEvent>();
+    let events: StoreEvent[] = [];
+    const ids = new Set<string>();
     return {
         append: (batch) => {
             for (const event of batch) {
-                if (!events.has(event.id)) events.set(event.id, event);
+                if (ids.has(event.id)) continue;
+                ids.add(event.id);
+                events.push(event);
             }
-            // Insertion order is arrival order, so the first keys are the oldest.
-            for (const id of events.keys()) {
-                if (events.size <= limit) break;
-                events.delete(id);
+            events.sort((a, b) => a.at - b.at);
+            if (events.length > limit) {
+                for (const gone of events.slice(0, events.length - limit)) ids.delete(gone.id);
+                events = events.slice(events.length - limit);
             }
             return Promise.resolve();
         },
-        all: () => Promise.resolve([...events.values()].sort((a, b) => a.at - b.at)),
+        all: () => Promise.resolve(events.slice()),
     };
 };
 
 /** Whether a URL is for the events receiver: `events` under the host's base. */
 export const isEventsPath = (url: string, base = '/'): boolean =>
     new URL(url, 'http://local').pathname === `${base}events`;
+
+/** Which of the host's two paths a URL names, parsing it once, or nothing. */
+export const routeOf = (url: string, base = '/'): 'graphql' | 'events' | undefined => {
+    const { pathname } = new URL(url, 'http://local');
+    if (pathname === `${base}graphql`) return 'graphql';
+    if (pathname === `${base}events`) return 'events';
+    return undefined;
+};
 
 export interface EventsRequest {
     readonly method: string;
@@ -167,7 +182,8 @@ export interface Receipt {
  */
 export const receiveEvents = async (
     request: EventsRequest,
-    store: EventStore
+    store: EventStore,
+    now: () => number = Date.now
 ): Promise<Receipt> => {
     if (request.method !== 'POST') return { status: 405, message: 'events are posted' };
     if (request.header(GPC_HEADER) === '1') return { status: 204 };
@@ -179,6 +195,11 @@ export const receiveEvents = async (
     }
     const batch = parseEventBatch(parsed);
     if (!batch) return { status: 400, message: 'the batch is not a list of events' };
-    await store.append(batch);
+    // A page's clock decides what the store keeps past its limit, so a time
+    // ahead of the receiver's own is brought back to it.
+    const received = now();
+    await store.append(
+        batch.map((event) => (event.at > received ? { ...event, at: received } : event))
+    );
     return { status: 204 };
 };

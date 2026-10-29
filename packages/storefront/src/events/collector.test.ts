@@ -27,7 +27,6 @@ const collector = (over: Partial<Parameters<typeof createCollector>[0]> = {}) =>
         send,
         now: () => 1_700_000_000_000,
         id: () => `e${(n += 1)}`,
-        target: new EventTarget(),
         ...over,
     });
     return { ...made, send };
@@ -100,7 +99,8 @@ describe('the collector', () => {
 
     it('sends when the page is hidden or left, without waiting for the pause', async () => {
         const target = new EventTarget();
-        const { record, send } = collector({ target });
+        const { record, send, attach } = collector();
+        const detach = attach(target);
         await vi.advanceTimersByTimeAsync(0);
         record({ kind: 'view', sku: 'SL-00001' });
         vi.stubGlobal('document', { visibilityState: 'hidden' });
@@ -109,6 +109,21 @@ describe('the collector', () => {
         record({ kind: 'view', sku: 'SL-00002' });
         target.dispatchEvent(new Event('pagehide'));
         expect(send).toHaveBeenCalledTimes(2);
+        record({ kind: 'view', sku: 'SL-00003' });
+        detach();
+        expect(send).toHaveBeenCalledTimes(3);
+        record({ kind: 'view', sku: 'SL-00004' });
+        target.dispatchEvent(new Event('pagehide'));
+        expect(send).toHaveBeenCalledTimes(3);
+    });
+
+    it('drains a long queue batch by batch in one flush', async () => {
+        const { record, send } = collector();
+        for (let i = 0; i < 250; i += 1) record({ kind: 'view', sku: `SL-${i}` });
+        await vi.advanceTimersByTimeAsync(PAUSE_MS);
+        expect(send).toHaveBeenCalledTimes(2);
+        expect((sentBodies(send)[0] as unknown[]).length).toBe(100);
+        expect((sentBodies(send)[1] as unknown[]).length).toBe(100);
     });
 
     it('queues nothing, and so sends nothing, when the visitor is not to be tracked', async () => {
@@ -128,10 +143,11 @@ describe('the collector', () => {
 
     it('breaks nothing when the browser has no beacon', async () => {
         vi.stubGlobal('navigator', {});
-        const made = createCollector({ url: '/events', target: new EventTarget() });
+        const made = createCollector({ url: '/events' });
+        const detach = made.attach(new EventTarget());
         expect(() => made.record({ kind: 'search', phrase: 'jacket' })).not.toThrow();
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
-        expect(() => made.dispose()).not.toThrow();
+        expect(() => detach()).not.toThrow();
     });
 
     it('holds only so many events while they cannot be sent', async () => {

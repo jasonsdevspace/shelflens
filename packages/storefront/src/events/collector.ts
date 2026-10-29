@@ -15,6 +15,10 @@ import { BATCH_LIMIT, type EventKind, type StoreEvent } from '@shelflens/api';
  * Control nothing is queued at all, so there is nothing to send. When
  * `sendBeacon` is missing, everything queued stays queued, bounded, and
  * the page is none the worse.
+ *
+ * Making a collector does nothing to the page. The host attaches it to
+ * the window for as long as the host lives, so a host rendered twice, as
+ * React does in development, attaches once.
  */
 
 /** What the page records. The id and the time are added here. */
@@ -29,7 +33,13 @@ export interface Collector {
     readonly record: (event: Recorded) => void;
     /** Send what is queued now, if the host is ready and the browser takes it. */
     readonly flush: () => void;
-    readonly dispose: () => void;
+    /**
+     * Sends when the page is hidden or left. Returns what undoes it, which
+     * sends first, so a host can attach for as long as it lives.
+     */
+    readonly attach: (
+        target: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>
+    ) => () => void;
 }
 
 export interface CollectorOptions {
@@ -47,8 +57,6 @@ export interface CollectorOptions {
     readonly queueLimit?: number;
     readonly now?: () => number;
     readonly id?: () => string;
-    /** Where to hear that the page is going. */
-    readonly target?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'> | undefined;
 }
 
 export const PAUSE_MS = 2_000;
@@ -94,7 +102,6 @@ export const createCollector = ({
     queueLimit = QUEUE_LIMIT,
     now = Date.now,
     id = randomId,
-    target = typeof window === 'undefined' ? undefined : window,
 }: CollectorOptions): Collector => {
     let queue: StoreEvent[] = [];
     let armed = false;
@@ -105,9 +112,12 @@ export const createCollector = ({
             clearTimeout(timer);
             timer = undefined;
         }
-        if (!armed || queue.length === 0) return;
-        const batch = queue.slice(0, BATCH_LIMIT);
-        if (send(url, JSON.stringify(batch))) queue = queue.slice(batch.length);
+        // Batch by batch until the queue is empty or the browser declines one.
+        while (armed && queue.length > 0) {
+            const batch = queue.slice(0, BATCH_LIMIT);
+            if (!send(url, JSON.stringify(batch))) return;
+            queue = queue.slice(batch.length);
+        }
     };
 
     const onHidden = () => {
@@ -125,8 +135,6 @@ export const createCollector = ({
         },
         () => undefined
     );
-    target?.addEventListener('pagehide', flush);
-    target?.addEventListener('visibilitychange', onHidden);
 
     return {
         record: (event) => {
@@ -136,10 +144,14 @@ export const createCollector = ({
             schedule();
         },
         flush,
-        dispose: () => {
-            flush();
-            target?.removeEventListener('pagehide', flush);
-            target?.removeEventListener('visibilitychange', onHidden);
+        attach: (target) => {
+            target.addEventListener('pagehide', flush);
+            target.addEventListener('visibilitychange', onHidden);
+            return () => {
+                flush();
+                target.removeEventListener('pagehide', flush);
+                target.removeEventListener('visibilitychange', onHidden);
+            };
         },
     };
 };

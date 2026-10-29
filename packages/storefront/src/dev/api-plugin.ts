@@ -4,9 +4,8 @@ import {
     createMemoryEventStore,
     createStore,
     createStoreApi,
-    isApiPath,
-    isEventsPath,
     parseRulesFile,
+    routeOf,
     withResponseCache,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
@@ -42,10 +41,7 @@ export const storeApi = (): Plugin => ({
             events: createMemoryEventStore(),
         });
         server.middlewares.use((request, response, next) => {
-            if (
-                request.url !== undefined &&
-                (isApiPath(request.url, base) || isEventsPath(request.url, base))
-            ) {
+            if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
                 void handle(request, response);
             } else {
                 next();

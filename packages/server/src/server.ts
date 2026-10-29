@@ -126,6 +126,26 @@ export const createHandler = ({
     events,
 }: ServerOptions): RequestHandler => {
     const allow = createRateLimit(rateLimitPerMinute, now);
+    // Beacons have a budget of their own, per address, since they carry no group and
+    // must not bring a shopper's searches closer to the limit.
+    const allowEvents = createRateLimit(rateLimitPerMinute, now);
+
+    const tooMany = (response: ServerResponse, requestId: string) => {
+        response.setHeader('retry-after', '60');
+        refuse(response, 429, 'too many requests', requestId);
+    };
+
+    /** The body of a post, or nothing after refusing one that is too large. */
+    const bodyOf = async (
+        request: IncomingMessage,
+        response: ServerResponse,
+        requestId: string
+    ): Promise<{ body: string | undefined; refused: boolean }> => {
+        if (request.method !== 'POST') return { body: undefined, refused: false };
+        const body = await readBody(request);
+        if (body === undefined) refuse(response, 413, 'the request body is too large', requestId);
+        return { body, refused: body === undefined };
+    };
 
     const receive = async (
         request: IncomingMessage,
@@ -136,11 +156,12 @@ export const createHandler = ({
             refuse(response, 404, 'this store keeps no events', requestId);
             return;
         }
-        const body = request.method === 'POST' ? await readBody(request) : undefined;
-        if (request.method === 'POST' && body === undefined) {
-            refuse(response, 413, 'the request body is too large', requestId);
+        if (!allowEvents(request.socket.remoteAddress ?? 'unknown')) {
+            tooMany(response, requestId);
             return;
         }
+        const { body, refused } = await bodyOf(request, response, requestId);
+        if (refused) return;
         const receipt = await receiveEvents(
             {
                 method: request.method ?? 'GET',
@@ -164,31 +185,24 @@ export const createHandler = ({
             send(response, { status: 200, body: { status: 'ok' }, requestId });
             return;
         }
-        const viewer = viewerFromHeader(request.headers[GROUP_HEADER]?.toString());
-        const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
         if (isEventsPath(url, base)) {
-            if (allow(client)) await receive(request, response, requestId);
-            else refuse(response, 429, 'too many requests', requestId);
+            await receive(request, response, requestId);
             return;
         }
         if (!isApiPath(url, base)) {
             refuse(response, 404, 'not found', requestId);
             return;
         }
+
+        const viewer = viewerFromHeader(request.headers[GROUP_HEADER]?.toString());
+        const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
         if (!allow(client)) {
-            response.setHeader('retry-after', '60');
-            refuse(response, 429, 'too many requests', requestId);
+            tooMany(response, requestId);
             return;
         }
 
-        let body: string | undefined;
-        if (request.method === 'POST') {
-            body = await readBody(request);
-            if (body === undefined) {
-                refuse(response, 413, 'the request body is too large', requestId);
-                return;
-            }
-        }
+        const { body, refused } = await bodyOf(request, response, requestId);
+        if (refused) return;
         const resolved = resolveRequest(
             {
                 method: request.method ?? 'GET',

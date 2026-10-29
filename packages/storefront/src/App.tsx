@@ -25,8 +25,8 @@ import { Tour, TOUR_ID } from './tour/Tour.jsx';
 
 export interface AppProps {
     readonly apiUrl: string;
-    /** Where the shopper's events go. Beside the API unless told otherwise. */
-    readonly eventsUrl?: string | undefined;
+    /** Where the shopper's events go. */
+    readonly eventsUrl: string;
     /** Resolves once the API can answer, which on a first visit is after the worker claims the page. */
     readonly ready: Promise<void>;
 }
@@ -134,11 +134,7 @@ const Masthead = ({
     </>
 );
 
-export const App = ({
-    apiUrl,
-    eventsUrl = apiUrl.replace(/graphql$/, 'events'),
-    ready,
-}: AppProps) => {
+export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     // The product that just closed, by any route, so the results can put focus back on its card.
@@ -195,8 +191,15 @@ export const App = ({
     const info = useMemo(() => storeInfoOf(store.data), [store.data]);
 
     // What the shopper does, sent in batches once the store answers, and never awaited.
+    // Making the collector touches nothing, so the effect is what attaches it to the page.
     const collector = useMemo(() => createCollector({ url: eventsUrl, ready }), [eventsUrl, ready]);
-    useEffect(() => () => collector.dispose(), [collector]);
+    useEffect(() => collector.attach(window), [collector]);
+    // A search is the phrase changing, once, however the shopper then narrows, pages or
+    // opens a product under it.
+    const phrase = state.phrase;
+    useEffect(() => {
+        if (phrase) collector.record({ kind: 'search', phrase });
+    }, [collector, phrase]);
 
     return (
         <EventsProvider value={collector.record}>

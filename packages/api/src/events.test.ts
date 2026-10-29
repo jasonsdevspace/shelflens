@@ -8,6 +8,7 @@ import {
     isEventsPath,
     parseEventBatch,
     receiveEvents,
+    routeOf,
     type StoreEvent,
 } from './events.js';
 
@@ -94,7 +95,10 @@ describe('the memory store', () => {
         await store.append([event({ id: 'a', at: 3 }), event({ id: 'c', at: 2 })]);
         expect((await store.all()).map((e) => e.id)).toEqual(['b', 'c', 'a']);
         await store.append([event({ id: 'd', at: 4 })]);
-        expect((await store.all()).map((e) => e.id)).toEqual(['b', 'c', 'd']);
+        expect((await store.all()).map((e) => e.id)).toEqual(['c', 'a', 'd']);
+        // An id that went can come back, since nothing remembers it.
+        await store.append([event({ id: 'b', at: 9 })]);
+        expect((await store.all()).map((e) => e.id)).toEqual(['a', 'd', 'b']);
     });
 });
 
@@ -112,6 +116,19 @@ describe('the receiver', () => {
         await receiveEvents(post([event(), event({ id: 'e2' })]), store);
         await receiveEvents(post([event(), event({ id: 'e2' })]), store);
         expect(await kept(store)).toEqual(['e1', 'e2']);
+    });
+
+    it('brings a time ahead of its own back to when the batch arrived', async () => {
+        const store = createMemoryEventStore();
+        await receiveEvents(
+            post([event({ at: 5_000 }), event({ id: 'e2', at: 500 })]),
+            store,
+            () => 1_000
+        );
+        expect((await store.all()).map((e) => [e.id, e.at])).toEqual([
+            ['e2', 500],
+            ['e1', 1_000],
+        ]);
     });
 
     it('keeps nothing when the browser sends Global Privacy Control', async () => {
@@ -139,5 +156,10 @@ describe('the events path', () => {
         expect(isEventsPath('https://example.test/shelflens/events', '/shelflens/')).toBe(true);
         expect(isEventsPath('/graphql')).toBe(false);
         expect(isEventsPath('/events', '/shelflens/')).toBe(false);
+        expect(routeOf('/events')).toBe('events');
+        expect(routeOf('https://example.test/shelflens/graphql?op=x', '/shelflens/')).toBe(
+            'graphql'
+        );
+        expect(routeOf('/shelflens/catalog.json', '/shelflens/')).toBe(undefined);
     });
 });

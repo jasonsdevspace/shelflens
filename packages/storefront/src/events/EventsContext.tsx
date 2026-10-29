@@ -8,10 +8,10 @@ import type { Recorded } from './collector.js';
  * the void, so a component never has to ask whether events are on.
  */
 
-export type Record = (event: Recorded) => void;
+export type RecordEvent = (event: Recorded) => void;
 
-const EventsContext = createContext<Record>(() => undefined);
+const EventsContext = createContext<RecordEvent>(() => undefined);
 
 export const EventsProvider = EventsContext.Provider;
 
-export const useRecord = (): Record => useContext(EventsContext);
+export const useRecord = (): RecordEvent => useContext(EventsContext);

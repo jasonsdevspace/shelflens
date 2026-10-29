@@ -34,6 +34,7 @@ export {
     parseEventBatch,
     type Receipt,
     receiveEvents,
+    routeOf,
     type StoreEvent,
 } from './events.js';
 export {

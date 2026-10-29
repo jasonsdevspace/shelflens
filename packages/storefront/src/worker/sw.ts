@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { isApiPath, isEventsPath } from '@shelflens/api';
+import { routeOf } from '@shelflens/api';
 
 import { createIndexedDbEventStore } from './event-db.js';
 import { createWorkerApi, type StartedMessage } from './handle.js';
@@ -53,7 +53,6 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const base = new URL(self.registration.scope).pathname;
-    if (!isApiPath(request.url, base) && !isEventsPath(request.url, base)) return;
+    if (routeOf(request.url, new URL(self.registration.scope).pathname) === undefined) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

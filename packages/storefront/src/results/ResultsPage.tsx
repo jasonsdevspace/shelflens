@@ -137,12 +137,8 @@ export const ResultsPage = ({
     const narrow = useMediaQuery(NARROW);
     const result = data?.search;
     useReturnFocus(main, focusSku, !loading, onFocused);
-    // A search is the phrase, once, however the shopper then narrows or pages it.
     const record = useRecord();
     const phrase = state.phrase;
-    useEffect(() => {
-        if (phrase) record({ kind: 'search', phrase });
-    }, [record, phrase]);
     const announced = announcement(state, categories, result, loading);
 
     const status = <LiveStatus text={announced} />;
