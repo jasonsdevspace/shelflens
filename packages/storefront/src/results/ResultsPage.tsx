@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { StateLink } from '../app/StateLink.jsx';
@@ -70,27 +70,46 @@ const FacetColumn = ({
         <aside className="results-side">{children}</aside>
     );
 
-/** The heading, and the same words again for a screen reader once each change has landed. */
+/**
+ * The results heading again, for a screen reader. A live region announces
+ * what changes in it, not what it was created with, so the line is empty
+ * on its first render and filled a moment later, and it stays mounted
+ * through loading so each landed answer is a change.
+ */
+const LiveStatus = ({ text }: { readonly text: string }) => {
+    const [shown, setShown] = useState('');
+    useEffect(() => {
+        const timer = setTimeout(() => setShown(text), 0);
+        return () => clearTimeout(timer);
+    }, [text]);
+    return (
+        <p className="visually-hidden" role="status">
+            {shown}
+        </p>
+    );
+};
+
+/** What the status line says: the heading once an answer has landed, nothing while one is coming. */
+const announcement = (
+    state: SearchState,
+    categories: CategoryTree,
+    result: { readonly total: number } | undefined,
+    loading: boolean
+): string => (result && !loading ? headingFor(state, categories, result.total) : '');
+
 const ResultsHeading = ({
     id,
     text,
     corrected,
-    loading,
 }: {
     readonly id: string;
     readonly text: string;
     readonly corrected: boolean;
-    readonly loading: boolean;
 }) => (
-    <>
-        <h1 id={id} className="results-heading" tabIndex={-1}>
-            {text}
-            {corrected && <span className="results-note"> showing close matches</span>}
-        </h1>
-        <p className="visually-hidden" role="status">
-            {loading ? '' : text}
-        </p>
-    </>
+    <h1 id={id} className="results-heading" tabIndex={-1}>
+        {text}
+        {corrected && <span className="results-note"> showing close matches</span>}
+    </h1>
 );
 
 export const ResultsPage = ({
@@ -109,16 +128,28 @@ export const ResultsPage = ({
     });
     const narrow = useMediaQuery(NARROW);
     const result = data?.search;
-    useReturnFocus(main, focusSku, !loading && result !== undefined, onFocused);
+    useReturnFocus(main, focusSku, !loading, onFocused);
+    const announced = announcement(state, categories, result, loading);
 
+    const status = <LiveStatus text={announced} />;
     if (error) {
         return (
-            <p className="notice" role="alert">
-                {error}
-            </p>
+            <>
+                {status}
+                <p className="notice" role="alert">
+                    {error}
+                </p>
+            </>
         );
     }
-    if (!result) return <p className="notice">Loading products.</p>;
+    if (!result) {
+        return (
+            <>
+                {status}
+                <p className="notice">Loading products.</p>
+            </>
+        );
+    }
 
     const crumbs = ancestry(categories, state.category);
     const { category: _current, ...allProducts } = { ...state, page: 1 };
@@ -133,105 +164,122 @@ export const ResultsPage = ({
     );
 
     return (
-        <div
-            className={`results-layout${loading ? ' is-loading' : ''}${facetless ? ' is-empty' : ''}`}
-            aria-busy={loading}
-        >
-            {!facetless && (
-                <FacetColumn narrow={narrow} active={activeFilterCount(state)} total={result.total}>
-                    {facets}
-                </FacetColumn>
-            )}
-            <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
-                {crumbs.length > 0 && (
-                    <nav className="crumbs" aria-label="Category">
-                        <ol className="crumb-list">
-                            <li>
-                                <StateLink to={allProducts} navigate={navigate}>
-                                    All products
-                                </StateLink>
-                            </li>
-                            {crumbs.map((crumb) => (
-                                <li key={crumb.id}>
-                                    <StateLink
-                                        to={{ ...state, category: crumb.id, page: 1 }}
-                                        navigate={navigate}
-                                        current={crumb.id === state.category}
-                                    >
-                                        {crumb.name}
+        <>
+            {status}
+            <div
+                className={`results-layout${loading ? ' is-loading' : ''}${facetless ? ' is-empty' : ''}`}
+                aria-busy={loading}
+            >
+                {!facetless && (
+                    <FacetColumn
+                        narrow={narrow}
+                        active={activeFilterCount(state)}
+                        total={result.total}
+                    >
+                        {facets}
+                    </FacetColumn>
+                )}
+                <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
+                    {crumbs.length > 0 && (
+                        <nav className="crumbs" aria-label="Category">
+                            <ol className="crumb-list">
+                                <li>
+                                    <StateLink to={allProducts} navigate={navigate}>
+                                        All products
                                     </StateLink>
                                 </li>
-                            ))}
-                        </ol>
-                    </nav>
-                )}
-                <div className="results-toolbar">
-                    <ResultsHeading
-                        id={`${id}-heading`}
-                        text={headingFor(state, categories, result.total)}
-                        corrected={result.matching === 'CORRECTED'}
-                        loading={loading}
-                    />
-                    <button
-                        type="button"
-                        className="explain-toggle"
-                        aria-pressed={state.explain ?? false}
-                        onClick={() => navigate({ ...state, explain: !state.explain })}
-                    >
-                        Explain ranking
-                    </button>
-                    <label className="sort">
-                        <span className="sort-label">Sort by</span>
-                        <select
-                            className="sort-select"
-                            value={sortKey}
-                            onChange={(event) =>
-                                navigate({ ...state, sort: event.target.value as SortKey, page: 1 })
-                            }
+                                {crumbs.map((crumb) => (
+                                    <li key={crumb.id}>
+                                        <StateLink
+                                            to={{ ...state, category: crumb.id, page: 1 }}
+                                            navigate={navigate}
+                                            current={crumb.id === state.category}
+                                        >
+                                            {crumb.name}
+                                        </StateLink>
+                                    </li>
+                                ))}
+                            </ol>
+                        </nav>
+                    )}
+                    <div className="results-toolbar">
+                        <ResultsHeading
+                            id={`${id}-heading`}
+                            text={headingFor(state, categories, result.total)}
+                            corrected={result.matching === 'CORRECTED'}
+                        />
+                        <button
+                            type="button"
+                            className="explain-toggle"
+                            aria-pressed={state.explain ?? false}
+                            onClick={() => navigate({ ...state, explain: !state.explain })}
                         >
-                            {SORT_KEYS.map((key) => (
-                                <option key={key} value={key}>
-                                    {SORTS[key].label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                </div>
-                {setAside.length > 0 && (
-                    <p className="results-aside" role="status">
-                        Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the merchandising:{' '}
-                        {setAside.join(', ')}. Pins and boosts apply under relevance only.
-                    </p>
-                )}
-                {empty ? (
-                    <NoResults state={state} navigate={navigate} offered={result.noResults} />
-                ) : (
-                    <ul className="cards" aria-label="Products">
-                        {result.items.map((hit, index) => (
-                            <ProductCard
-                                key={hit.product.sku}
-                                product={hit.product}
-                                href={serializeSearchState({ ...state, product: hit.product.sku })}
-                                onOpen={() => navigate({ ...state, product: hit.product.sku })}
-                                explain={
-                                    state.explain
-                                        ? {
-                                              rank: (result.page - 1) * result.pageSize + index + 1,
-                                              hit,
-                                              phrase: state.phrase !== undefined,
-                                          }
-                                        : undefined
+                            Explain ranking
+                        </button>
+                        <label className="sort">
+                            <span className="sort-label">Sort by</span>
+                            <select
+                                className="sort-select"
+                                value={sortKey}
+                                onChange={(event) =>
+                                    navigate({
+                                        ...state,
+                                        sort: event.target.value as SortKey,
+                                        page: 1,
+                                    })
                                 }
-                            />
-                        ))}
-                    </ul>
-                )}
-                <Pagination
-                    page={result.page}
-                    totalPages={result.totalPages}
-                    onPage={(page) => navigate({ ...state, page })}
-                />
-            </section>
-        </div>
+                            >
+                                {SORT_KEYS.map((key) => (
+                                    <option key={key} value={key}>
+                                        {SORTS[key].label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+                    {setAside.length > 0 && (
+                        <p className="results-aside" role="status">
+                            Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the
+                            merchandising: {setAside.join(', ')}. Pins and boosts apply under
+                            relevance only.
+                        </p>
+                    )}
+                    {empty ? (
+                        <NoResults state={state} navigate={navigate} offered={result.noResults} />
+                    ) : (
+                        <ul className="cards" aria-label="Products">
+                            {result.items.map((hit, index) => (
+                                <ProductCard
+                                    key={hit.product.sku}
+                                    product={hit.product}
+                                    href={serializeSearchState({
+                                        ...state,
+                                        product: hit.product.sku,
+                                    })}
+                                    onOpen={() => navigate({ ...state, product: hit.product.sku })}
+                                    explain={
+                                        state.explain
+                                            ? {
+                                                  rank:
+                                                      (result.page - 1) * result.pageSize +
+                                                      index +
+                                                      1,
+                                                  hit,
+                                                  phrase: state.phrase !== undefined,
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            ))}
+                        </ul>
+                    )}
+                    <Pagination
+                        page={result.page}
+                        totalPages={result.totalPages}
+                        onPage={(page) => navigate({ ...state, page })}
+                    />
+                </section>
+            </div>
+        </>
     );
 };

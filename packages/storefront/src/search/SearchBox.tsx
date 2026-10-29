@@ -109,11 +109,11 @@ export const SearchBox = ({
                 submit();
                 break;
             case 'Escape':
-                if (expanded) {
-                    event.preventDefault();
-                    setOpen(false);
-                    setActive(-1);
-                }
+                // Always handled here: a search field would otherwise clear itself on
+                // Escape, wiping the phrase the visitor just searched for.
+                event.preventDefault();
+                setOpen(false);
+                setActive(-1);
                 break;
             default:
                 break;
@@ -121,12 +121,14 @@ export const SearchBox = ({
     };
 
     // Announced only while the popover is open, so a landed search is not talked over
-    // by a suggestion count the visitor did not ask for.
-    const status = !expanded
-        ? ''
-        : loading && options.length === 0
-          ? 'Searching'
-          : (error ?? `${options.length} suggestions`);
+    // by a suggestion count the visitor did not ask for. While it is open, a count of
+    // none and an error are news too.
+    const status =
+        !open || !isAskable(phrase)
+            ? ''
+            : loading && options.length === 0
+              ? 'Searching'
+              : (error ?? `${options.length} suggestions`);
 
     return (
         <div className="searchbox">

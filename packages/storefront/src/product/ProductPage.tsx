@@ -26,13 +26,14 @@ export interface ProductPageProps {
 export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) => {
     const { data, loading, error } = useQuery(client, ProductDocument, { sku });
     const { locale } = useStoreInfo();
-    // A new view: focus lands on its heading, so a keyboard or screen reader user
-    // starts where the page starts rather than on the body.
+    // A new view: focus lands on its heading, or on the notice when there is no
+    // product, so a keyboard or screen reader user starts where the page starts
+    // rather than on the body. Again after every load, since loading unmounts both.
     const heading = useRef<HTMLHeadingElement>(null);
-    const shown = data?.product?.sku;
+    const missing = useRef<HTMLElement>(null);
     useEffect(() => {
-        if (shown !== undefined) heading.current?.focus();
-    }, [shown]);
+        if (!loading) (heading.current ?? missing.current)?.focus();
+    }, [loading, data]);
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);
@@ -49,7 +50,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
     const { product } = data;
     if (!product) {
         return (
-            <section className="product">
+            <section className="product" ref={missing} tabIndex={-1}>
                 <p className="notice" role="alert">
                     There is no product {sku} in this store.
                 </p>

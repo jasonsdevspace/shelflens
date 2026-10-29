@@ -220,7 +220,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                     takeFocus={tourAsked}
                 />
             )}
-            <main className="content">
+            <main className={`content${touring ? ' has-tour' : ''}`}>
                 <Standby readiness={readiness} />
                 {isReady && state.product !== undefined && (
                     <ProductPage

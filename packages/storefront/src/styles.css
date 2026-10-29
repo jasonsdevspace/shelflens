@@ -127,7 +127,9 @@ body {
 }
 
 /* Read by a screen reader, taking no room on the screen. */
-.visually-hidden {
+.visually-hidden,
+.searchbox-label,
+.searchbox-status {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -147,17 +149,9 @@ body {
     max-width: 36rem;
 }
 
-.searchbox-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-}
-
 .searchbox-input {
     width: 100%;
+    appearance: none;
     font: inherit;
     font-size: 1rem;
     padding: 0.6rem 0.8rem;
@@ -170,15 +164,6 @@ body {
 .searchbox-input:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
-}
-
-.searchbox-status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
 }
 
 .searchbox-popover {
@@ -845,7 +830,7 @@ body {
     }
 
     /* The last cards and the pagination can still scroll above the tour. */
-    body:has(.tour) .content {
+    .content.has-tour {
         padding-bottom: calc(50dvh + 1rem);
     }
 

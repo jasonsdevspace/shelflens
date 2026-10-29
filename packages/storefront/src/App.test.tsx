@@ -242,12 +242,12 @@ describe('keeping its place', () => {
     it('announces the results once they land, after a search and after a filter', async () => {
         const user = await open('?q=jacket');
         await settled();
-        expect(announced()).toContain(heading().textContent);
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
         const [brand] = within(facet('Brand')).getAllByRole('checkbox');
         if (!brand) throw new Error('expected a brand');
         await user.click(brand);
         await settled();
-        expect(announced()).toContain(heading().textContent);
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
     });
 
     it('keeps focus in the search box after Enter, and says nothing about suggestions', async () => {
