@@ -105,7 +105,14 @@ test('a member sees the product guests cannot, and pays less, from the same page
     await expect(page.getByRole('alert')).toContainText('There is no product');
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(membersOnly.name);
+    await expect(page.getByText('Members only')).toBeVisible();
     await audit(page);
+
+    await page.goto('/?q=jacket');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
+    await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
+    await expect(page.getByText(/Shopping as a member/)).toBeVisible();
+    await expect(page.locator('.card-member').first()).toHaveText('Member price');
 
     await page.goto(`/?product=${discounted.sku}`);
     const price = page.locator('.product-price');
@@ -113,6 +120,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     const asGuest = amount(await price.textContent());
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
+    await expect(page.locator('.product-member')).toHaveText('Member price');
 });
 
 test('answers travel as named operations the browser may keep', async ({ page }) => {

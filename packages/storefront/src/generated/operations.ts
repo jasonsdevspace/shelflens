@@ -120,9 +120,11 @@ export type ProductQuery = {
         readonly colors: ReadonlyArray<string>;
         readonly sizes: ReadonlyArray<string>;
         readonly inStock: boolean;
+        readonly membersOnly: boolean;
         readonly brand: { readonly name: string };
         readonly categoryPath: ReadonlyArray<{ readonly id: string; readonly name: string }>;
         readonly price: {
+            readonly memberPrice: boolean;
             readonly min: { readonly amount: number; readonly currency: string };
             readonly max: { readonly amount: number; readonly currency: string };
         };
@@ -141,9 +143,11 @@ export type CardFragment = {
     readonly sku: string;
     readonly name: string;
     readonly colors: ReadonlyArray<string>;
+    readonly membersOnly: boolean;
     readonly inStock: boolean;
     readonly brand: { readonly name: string };
     readonly price: {
+        readonly memberPrice: boolean;
         readonly min: { readonly amount: number; readonly currency: string };
         readonly max: { readonly amount: number; readonly currency: string };
     };
@@ -186,9 +190,11 @@ export type SearchQuery = {
                 readonly sku: string;
                 readonly name: string;
                 readonly colors: ReadonlyArray<string>;
+                readonly membersOnly: boolean;
                 readonly inStock: boolean;
                 readonly brand: { readonly name: string };
                 readonly price: {
+                    readonly memberPrice: boolean;
                     readonly min: { readonly amount: number; readonly currency: string };
                     readonly max: { readonly amount: number; readonly currency: string };
                 };
@@ -208,9 +214,11 @@ export type SearchQuery = {
                             readonly sku: string;
                             readonly name: string;
                             readonly colors: ReadonlyArray<string>;
+                            readonly membersOnly: boolean;
                             readonly inStock: boolean;
                             readonly brand: { readonly name: string };
                             readonly price: {
+                                readonly memberPrice: boolean;
                                 readonly min: {
                                     readonly amount: number;
                                     readonly currency: string;
@@ -232,9 +240,11 @@ export type SearchQuery = {
                 readonly sku: string;
                 readonly name: string;
                 readonly colors: ReadonlyArray<string>;
+                readonly membersOnly: boolean;
                 readonly inStock: boolean;
                 readonly brand: { readonly name: string };
                 readonly price: {
+                    readonly memberPrice: boolean;
                     readonly min: { readonly amount: number; readonly currency: string };
                     readonly max: { readonly amount: number; readonly currency: string };
                 };
@@ -332,7 +342,9 @@ export const CardFragmentDoc = new TypedDocumentString(
   brand {
     name
   }
+  membersOnly
   price {
+    memberPrice
     min {
       amount
       currency
@@ -381,7 +393,9 @@ export const ProductDocument = new TypedDocumentString(
       id
       name
     }
+    membersOnly
     price {
+      memberPrice
       min {
         amount
         currency
@@ -408,7 +422,7 @@ export const ProductDocument = new TypedDocumentString(
   }
 }
     `,
-    { hash: 'e114771ac0930e0456c5aa1f17b1a8981e24d8006db7c6006ef81f048b9ccfca' }
+    { hash: 'ad1f2602a0218504d86ebd70506c6431131da90fc42706b534e6edad855b44bc' }
 ) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
 export const SearchDocument = new TypedDocumentString(
     `
@@ -496,7 +510,9 @@ export const SearchDocument = new TypedDocumentString(
   brand {
     name
   }
+  membersOnly
   price {
+    memberPrice
     min {
       amount
       currency
@@ -512,7 +528,7 @@ export const SearchDocument = new TypedDocumentString(
   }
   inStock
 }`,
-    { hash: '0bebbc779d4867b18ee013a7eefb37bf56cf6bdee71d8b03412d6edbd0dda16f' }
+    { hash: 'f58a72c40c1a54b8f1da8a4359af95ba3c7b80b78ccc3a3eaed5a57ae00d656d' }
 ) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString(
     `

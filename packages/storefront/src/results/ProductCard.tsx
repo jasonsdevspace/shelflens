@@ -57,6 +57,7 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
                 Result {rank}
                 {hit.score !== undefined && `, score ${hit.score.toFixed(2)}`}
             </li>
+            {hit.product.membersOnly && <li>Shown to members only</li>}
             {rules.map((effect, index) => (
                 <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
             ))}
@@ -92,6 +93,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     <span className="card-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </span>
+                    {product.price.memberPrice && <span className="card-member">Member price</span>}
                     {product.rating && (
                         <span className="card-rating">
                             {product.rating.average.toFixed(1)} from {product.rating.count} ratings

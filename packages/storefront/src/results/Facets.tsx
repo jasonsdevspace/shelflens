@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
@@ -102,16 +104,27 @@ const CategoryFacet = ({
     );
 };
 
+/** How many of a list show before the rest are a click away. */
+const SHOWN = 6;
+
 const ListFacet = ({
     facet,
     name,
     state,
     onChange,
 }: FacetsProps & { readonly facet: Facet; readonly name: ListName }) => {
+    const [all, setAll] = useState(false);
     if (!('buckets' in facet) || facet.buckets.length === 0) return null;
+    // The first few, plus anything ticked further down, so a choice is never out of sight.
+    const buckets = all
+        ? facet.buckets
+        : facet.buckets.filter(
+              (bucket, index) => index < SHOWN || state[name].includes(bucket.value)
+          );
+    const title = TITLES[name] ?? name;
     return (
-        <Group title={TITLES[name] ?? name}>
-            {facet.buckets.map((bucket) => (
+        <Group title={title}>
+            {buckets.map((bucket) => (
                 <label key={bucket.value} className="facet-option">
                     <input
                         type="checkbox"
@@ -130,6 +143,18 @@ const ListFacet = ({
                     <span className="facet-count">{bucket.count}</span>
                 </label>
             ))}
+            {facet.buckets.length > SHOWN && (
+                <button
+                    type="button"
+                    className="facet-more"
+                    aria-expanded={all}
+                    onClick={() => setAll(!all)}
+                >
+                    {all
+                        ? 'Show fewer'
+                        : `Show all ${facet.buckets.length} ${title.toLowerCase()}s`}
+                </button>
+            )}
         </Group>
     );
 };

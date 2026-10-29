@@ -460,6 +460,14 @@ body {
     align-items: start;
 }
 
+/* The column keeps up with the results and scrolls on its own when it is taller than the screen. */
+.results-side {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+}
+
 /* Nothing found: no facets to show, so the results take the whole width. */
 .results-layout.is-empty {
     grid-template-columns: 1fr;
@@ -473,6 +481,23 @@ body {
 .facets {
     display: grid;
     gap: 1rem;
+}
+
+/* The rest of a long list, a click away, in the same voice as the clear button. */
+.facet-more {
+    justify-self: start;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--accent);
+    background: none;
+    border: none;
+    padding: 0.25rem 0;
+    cursor: pointer;
+}
+
+.facet-more:hover,
+.facet-more:focus-visible {
+    text-decoration: underline;
 }
 
 .facets-clear {
@@ -664,6 +689,17 @@ body {
     color: var(--warn);
 }
 
+/* What the viewer switch changed, on the card and the product: the difference, not the membership. */
+.card-member,
+.product-member {
+    font-size: 0.85rem;
+    color: var(--accent);
+}
+
+.product-member {
+    margin: 0.25rem 0 0;
+}
+
 .card-explain {
     margin: 0;
     padding: 0.5rem 0.75rem 0.75rem;
@@ -837,6 +873,17 @@ body {
     .results-layout {
         grid-template-columns: 1fr;
         gap: 1rem;
+    }
+
+    /* Brand, viewer and tour on one row, the search box on a row of its own below. */
+    .searchbox {
+        order: 1;
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .category-nav {
+        order: 2;
     }
 }
 

@@ -238,6 +238,7 @@ export const App = ({ apiUrl, ready }: AppProps) => {
                         categories={tree}
                         focusSku={closedSku}
                         onFocused={focused}
+                        group={group}
                     />
                 )}
             </main>
