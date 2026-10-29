@@ -37,9 +37,9 @@ stops with the test behind each.
 4. [Tick a brand under "jacket".](https://jasonsdevspace.com/shelflens/?q=jacket) The other
    brands keep their counts, because a facet counts past its own filter. Everything you did is in
    the address bar, so copy it, share it, or press back.
-5. [Search "zzqx jacket".](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket) Nothing matched,
-   and the page shows the results of "jacket" instead, offers a spelling when a word is two typos
-   off, and falls back to the most rated products.
+5. [Search "zzqx jacket".](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket) There are no
+   results, so the page shows the results of "jacket" instead, offers a spelling when a word is
+   two typos off, and falls back to the most rated products.
 
 ## The gotchas, and the test behind each
 

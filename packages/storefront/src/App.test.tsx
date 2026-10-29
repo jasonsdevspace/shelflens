@@ -387,6 +387,15 @@ describe('when nothing matches', () => {
         expect(cards().length).toBeGreaterThan(0);
     });
 
+    it('keeps the facets when a filter is what found nothing, so it can be unticked', async () => {
+        await open('?q=zzqx jacket&brand=Ridgeback');
+        await settled();
+        expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
+        expect(screen.getByText(/Nothing matched "zzqx jacket" with these filters/)).toBeVisible();
+        // The facets stay, behind the Filters button here, so the filter can be unticked.
+        expect(screen.getByRole('button', { name: /Filters/ })).toBeInTheDocument();
+    });
+
     it('never offers to leave the category being browsed', async () => {
         await open('?q=jacket&category=shoes');
         await settled();

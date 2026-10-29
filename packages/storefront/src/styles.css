@@ -7,7 +7,7 @@
     --accent: #1f4fd8;
     --on-accent: #ffffff;
     --highlight: #eef2fd;
-    /* Borders on controls a visitor types into or opens, darker than the lines between things. */
+    /* Borders on the fields a visitor types into or picks from, darker than the lines between things. */
     --control: #8a8a8a;
     --warn: #b7472a;
     color-scheme: light;

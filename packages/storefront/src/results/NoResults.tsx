@@ -47,9 +47,16 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
     const relaxed = offered?.relaxed;
     return (
         <section className="no-results">
-            {/* The heading already says nothing was found. The filters are the news. */}
-            {hasFilters(state) && (
-                <p className="notice">Nothing matched{phrase} with these filters.</p>
+            {/*
+             * With a phrase, the heading has already said nothing was found, so the
+             * line is only worth a sentence when the filters are the news. Without a
+             * phrase the heading is the category's name, and this is the only sentence.
+             */}
+            {(hasFilters(state) || state.phrase === undefined) && (
+                <p className="notice">
+                    Nothing matched{phrase}
+                    {hasFilters(state) && ' with these filters'}.
+                </p>
             )}
             {offered?.suggestion && (
                 <p className="no-results-offer">
