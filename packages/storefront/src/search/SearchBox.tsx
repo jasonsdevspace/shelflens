@@ -225,8 +225,10 @@ const placeUnder = (box: HTMLElement, field: HTMLElement) => {
     const below = window.innerHeight - rect.bottom - GAP_PX - EDGE_PX;
     const above = rect.top - GAP_PX - EDGE_PX;
     const flipped = below < ROOM_PX && above > below;
-    const width = Math.min(rect.width, window.innerWidth - 2 * EDGE_PX);
-    const left = Math.min(Math.max(EDGE_PX, rect.left), window.innerWidth - EDGE_PX - width);
+    // The viewport's width without a scrollbar, so the list never sits under one.
+    const viewport = document.documentElement.clientWidth;
+    const width = Math.min(rect.width, viewport - 2 * EDGE_PX);
+    const left = Math.min(Math.max(EDGE_PX, rect.left), viewport - EDGE_PX - width);
     box.style.setProperty('left', `${left}px`);
     box.style.setProperty('width', `${width}px`);
     box.style.setProperty('top', flipped ? 'auto' : `${rect.bottom + GAP_PX}px`);
@@ -259,17 +261,21 @@ const usePlacedPopover = (
             return;
         }
         const place = () => placeUnder(box, field);
+        // The list's own scrolling is the one scroll that cannot move the box.
+        const scrolled = (event: Event) => {
+            if (!(event.target instanceof Node && box.contains(event.target))) place();
+        };
         place();
         box.togglePopover(true);
         // The box moves with a scroll, a resize, and any layout the page or the host
         // shifts under it, such as an image or a font landing late.
-        window.addEventListener('scroll', place, true);
+        window.addEventListener('scroll', scrolled, true);
         window.addEventListener('resize', place);
         const watched = new ResizeObserver(place);
         watched.observe(field);
         watched.observe(document.body);
         return () => {
-            window.removeEventListener('scroll', place, true);
+            window.removeEventListener('scroll', scrolled, true);
             window.removeEventListener('resize', place);
             watched.disconnect();
         };

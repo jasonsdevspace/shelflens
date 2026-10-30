@@ -57,11 +57,22 @@ const Widget = ({ apiUrl, storeUrl, group, onSearch, onPick, placeholder }: Moun
     );
 };
 
+const CSS = `${frame}\n${searchbox}`;
+
+/** One constructed sheet, parsed once and shared by every widget on the page, where the browser has them. */
+let shared: CSSStyleSheet | undefined;
+const sharedSheet = (): CSSStyleSheet => {
+    if (!shared) {
+        shared = new CSSStyleSheet();
+        shared.replaceSync(CSS);
+    }
+    return shared;
+};
+
 /** Gives the shadow root its sheet, as a constructed sheet where the browser has them, and answers with the way to take it off. */
 const dress = (shadow: ShadowRoot, css: string): (() => void) => {
     if ('adoptedStyleSheets' in shadow && 'replaceSync' in CSSStyleSheet.prototype) {
-        const sheet = new CSSStyleSheet();
-        sheet.replaceSync(css);
+        const sheet = sharedSheet();
         shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
         return () => {
             shadow.adoptedStyleSheets = shadow.adoptedStyleSheets.filter((kept) => kept !== sheet);
@@ -83,7 +94,7 @@ export const mountShelfLens = (element: HTMLElement, options: MountOptions): (()
     // and put back on the way out, so the element is the host's again.
     const wasDisplayed = element.style.getPropertyValue('display');
     element.style.setProperty('display', 'block');
-    const undress = dress(shadow, `${frame}\n${searchbox}`);
+    const undress = dress(shadow, CSS);
     const container = document.createElement('div');
     container.className = 'shelflens';
     shadow.append(container);

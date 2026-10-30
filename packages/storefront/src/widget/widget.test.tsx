@@ -78,7 +78,10 @@ describe('the widget', () => {
         document.body.append(host);
         const assign = vi.fn();
         vi.stubGlobal('location', { ...window.location, assign });
-        mountShelfLens(host, { apiUrl: 'http://store.test/graphql', storeUrl: '/store/' });
+        const unmount = mountShelfLens(host, {
+            apiUrl: 'http://store.test/graphql',
+            storeUrl: '/store/',
+        });
         const inside = host.shadowRoot?.querySelector('.shelflens');
         if (!(inside instanceof HTMLElement))
             throw new Error('expected the widget in a shadow root');
@@ -87,5 +90,6 @@ describe('the widget', () => {
         fireEvent.change(box, { target: { value: 'rain jacket' } });
         fireEvent.keyDown(box, { key: 'Enter' });
         expect(assign).toHaveBeenCalledWith('http://localhost:3000/store/?q=rain+jacket');
+        unmount();
     });
 });

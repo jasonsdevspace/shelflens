@@ -36,7 +36,7 @@ demo's host page carries both to show it. An iframe isolates more than this and 
 less: the popover cannot extend past the frame's box, a pick has to reach the top window by a
 message, and every question the brief asks a record about stops being a question. What a
 shadow root does not stop is inheritance, so the widget's container pins the font, the color,
-the line height and the letter spacing, and takes its colors from the one standard property a host sets to theme it, `color-scheme`, through `light-dark()`, with the light value first for a browser that does not know it. The store's own theme script sets
+the line height and the letter spacing, and takes its colors from the one standard property a host sets to theme it, `color-scheme`, through `light-dark()`, with the light values alone for a browser that does not know it. The store's own theme script sets
 that property, so on the demo's host page the widget switches with the portfolio and the store.
 Layout and the stacking context sit on that inner container rather than on `:host`, where a host
 rule on the element would win, and the element is given `display: block` as an inline style at mount, which only an `!important` could beat.
@@ -56,7 +56,7 @@ box and as wide as it, which no host can promise to keep in view.
 
 **A React of its own.** The widget's file carries React and nothing in it reads or sets a global
 the host's React depends on, so any version on the host is left alone, and a host built on React
-mounts the widget from an effect and calls the returned function from the cleanup. That costs the widget's size: React is nine tenths of the file, which ships minified at 77 KB compressed, as an ordinary build with one entry rather than library mode, which leaves whitespace in an ES file. A lighter runtime with React's shape would take most of that out, and does carry the hooks the box uses. It was not taken because the repo then has two frameworks and two
+mounts the widget from an effect and calls the returned function from the cleanup. That costs the widget's size: React is nine tenths of the file, which ships minified at 76 KB compressed, the figure the bundle test records, as an ordinary build with one entry rather than library mode, which leaves whitespace in an ES file. A lighter runtime with React's shape would take most of that out, and does carry the hooks the box uses. It was not taken because the repo then has two frameworks and two
 sets of behavior to test, and one search box has to look the same in both. The record says what
 that choice costs so it can be revisited.
 

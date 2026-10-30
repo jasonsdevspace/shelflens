@@ -51,12 +51,15 @@ Promise.all([ready, widget()])
         mountShelfLens(target, { apiUrl: `${base}graphql`, storeUrl: base });
     })
     .catch((failure: unknown) => {
-        // A browser without a service worker, or a file that did not arrive: said in place.
+        // A browser without a service worker, or a file that did not arrive: said in place,
+        // and the reason told apart, since one is the browser's and the other the page's.
         const notice = document.createElement('p');
         notice.className = 'notice';
         notice.setAttribute('role', 'alert');
-        notice.textContent =
-            'The search box could not start in this browser. It needs a service worker.';
+        const noWorker = failure instanceof Error && failure.message.includes('service worker');
+        notice.textContent = noWorker
+            ? 'The search box could not start in this browser. It needs a service worker.'
+            : 'The search box could not be loaded on this page. Reload the page and try again.';
         target.replaceChildren(notice);
         console.error(failure);
     });
