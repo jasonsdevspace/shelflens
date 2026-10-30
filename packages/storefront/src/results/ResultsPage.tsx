@@ -65,7 +65,7 @@ export interface ResultsPageProps {
     /** Where the merchandiser's rules are read and saved. */
     readonly rulesUrl: string;
     /** The store was built again under a new version, so everything remembered is stale. */
-    readonly onStoreChanged: () => number | undefined;
+    readonly onStoreChanged: () => number;
     /** Counts the times the store was built again, so the panel can read its rules anew. */
     readonly storeRevision: number;
 }
