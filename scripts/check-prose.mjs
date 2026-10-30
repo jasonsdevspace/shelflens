@@ -97,11 +97,11 @@ const proseOf = (source) =>
 /** The text of an HTML page, with its scripts and its tags removed, line by line. */
 const textOf = (source) =>
     source
-        .replace(/<script[\s\S]*?<\/script>/g, (block) => block.replace(/[^\n]/g, ''))
+        .replace(/<script[\s\S]*?<\/script>/gi, (block) => block.replace(/[^\n]/g, ''))
         .split('\n')
         .map((line, index) => ({
             index,
-            text: line.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ''),
+            text: line.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ''),
         }));
 
 const failures = [];
