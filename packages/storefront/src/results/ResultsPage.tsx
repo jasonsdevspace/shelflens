@@ -495,7 +495,6 @@ export const ResultsPage = (props: ResultsPageProps) => {
                 editor={editor}
                 phrase={state.phrase}
                 applied={applied}
-                rulesUrl={props.rulesUrl}
                 products={result.items.map((hit) => ({
                     sku: hit.product.sku,
                     name: hit.product.name,

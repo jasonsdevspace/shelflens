@@ -41,8 +41,6 @@ export interface RulesPanelProps {
      * its sort, or nothing until the store has answered once.
      */
     readonly applied: readonly string[] | undefined;
-    /** Where the rules are read and saved. */
-    readonly rulesUrl: string;
     /** The products on the results page, which a rule can name. */
     readonly products: readonly Named[];
     /** The brands on the results page, which a boost or a bury can name. */
@@ -65,6 +63,8 @@ export interface RulesEditorOptions {
 
 /** What the panel holds and does, kept by the page across the panel being drawn anew. */
 export interface RulesEditor {
+    /** Where the rules are read and saved. */
+    readonly rulesUrl: string;
     readonly rules: readonly Rule[];
     readonly edited: boolean;
     readonly editable: boolean;
@@ -163,8 +163,13 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
         ticket.current = mine;
         void read(rulesUrl).then((next) => {
             if (mine !== ticket.current) return;
-            if (next) setLoaded({ ...next, revision: storeRevision });
-            else setFailedFor(storeRevision);
+            if (next) {
+                setLoaded({ ...next, revision: storeRevision });
+                // A read that failed at this revision is made good by this one.
+                setFailedFor(undefined);
+            } else {
+                setFailedFor(storeRevision);
+            }
         });
         return () => {
             ticket.current += 1;
@@ -325,8 +330,14 @@ export const useRulesEditor = ({
             setForm(undefined);
             setTried(false);
             setDraft(undefined);
+            setMessage('');
         }
     }
+    // Whether the panel is open now, for a request that lands after it closed.
+    const isOpen = useRef(enabled);
+    useEffect(() => {
+        isOpen.current = enabled;
+    }, [enabled]);
 
     const rules = loaded?.rules ?? [];
     const editable = loaded !== undefined && current && !failed;
@@ -362,7 +373,8 @@ export const useRulesEditor = ({
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
     const changed = (said: string): number => {
         const revision = onStoreChanged();
-        setMessage(said);
+        // Said only while the panel is open: a save that lands after it closed is not news on the next open.
+        if (isOpen.current) setMessage(said);
         close();
         return revision;
     };
@@ -422,6 +434,7 @@ export const useRulesEditor = ({
     };
 
     return {
+        rulesUrl,
         rules,
         edited: loaded?.edited ?? false,
         editable,
@@ -444,13 +457,13 @@ export const RulesPanel = ({
     editor,
     phrase,
     applied,
-    rulesUrl,
     products,
     brands,
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { rules, edited, editable, failed, form, tried, problems, message, fields } = editor;
+    const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
+        editor;
     const edit = (next: Form) => editor.edit(next, products);
     return (
         <div className="rules">

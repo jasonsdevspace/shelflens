@@ -72,11 +72,6 @@ afterEach(() => {
 });
 
 /**
- * The page's side of the panel: a store revision that counts up on each
- * change the panel announces, as the page's own does, and once more for
- * every change made elsewhere.
- */
-/**
  * The page's side of the panel: the editor, a store revision that counts up on
  * each change the panel announces, as the page's own does, and once more for
  * every change made elsewhere. The draft goes to a spy as it changes.
@@ -120,7 +115,6 @@ const Host = ({
             editor={editor}
             phrase="jacket"
             applied={['featured-jackets']}
-            rulesUrl="http://store.test/rules"
             brands={brands}
             byRelevance
             onSortByRelevance={() => undefined}
@@ -154,8 +148,9 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
         rerender: (next: RulesPanelProps['products']) => shown.rerender(host(next)),
         /** The store was built again by something other than the panel. */
         storeBuiltAgain: (times: number) => shown.rerender(host(props.products ?? products, times)),
-        /** The page closed the panel. */
+        /** The page closed the panel, and opened it again. */
         closePanel: () => shown.rerender(host(props.products ?? products, 0, false)),
+        reopenPanel: () => shown.rerender(host(props.products ?? products, 0, true)),
         unmount: shown.unmount,
     };
 };
@@ -470,6 +465,33 @@ describe('the rules panel', () => {
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(await store.current()).toBeUndefined();
+    });
+
+    it('edits again once a read that failed is made good by the next opening', async () => {
+        const live = fetch;
+        vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
+        const { user, closePanel, reopenPanel } = open();
+        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        vi.stubGlobal('fetch', live);
+        closePanel();
+        reopenPanel();
+        expect(await screen.findByRole('button', { name: 'Add a rule' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).toBeNull();
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    });
+
+    it('says nothing on the next opening of what was said before', async () => {
+        const { user, closePanel, reopenPanel } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Rule saved.');
+        closePanel();
+        reopenPanel();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        expect(screen.queryByRole('status')).toBeNull();
     });
 
     it('gives the store’s own rules back only after a second press', async () => {
