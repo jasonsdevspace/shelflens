@@ -197,9 +197,13 @@ const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
     // One memory for both viewers: the viewer is in the key, so switching keeps both.
     const memory = useMemo(() => createClientMemory(), []);
     const [revision, setRevision] = useState(0);
+    // The count is kept beside the state so a caller learns the revision its change made.
+    const counted = useRef(0);
     const storeChanged = useCallback(() => {
         memory.forget();
-        setRevision((n) => n + 1);
+        counted.current += 1;
+        setRevision(counted.current);
+        return counted.current;
     }, [memory]);
     const client = useMemo(
         () => createClient({ url: apiUrl, group, memory }),

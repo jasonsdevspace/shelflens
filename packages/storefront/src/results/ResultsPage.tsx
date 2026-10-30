@@ -65,7 +65,7 @@ export interface ResultsPageProps {
     /** Where the merchandiser's rules are read and saved. */
     readonly rulesUrl: string;
     /** The store was built again under a new version, so everything remembered is stale. */
-    readonly onStoreChanged: () => void;
+    readonly onStoreChanged: () => number;
     /** Counts the times the store was built again, so the panel can read its rules anew. */
     readonly storeRevision: number;
 }
@@ -166,7 +166,9 @@ const useResults = (
     const variables = previewing ? { ...input, rules: draft } : input;
     const { data, loading, error } = useQuery(client, document, variables);
     const result = data && ('preview' in data ? data.preview : data.search);
-    return { result, loading, error, previewing };
+    // Whether the result is the answer to this request, rather than one before it.
+    const answered = !loading && error === undefined;
+    return { result, loading, error, previewing, answered };
 };
 
 type Result = NonNullable<ReturnType<typeof useResults>['result']>;
@@ -356,12 +358,13 @@ const Notices = ({
  */
 const useAppliedRules = (
     result: Result | undefined,
-    loading: boolean,
+    /** Whether the result is the answer to the current request, rather than one before it. */
+    answered: boolean,
     previewing: boolean,
     search: string
 ): readonly string[] | undefined => {
     const ids =
-        loading || previewing || !result
+        !answered || previewing || !result
             ? undefined
             : [...result.merchandising.applied, ...result.merchandising.setAsideBySort];
     // The last answer from the store itself for this search, kept through a preview
@@ -415,9 +418,9 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const main = useRef<HTMLElement>(null);
     // A draft of the rules, from the panel, previewed in place of the store's own.
     const [draft, setDraft] = useState<readonly Rule[]>();
-    const { result, loading, error, previewing } = useResults(client, state, draft);
+    const { result, loading, error, previewing, answered } = useResults(client, state, draft);
     const narrow = useMediaQuery(NARROW);
-    const applied = useAppliedRules(result, loading, previewing, searchKey(state));
+    const applied = useAppliedRules(result, answered, previewing, searchKey(state));
     useReturnFocus(main, focusSku, !loading, onFocused);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 

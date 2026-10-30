@@ -55,10 +55,7 @@ export const storeApi = (): Plugin => ({
                 check: (draft) => {
                     shippedStore.engine.reconfigure({ rules: draft });
                 },
-                build: (saved) =>
-                    saved === undefined
-                        ? shippedApi
-                        : withResponseCache(createStoreApi(built(saved), { events })),
+                build: (saved) => withResponseCache(createStoreApi(built(saved), { events })),
             },
         });
         server.middlewares.use((request, response, next) => {

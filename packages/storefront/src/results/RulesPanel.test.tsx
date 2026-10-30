@@ -2,6 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { createMemoryRuleStore, receiveRules, VERSION_HEADER } from '@shelflens/api';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
@@ -70,34 +71,64 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-const open = (props: Partial<RulesPanelProps> = {}) => {
-    const onDraft = vi.fn();
-    const onStoreChanged = vi.fn();
-    const onSortByRelevance = vi.fn();
-    const panel = (shown: RulesPanelProps['products'], revision = 0) => (
+/**
+ * The page's side of the panel: a store revision that counts up on each
+ * change the panel announces, as the page's own does, and once more for
+ * every change made elsewhere.
+ */
+const Host = ({
+    props,
+    shown,
+    elsewhere,
+    onStoreChanged,
+}: {
+    readonly props: Partial<RulesPanelProps>;
+    readonly shown: RulesPanelProps['products'];
+    readonly elsewhere: number;
+    readonly onStoreChanged: () => void;
+}) => {
+    const [announced, setAnnounced] = useState(0);
+    const counted = useRef(0);
+    const changed = () => {
+        onStoreChanged();
+        counted.current += 1;
+        setAnnounced(counted.current);
+        return counted.current + elsewhere;
+    };
+    return (
         <RulesPanel
             phrase="jacket"
             applied={['featured-jackets']}
             rulesUrl="http://store.test/rules"
-            storeRevision={revision}
             brands={brands}
-            onDraft={onDraft}
-            onStoreChanged={onStoreChanged}
+            onDraft={() => undefined}
             byRelevance
-            onSortByRelevance={onSortByRelevance}
+            onSortByRelevance={() => undefined}
             {...props}
             products={shown}
+            storeRevision={announced + elsewhere}
+            onStoreChanged={changed}
         />
     );
-    const shown = render(panel(props.products ?? products));
+};
+
+const open = (props: Partial<RulesPanelProps> = {}) => {
+    const onDraft = vi.fn();
+    const onStoreChanged = vi.fn();
+    const onSortByRelevance = vi.fn();
+    const all = { onDraft, onSortByRelevance, ...props };
+    const host = (shown: RulesPanelProps['products'], elsewhere = 0) => (
+        <Host props={all} shown={shown} elsewhere={elsewhere} onStoreChanged={onStoreChanged} />
+    );
+    const shown = render(host(props.products ?? products));
     return {
         user: userEvent.setup(),
         onDraft,
         onStoreChanged,
         onSortByRelevance,
-        rerender: (next: RulesPanelProps['products']) => shown.rerender(panel(next)),
-        storeBuiltAgain: (revision: number) =>
-            shown.rerender(panel(props.products ?? products, revision)),
+        rerender: (next: RulesPanelProps['products']) => shown.rerender(host(next)),
+        /** The store was built again by something other than the panel. */
+        storeBuiltAgain: (times: number) => shown.rerender(host(props.products ?? products, times)),
         unmount: shown.unmount,
     };
 };
@@ -377,6 +408,41 @@ describe('the rules panel', () => {
         expect(screen.getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
             'Featured jackets'
         );
+    });
+
+    it('treats a 200 that is not the rules as a failed read', async () => {
+        vi.stubGlobal('fetch', () => Promise.resolve(Response.json({ error: 'nope' })));
+        open();
+        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
+    });
+
+    it('keeps the last set under an open form while the next is read', async () => {
+        const { user, storeBuiltAgain, onDraft } = open();
+        await user.click(await screen.findByRole('button', { name: /Featured jackets/ }));
+        vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
+        storeBuiltAgain(1);
+        // The rule is still one the store has, and the draft still carries the whole set.
+        expect(screen.getByRole('button', { name: 'Remove rule' })).toBeInTheDocument();
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), '!');
+        const draft = onDraft.mock.lastCall?.[0] as Rule[];
+        expect(draft.map((rule) => rule.id)).toEqual(['all-boots', 'featured-jackets']);
+    });
+
+    it('refuses a save while the rules for a change made elsewhere are still being read', async () => {
+        const { user, storeBuiltAgain, onStoreChanged } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        // The page's banner reset the store, and the read it starts never lands.
+        vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
+        storeBuiltAgain(1);
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'The rules are being read again. Try again in a moment.'
+        );
+        expect(onStoreChanged).not.toHaveBeenCalled();
+        expect(await store.current()).toBeUndefined();
     });
 
     it('gives the store’s own rules back only after a second press', async () => {

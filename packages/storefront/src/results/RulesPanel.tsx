@@ -36,7 +36,7 @@ export interface RulesPanelProps {
     readonly brands: readonly string[];
     readonly onDraft: (rules: readonly Rule[] | undefined) => void;
     /** The store was built again, under a new version. */
-    readonly onStoreChanged: () => void;
+    readonly onStoreChanged: () => number;
     /** Counts the times the store was built again, by this panel or by the page, so a change made elsewhere is read. */
     readonly storeRevision: number;
     /** Whether the results are sorted by relevance, where rules apply. */
@@ -49,10 +49,25 @@ export { STEPS } from './rule-form.js';
 const NOT_SAVED = 'The rules could not be saved. Try again.';
 const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
 
-interface Loaded {
+interface RulesBody {
     readonly rules: readonly Rule[];
     readonly edited: boolean;
 }
+
+interface Loaded extends RulesBody {
+    /** The store revision this set is the rules of. Another revision means another set. */
+    readonly revision: number;
+}
+
+const isRule = (rule: unknown): boolean =>
+    typeof rule === 'object' && rule !== null && typeof (rule as { id?: unknown }).id === 'string';
+
+/** Whether a body is what the rules path answers, so a stray page with a 200 is not taken for one. */
+const isRulesBody = (body: unknown): body is RulesBody => {
+    if (typeof body !== 'object' || body === null) return false;
+    const { rules, edited } = body as { rules?: unknown; edited?: unknown };
+    return Array.isArray(rules) && rules.every(isRule) && typeof edited === 'boolean';
+};
 
 /** The rules path, asked once. Nothing comes back when the request itself could not be made. */
 const request = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
@@ -63,59 +78,66 @@ const request = async (url: string, init?: RequestInit): Promise<Response | unde
     }
 };
 
-const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
+const read = async (rulesUrl: string): Promise<RulesBody | undefined> => {
     const response = await request(rulesUrl);
-    return response?.ok ? ((await response.json()) as Loaded) : undefined;
+    if (!response?.ok) return undefined;
+    try {
+        const body: unknown = await response.json();
+        return isRulesBody(body) ? body : undefined;
+    } catch {
+        return undefined;
+    }
 };
 
+const NOT_READ = 'The rules could not be read. Reload the page and try again.';
+const NOT_YET = 'The rules are being read again. Try again in a moment.';
+
 /**
- * The rules the host holds, read once the panel opens and again after each
- * change. Until they are read nothing can be edited, since a save posts the
- * whole set and a set built on nothing would wipe the store's rules. A set
- * the host has just accepted is the set, whether or not the read after it
- * answers, so a save never builds on what was there before the last one.
+ * The rules the host holds, read once the panel opens and again whenever
+ * the store was built anew by something other than this panel's own save:
+ * its own reset, or the page's. Until the set for the current revision is
+ * read nothing can be edited, since a save posts the whole set and a set
+ * built on an older one would post that one back. A set the host has just
+ * accepted is the set for the revision that save made, so the read for
+ * that one revision is skipped.
  */
 const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
     const [loaded, setLoaded] = useState<Loaded>();
-    const [failed, setFailed] = useState(false);
-    // Whether the next store change is this panel's own save, whose set it holds already.
-    const own = useRef(false);
-    /** The host accepted this set, so it is the set, and the change about to be announced is ours. */
-    const accept = (rules: readonly Rule[]) => {
-        setLoaded({ rules, edited: true });
-        setFailed(false);
-        own.current = true;
+    const [failedFor, setFailedFor] = useState<number>();
+    // The revision this panel's own save made, whose read is skipped, once.
+    const own = useRef<number>(undefined);
+    // Each read takes a ticket and only the newest read's answer is kept, so an
+    // older answer landing later never overwrites a newer one.
+    const ticket = useRef(0);
+    /** The host accepted this set under this revision, so it is the set. */
+    const accept = (rules: readonly Rule[], revision: number) => {
+        own.current = revision;
+        setLoaded({ rules, edited: true, revision });
     };
-    const reload = async () => {
-        const next = await read(rulesUrl);
-        if (next) setLoaded(next);
-        setFailed(next === undefined);
-    };
-    /** The host has a set this panel does not know until it reads it, which it does itself. */
-    const forget = () => {
-        setLoaded(undefined);
-        setFailed(false);
-        own.current = true;
-        void reload();
-    };
-    // Read on opening, and again whenever the store was built anew by something
-    // other than this panel, as when the page's banner gives the store its rules back.
     useEffect(() => {
-        if (own.current) {
-            own.current = false;
+        if (storeRevision === own.current) {
+            own.current = undefined;
             return;
         }
-        let open = true;
+        const mine = ticket.current + 1;
+        ticket.current = mine;
         void read(rulesUrl).then((next) => {
-            if (!open) return;
-            if (next) setLoaded(next);
-            setFailed(next === undefined);
+            if (mine !== ticket.current) return;
+            if (next) setLoaded({ ...next, revision: storeRevision });
+            else setFailedFor(storeRevision);
         });
         return () => {
-            open = false;
+            ticket.current += 1;
         };
     }, [rulesUrl, storeRevision]);
-    return { loaded, failed, accept, forget };
+    // The last set read is kept for the form while the next is on its way, but only
+    // the set for the store as it is now can be saved over.
+    return {
+        loaded,
+        current: loaded?.revision === storeRevision,
+        failed: failedFor === storeRevision,
+        accept,
+    };
 };
 
 /** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
@@ -258,7 +280,7 @@ export const RulesPanel = ({
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, failed, accept, forget } = useLoadedRules(rulesUrl, storeRevision);
+    const { loaded, current, failed, accept } = useLoadedRules(rulesUrl, storeRevision);
     useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
@@ -266,7 +288,7 @@ export const RulesPanel = ({
     const fields = useRef<HTMLFormElement>(null);
 
     const rules = loaded?.rules ?? [];
-    const editable = loaded !== undefined && !failed;
+    const editable = loaded !== undefined && current && !failed;
     // A product the rule may name: one the page showed while the rule was open, since
     // a hide or a bury takes it off the preview the moment it is named, or one a saved
     // rule already names, which the host has checked.
@@ -297,13 +319,19 @@ export const RulesPanel = ({
     };
 
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
-    const changed = (said: string) => {
-        onStoreChanged();
+    const changed = (said: string): number => {
+        const revision = onStoreChanged();
         setMessage(said);
         close();
+        return revision;
     };
 
     const commit = async (set: readonly Rule[], said: string) => {
+        // A set built on rules the panel could not read is not one to post.
+        if (!editable) {
+            setMessage(failed ? NOT_READ : NOT_YET);
+            return;
+        }
         const response = await request(rulesUrl, {
             method: 'POST',
             body: JSON.stringify({ rules: set }),
@@ -317,8 +345,7 @@ export const RulesPanel = ({
             return;
         }
         // The host has the set, so the panel does too, without reading it back.
-        accept(set);
-        changed(versionLine(response, said));
+        accept(set, changed(versionLine(response, said)));
     };
 
     // A failed save puts focus on the first field with a problem, once the
@@ -348,9 +375,8 @@ export const RulesPanel = ({
         }
     };
 
-    /** The host has its own rules back. Which those are is the host's to say, so the panel reads. */
+    /** The host has its own rules back. Which those are is the host's to say, so the read follows. */
     const reset = () => {
-        forget();
         changed('The store’s own rules are back.');
     };
 
@@ -372,7 +398,7 @@ export const RulesPanel = ({
             )}
             {failed && (
                 <p className="notice" role="alert">
-                    The rules could not be read. Reload the page and try again.
+                    {NOT_READ}
                 </p>
             )}
             {form ? (
