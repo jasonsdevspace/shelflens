@@ -115,14 +115,16 @@ const withoutScripts = (source) => {
     }
 };
 
-/** The text of an HTML page, with its scripts and its tags removed, line by line. */
+/**
+ * The text of an HTML page, with its scripts and its tags removed, line by
+ * line. A tag may run over several lines, so tags go before the split,
+ * keeping their line breaks so the line numbers still match.
+ */
 const textOf = (source) =>
     withoutScripts(source)
+        .replace(/<[^>]*>/g, (tag) => tag.replace(/[^\n]/g, ' '))
         .split('\n')
-        .map((line, index) => ({
-            index,
-            text: line.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ''),
-        }));
+        .map((line, index) => ({ index, text: line.replace(/&[a-z]+;/gi, '') }));
 
 const failures = [];
 const record = (file, index, rule, text) =>
@@ -142,7 +144,7 @@ for (const file of walk('.')) {
 
     for (const { index, text } of segments) {
         if (PROCESS_ARTIFACTS.test(text)) record(file, index, 'process artifact', text);
-        if (!isMarkdown && !isHtml && ISSUE_REFERENCES.test(text))
+        if (!isMarkdown && ISSUE_REFERENCES.test(text))
             record(file, index, 'issue reference', text);
         if (/[A-Za-z];/.test(text)) record(file, index, 'semicolon in prose', text);
         if (BRITISH_SPELLINGS.test(text)) record(file, index, 'British spelling', text);

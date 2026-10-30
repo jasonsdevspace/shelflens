@@ -18,6 +18,8 @@ const here = {
 
 const page = (hrefs: readonly string[]) => {
     document.body.innerHTML = hrefs.map((href) => `<a href="${href}">link</a>`).join('');
+    // The document cannot navigate, so the links are kept from trying.
+    document.addEventListener('click', (event) => event.preventDefault());
     quietTourOnStoreLinks(document, here);
     return [...document.querySelectorAll('a')];
 };
@@ -37,6 +39,15 @@ describe('the explainer and the tour', () => {
         expect(hasSeenTour()).toBe(true);
         localStorage.clear();
         fireEvent.click(root as HTMLAnchorElement);
+        expect(hasSeenTour()).toBe(true);
+    });
+
+    it('counts a middle click and a context menu as following the link too', () => {
+        const [product] = page(['https://example.test/shelflens/?product=SL-00001']);
+        fireEvent(product as HTMLAnchorElement, new MouseEvent('auxclick', { button: 1 }));
+        expect(hasSeenTour()).toBe(true);
+        localStorage.clear();
+        fireEvent.contextMenu(product as HTMLAnchorElement);
         expect(hasSeenTour()).toBe(true);
     });
 

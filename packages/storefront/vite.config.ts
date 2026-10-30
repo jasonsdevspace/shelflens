@@ -21,6 +21,10 @@ export default defineConfig({
         outDir: 'dist',
         emptyOutDir: true,
         sourcemap: true,
+        // Two pages would share the preload polyfill as a chunk of its own, one more
+        // request on the store's first visit. Every browser that runs the worker
+        // preloads modules on its own, so the polyfill is left out.
+        modulePreload: { polyfill: false },
         rollupOptions: {
             input: {
                 main: fileURLToPath(new URL('./index.html', import.meta.url)),

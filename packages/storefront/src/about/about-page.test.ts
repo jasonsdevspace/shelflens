@@ -3,6 +3,13 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+    GITHUB_PROFILE_URL,
+    LICENSE_URL,
+    PORTFOLIO_URL,
+    PORTFOLIO_WORK_URL,
+    REPO_URL,
+} from '../app/Portfolio.jsx';
 import { STOPS } from '../tour/stops.js';
 
 /*
@@ -67,6 +74,11 @@ describe('the explainer', () => {
         const count = words[STOPS.length] ?? String(STOPS.length);
         expect(page).toContain(`walks ${count} of these`);
         expect(readme).toContain(`walks all ${count}`);
+    });
+
+    it('carries the same strip and footer links as the store', () => {
+        const urls = [PORTFOLIO_WORK_URL, REPO_URL, PORTFOLIO_URL, GITHUB_PROFILE_URL, LICENSE_URL];
+        for (const url of urls) expect(page, url).toContain(`href="${url}"`);
     });
 
     it('has the landmarks and the headings an audit looks for', () => {

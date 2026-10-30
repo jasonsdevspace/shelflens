@@ -117,7 +117,10 @@ const main = async () => {
         const runs: Run[] = [];
         for (let i = 0; i < RUNS; i += 1) runs.push(await visit(preview.origin));
         const dist = 'packages/storefront/dist';
-        const pageFile = readdirSync(`${dist}/assets`).find((name) => name.endsWith('.js'));
+        // The store's own bundle, beside the explainer's and whatever the build shares.
+        const pageFile = readdirSync(`${dist}/assets`).find(
+            (name) => name.startsWith('main-') && name.endsWith('.js')
+        );
         const sizes = {
             catalog: gzipped(`${dist}/catalog.json`),
             page: pageFile ? gzipped(`${dist}/assets/${pageFile}`) : 0,

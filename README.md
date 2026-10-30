@@ -199,7 +199,8 @@ packages/
 ├── api/         the schema, its generated types, the resolvers, the cache key, the shape over HTTP,
 │                and the events receiver
 ├── server/      the API behind HTTP, with a rate limit and a request id
-└── storefront/  the demo page
+└── storefront/  the demo page, and theme.js, the script both pages run before their first paint
+    ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
     └── src/     app (the URL as state, categories, the store context), client (the GraphQL
                  client, its memory and the latest-request helper), search (the popover),

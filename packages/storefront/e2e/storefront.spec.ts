@@ -325,18 +325,21 @@ test('the explainer reads without the store, audits clean, and sends a reader in
     // A story's link opens the store in its state, and the tour stays closed. In a
     // context of its own, with nothing marking the tour seen ahead of the page.
     const context = await browser.newContext();
-    const fresh = await context.newPage();
-    await fresh.goto('/about/');
-    await fresh.getByRole('link', { name: /Open the product a guest cannot see/ }).click();
-    await expect(fresh).toHaveURL(/\?product=SL-00008$/);
-    await expect(fresh.getByRole('alert')).toContainText('There is no product');
-    await expect(fresh.getByRole('button', { name: 'Tour' })).toHaveAttribute(
-        'aria-expanded',
-        'false'
-    );
-    await fresh.goBack();
-    await expect(fresh).toHaveURL(/\/about\/$/);
-    await context.close();
+    try {
+        const fresh = await context.newPage();
+        await fresh.goto('/about/');
+        await fresh.getByRole('link', { name: /Open the product a guest cannot see/ }).click();
+        await expect(fresh).toHaveURL(/\?product=SL-00008$/);
+        await expect(fresh.getByRole('alert')).toContainText('There is no product');
+        await expect(fresh.getByRole('button', { name: 'Tour' })).toHaveAttribute(
+            'aria-expanded',
+            'false'
+        );
+        await fresh.goBack();
+        await expect(fresh).toHaveURL(/\/about\/$/);
+    } finally {
+        await context.close();
+    }
 });
 
 test('the store links to the explainer from its strip and its footer', async ({ page }) => {
