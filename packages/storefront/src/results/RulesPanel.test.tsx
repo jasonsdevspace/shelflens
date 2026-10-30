@@ -74,20 +74,29 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn();
     const onStoreChanged = vi.fn();
     const onSortByRelevance = vi.fn();
-    render(
+    const panel = (shown: RulesPanelProps['products']) => (
         <RulesPanel
             phrase="jacket"
+            applied={['featured-jackets']}
             rulesUrl="http://store.test/rules"
-            products={products}
             brands={brands}
             onDraft={onDraft}
             onStoreChanged={onStoreChanged}
             byRelevance
             onSortByRelevance={onSortByRelevance}
             {...props}
+            products={shown}
         />
     );
-    return { user: userEvent.setup(), onDraft, onStoreChanged, onSortByRelevance };
+    const shown = render(panel(props.products ?? products));
+    return {
+        user: userEvent.setup(),
+        onDraft,
+        onStoreChanged,
+        onSortByRelevance,
+        rerender: (next: RulesPanelProps['products']) => shown.rerender(panel(next)),
+        unmount: shown.unmount,
+    };
 };
 
 describe('the rules panel', () => {
@@ -104,7 +113,7 @@ describe('the rules panel', () => {
     });
 
     it('says a search is needed before any rule can apply', async () => {
-        open({ phrase: undefined });
+        open({ phrase: undefined, applied: [] });
         expect(await screen.findByText(/A rule applies to a search/)).toBeInTheDocument();
         expect(screen.queryByRole('list', { name: 'Rules that apply' })).toBeNull();
     });
@@ -163,7 +172,7 @@ describe('the rules panel', () => {
             'Say which searches this rule applies to, like jacket, jackets.'
         );
         expect(screen.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription(
-            /No product on this page has the SKU SL-9\. Choose one from the list\./
+            /The results have not shown a product with the SKU SL-9\. Choose one from the list\./
         );
         expect(posted).toEqual([]);
         expect(onDraft).toHaveBeenLastCalledWith(undefined);
@@ -182,8 +191,9 @@ describe('the rules panel', () => {
         expect(onStoreChanged).toHaveBeenCalledTimes(1);
         expect(posted).toHaveLength(1);
         expect(await store.current()).toHaveLength(3);
-        const applying = screen.getByRole('list', { name: 'Rules that apply' });
-        expect(applying).toHaveTextContent('Trail first');
+        // Whether it applies is the engine's word, which the next search brings. It is listed.
+        await user.click(screen.getByRole('button', { name: 'Show every rule' }));
+        expect(screen.getByRole('list', { name: 'Every rule' })).toHaveTextContent('Trail first');
         expect(screen.getByRole('button', { name: 'Use the store’s rules' })).toBeInTheDocument();
     });
 
@@ -196,7 +206,7 @@ describe('the rules panel', () => {
         expect(screen.getByRole('combobox', { name: 'Product' })).toHaveValue('SL-404');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
         expect(screen.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription(
-            /No product on this page has the SKU SL-404/
+            /The results have not shown a product with the SKU SL-404/
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
     });
@@ -225,6 +235,7 @@ describe('the rules panel', () => {
     it('keeps the parts of a rule it cannot edit, and says so', async () => {
         const { user, onDraft } = open({
             phrase: 'boots',
+            applied: ['all-boots'],
             products: [{ sku: 'SL-7', name: 'Mud Boot' }],
         });
         await user.click(await screen.findByRole('button', { name: /all-boots/ }));
@@ -242,6 +253,108 @@ describe('the rules panel', () => {
             active: { from: '2024-01-01' },
             hide: ['SL-7'],
         });
+    });
+
+    it('lists what the engine applied, not what the words suggest', async () => {
+        // The engine stems "jackets" to "jacket" and applies the rule. The panel takes its word.
+        open({ phrase: 'Jackets', applied: ['featured-jackets'] });
+        expect(await screen.findByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
+            'Featured jackets'
+        );
+    });
+
+    it('still names a product the preview has just hidden', async () => {
+        const { user, onDraft, rerender } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.click(screen.getByRole('radio', { name: /^Hide/ }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        expect(onDraft.mock.lastCall?.[0]).toBeDefined();
+        // The preview answers without SL-2, so the page no longer shows it.
+        rerender(products.filter((product) => product.sku !== 'SL-2'));
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Rule saved.');
+        expect((await store.current())?.map((rule) => rule.hide)).toContainEqual(['SL-2']);
+    });
+
+    it('opens a saved hide rule whose product the page cannot show', async () => {
+        const { user, onDraft } = open({ phrase: 'boots', applied: ['all-boots'], products: [] });
+        await user.click(await screen.findByRole('button', { name: /all-boots/ }));
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Still hidden');
+        const draft = onDraft.mock.lastCall?.[0] as Rule[];
+        expect(draft.find((rule) => rule.id === 'all-boots')?.hide).toEqual(['SL-7']);
+    });
+
+    it('takes its draft with it when it closes', async () => {
+        const { user, onDraft, unmount } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        expect(onDraft.mock.lastCall?.[0]).toBeDefined();
+        unmount();
+        expect(onDraft).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('edits nothing until the rules are read, and says when they cannot be', async () => {
+        vi.stubGlobal('fetch', () => Promise.resolve(new Response('down', { status: 503 })));
+        open();
+        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
+    });
+
+    it('says when a save does not reach the host', async () => {
+        const { user, onStoreChanged } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'The rules could not be saved. Try again.'
+        );
+        expect(onStoreChanged).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
+    });
+
+    it('keeps the product’s name under the field once the preview has hidden it', async () => {
+        const { user, rerender } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.click(screen.getByRole('radio', { name: /^Hide/ }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        rerender(products.filter((product) => product.sku !== 'SL-2'));
+        expect(screen.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription(
+            /Trail Jacket/
+        );
+    });
+
+    it('holds the set the host accepted when the read after a save fails, and edits no further', async () => {
+        const { user } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Trail first');
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        const live = fetch;
+        vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+            init?.method === 'POST' ? live(input, init) : Promise.reject(new TypeError('offline'))
+        );
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Rule saved.');
+        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
+        expect((await store.current())?.map((rule) => rule.name)).toContain('Trail first');
+    });
+
+    it('says when the store’s rules could not be brought back', async () => {
+        await store.replace([shipped[1] as (typeof shipped)[number]]);
+        const { user, onStoreChanged } = open();
+        await user.click(await screen.findByRole('button', { name: 'Use the store’s rules' }));
+        vi.stubGlobal('fetch', () => Promise.resolve(new Response('down', { status: 503 })));
+        await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'The store’s rules could not be brought back. Try again.'
+        );
+        expect(onStoreChanged).not.toHaveBeenCalled();
     });
 
     it('gives the store’s own rules back only after a second press', async () => {

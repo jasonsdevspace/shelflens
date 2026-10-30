@@ -161,6 +161,11 @@ export const createHandler = ({
             refuse(response, 404, 'this store keeps no rules', requestId);
             return;
         }
+        // A save builds the whole store again, so the path has the usual allowance.
+        if (!allow(`rules:${request.socket.remoteAddress ?? 'unknown'}`)) {
+            tooMany(response, requestId);
+            return;
+        }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
         const receipt = await receiveRules({ method: request.method ?? 'GET', body }, rules.store, {

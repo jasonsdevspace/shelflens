@@ -918,6 +918,10 @@ body {
     background: rgba(0, 0, 0, 0.4);
 }
 
+.drawer-panel[hidden] {
+    display: none;
+}
+
 .drawer-panel {
     position: fixed;
     z-index: 21;

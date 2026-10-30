@@ -42,15 +42,17 @@ export const storeApi = (): Plugin => ({
         // merchandiser saved in this dev session.
         const built = (saved: readonly Rule[] | undefined) =>
             createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
+        const shippedStore = built(undefined);
         const handle = createHandler({
-            api: withResponseCache(createStoreApi(built(undefined), { events })),
+            api: withResponseCache(createStoreApi(shippedStore, { events })),
             base,
             events,
             rules: {
                 store: createMemoryRuleStore(),
                 shipped,
+                // Checked on the store already built, which costs a reconfigure, not an index.
                 check: (draft) => {
-                    built(undefined).engine.reconfigure({ rules: draft });
+                    shippedStore.engine.reconfigure({ rules: draft });
                 },
                 build: (saved) => withResponseCache(createStoreApi(built(saved), { events })),
             },

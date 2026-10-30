@@ -58,8 +58,8 @@ is tried, not while the rule is half typed.
 - A saved set is in effect on every page, so every page says so while it is, with the way back
   one press away. The tour never describes a store nobody can return to.
 - A preview is an uncached request, so typing into the panel asks the engine on each change. In
-  the browser that is the worker, and a search answers in a few milliseconds. A host serving many
-  merchandisers would rate the path, as it would any uncached one.
+  the browser that is the worker, and a search answers in a few milliseconds. The Node server rates the
+  path as it rates its siblings, since a save builds the whole store again.
 - The rules path is a plain `POST` outside the schema, like events, and for the same reason: the
   public demo accepts only persisted operations, and a mutation would have to go where it refuses.
 - A saved set is a whole set, not a patch. The host checks the whole thing with the engine before

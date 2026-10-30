@@ -20,7 +20,7 @@ import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
-import { DiscardRules } from './results/RulesPanel.jsx';
+import { DiscardRules, NOT_RESTORED } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
@@ -88,12 +88,25 @@ const EditedRulesNotice = ({
 }: {
     readonly rulesUrl: string;
     readonly onReset: () => void;
-}) => (
-    <div className="results-aside rules-notice">
-        Your edited rules are in effect, not the store&rsquo;s own.{' '}
-        <DiscardRules onDiscard={() => void fetch(rulesUrl, { method: 'DELETE' }).then(onReset)} />
-    </div>
-);
+}) => {
+    const [failed, setFailed] = useState(false);
+    const discard = async () => {
+        try {
+            const response = await fetch(rulesUrl, { method: 'DELETE' });
+            if (response.ok) onReset();
+            else setFailed(true);
+        } catch {
+            setFailed(true);
+        }
+    };
+    return (
+        <div className="results-aside rules-notice">
+            Your edited rules are in effect, not the store&rsquo;s own.{' '}
+            {failed && <span role="alert">{NOT_RESTORED} </span>}
+            <DiscardRules onDiscard={() => void discard()} />
+        </div>
+    );
+};
 
 /** Who the reviewer is shopping as. A real store would take this from the session. */
 const ViewerSwitch = ({
