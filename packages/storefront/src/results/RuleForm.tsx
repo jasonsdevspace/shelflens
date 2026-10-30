@@ -60,6 +60,10 @@ const Field = ({
     </div>
 );
 
+/** The name the page or the rule has shown for a SKU, which outlives the product's place on the page. */
+const nameOf = (named: readonly { sku: string; name: string }[], sku: string): string =>
+    named.find((product) => product.sku === sku.trim())?.name ?? '';
+
 const ProductFields = ({
     id,
     form,
@@ -76,7 +80,7 @@ const ProductFields = ({
                 key={index}
                 id={`${id}-sku-${index}`}
                 label={index === 0 ? 'Product' : 'Another product'}
-                line={products.find((product) => product.sku === sku.trim())?.name ?? ''}
+                line={nameOf([...products, ...form.seen], sku)}
             >
                 <input
                     id={`${id}-sku-${index}`}

@@ -395,6 +395,27 @@ describe('on a phone', () => {
         await user.tab({ shift: true });
         expect(done).toHaveFocus();
     });
+    it('keeps a half written rule while the drawer is closed to see the results', async () => {
+        narrow();
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = cards()[cards().length - 1]?.getAttribute('data-sku') ?? '';
+        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        const drawer = screen.getByRole('dialog', { name: 'Rules' });
+        await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(drawer).getByRole('textbox', { name: 'Name' }), 'Last first');
+        await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), last);
+        await user.click(within(drawer).getByRole('button', { name: 'See the results' }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        expect(
+            within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('textbox', {
+                name: 'Name',
+            })
+        ).toHaveValue('Last first');
+    });
 });
 
 describe('as a member', () => {
@@ -606,34 +627,6 @@ describe('as a merchandiser', () => {
         await user.click(screen.getByRole('button', { name: 'Rules' }));
         await settled();
         expect(screen.queryByText(/Previewing a draft/)).toBeNull();
-    });
-
-    it('keeps a half written rule while the drawer is closed to see the results', async () => {
-        vi.stubGlobal('matchMedia', (query: string) => ({
-            matches: query.includes('max-width'),
-            media: query,
-            addEventListener: () => {},
-            removeEventListener: () => {},
-        }));
-        const user = await open('?q=jacket&explain=1&rules=1');
-        await settled();
-        const last = sku(cards()[cards().length - 1] as HTMLElement);
-        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
-        const drawer = screen.getByRole('dialog', { name: 'Rules' });
-        await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
-        await user.type(within(drawer).getByRole('textbox', { name: 'Name' }), 'Last first');
-        await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), last);
-        await user.click(within(drawer).getByRole('button', { name: 'See the results' }));
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        await settled();
-        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
-        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
-        expect(
-            within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('textbox', {
-                name: 'Name',
-            })
-        ).toHaveValue('Last first');
-        vi.stubGlobal('matchMedia', undefined);
     });
 });
 

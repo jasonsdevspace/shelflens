@@ -2,7 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
 import { useEffect, useRef, useState } from 'react';
 
-import { type Form, formOf, fresh, problemsOf, ruleOf, summary } from './rule-form.js';
+import { type Form, formOf, fresh, type Named, problemsOf, ruleOf, summary } from './rule-form.js';
 import { RuleForm } from './RuleForm.js';
 
 /**
@@ -23,12 +23,15 @@ import { RuleForm } from './RuleForm.js';
 export interface RulesPanelProps {
     /** The search the rules are read for. Rules apply to a search, so without one the panel says so. */
     readonly phrase: string | undefined;
-    /** The ids of the rules the engine applied to this search, or set aside for its sort. */
-    readonly applied: readonly string[];
+    /**
+     * The ids of the rules the engine applied to this search, or set aside for
+     * its sort, or nothing while the store's own answer is still on its way.
+     */
+    readonly applied: readonly string[] | undefined;
     /** Where the rules are read and saved. */
     readonly rulesUrl: string;
     /** The products on the results page, which a rule can name. */
-    readonly products: readonly { readonly sku: string; readonly name: string }[];
+    readonly products: readonly Named[];
     /** The brands on the results page, which a boost or a bury can name. */
     readonly brands: readonly string[];
     readonly onDraft: (rules: readonly Rule[] | undefined) => void;
@@ -40,6 +43,9 @@ export interface RulesPanelProps {
 }
 
 export { STEPS } from './rule-form.js';
+
+const NOT_SAVED = 'The rules could not be saved. Try again.';
+export const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
 
 interface Loaded {
     readonly rules: readonly Rule[];
@@ -57,8 +63,10 @@ const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
 
 /**
  * The rules the host holds, read once the panel opens and again after each
- * save. Until they are read nothing can be edited, since a save posts the
- * whole set and a set built on nothing would wipe the store's rules.
+ * change. Until they are read nothing can be edited, since a save posts the
+ * whole set and a set built on nothing would wipe the store's rules. A set
+ * the host has just accepted is the set, whether or not the read after it
+ * answers, so a save never builds on what was there before the last one.
  */
 const useLoadedRules = (rulesUrl: string) => {
     const [loaded, setLoaded] = useState<Loaded>();
@@ -67,6 +75,10 @@ const useLoadedRules = (rulesUrl: string) => {
         const next = await read(rulesUrl);
         if (next) setLoaded(next);
         setFailed(next === undefined);
+    };
+    const accept = (rules: readonly Rule[]) => {
+        setLoaded({ rules, edited: true });
+        setFailed(false);
     };
     useEffect(() => {
         let open = true;
@@ -79,7 +91,7 @@ const useLoadedRules = (rulesUrl: string) => {
             open = false;
         };
     }, [rulesUrl]);
-    return { loaded, failed, reload };
+    return { loaded, failed, reload, accept };
 };
 
 /** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
@@ -98,11 +110,12 @@ const RuleList = ({
     onPick,
 }: {
     readonly rules: readonly Rule[];
-    readonly applied: readonly string[];
+    readonly applied: readonly string[] | undefined;
     readonly phrase: string | undefined;
     readonly onPick: (rule: Rule) => void;
 }) => {
     const [showAll, setShowAll] = useState(false);
+    if (applied === undefined) return null;
     const applying = rules.filter((rule) => applied.includes(rule.id));
     const listed = showAll ? rules : applying;
     return (
@@ -164,11 +177,9 @@ export const DiscardRules = ({ onDiscard }: { readonly onDiscard: () => void }) 
     );
 };
 
-const NOT_SAVED = 'The rules could not be saved. Try again.';
-
-const failureOf = async (response: Response): Promise<string> => {
+const failureOf = async (response: Response, otherwise: string): Promise<string> => {
     const body = (await response.json().catch(() => ({}))) as { errors?: { message: string }[] };
-    return body.errors?.[0]?.message ?? NOT_SAVED;
+    return body.errors?.[0]?.message ?? otherwise;
 };
 
 const versionLine = (response: Response, said: string): string => {
@@ -177,10 +188,6 @@ const versionLine = (response: Response, said: string): string => {
         ? `${said}. The store is now version ${version.split('+').pop() ?? ''}.`
         : `${said}.`;
 };
-
-const union = (...lists: readonly (readonly string[])[]): readonly string[] => [
-    ...new Set(lists.flat()),
-];
 
 /** Every product a rule names, which the host has already checked exist. */
 const namedBy = (rules: readonly Rule[]): readonly string[] =>
@@ -202,7 +209,7 @@ export const RulesPanel = ({
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, failed, reload } = useLoadedRules(rulesUrl);
+    const { loaded, failed, reload, accept } = useLoadedRules(rulesUrl);
     useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
@@ -210,12 +217,13 @@ export const RulesPanel = ({
     const fields = useRef<HTMLFormElement>(null);
 
     const rules = loaded?.rules ?? [];
-    const onPage = products.map((product) => product.sku);
-    // A product the rule may name: one on the page, one the page showed while the
-    // rule was open, since a hide or a bury takes it off the preview the moment it
-    // is named, or one a saved rule already names, which the host has checked.
-    const known = new Set(union(onPage, form?.seen ?? [], namedBy(rules)));
-    const problems = form ? problemsOf(form, known) : {};
+    const editable = loaded !== undefined && !failed;
+    // A product the rule may name: one the page showed while the rule was open, since
+    // a hide or a bury takes it off the preview the moment it is named, or one a saved
+    // rule already names, which the host has checked.
+    const knownFor = (seen: readonly Named[]) =>
+        new Set([...seen.map((product) => product.sku), ...namedBy(rules)]);
+    const problems = form ? problemsOf(form, knownFor(form.seen)) : {};
     const valid = form !== undefined && Object.keys(problems).length === 0;
 
     /** The whole set with the form's rule in it, which is what the preview and the save use. */
@@ -225,12 +233,12 @@ export const RulesPanel = ({
     ];
 
     const edit = (next: Form) => {
-        const seen = union(next.seen, onPage);
+        const shown = new Set(next.seen.map((product) => product.sku));
+        const seen = [...next.seen, ...products.filter((product) => !shown.has(product.sku))];
         const form = { ...next, seen };
         setForm(form);
         setMessage('');
-        const sound =
-            Object.keys(problemsOf(form, new Set(union(seen, namedBy(rules))))).length === 0;
+        const sound = Object.keys(problemsOf(form, knownFor(seen))).length === 0;
         onDraft(sound ? setWith(ruleOf(form)) : undefined);
     };
     const close = () => {
@@ -248,16 +256,17 @@ export const RulesPanel = ({
     };
 
     const commit = async (set: readonly Rule[], said: string) => {
-        if (!loaded) return;
+        if (!editable) return;
         try {
             const response = await fetch(rulesUrl, {
                 method: 'POST',
                 body: JSON.stringify({ rules: set }),
             });
             if (!response.ok) {
-                setMessage(await failureOf(response));
+                setMessage(await failureOf(response, NOT_SAVED));
                 return;
             }
+            accept(set);
             await changed(versionLine(response, said));
         } catch {
             setMessage(NOT_SAVED);
@@ -295,12 +304,12 @@ export const RulesPanel = ({
         try {
             const response = await fetch(rulesUrl, { method: 'DELETE' });
             if (!response.ok) {
-                setMessage(await failureOf(response));
+                setMessage(await failureOf(response, NOT_RESTORED));
                 return;
             }
             await changed('The store’s own rules are back.');
         } catch {
-            setMessage(NOT_SAVED);
+            setMessage(NOT_RESTORED);
         }
     };
 
@@ -320,7 +329,7 @@ export const RulesPanel = ({
                     {message}
                 </p>
             )}
-            {failed && !loaded && (
+            {failed && (
                 <p className="notice" role="alert">
                     The rules could not be read. Reload the page and try again.
                 </p>
@@ -340,7 +349,7 @@ export const RulesPanel = ({
                     onRemove={remove}
                 />
             ) : (
-                loaded && (
+                editable && (
                     <>
                         <RuleList
                             rules={rules}

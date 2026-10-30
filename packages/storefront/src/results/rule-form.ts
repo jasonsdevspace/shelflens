@@ -25,7 +25,12 @@ export interface Form {
     /** The parts of an existing rule the form does not edit, kept as they are. */
     readonly kept: Kept;
     /** The products the page has shown while this rule was open, which it may still name. */
-    readonly seen: readonly string[];
+    readonly seen: readonly Named[];
+}
+
+export interface Named {
+    readonly sku: string;
+    readonly name: string;
 }
 
 export interface Kept {
@@ -185,7 +190,7 @@ export const problemsOf = (form: Form, known: ReadonlySet<string>): Problems => 
         const unknown = skus.find((sku) => !known.has(sku));
         if (skus.length === 0) problems.skus = 'Name at least one product.';
         else if (unknown) {
-            problems.skus = `No product on this page has the SKU ${unknown}. Choose one from the list.`;
+            problems.skus = `The results have not shown a product with the SKU ${unknown}. Choose one from the list.`;
         }
     } else if (!form.brand) {
         problems.brand = 'Choose a brand.';

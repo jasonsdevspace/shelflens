@@ -348,6 +348,37 @@ const Notices = ({
     </>
 );
 
+/** What an answer puts under the toolbar: the notices, the cards or the nothing page, and the pages. */
+const Answer = ({
+    result,
+    state,
+    navigate,
+    previewing,
+    sortKey,
+}: Pick<ResultsPageProps, 'state' | 'navigate'> & {
+    readonly result: Result;
+    readonly previewing: boolean;
+    readonly sortKey: SortKey;
+}) => (
+    <>
+        <Notices
+            previewing={previewing}
+            sortKey={sortKey}
+            setAside={result.merchandising.setAsideBySort}
+        />
+        {result.total === 0 ? (
+            <NoResults state={state} navigate={navigate} offered={result.noResults} />
+        ) : (
+            <Cards result={result} state={state} navigate={navigate} />
+        )}
+        <Pagination
+            page={result.page}
+            totalPages={result.totalPages}
+            onPage={(page) => navigate({ ...state, page })}
+        />
+    </>
+);
+
 export const ResultsPage = (props: ResultsPageProps) => {
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
@@ -359,21 +390,18 @@ export const ResultsPage = (props: ResultsPageProps) => {
     useReturnFocus(main, focusSku, !loading, onFocused);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
-    if (error) {
-        return (
-            <>
-                {status}
-                <p className="notice" role="alert">
-                    {error}
-                </p>
-            </>
-        );
-    }
+    // An error with nothing yet shown is the page. With an answer shown, it takes the
+    // place of the cards, and the panel beside them stays, with whatever is typed in it.
+    const alert = error ? (
+        <p className="notice" role="alert">
+            {error}
+        </p>
+    ) : undefined;
     if (!result) {
         return (
             <>
                 {status}
-                <p className="notice">Loading products.</p>
+                {alert ?? <p className="notice">Loading products.</p>}
             </>
         );
     }
@@ -393,7 +421,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         <RulesColumn narrow={narrow}>
             <RulesPanel
                 phrase={state.phrase}
-                applied={[...result.merchandising.applied, ...setAside]}
+                applied={loading ? undefined : [...result.merchandising.applied, ...setAside]}
                 rulesUrl={props.rulesUrl}
                 products={result.items.map((hit) => ({
                     sku: hit.product.sku,
@@ -450,17 +478,15 @@ export const ResultsPage = (props: ResultsPageProps) => {
                         items={result.items}
                         shown={!loading && switchedOn === searchKey(state)}
                     />
-                    <Notices previewing={previewing} sortKey={sortKey} setAside={setAside} />
-                    {empty ? (
-                        <NoResults state={state} navigate={navigate} offered={result.noResults} />
-                    ) : (
-                        <Cards result={result} state={state} navigate={navigate} />
+                    {alert ?? (
+                        <Answer
+                            result={result}
+                            state={state}
+                            navigate={navigate}
+                            previewing={previewing}
+                            sortKey={sortKey}
+                        />
                     )}
-                    <Pagination
-                        page={result.page}
-                        totalPages={result.totalPages}
-                        onPage={(page) => navigate({ ...state, page })}
-                    />
                 </section>
             </div>
         </>

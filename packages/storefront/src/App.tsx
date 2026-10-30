@@ -20,7 +20,7 @@ import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
-import { DiscardRules } from './results/RulesPanel.jsx';
+import { DiscardRules, NOT_RESTORED } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
@@ -102,11 +102,7 @@ const EditedRulesNotice = ({
     return (
         <div className="results-aside rules-notice">
             Your edited rules are in effect, not the store&rsquo;s own.{' '}
-            {failed && (
-                <span role="alert">
-                    The store&rsquo;s rules could not be brought back. Try again.{' '}
-                </span>
-            )}
+            {failed && <span role="alert">{NOT_RESTORED} </span>}
             <DiscardRules onDiscard={() => void discard()} />
         </div>
     );
