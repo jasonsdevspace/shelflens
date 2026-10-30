@@ -11,7 +11,7 @@ result ranked where it did. This repository holds the engine that does that, the
 tested against, the GraphQL API over both, and the storefront, which runs the whole API inside
 the browser.
 
-**Why I built it.** At Adobe I worked on a React storefront search experience backed by a
+**Why I built it.** On an earlier team I worked on a React storefront search backed by a
 GraphQL search API. Search looks simple until a shopper types "t shirt" and
 the Tees outrank the T-Shirts, or a member's price is served to the next guest from a cache. This
 is a small, complete example of how I approach that kind of problem: measure, write the check that
@@ -218,8 +218,8 @@ docs/
 The behavior modeled here, search as you type with a two-character minimum, exact search before a
 fuzzy pass that allows one edit per word, synonyms, facet buckets of several kinds, merchandising
 rules that apply only under relevance sort, and results that vary by customer group, follows what
-Adobe documents publicly for its Live Search service. The implementation, the names and the
-schema are this project's own.
+a widely used commerce platform documents publicly for its search service. The implementation,
+the names and the schema are this project's own.
 
 ## License
 
