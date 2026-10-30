@@ -127,4 +127,5 @@ export const explanationOf = (hit: Hit) => ({
         action: effect.action.toUpperCase() as 'PIN' | 'BOOST' | 'BURY',
         weight: effect.weight ?? null,
     })),
+    popularity: hit.signal ? { clicks: hit.signal.count, weight: hit.signal.weight } : null,
 });

@@ -4,6 +4,7 @@ import { type Completions, createCompletions, createStoreEngine } from '@shelfle
 
 import type { EventStore } from './events.js';
 import { fingerprint } from './fingerprint.js';
+import type { Signals } from './signals.js';
 
 /**
  * What every resolver can reach.
@@ -21,7 +22,9 @@ export interface Store {
     readonly products: ReadonlyMap<string, Product>;
     readonly categories: ReadonlyMap<string, Category>;
     readonly brands: ReadonlyMap<string, Brand>;
-    /** Changes whenever the catalog or the rules change. */
+    /** How often each product was clicked, folded in when the store was built. */
+    readonly signals: Signals;
+    /** Changes whenever the catalog, the rules or the signals change. */
     readonly version: string;
 }
 
@@ -58,6 +61,12 @@ export interface StoreOptions {
      * whether or not anyone remembered to say so.
      */
     readonly rulesVersion?: string;
+    /**
+     * How often each product was clicked, from the events the host collected
+     * so far. Folded into the version too, so a store built with new clicks
+     * is a new version and nothing kept under the old one is served again.
+     */
+    readonly signals?: Signals;
 }
 
 export const createStore = ({
@@ -65,9 +74,12 @@ export const createStore = ({
     catalog,
     rules = [],
     rulesVersion = fingerprint(rules),
+    signals = {},
 }: StoreOptions): Store => {
     const base = createStoreEngine(catalog);
-    const engine = rules.length > 0 ? base.reconfigure({ rules }) : base;
+    const chosen = Object.keys(signals).length > 0;
+    const engine =
+        rules.length > 0 || chosen ? base.reconfigure({ rules, ...(chosen && { signals }) }) : base;
     return {
         name,
         catalog,
@@ -76,7 +88,8 @@ export const createStore = ({
         products: new Map(catalog.products.map((product) => [product.sku, product])),
         categories: new Map(catalog.categories.map((category) => [category.id, category])),
         brands: new Map(catalog.brands.map((brand) => [brand.id, brand])),
-        version: `${catalog.version}+rules.${rulesVersion}`,
+        signals,
+        version: `${catalog.version}+rules.${rulesVersion}${chosen ? `+clicks.${fingerprint(signals)}` : ''}`,
     };
 };
 

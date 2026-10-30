@@ -4,7 +4,7 @@ import { routeOf } from '@shelflens/api';
 
 import { createIndexedDbEventStore } from './event-db.js';
 import { createWorkerApi, type StartedMessage } from './handle.js';
-import { CLAIM_MESSAGE } from './register.js';
+import { CLAIM_MESSAGE, VISIT_MESSAGE } from './register.js';
 
 /**
  * The service worker that is the demo's API.
@@ -48,7 +48,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
     const data = event.data as { type?: unknown } | null;
-    if (data?.type === CLAIM_MESSAGE.type) void self.clients.claim().then(announce);
+    if (data?.type === CLAIM_MESSAGE.type) {
+        // A claim is a visit too: fold the clicks first, then take the page.
+        event.waitUntil(api.refresh().then(() => self.clients.claim().then(announce)));
+    }
+    if (data?.type === VISIT_MESSAGE.type) event.waitUntil(api.refresh());
 });
 
 self.addEventListener('fetch', (event) => {

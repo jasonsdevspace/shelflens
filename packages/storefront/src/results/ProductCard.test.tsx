@@ -40,6 +40,7 @@ describe('the explanation on a card', () => {
             hitWith({
                 matches: [{ typed: 'jacket', matched: 'jacket', field: 'name', route: 'EXACT' }],
                 rules: [{ ruleId: 'featured-jackets', action: 'PIN', weight: null }],
+                popularity: { clicks: 3, weight: 1.1 },
             })
         );
         const lines = screen
@@ -49,13 +50,19 @@ describe('the explanation on a card', () => {
         expect(lines).toEqual([
             'Result 1, score 25.34',
             'Pinned to the top by rule featured-jackets',
+            'Clicked 3 times before, score raised by 10%',
             '"jacket" matched "jacket" in the name',
         ]);
     });
 
+    it('says one click in the singular, and nothing when nothing was clicked', () => {
+        card(hitWith({ matches: [], rules: [], popularity: { clicks: 1, weight: 1.05 } }));
+        expect(screen.getByText('Clicked 1 time before, score raised by 5%')).toBeInTheDocument();
+    });
+
     it('says when the product is shown to members only, before the rules', () => {
         card({
-            ...hitWith({ matches: [], rules: [] }),
+            ...hitWith({ matches: [], rules: [], popularity: null }),
             product: { ...product, membersOnly: true },
         });
         expect(screen.getByText('Shown to members only')).toBeInTheDocument();

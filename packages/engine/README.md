@@ -8,14 +8,6 @@ so it runs the same in Node, in a browser and in a test.
 npm install @jasonsdevspace/shelflens
 ```
 
-It is the engine under [ShelfLens](https://github.com/jasonsdevspace/shelflens), a search demo
-with a [live storefront](https://jasonsdevspace.com/shelflens/) that runs this engine in a
-service worker. The decisions behind it, each with the alternative it rejected and the test
-behind it, are in that repository's
-[decision records](https://github.com/jasonsdevspace/shelflens/tree/main/docs/decisions). The
-package follows semantic versioning from its first release, and its
-[changelog](CHANGELOG.md) says what each version changed.
-
 ```ts
 import { createEngine } from '@jasonsdevspace/shelflens';
 
@@ -94,8 +86,24 @@ checked when the engine is created, so a rule that names a product or an attribu
 exist or does nothing is refused at startup. `engine.reconfigure({ rules })` applies new rules over
 the same index without rebuilding it.
 
+Beside the rules, `signals` names how often each document was chosen, from whatever the host
+collected. A chosen document's relevance score is multiplied by a bounded weight, rising with the
+log of the count to a cap of 1.25, so the first few choices count most and a thousand more change
+nothing. The cap sits below the smallest boost a merchandiser would write, a bury stays buried
+under it, and a pin is placed before any score is compared, so a signal never passes one. A hit
+that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
+new counts over the same index.
+
 Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and
 hides still apply under a sort scoped to the rule's own filter, which is how a category's
 merchandising survives its position sort. A rule set aside by the sort is reported in the result,
 so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
 result is recorded on that hit, alongside its matches, for explain mode.
+
+## Where it comes from
+
+This is the engine under [ShelfLens](https://github.com/jasonsdevspace/shelflens), a search demo
+whose [live storefront](https://jasonsdevspace.com/shelflens/) runs it in a service worker. The
+choices behind it, each with the alternative it rejected and the test behind it, are that
+repository's [decision records](https://github.com/jasonsdevspace/shelflens/tree/main/docs/decisions).
+Versions follow semantic versioning, and the [changelog](CHANGELOG.md) says what each one changed.

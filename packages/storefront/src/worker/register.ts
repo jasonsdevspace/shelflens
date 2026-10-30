@@ -11,6 +11,10 @@
  * page reloads once, so the page and the worker answering it come from
  * the same build, rather than a returning visitor keeping the old worker
  * until the next reload.
+ *
+ * A page the worker already controls tells it a visit has begun, so the
+ * clicks collected since the store was built can be folded in for this
+ * visit. A page the worker claims gets the same on the claim.
  */
 
 export interface WorkerHost {
@@ -20,6 +24,9 @@ export interface WorkerHost {
 
 /** What the page sends a worker that is active but not in charge of it. */
 export const CLAIM_MESSAGE = { type: 'shelflens:claim' } as const;
+
+/** What a page sends its worker on every load, so the clicks collected so far count. */
+export const VISIT_MESSAGE = { type: 'shelflens:visit' } as const;
 
 const browserHost = (): WorkerHost => ({
     serviceWorker: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
@@ -51,7 +58,10 @@ export const controlledByWorker = async (
         });
     });
     const registration = await serviceWorker.register(scriptUrl, { type: 'module', scope });
-    if (controlled) return;
+    if (controlled) {
+        serviceWorker.controller?.postMessage(VISIT_MESSAGE);
+        return;
+    }
     // Already active and not in charge: nothing is going to claim this page unasked.
     registration.active?.postMessage(CLAIM_MESSAGE);
     await claimed;

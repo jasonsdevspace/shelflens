@@ -18,6 +18,7 @@ import {
     type RuleEffect,
     type SearchRequest,
     type SearchResult,
+    type SignalEffect,
     type SortClause,
 } from './types.js';
 
@@ -57,7 +58,7 @@ export interface Engine {
      * A merchandiser edits rules far more often than the catalog changes,
      * and neither needs the index rebuilt.
      */
-    reconfigure(changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine;
+    reconfigure(changes: Pick<EngineConfig, 'synonyms' | 'rules' | 'signals'>): Engine;
     /** How many documents are indexed. */
     readonly size: number;
     /** How many distinct terms the index holds. */
@@ -321,12 +322,40 @@ const passing = (
 };
 
 /** Applies the rules' boosts and buries to the scores, and remembers each effect. */
+/**
+ * The most a signal may raise a score, as a multiplier. Below the smallest
+ * boost a merchandiser would write, so a rule always says more than the
+ * crowd, and above a bury it still leaves the product buried.
+ */
+export const SIGNAL_CAP = 1.25;
+
+/** How many choices it takes to reach the cap. Past it, more choices change nothing. */
+export const SIGNAL_SATURATION = 100;
+
+/**
+ * What a count of choices multiplies a score by: one for none, rising with
+ * the log of the count so the first few choices count most, and the cap at
+ * saturation.
+ */
+export const signalWeight = (count: number): number => {
+    if (!(count > 0)) return 1;
+    const share = Math.min(1, Math.log1p(count) / Math.log1p(SIGNAL_SATURATION));
+    return 1 + (SIGNAL_CAP - 1) * share;
+};
+
+interface Adjusted {
+    readonly rules: ReadonlyMap<number, RuleEffect[]>;
+    readonly signals: ReadonlyMap<number, SignalEffect>;
+}
+
 const adjustScores = (
     index: Index,
     candidates: Candidates,
-    plan: RulePlan
-): ReadonlyMap<number, RuleEffect[]> => {
-    const effects = new Map<number, RuleEffect[]>();
+    plan: RulePlan,
+    signals: Readonly<Record<string, number>>
+): Adjusted => {
+    const rules = new Map<number, RuleEffect[]>();
+    const chosen = new Map<number, SignalEffect>();
     candidates.docs.forEach((doc, i) => {
         const id = index.documents[doc]?.id ?? '';
         const pinnedBy = plan.pinnedBy.get(id);
@@ -336,15 +365,22 @@ const adjustScores = (
             candidates.scores[i] = (candidates.scores[i] ?? 0) * adjusted.weight;
             own.push(...adjusted.effects);
         }
-        if (own.length > 0) effects.set(doc, own);
+        if (own.length > 0) rules.set(doc, own);
+        const count = signals[id];
+        if (count !== undefined && count > 0) {
+            const weight = signalWeight(count);
+            candidates.scores[i] = (candidates.scores[i] ?? 0) * weight;
+            chosen.set(doc, { count, weight });
+        }
     });
-    return effects;
+    return { rules, signals: chosen };
 };
 
 const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const synonyms = buildSynonyms(config.synonyms ?? []);
     const matcher = createMatcher(index, config, synonyms);
     const rules = config.rules ?? [];
+    const signals = config.signals ?? {};
     const limits: Limits = {
         maxPageSize: config.limits?.pageSize ?? MAX_PAGE_SIZE,
         maxResults: config.limits?.results ?? MAX_RESULTS,
@@ -367,7 +403,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
                 ? everything(index)
                 : matchAll(terms, request.prefixLastTerm ?? false, matcher);
         const candidates = applyPlan(matched, plan, byId);
-        const effects = adjustScores(index, candidates, plan);
+        const effects = adjustScores(index, candidates, plan, signals);
 
         const passesAll = passing(index, candidates, filters);
         const kept: number[] = [];
@@ -383,11 +419,13 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
 
         const hits: Hit[] = positions.map((i) => {
             const doc = candidates.docs[i] ?? 0;
+            const signal = effects.signals.get(doc);
             return {
                 id: index.documents[doc]?.id ?? '',
                 score: candidates.scores[i] ?? 0,
                 matches: (candidates.units[i] ?? []).flatMap((unit) => unit.matches),
-                rules: effects.get(doc) ?? [],
+                rules: effects.rules.get(doc) ?? [],
+                ...(signal && { signal }),
             };
         });
 
@@ -509,7 +547,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         };
     };
 
-    const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules'>): Engine => {
+    const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules' | 'signals'>): Engine => {
         const next = { ...config, ...changes };
         checkRules(next.rules ?? [], new Set(byId.keys()), next.attributes);
         return createFromIndex(index, next);

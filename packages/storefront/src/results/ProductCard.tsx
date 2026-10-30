@@ -35,6 +35,12 @@ const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> = {
 const matchText = (match: Match): string =>
     (ROUTES[match.route] ?? ROUTES.EXACT ?? (() => ''))(match);
 
+type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
+
+/** What the clicks did, in the shopper's words: how many, and by how much. */
+const popularityText = ({ clicks, weight }: Popularity): string =>
+    `Clicked ${clicks} ${clicks === 1 ? 'time' : 'times'} before, score raised by ${Math.round((weight - 1) * 100)}%`;
+
 const effectText = (effect: Effect): string => {
     const weight = effect.weight === null ? '' : ` by ${effect.weight}`;
     if (effect.action === 'PIN') return `Pinned to the top by rule ${effect.ruleId}`;
@@ -44,13 +50,14 @@ const effectText = (effect: Effect): string => {
 
 /**
  * Why one result ranked where it did, in plain words, in the order the
- * question is asked: where it landed, what a rule did to it, then what it
- * matched. Rendered only once the answer carrying the explanation has
- * landed, so turning explain mode on never shows a bare rank.
+ * question is asked: where it landed, what a rule did to it, what the
+ * clicks collected so far did, then what it matched. Rendered only once
+ * the answer carrying the explanation has landed, so turning explain mode
+ * on never shows a bare rank.
  */
 const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
     if (!hit.explanation) return null;
-    const { matches, rules } = hit.explanation;
+    const { matches, rules, popularity } = hit.explanation;
     return (
         <ul className="card-explain" aria-label={`Why this is result ${rank}`}>
             <li>
@@ -61,6 +68,7 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
             {rules.map((effect, index) => (
                 <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
             ))}
+            {popularity && <li>{popularityText(popularity)}</li>}
             {matches.map((match, index) => (
                 <li key={index}>{matchText(match)}</li>
             ))}

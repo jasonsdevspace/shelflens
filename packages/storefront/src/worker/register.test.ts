@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { CLAIM_MESSAGE, controlledByWorker, type WorkerHost } from './register.js';
+import { CLAIM_MESSAGE, controlledByWorker, VISIT_MESSAGE, type WorkerHost } from './register.js';
 
 /*
  * The page waits for the worker, asks an idle one to take charge, and
@@ -11,7 +11,7 @@ const fakeContainer = ({ controlled, active }: { controlled: boolean; active: bo
     const target = new EventTarget();
     const worker = { postMessage: vi.fn() };
     const container = {
-        controller: controlled ? ({} as ServiceWorker) : null,
+        controller: controlled ? (worker as unknown as ServiceWorker) : null,
         register: vi.fn(() =>
             Promise.resolve({
                 active: active ? worker : null,
@@ -77,7 +77,8 @@ describe('registering the worker', () => {
         const { host, reload } = hostWith(container);
         await controlledByWorker('/sw.js', '/', host);
         expect(container.register).toHaveBeenCalledOnce();
-        expect(container.worker.postMessage).not.toHaveBeenCalled();
+        // No claim is asked for. The visit is announced, so the clicks so far count.
+        expect(container.worker.postMessage).toHaveBeenCalledExactlyOnceWith(VISIT_MESSAGE);
         container.takeOver();
         expect(reload).toHaveBeenCalledOnce();
     });

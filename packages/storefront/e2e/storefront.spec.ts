@@ -354,3 +354,49 @@ test('the store links to the explainer from its strip and its footer', async ({ 
     await page.getByRole('contentinfo').getByRole('link', { name: 'How it works' }).click();
     await expect(page).toHaveURL(/\/about\/$/);
 });
+
+test('what the shopper clicked rises on the next visit, says so in explain mode, and never passes a pin', async ({
+    page,
+}) => {
+    await page.goto('/?q=jacket&explain=1');
+    const cards = page.getByRole('list', { name: 'Products' }).getByRole('link');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const before = await cards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute('data-sku'))
+    );
+    const pinned = before[0] ?? '';
+    const last = before[before.length - 1] ?? '';
+    await expect(page.locator(`.card:has([data-sku="${pinned}"]) .card-explain`)).toContainText(
+        'Pinned to the top'
+    );
+
+    // Open the last result three times. Each open is a click the worker keeps.
+    for (let i = 0; i < 3; i += 1) {
+        await page.locator(`.card-link[data-sku="${last}"]`).click();
+        await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+        await page.goBack();
+        await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    }
+    // Nothing moves within this visit.
+    await expect(cards.last()).toHaveAttribute('data-sku', last);
+
+    // The next visit folds the clicks in. The worker is told on load and builds the
+    // store again, so the first answer of the visit may still be the old one.
+    await page.reload();
+    await expect
+        .poll(
+            async () => {
+                await page.reload();
+                await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+                return page.locator(`.card:has([data-sku="${last}"]) .card-explain`).textContent();
+            },
+            { timeout: 15_000 }
+        )
+        .toContain('Clicked 3 times before');
+    const after = await cards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute('data-sku'))
+    );
+    expect(after[0]).toBe(pinned);
+    expect(after.indexOf(last)).toBeLessThan(before.indexOf(last));
+    await audit(page);
+});
