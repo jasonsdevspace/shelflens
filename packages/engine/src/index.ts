@@ -1,6 +1,12 @@
 export { withinEdits, withinOneEdit } from './edits.js';
 export { foldAccents, normalize, stem, tokenize } from './normalize.js';
-export { createEngine, type Engine } from './search.js';
+export {
+    createEngine,
+    type Engine,
+    SIGNAL_CAP,
+    SIGNAL_SATURATION,
+    signalWeight,
+} from './search.js';
 export {
     type AttributeKind,
     type AttributeValue,
@@ -21,6 +27,7 @@ export {
     type RuleTrigger,
     type SearchRequest,
     type SearchResult,
+    type SignalEffect,
     type SortClause,
     type SynonymRule,
     type TermMatch,

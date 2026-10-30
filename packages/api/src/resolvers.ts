@@ -104,12 +104,19 @@ const runSearch = (input: SearchInput, context: Context): SearchResultModel => {
     }
 };
 
+/** How many of the most rated products are considered for their clicks. */
+const POPULAR_CANDIDATES = 50;
+
 /**
- * The most rated products the viewer may see, in the category being
- * browsed. Found through the store like any search, so what a rule hides
- * stays hidden here too.
+ * Among the most rated products the viewer may see in the category being
+ * browsed, the most clicked first, then the most rated. Found through the
+ * store like any search,
+ * so what a rule hides stays hidden here too. The clicks are the ones the
+ * store was built with, so this answer may be kept like any other.
  */
 const popularFor = (input: SearchInput, context: Context): Product[] => {
+    const { signals } = context.store;
+    const chosen = Object.keys(signals).length > 0;
     const result = searchStore(context.store.engine, {
         group: context.viewer.group,
         filters: (input.filters ?? []).filter((f) => f.attribute === 'CATEGORY').map(toFilter),
@@ -117,11 +124,18 @@ const popularFor = (input: SearchInput, context: Context): Product[] => {
             { by: 'ratingCount', direction: 'desc' },
             { by: 'rating', direction: 'desc' },
         ],
-        pageSize: POPULAR,
+        pageSize: chosen ? POPULAR_CANDIDATES : POPULAR,
         facets: [],
         now: context.now,
     });
-    return hitsOf(result, context).map((hit) => hit.product);
+    const products = hitsOf(result, context).map((hit) => hit.product);
+    if (!chosen) return products;
+    // A stable sort, so among equal clicks the rating order above holds.
+    return products
+        .map((product, index) => ({ product, index, clicks: signals[product.sku] ?? 0 }))
+        .sort((a, b) => b.clicks - a.clicks || a.index - b.index)
+        .slice(0, POPULAR)
+        .map(({ product }) => product);
 };
 
 /** What to offer instead of nothing, asked for only when nothing was found. */

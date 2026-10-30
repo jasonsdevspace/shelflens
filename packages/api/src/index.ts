@@ -70,3 +70,4 @@ export {
 } from './recommend.js';
 export { parseRulesFile } from './rules-file.js';
 export { buildStoreSchema, schemaSource } from './schema.js';
+export { type Signals, signalsOf } from './signals.js';

@@ -2,6 +2,7 @@ import {
     createStore,
     createStoreApi,
     type EventStore,
+    fingerprint,
     isApiPath,
     isEventsPath,
     parseRulesFile,
@@ -9,6 +10,8 @@ import {
     receiveEvents,
     resolveRequest,
     responseHeaders,
+    type Signals,
+    signalsOf,
     type StoreApi,
     withResponseCache,
 } from '@shelflens/api';
@@ -38,7 +41,11 @@ import type { Catalog } from '@shelflens/catalog';
  * Events the page sends to `events` beside `graphql` are kept in the
  * store the worker is given, and answered with nothing, since the page
  * never waits for them. The API reads the same store for the fields that
- * are built from them.
+ * are built from them, and the clicks among them are folded into ranking
+ * when the store is built. A page that loads asks for a fresh look, and
+ * the store is built again, as a new version, only when the clicks have
+ * changed since. So within one visit the ranking holds still, and paging
+ * never repeats or skips a product, and the next visit sees the clicks.
  */
 
 export interface WorkerApiOptions {
@@ -83,6 +90,11 @@ export interface WorkerApi {
     warm(): Promise<Startup>;
     /** The response for an API request, or nothing for any other request. */
     handle(request: Request): Promise<Response | undefined>;
+    /**
+     * A page is loading. Build the store again if the clicks changed since
+     * it was built, so the visit sees them. True when it was rebuilt.
+     */
+    refresh(): Promise<boolean>;
 }
 
 const json = (
@@ -119,6 +131,28 @@ export const createWorkerApi = ({
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<StoreApi> | undefined;
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
+    /** The clicks the store being served was built with, as a fingerprint. */
+    let built = '';
+
+    /** How often each product was clicked, from everything collected so far. */
+    const clicks = async () => signalsOf(events ? await events.all() : []);
+
+    /** A store from the catalog, the rules and these signals, timed for the cold visit. */
+    const build = async (signals: Signals): Promise<StoreApi> => {
+        const began = performance.now();
+        const [catalog, rules] = await Promise.all([
+            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
+            rulesUrl === undefined
+                ? Promise.resolve([])
+                : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
+        ]);
+        const downloaded = performance.now();
+        const api = withResponseCache(
+            createStoreApi(createStore({ catalog, rules, signals }), { events })
+        );
+        startup = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
+        return api;
+    };
 
     const isApiRequest = (request: Request): boolean =>
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
@@ -138,23 +172,10 @@ export const createWorkerApi = ({
     };
 
     const load = (): Promise<StoreApi> => {
-        const began = performance.now();
-        store ??= Promise.all([
-            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
-            rulesUrl === undefined
-                ? Promise.resolve([])
-                : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
-        ])
-            .then(([catalog, rules]) => {
-                const downloaded = performance.now();
-                const api = withResponseCache(
-                    createStoreApi(createStore({ catalog, rules }), { events })
-                );
-                startup = {
-                    downloadMs: downloaded - began,
-                    buildMs: performance.now() - downloaded,
-                };
-                return api;
+        store ??= clicks()
+            .then((signals) => {
+                built = fingerprint(signals);
+                return build(signals);
             })
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
@@ -207,6 +228,22 @@ export const createWorkerApi = ({
         warm: async () => {
             await dropOthers(await load());
             return startup;
+        },
+        refresh: async () => {
+            // A store still being built was built from the clicks as they were a
+            // moment ago, which is as fresh as a visit needs.
+            if (store === undefined) return false;
+            await store;
+            const signals = await clicks();
+            const next = fingerprint(signals);
+            if (next === built) return false;
+            // The old store keeps answering until the new one is ready, and stays
+            // if the new one cannot be built.
+            const api = await build(signals);
+            store = Promise.resolve(api);
+            built = next;
+            await dropOthers(api);
+            return true;
         },
         handle: async (request) => {
             if (isEventsPath(request.url, base)) return receive(request);

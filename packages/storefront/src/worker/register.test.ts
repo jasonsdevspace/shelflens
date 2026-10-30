@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { CLAIM_MESSAGE, controlledByWorker, type WorkerHost } from './register.js';
+import {
+    announceVisit,
+    CLAIM_MESSAGE,
+    controlledByWorker,
+    VISIT_MESSAGE,
+    VISITED_MESSAGE,
+    type WorkerHost,
+} from './register.js';
 
 /*
  * The page waits for the worker, asks an idle one to take charge, and
@@ -9,9 +16,16 @@ import { CLAIM_MESSAGE, controlledByWorker, type WorkerHost } from './register.j
 
 const fakeContainer = ({ controlled, active }: { controlled: boolean; active: boolean }) => {
     const target = new EventTarget();
-    const worker = { postMessage: vi.fn() };
+    // A worker that answers a visit on the port it was sent, as the real one does.
+    const worker = {
+        postMessage: vi.fn((message: unknown, transfer?: readonly MessagePort[]) => {
+            if ((message as { type?: string }).type === VISIT_MESSAGE.type) {
+                transfer?.[0]?.postMessage(VISITED_MESSAGE);
+            }
+        }),
+    };
     const container = {
-        controller: controlled ? ({} as ServiceWorker) : null,
+        controller: controlled ? (worker as unknown as ServiceWorker) : null,
         register: vi.fn(() =>
             Promise.resolve({
                 active: active ? worker : null,
@@ -77,7 +91,9 @@ describe('registering the worker', () => {
         const { host, reload } = hostWith(container);
         await controlledByWorker('/sw.js', '/', host);
         expect(container.register).toHaveBeenCalledOnce();
-        expect(container.worker.postMessage).not.toHaveBeenCalled();
+        // No claim is asked for. The visit is announced, so the clicks so far count.
+        expect(container.worker.postMessage).toHaveBeenCalledOnce();
+        expect(container.worker.postMessage.mock.calls[0]?.[0]).toEqual(VISIT_MESSAGE);
         container.takeOver();
         expect(reload).toHaveBeenCalledOnce();
     });
@@ -86,5 +102,18 @@ describe('registering the worker', () => {
         await expect(
             controlledByWorker('/sw.js', '/', { serviceWorker: undefined, reload: vi.fn() })
         ).rejects.toThrow('needs a service worker');
+    });
+});
+
+describe('announcing a visit', () => {
+    it('resolves when the worker answers, and on its own when the worker does not', async () => {
+        const answering = fakeContainer({ controlled: true, active: true }).worker;
+        await expect(
+            announceVisit(answering as unknown as ServiceWorker, 50)
+        ).resolves.toBeUndefined();
+        const silent = { postMessage: vi.fn() };
+        const began = Date.now();
+        await announceVisit(silent, 20);
+        expect(Date.now() - began).toBeGreaterThanOrEqual(15);
     });
 });

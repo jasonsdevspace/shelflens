@@ -36,6 +36,7 @@ describe('the tour', () => {
             'edges',
             'rules',
             'explain',
+            'popularity',
             'nothing',
             'prices',
             'cold-start',

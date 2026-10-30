@@ -321,3 +321,46 @@ describe('events inside the worker', () => {
         ).toBeUndefined();
     });
 });
+
+describe('clicks in the worker', () => {
+    const search = (phrase: string) =>
+        posted({
+            query: `{ search(input: { phrase: "${phrase}", pageSize: 3 }) {
+                items { product { sku } explanation { popularity { clicks } } } } }`,
+        });
+    const skus = async (response: Response | undefined) => {
+        const answer = (await response?.json()) as {
+            data: { search: { items: { product: { sku: string } }[] } };
+        };
+        return answer.data.search.items.map((item) => item.product.sku);
+    };
+
+    it('folds the clicks collected so far into ranking when the store is built, and again on a visit after new ones', async () => {
+        const events = createMemoryEventStore();
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            allowFullQueries: true,
+            events,
+        });
+        const before = await skus(await api.handle(search('jacket')));
+        const last = before[before.length - 1] ?? '';
+        const first = await api.handle(search('jacket'));
+        const plainVersion = first?.headers.get(VERSION_HEADER);
+
+        await events.append([
+            { id: 'c1', kind: 'click', at: 1, sku: last },
+            { id: 'c2', kind: 'click', at: 2, sku: last },
+        ]);
+        // Nothing moves until a visit begins, so paging within this one stays stable.
+        expect(await skus(await api.handle(search('jacket')))).toEqual(before);
+        expect(await api.refresh()).toBe(true);
+        const after = await api.handle(search('jacket'));
+        expect(after?.headers.get(VERSION_HEADER)).not.toBe(plainVersion);
+        const risen = await skus(after);
+        expect(risen.indexOf(last)).toBeLessThan(before.indexOf(last));
+        // The same clicks again are no reason to build again.
+        expect(await api.refresh()).toBe(false);
+    });
+});

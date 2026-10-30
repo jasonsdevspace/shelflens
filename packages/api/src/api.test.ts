@@ -1,3 +1,4 @@
+import { signalWeight } from '@jasonsdevspace/shelflens';
 import { generateCatalog } from '@shelflens/catalog';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -52,7 +53,8 @@ const RESULTS = `
             total page pageSize totalPages matching
             sort { by direction }
             items { product { sku name price { min { amount currency } } } score
-                    explanation { matches { typed matched field route } rules { ruleId action } } }
+                    explanation { matches { typed matched field route } rules { ruleId action }
+                                  popularity { clicks weight } } }
             facets { name attribute
                 ... on ValueFacet { buckets { value count } }
                 ... on RangeFacet { buckets { from to count } }
@@ -197,6 +199,68 @@ describe('searching', () => {
     it('reduces an oversized page rather than refusing it', async () => {
         const { search } = data(await run(RESULTS, { input: { pageSize: 500 } }));
         expect(search.pageSize).toBe(100);
+    });
+});
+
+describe('what shoppers clicked', () => {
+    const jackets = () =>
+        catalog.products.filter((p) => /jacket/i.test(p.name) && p.visibleTo.length === 2);
+
+    it('raises a clicked product among its equals, says so in explain mode, and never passes a pin', async () => {
+        const plain = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 5 } })).search;
+        const pinned = plain.items[0].product.sku;
+        const last = plain.items[plain.items.length - 1].product.sku;
+        const signals = { [last]: 20 };
+        const clicked = createStoreApi(
+            createStore({
+                catalog,
+                rules: [{ id: 'promo', when: { queries: ['jacket'] }, pin: [pinned] }],
+                signals,
+            })
+        );
+        const nudged = data(
+            await clicked.run(
+                { query: RESULTS, variables: { input: { phrase: 'jacket', pageSize: 5 } } },
+                guest
+            )
+        ).search;
+        expect(nudged.items[0].product.sku).toBe(pinned);
+        expect(nudged.items[0].explanation.popularity).toBeNull();
+        const risen = nudged.items.findIndex((item: Loose) => item.product.sku === last);
+        expect(risen).toBeGreaterThan(0);
+        expect(risen).toBeLessThan(plain.items.length - 1);
+        expect(nudged.items[risen].explanation.popularity).toEqual({
+            clicks: 20,
+            weight: expect.closeTo(signalWeight(20), 10) as number,
+        });
+    });
+
+    it('is part of the store version, so a store built with new clicks is a new version', () => {
+        const plain = createStore({ catalog });
+        const [a] = jackets();
+        const clicked = createStore({ catalog, signals: { [a?.sku ?? '']: 1 } });
+        expect(clicked.version).not.toBe(plain.version);
+        expect(clicked.version.startsWith(plain.version)).toBe(true);
+        expect(createStore({ catalog, signals: { [a?.sku ?? '']: 1 } }).version).toBe(
+            clicked.version
+        );
+        expect(createStore({ catalog, signals: {} }).version).toBe(plain.version);
+    });
+
+    it('leads the popular products with the most clicked, then the most rated', async () => {
+        const hopeless = { input: { phrase: 'xqzv' } };
+        const query = `query ($input: SearchInput!) {
+            search(input: $input) { noResults { popular { sku rating { count } } } }
+        }`;
+        const before = data(await run(query, hopeless)).search.noResults.popular;
+        const [least] = [...before].sort((a: Loose, b: Loose) => a.rating.count - b.rating.count);
+        const clicked = createStoreApi(createStore({ catalog, signals: { [least.sku]: 3 } }));
+        const after = data(await clicked.run({ query, variables: hopeless }, guest)).search
+            .noResults.popular;
+        expect(after[0].sku).toBe(least.sku);
+        expect(after.slice(1).map((p: Loose) => p.sku)).toEqual(
+            before.filter((p: Loose) => p.sku !== least.sku).map((p: Loose) => p.sku)
+        );
     });
 });
 

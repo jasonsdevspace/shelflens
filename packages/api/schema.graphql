@@ -213,8 +213,10 @@ type NoResults {
     foundWithoutFilters: Int!
 
     """
-    The most rated products the viewer may see, within the category being
-    browsed. A stand-in for popularity until the store collects events.
+    Among the fifty most rated products the viewer may see within the
+    category being browsed, the most clicked first, by the clicks collected
+    as of the store's build, then the most rated. With no clicks yet, the
+    most rated.
     """
     popular: [Product!]!
 }
@@ -260,6 +262,25 @@ type SearchHit {
 type Explanation {
     matches: [TermMatch!]!
     rules: [RuleEffect!]!
+
+    """
+    What the clicks collected so far did to this result, when they did
+    anything. The weight is bounded and never passes a pin.
+    """
+    popularity: Popularity
+}
+
+type Popularity {
+    """
+    In how many visits the product was clicked in the results, as of the
+    store's build.
+    """
+    clicks: Int!
+
+    """
+    What the score was multiplied by, from one up to the cap.
+    """
+    weight: Float!
 }
 
 """

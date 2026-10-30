@@ -354,3 +354,83 @@ test('the store links to the explainer from its strip and its footer', async ({ 
     await page.getByRole('contentinfo').getByRole('link', { name: 'How it works' }).click();
     await expect(page).toHaveURL(/\/about\/$/);
 });
+
+test('what the shopper clicked rises on the next visit, says so in explain mode, and never passes a pin', async ({
+    page,
+}) => {
+    await page.goto('/?q=jacket&explain=1');
+    const cards = page.getByRole('list', { name: 'Products' }).getByRole('link');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const before = await cards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute('data-sku'))
+    );
+    const pinned = before[0] ?? '';
+    const last = before[before.length - 1] ?? '';
+    await expect(page.locator(`.card:has([data-sku="${pinned}"]) .card-explain`)).toContainText(
+        'Pinned to the top'
+    );
+
+    // Open the last result from three visits. A visit is the tab's id, so a new
+    // one is given before each open, as three shoppers would have.
+    for (let i = 0; i < 3; i += 1) {
+        await page.evaluate(
+            (visit) => sessionStorage.setItem('shelflens.session', visit),
+            `visit-${i}`
+        );
+        await page.locator(`.card-link[data-sku="${last}"]`).click();
+        await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+        await page.goBack();
+        await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    }
+    // Nothing moves within this visit.
+    await expect(cards.last()).toHaveAttribute('data-sku', last);
+
+    // The next visit folds the clicks in: the page waits for the worker's word
+    // before it searches, so the very first answer is from the new store.
+    await page.reload();
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    // What the worker holds, so a failure says which part did not happen.
+    const held = await page.evaluate(async () => {
+        const events = await new Promise<{ kind: string; sku?: string; session?: string }[]>(
+            (resolve, reject) => {
+                const opening = indexedDB.open('shelflens-events');
+                opening.onerror = () => reject(opening.error ?? new Error('could not open'));
+                opening.onsuccess = () => {
+                    const db = opening.result;
+                    if (!db.objectStoreNames.contains('events')) {
+                        db.close();
+                        resolve([]);
+                        return;
+                    }
+                    const read = db.transaction('events').objectStore('events').getAll();
+                    read.onsuccess = () => {
+                        db.close();
+                        resolve(read.result);
+                    };
+                    read.onerror = () => {
+                        db.close();
+                        reject(read.error ?? new Error('could not read'));
+                    };
+                };
+            }
+        );
+        const response = await fetch('graphql?op=' + encodeURIComponent('x'), { method: 'GET' });
+        return {
+            clicks: events
+                .filter((event) => event.kind === 'click')
+                .map((event) => [event.sku, event.session]),
+            status: response.status,
+            version: response.headers.get('shelflens-store-version'),
+        };
+    });
+    await expect(
+        page.locator(`.card:has([data-sku="${last}"]) .card-explain`),
+        JSON.stringify(held)
+    ).toContainText('Clicked in 3 visits before');
+    const after = await cards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute('data-sku'))
+    );
+    expect(after[0]).toBe(pinned);
+    expect(after.indexOf(last)).toBeLessThan(before.indexOf(last));
+    await audit(page);
+});
