@@ -152,7 +152,7 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await audit(page);
 
     await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
-    const aside = page.getByText(/set aside the merchandising/);
+    const aside = page.getByText(/set aside the pins and boosts/);
     await expect(aside).toBeVisible();
     await expect(aside).toContainText('featured-jackets');
 });
@@ -293,14 +293,14 @@ test('a second product shows the first beside it, and the first shows its catego
     const first = page.getByRole('heading', { level: 1 });
     await expect(first).toBeFocused();
     const firstName = await first.textContent();
-    const rail = page.getByRole('region', { name: /Popular in|Viewed this/ });
-    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(/^Popular in /);
+    const rail = page.getByRole('region', { name: /Top rated in|Viewed with/ });
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(/^Top rated in /);
     await expect(rail.locator('.card-link[data-sku="SL-00001"]')).toHaveCount(0);
     await audit(page);
 
     await page.goto('/?product=SL-00002');
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-    await expect(rail.getByRole('heading', { level: 2 })).toHaveText('Viewed this, also viewed');
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText('Viewed with this product');
     await expect(rail.getByRole('link').first()).toContainText(firstName ?? '');
     await audit(page);
 });

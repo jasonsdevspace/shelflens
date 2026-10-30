@@ -36,13 +36,13 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'debounce',
         title: 'A burst of keystrokes is one request',
-        body: 'Watch the network while you type. The popover waits a short pause after the last keystroke and sends once, so the API is not flooded and the suggestions still feel immediate.',
+        body: 'Watch the network while you type. The suggestion list waits a short pause after the last keystroke and sends once, so the API is not flooded and the suggestions still feel immediate.',
         to: EMPTY_STATE,
         tests: ['packages/storefront/src/search/SearchBox.test.tsx'],
     },
     {
         id: 'combobox',
-        title: 'The popover is a combobox',
+        title: 'The suggestion list works from the keyboard',
         body: 'Use only the keyboard. Arrow keys move the highlight, Enter searches it, Escape closes and keeps the phrase, and a screen reader hears how many suggestions there are. An accessibility audit runs over it in the tests.',
         to: EMPTY_STATE,
         tests: [
@@ -52,8 +52,8 @@ export const STOPS: readonly Stop[] = [
     },
     {
         id: 'cache-key',
-        title: 'A cache key that forgets who is asking',
-        body: 'This product does not exist for a guest. Switch to member in the masthead and it appears, and the brands that give members a discount show lower prices. A cache keyed on the query alone would serve a member\u2019s answer to the next guest, and a test proves it does.',
+        title: 'The cache that forgets who is asking',
+        body: 'This product does not exist for a guest. Choose "Member" under "Shopping as" at the top of the page and it appears, and the brands that give members a discount show lower prices. A cache keyed on the query alone would serve a member\u2019s answer to the next guest, and a test proves it does.',
         to: { ...EMPTY_STATE, product: MEMBERS_ONLY_SKU },
         tests: ['packages/api/src/cache.test.ts'],
     },
@@ -67,7 +67,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'facets',
         title: 'Choosing Red never zeroes Blue',
-        body: 'Tick a brand. The other brands keep their counts, because a facet counts past its own filter. A naive count would leave one choice in each facet after the first click.',
+        body: 'Tick a brand. The other brands keep their counts, because each filter counts as if its own selection were not there. A naive count would leave one choice per filter after the first tick.',
         to: { ...EMPTY_STATE, phrase: 'jacket' },
         tests: ['packages/engine/src/facets.test.ts'],
     },
@@ -95,21 +95,21 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'rules',
         title: 'Pins and boosts disappear under a sort',
-        body: 'Under relevance, two jackets are pinned first by a rule. Sorted by price, the pin is set aside and the page says so rather than looking broken. Switch the sort back and watch them return.',
+        body: 'Under relevance, two jackets are pinned first by a rule. Choose "Price, low to high" under "Sort by" and the pin is set aside, and the page says so rather than looking broken. Switch the sort back and watch them return.',
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-asc', explain: true },
         tests: ['packages/engine/src/rules.test.ts', 'packages/storefront/src/App.test.tsx'],
     },
     {
         id: 'explain',
         title: 'Why is this product first?',
-        body: 'Explain mode is on. Under each card is which typed word matched which indexed term in which field, exactly, by prefix, by synonym or corrected, and which rule pinned, boosted or buried it. The tool a merchandiser needs, and the engine carries it on every hit.',
+        body: '"Explain ranking" is on. Under each card is which typed word matched which indexed term in which field, exactly, by prefix, by synonym or corrected, and which rule pinned, boosted or buried it. The tool a merchandiser needs, and the engine carries it on every hit.',
         to: { ...EMPTY_STATE, phrase: 'jackit', explain: true },
         tests: ['packages/api/src/api.test.ts', 'packages/engine/src/search.test.ts'],
     },
     {
         id: 'popularity',
         title: 'What shoppers click rises, and never past a pin',
-        body: 'Open a few of these jackets, then reload and search again with explain mode on. The ones you opened rise a little, with the count under each card, and the pinned ones stay first. The nudge is capped, folds in when a visit begins rather than mid-page, and stays below the smallest boost a merchandiser would write.',
+        body: 'Open a few of these jackets, then reload and search again with "Explain ranking" on. The ones you opened rise a little, with the count under each card, and the pinned ones stay first. The nudge is capped, folds in when a visit begins rather than mid-page, and stays below the smallest boost a merchandiser would write.',
         to: { ...EMPTY_STATE, phrase: 'jacket', explain: true },
         tests: ['packages/engine/src/signals.test.ts', 'packages/api/src/api.test.ts'],
     },

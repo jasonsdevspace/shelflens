@@ -472,11 +472,11 @@ describe('explain mode', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
-        expect(screen.queryByText(/set aside the merchandising/)).toBeNull();
+        expect(screen.queryByText(/set aside the pins and boosts/)).toBeNull();
         await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'price-asc');
         await settled();
-        expect(screen.getByText(/set aside the merchandising/)).toHaveTextContent(
-            'Sorting by price, low to high set aside the merchandising: featured-jacket.'
+        expect(screen.getByText(/set aside the pins and boosts/)).toHaveTextContent(
+            'Sorting by price, low to high set aside the pins and boosts from featured-jacket.'
         );
     });
 });
@@ -489,7 +489,7 @@ describe('beside a product', () => {
             p.sku !== subject.sku && p.categoryId === subject.categoryId && p.visibleTo.length === 2
     );
     if (!peer) throw new Error('expected a second product in the category');
-    const rail = () => screen.queryByRole('region', { name: /Viewed this|Popular in/ });
+    const rail = () => screen.queryByRole('region', { name: /Viewed with|Top rated in/ });
     const railSkus = () =>
         within(rail() ?? document.body)
             .getAllByRole('link')
@@ -499,7 +499,7 @@ describe('beside a product', () => {
         await open(`?product=${subject.sku}`);
         await screen.findByRole('heading', { level: 1, name: subject.name });
         await waitFor(() => expect(rail()).not.toBeNull());
-        expect(screen.getByRole('heading', { level: 2, name: /^Popular in / })).toHaveTextContent(
+        expect(screen.getByRole('heading', { level: 2, name: /^Top rated in / })).toHaveTextContent(
             catalog.categories.find((c) => c.id === subject.categoryId)?.name ?? ''
         );
         const skus = railSkus();
@@ -519,7 +519,7 @@ describe('beside a product', () => {
         expect(posted.status).toBe(204);
         const user = await open(`?product=${subject.sku}`);
         await screen.findByRole('heading', { level: 1, name: subject.name });
-        await screen.findByRole('heading', { level: 2, name: 'Viewed this, also viewed' });
+        await screen.findByRole('heading', { level: 2, name: 'Viewed with this product' });
         expect(railSkus()[0]).toBe(peer.sku);
 
         // A rail card opens its product in place, over the same results.
@@ -634,7 +634,7 @@ describe('the tour', () => {
         for (let i = 0; i < 3; i += 1) {
             await user.click(within(tour).getByRole('button', { name: 'Next' }));
         }
-        expect(tour).toHaveTextContent('A cache key that forgets who is asking');
+        expect(tour).toHaveTextContent('The cache that forgets who is asking');
         await user.click(within(tour).getByRole('link', { name: 'Try it' }));
         expect(window.location.search).toBe('?product=SL-00008');
         expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');

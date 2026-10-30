@@ -254,9 +254,8 @@ export const ResultsPage = ({
                     />
                     {setAside.length > 0 && (
                         <p className="results-aside" role="status">
-                            Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the
-                            merchandising: {setAside.join(', ')}. Pins and boosts apply under
-                            relevance only.
+                            Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the pins and
+                            boosts from {setAside.join(', ')}. They apply under relevance only.
                         </p>
                     )}
                     {empty ? (
