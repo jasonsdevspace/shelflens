@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 import { storeApi } from './src/dev/api-plugin.js';
+import { themeScript } from './src/dev/theme-plugin.js';
 
 /**
  * The page, and the explainer beside it at about/. The service worker is
@@ -15,7 +16,7 @@ import { storeApi } from './src/dev/api-plugin.js';
  */
 export default defineConfig({
     base: process.env.BASE_PATH ?? '/',
-    plugins: [react(), storeApi()],
+    plugins: [react(), storeApi(), themeScript()],
     build: {
         outDir: 'dist',
         emptyOutDir: true,

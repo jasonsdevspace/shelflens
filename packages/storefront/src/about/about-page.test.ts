@@ -35,7 +35,7 @@ describe('the explainer', () => {
             .filter((state) => !state.startsWith('about'));
         expect(states.length).toBeGreaterThan(3);
         for (const state of states) {
-            const relative = `../${state}`.replace('&', '&amp;');
+            const relative = `../${state}`.replaceAll('&', '&amp;');
             expect(page, state).toContain(`href="${relative}"`);
         }
     });
@@ -64,7 +64,9 @@ describe('the explainer', () => {
             'nineteen',
             'twenty',
         ];
-        expect(page).toContain(`walks ${words[STOPS.length] ?? String(STOPS.length)} of these`);
+        const count = words[STOPS.length] ?? String(STOPS.length);
+        expect(page).toContain(`walks ${count} of these`);
+        expect(readme).toContain(`walks all ${count}`);
     });
 
     it('has the landmarks and the headings an audit looks for', () => {
@@ -74,11 +76,5 @@ describe('the explainer', () => {
         expect(page).toContain('href="#main-content"');
         expect(page).toContain('aria-label="Portfolio"');
         expect(page.match(/<h2 /g)?.length).toBe(page.match(/<section /g)?.length);
-    });
-
-    it('carries no process artifacts, dashes or semicolons in its prose', () => {
-        const prose = page.replace(/<script>[\s\S]*?<\/script>/, '').replace(/<[^>]+>/g, ' ');
-        const dash = String.fromCodePoint(0x2014);
-        expect(prose).not.toMatch(new RegExp(`${dash}|;|TODO|coming soon`, 'i'));
     });
 });

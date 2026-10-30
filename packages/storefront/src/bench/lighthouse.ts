@@ -18,7 +18,17 @@ import { startPreview } from './preview.js';
  */
 
 const PORT = 4176;
-const PAGES = ['/', '/?q=jacket&explain=1', '/?category=shoes', '/?product=SL-00001', '/about/'];
+/** A store page is ready once the worker answers and the search box appears. */
+const STORE_READY = { name: 'Search the store' };
+
+/** Each page audited, and what to wait for before the audit, when there is something. */
+const PAGES: readonly { readonly path: string; readonly ready?: typeof STORE_READY }[] = [
+    { path: '/', ready: STORE_READY },
+    { path: '/?q=jacket&explain=1', ready: STORE_READY },
+    { path: '/?category=shoes', ready: STORE_READY },
+    { path: '/?product=SL-00001', ready: STORE_READY },
+    { path: '/about/' },
+];
 
 const main = async () => {
     const preview = await startPreview(PORT);
@@ -30,12 +40,9 @@ const main = async () => {
     try {
         const browser = await chromium.connectOverCDP(`http://localhost:${chrome.port}`);
         const page = await browser.newPage();
-        for (const path of PAGES) {
+        for (const { path, ready } of PAGES) {
             await page.goto(`${preview.origin}${path}`);
-            // The store is ready once the worker answers. The explainer has no store.
-            if (!path.startsWith('/about')) {
-                await page.getByRole('combobox', { name: 'Search the store' }).waitFor();
-            }
+            if (ready) await page.getByRole('combobox', ready).waitFor();
             const result = await lighthouse(`${preview.origin}${path}`, {
                 port: chrome.port,
                 onlyCategories: ['accessibility'],

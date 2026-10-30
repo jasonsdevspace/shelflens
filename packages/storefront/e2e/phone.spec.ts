@@ -59,3 +59,21 @@ test('the popover fits the screen and works from the keyboard', async ({ page })
     await search.press('Enter');
     await expect(page).toHaveURL(/\?q=/);
 });
+
+test('the explainer fits a phone, with its steps stacked and nothing scrolling sideways', async ({
+    page,
+}) => {
+    await page.goto('/about/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('How ShelfLens works');
+    const steps = page.locator('.flow li');
+    await expect(steps).toHaveCount(5);
+    const first = await steps.nth(0).boundingBox();
+    const second = await steps.nth(1).boundingBox();
+    expect(second?.y ?? 0).toBeGreaterThan((first?.y ?? 0) + (first?.height ?? 0));
+    const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+});

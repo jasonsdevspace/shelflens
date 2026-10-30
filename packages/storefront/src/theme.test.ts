@@ -11,12 +11,16 @@ import { describe, expect, it } from 'vitest';
  * build rather than a visitor's eyes.
  */
 describe('the theme the portfolio saved', () => {
-    const html = readFileSync(join(__dirname, '..', 'index.html'), 'utf8');
-    // The one inline script in the head, by its position rather than a pattern.
-    const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
+    const script = readFileSync(join(__dirname, '..', 'theme.js'), 'utf8');
+    const pages = ['index.html', 'about/index.html'].map((page) =>
+        readFileSync(join(__dirname, '..', page), 'utf8')
+    );
 
     it('is read from the shared key before the first paint, with both values', () => {
-        expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('</head>'));
+        for (const html of pages) {
+            expect(html.indexOf('<!-- theme-script -->')).toBeGreaterThan(-1);
+            expect(html.indexOf('<!-- theme-script -->')).toBeLessThan(html.indexOf('</head>'));
+        }
         expect(script).toContain("localStorage.getItem('theme')");
         expect(script).toContain("'dark'");
         expect(script).toContain("'light'");
@@ -30,6 +34,6 @@ describe('the theme the portfolio saved', () => {
     });
 
     it('leaves the color scheme to the stylesheet, so nothing paints before the choice', () => {
-        expect(html).not.toContain('name="color-scheme"');
+        for (const html of pages) expect(html).not.toContain('name="color-scheme"');
     });
 });

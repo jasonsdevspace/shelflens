@@ -10,7 +10,11 @@ import { quietTourOnStoreLinks } from './quiet-tour.js';
  * not, since nothing on this origin is about to open a tour.
  */
 
-const here = { origin: 'https://example.test', pathname: '/shelflens/about/' } as Location;
+const here = {
+    origin: 'https://example.test',
+    pathname: '/shelflens/about/',
+    href: 'https://example.test/shelflens/about/',
+} as Location;
 
 const page = (hrefs: readonly string[]) => {
     document.body.innerHTML = hrefs.map((href) => `<a href="${href}">link</a>`).join('');
@@ -36,13 +40,15 @@ describe('the explainer and the tour', () => {
         expect(hasSeenTour()).toBe(true);
     });
 
-    it('leaves links off the site, and on the explainer itself, alone', () => {
-        const [away, self, anchor] = page([
+    it('leaves links off the site, to the portfolio beside it, and to the explainer itself alone', () => {
+        const links = page([
             'https://github.com/jasonsdevspace/shelflens',
+            'https://example.test/',
+            'https://example.test/#contact',
             'https://example.test/shelflens/about/',
             'https://example.test/shelflens/about/#typing',
         ]);
-        for (const link of [away, self, anchor]) fireEvent.click(link as HTMLAnchorElement);
+        for (const link of links) fireEvent.click(link);
         expect(hasSeenTour()).toBe(false);
     });
 });

@@ -20,7 +20,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'coverage', 'dist']);
-const SCANNED = new Set(['.ts', '.js', '.mjs', '.md', '.yml', '.yaml', '.sql']);
+const SCANNED = new Set(['.ts', '.js', '.mjs', '.md', '.yml', '.yaml', '.sql', '.html']);
 
 /** Files with no extension that still carry comments worth checking. */
 const SCANNED_NAMES = new Set(['Dockerfile']);
@@ -94,6 +94,16 @@ const proseOf = (source) =>
             text: line.replace(/`[^`]*`/g, '').replace(/&[a-z]+;/gi, ''),
         }));
 
+/** The text of an HTML page, with its scripts and its tags removed, line by line. */
+const textOf = (source) =>
+    source
+        .replace(/<script[\s\S]*?<\/script>/g, (block) => block.replace(/[^\n]/g, ''))
+        .split('\n')
+        .map((line, index) => ({
+            index,
+            text: line.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ''),
+        }));
+
 const failures = [];
 const record = (file, index, rule, text) =>
     failures.push(`${file}:${index + 1}  ${rule}\n    ${text.trim().slice(0, 100)}`);
@@ -103,7 +113,8 @@ for (const file of walk('.')) {
     if (!SCANNED.has(ext) && !SCANNED_NAMES.has(basename(file))) continue;
     const source = readFileSync(file, 'utf8');
     const isMarkdown = ext === '.md';
-    const segments = isMarkdown ? proseOf(source) : commentsOf(source);
+    const isHtml = ext === '.html';
+    const segments = isMarkdown ? proseOf(source) : isHtml ? textOf(source) : commentsOf(source);
 
     source.split('\n').forEach((line, index) => {
         if (line.includes(EM_DASH)) record(file, index, 'em dash', line);
@@ -111,7 +122,7 @@ for (const file of walk('.')) {
 
     for (const { index, text } of segments) {
         if (PROCESS_ARTIFACTS.test(text)) record(file, index, 'process artifact', text);
-        if (!isMarkdown && ISSUE_REFERENCES.test(text))
+        if (!isMarkdown && !isHtml && ISSUE_REFERENCES.test(text))
             record(file, index, 'issue reference', text);
         if (/[A-Za-z];/.test(text)) record(file, index, 'semicolon in prose', text);
         if (BRITISH_SPELLINGS.test(text)) record(file, index, 'British spelling', text);
