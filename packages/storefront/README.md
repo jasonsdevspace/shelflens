@@ -20,6 +20,14 @@ the page.
   catalog when the store is built and validated then: a rule that names a product or an attribute
   the store does not have fails the build, in the worker, the Node server and the dev server
   alike. A test runs the shipped rules against the shipped catalog.
+- **The search box as a widget.** `widget.js`, built beside the page, mounts the box into an
+  element a host page hands over, inside a shadow root with its own sheet and its own React, and
+  opens its list in the browser's top layer, over anything the host stacks or clips. The host
+  says where the API and the store are, and can say what a search or a product does instead.
+  The page at `widget/` is a host with unfriendly styles, a banner, a clipping box and a React of
+  its own, to show the widget keeping its look and its place.
+  [Decision record 12](../../docs/decisions/0012-the-widget-keeps-its-own-tree.md) has the
+  choices, and what a page on another origin would still need.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

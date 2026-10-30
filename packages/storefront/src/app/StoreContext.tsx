@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
-import { DEFAULT_LOCALE } from '../format/money.js';
+import { DEFAULT_LOCALE, safeLocale } from '../format/money.js';
+import type { StoreQuery } from '../generated/operations.js';
 
 /**
  * What the store says about itself that every page reads: the currency
@@ -20,3 +21,9 @@ const StoreContext = createContext<StoreInfo>(DEFAULT_STORE_INFO);
 export const StoreProvider = StoreContext.Provider;
 
 export const useStoreInfo = (): StoreInfo => useContext(StoreContext);
+
+/** What the store query says about the store, or the defaults until it has answered. */
+export const storeInfoOf = (data: StoreQuery | undefined): StoreInfo =>
+    data
+        ? { currency: data.store.currency, locale: safeLocale(data.store.locale) }
+        : DEFAULT_STORE_INFO;

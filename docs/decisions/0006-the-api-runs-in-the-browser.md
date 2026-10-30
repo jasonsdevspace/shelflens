@@ -59,6 +59,9 @@ Option B, with option A available at any time.
 - Persisted operations work the same way in both: each accepts one of the storefront's
   operations by the hash of its text, and the demo accepts nothing else, so nothing a browser can
   send runs a query the storefront did not ship. Record 8 describes the caches built on that.
+- A host page for the widget under the worker's scope registers the worker as the store's page
+  does, and the widget never does: it is handed the API's address and knows nothing about which
+  host answers. Record 12 has the widget, and what a page on another origin would need.
 
 ## How it is tested
 

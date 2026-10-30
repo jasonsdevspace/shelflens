@@ -62,6 +62,9 @@ with a way forward rather than a place to return to.
 - The listbox grows groups once recent phrases sit beside suggestions. The combobox contract is
   unchanged: focus stays in the input, the only new focusable thing is the button outside the
   list.
+- The widget reads the list and never writes it, since its default search opens the store before
+  a result lands. On the demo the store's page records the search. On another origin the list
+  stays empty. Record 12 has the widget.
 
 ## How it is tested
 

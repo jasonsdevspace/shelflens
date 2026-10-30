@@ -189,12 +189,67 @@ const KEYS: Readonly<Record<string, (keyed: Keyed) => void>> = {
  * long list. The pointer is left alone: scrolling under it would change
  * which option it rests on.
  */
-const useScrolledIntoView = (elementId: string | undefined, byKeys: RefObject<boolean>) => {
+const useScrolledIntoView = (
+    elementId: string | undefined,
+    byKeys: RefObject<boolean>,
+    input: RefObject<HTMLInputElement | null>
+) => {
     useEffect(() => {
-        if (elementId && byKeys.current) {
-            document.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
+        if (!elementId || !byKeys.current) return;
+        // The option is in the same tree as the box, which may be a shadow root rather
+        // than the document, and both know their elements by id.
+        const tree = input.current?.getRootNode();
+        if (tree instanceof Document || tree instanceof ShadowRoot) {
+            tree.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
         }
-    }, [elementId, byKeys]);
+    }, [elementId, byKeys, input]);
+};
+
+/** Whether this browser has a top layer for popovers. A test document does not, and shows the list in place. */
+const TOP_LAYER = typeof HTMLElement !== 'undefined' && 'togglePopover' in HTMLElement.prototype;
+
+/** How far below the box the popover sits, and how close to the viewport's edge it may reach. */
+const GAP_PX = 4;
+const EDGE_PX = 12;
+
+/**
+ * Puts the popover in the browser's top layer while it is open, over
+ * anything a page stacks or clips, and places it under the box from the
+ * box's own rectangle, following a scroll or a resize. A popover in the
+ * top layer is the same element in the same tree, so every id the box
+ * refers to still resolves, and focus moving onto its button is still
+ * focus within it.
+ */
+const usePlacedPopover = (
+    expanded: boolean,
+    input: RefObject<HTMLInputElement | null>,
+    popover: RefObject<HTMLDivElement | null>
+) => {
+    useEffect(() => {
+        const box = popover.current;
+        const field = input.current;
+        if (!box || !field || !TOP_LAYER) return;
+        if (!expanded) {
+            box.togglePopover(false);
+            return;
+        }
+        const place = () => {
+            const rect = field.getBoundingClientRect();
+            const room = Math.max(120, window.innerHeight - rect.bottom - GAP_PX - EDGE_PX);
+            box.style.setProperty('left', `${rect.left}px`);
+            box.style.setProperty('top', `${rect.bottom + GAP_PX}px`);
+            box.style.setProperty('width', `${rect.width}px`);
+            box.style.setProperty('max-height', `${room}px`);
+        };
+        place();
+        box.togglePopover(true);
+        window.addEventListener('scroll', place, true);
+        window.addEventListener('resize', place);
+        return () => {
+            window.removeEventListener('scroll', place, true);
+            window.removeEventListener('resize', place);
+        };
+    }, [expanded, input, popover]);
 };
 
 interface Said {
@@ -368,7 +423,8 @@ export const SearchBox = ({
     const optionId = (index: number) => `${id}-option-${index}`;
     const activeId = active >= 0 ? optionId(active) : undefined;
     const byKeys = useRef(false);
-    useScrolledIntoView(activeId, byKeys);
+    useScrolledIntoView(activeId, byKeys, input);
+    usePlacedPopover(expanded, input, popover);
     // The list is named by the visible heading while it is the shopper's own history.
     const naming =
         recentCount > 0 && !storeHas
@@ -489,7 +545,12 @@ export const SearchBox = ({
             <div className="searchbox-status" role="status" aria-live="polite">
                 {status}
             </div>
-            <div ref={popover} className="searchbox-popover" hidden={!expanded}>
+            <div
+                ref={popover}
+                className="searchbox-popover"
+                popover={TOP_LAYER ? 'manual' : undefined}
+                hidden={!expanded}
+            >
                 {recentCount > 0 && (
                     <RecentHead
                         headingId={headingId}

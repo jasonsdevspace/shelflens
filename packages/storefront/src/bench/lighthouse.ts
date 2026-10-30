@@ -28,6 +28,7 @@ const PAGES: readonly { readonly path: string; readonly ready?: typeof STORE_REA
     { path: '/?category=shoes', ready: STORE_READY },
     { path: '/?product=SL-00001', ready: STORE_READY },
     { path: '/about/' },
+    { path: '/widget/', ready: STORE_READY },
 ];
 
 const main = async () => {

@@ -1,0 +1,40 @@
+/*
+ * The widget's frame inside its shadow root. Selectors from the host page
+ * stop at the root, but inherited properties do not, so the container pins
+ * the font and the color. The tokens follow the host's color-scheme, which
+ * is the one standard property a host sets to theme the widget, and the
+ * store's own theme script sets it on the demo's host page.
+ */
+.shelflens {
+    --bg: light-dark(#ffffff, #121212);
+    --fg: light-dark(#1a1a1a, #f0f0f0);
+    --muted: light-dark(#5c5c5c, #a5a5a5);
+    --line: light-dark(#d9d9d9, #3a3a3a);
+    --accent: light-dark(#1f4fd8, #8fb0ff);
+    --on-accent: light-dark(#ffffff, #121212);
+    --highlight: light-dark(#eef2fd, #1e2a4a);
+    --control: light-dark(#8a8a8a, #6e6e6e);
+    --warn: light-dark(#b7472a, #e8795a);
+    display: block;
+    position: relative;
+    isolation: isolate;
+    font:
+        1rem/1.4 system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--fg);
+}
+
+.shelflens *,
+.shelflens *::before,
+.shelflens *::after {
+    box-sizing: border-box;
+}
+
+.shelflens .searchbox {
+    max-width: none;
+}

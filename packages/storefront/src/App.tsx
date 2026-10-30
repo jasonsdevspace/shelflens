@@ -3,7 +3,7 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
-import { DEFAULT_STORE_INFO, type StoreInfo, StoreProvider } from './app/StoreContext.jsx';
+import { storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
 import { type Navigate, useUrlState } from './app/useUrlState.js';
@@ -16,8 +16,7 @@ import {
 import { createCollector } from './events/collector.js';
 import { EventsProvider } from './events/EventsContext.jsx';
 import { sessionId } from './events/session.js';
-import { safeLocale } from './format/money.js';
-import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
+import { CategoriesDocument, StoreDocument } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { DiscardRules } from './results/RulesPanel.jsx';
@@ -49,12 +48,6 @@ const Standby = ({ readiness }: { readonly readiness: Readiness }) => {
     }
     return null;
 };
-
-/** What the store query says about the store, or the defaults until it has answered. */
-const storeInfoOf = (data: StoreQuery | undefined): StoreInfo =>
-    data
-        ? { currency: data.store.currency, locale: safeLocale(data.store.locale) }
-        : DEFAULT_STORE_INFO;
 
 /** Opens and closes the tour, and says which panel it controls. */
 const TourToggle = ({
