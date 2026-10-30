@@ -113,8 +113,8 @@ without its filters, each only if it finds something.
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
   second served locally, with the worker spending 38 ms downloading the catalog and the rules and
-  55 ms building the store. The catalog ships at 333 KB compressed, the page at 82 KB, the worker
-  at 68 KB. [The record](docs/benchmarks/cold-visit.md).
+  57 ms building the store. The catalog ships at 333 KB compressed, the page at 86 KB, the worker
+  at 70 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** The catalog stays under 400 KB compressed, the API bundled for a
   browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
   fails. The storefront runs in a real browser on a desktop and a phone profile with an
