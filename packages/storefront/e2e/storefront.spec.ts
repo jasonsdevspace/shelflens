@@ -389,9 +389,44 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
     // before it searches, so the very first answer is from the new store.
     await page.reload();
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
-        'Clicked in 3 visits before'
-    );
+    // What the worker holds, so a failure says which part did not happen.
+    const held = await page.evaluate(async () => {
+        const events = await new Promise<{ kind: string; sku?: string; session?: string }[]>(
+            (resolve, reject) => {
+                const opening = indexedDB.open('shelflens-events');
+                opening.onerror = () => reject(opening.error ?? new Error('could not open'));
+                opening.onsuccess = () => {
+                    const db = opening.result;
+                    if (!db.objectStoreNames.contains('events')) {
+                        db.close();
+                        resolve([]);
+                        return;
+                    }
+                    const read = db.transaction('events').objectStore('events').getAll();
+                    read.onsuccess = () => {
+                        db.close();
+                        resolve(read.result);
+                    };
+                    read.onerror = () => {
+                        db.close();
+                        reject(read.error ?? new Error('could not read'));
+                    };
+                };
+            }
+        );
+        const response = await fetch('graphql?op=' + encodeURIComponent('x'), { method: 'GET' });
+        return {
+            clicks: events
+                .filter((event) => event.kind === 'click')
+                .map((event) => [event.sku, event.session]),
+            status: response.status,
+            version: response.headers.get('shelflens-store-version'),
+        };
+    });
+    await expect(
+        page.locator(`.card:has([data-sku="${last}"]) .card-explain`),
+        JSON.stringify(held)
+    ).toContainText('Clicked in 3 visits before');
     const after = await cards.evaluateAll((links) =>
         links.map((link) => link.getAttribute('data-sku'))
     );
