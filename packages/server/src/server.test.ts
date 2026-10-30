@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
@@ -152,7 +153,7 @@ describe('rules over HTTP', () => {
     const jacket = catalog.products.find((p) => /jacket/i.test(p.name));
     if (!jacket) throw new Error('expected a jacket');
     const shipped = [{ id: 'shipped', when: { queries: ['jacket'] }, pin: [jacket.sku] }];
-    const built = (saved: readonly (typeof shipped)[number][] | undefined) =>
+    const built = (saved: readonly Rule[] | undefined) =>
         createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
     const shippedStore = built(undefined);
     const host = createServer({
@@ -164,7 +165,7 @@ describe('rules over HTTP', () => {
             check: (draft) => {
                 shippedStore.engine.reconfigure({ rules: draft });
             },
-            build: (saved) => createStoreApi(built(saved as typeof shipped)),
+            build: (saved) => createStoreApi(built(saved)),
         },
     });
     let hostBase = '';
@@ -207,13 +208,11 @@ describe('rules over HTTP', () => {
         expect(saved.status).toBe(204);
         expect(saved.headers.get(VERSION_HEADER)).toMatch(/\+rules\./);
         expect(await applied()).toEqual(['mine']);
-        // The path has its own allowance, spent by the requests to it alone.
-        let limited: Response | undefined;
-        for (let sent = 0; sent < 6 && !limited; sent += 1) {
-            const response = await rules('GET');
-            if (response.status === 429) limited = response;
-        }
-        if (!limited) throw new Error('expected a request past the allowance to be refused');
+        // The path has its own allowance of six: the searches above did not spend it, and
+        // the three requests to it so far leave three more before the seventh is refused.
+        for (let sent = 0; sent < 3; sent += 1) expect((await rules('GET')).status).toBe(200);
+        const limited = await rules('GET');
+        expect(limited.status).toBe(429);
         expect(await limited.json()).toEqual({ errors: [{ message: 'too many requests' }] });
     });
 

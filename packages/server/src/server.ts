@@ -69,7 +69,7 @@ export interface RulesSupport {
     /** Refuses a set the engine refuses, in its words. */
     check(rules: readonly Rule[]): void;
     /** The API over the store built with this set, or the shipped one when nothing is saved. */
-    build(saved: readonly Rule[] | undefined): StoreApi;
+    build(saved: readonly Rule[]): StoreApi;
 }
 
 /**
@@ -180,7 +180,11 @@ export const createHandler = ({
             refuse(response, receipt.status, receipt.message ?? 'refused', requestId);
             return;
         }
-        if (receipt.changed) api = rules.build(await rules.store.current());
+        if (receipt.changed) {
+            // A reset is the store the host started with, built once.
+            const saved = await rules.store.current();
+            api = saved === undefined ? initial : rules.build(saved);
+        }
         response.writeHead(204, { 'x-request-id': requestId, [VERSION_HEADER]: api.version });
         response.end();
     };

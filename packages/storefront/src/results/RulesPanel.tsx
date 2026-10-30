@@ -36,7 +36,7 @@ export interface RulesPanelProps {
     readonly brands: readonly string[];
     readonly onDraft: (rules: readonly Rule[] | undefined) => void;
     /** The store was built again, under a new version. */
-    readonly onStoreChanged: () => void;
+    readonly onStoreChanged: () => number | undefined;
     /** Counts the times the store was built again, by this panel or by the page, so a change made elsewhere is read. */
     readonly storeRevision: number;
     /** Whether the results are sorted by relevance, where rules apply. */
@@ -65,8 +65,15 @@ const request = async (url: string, init?: RequestInit): Promise<Response | unde
 
 const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
     const response = await request(rulesUrl);
-    return response?.ok ? ((await response.json()) as Loaded) : undefined;
+    if (!response?.ok) return undefined;
+    try {
+        return (await response.json()) as Loaded;
+    } catch {
+        return undefined;
+    }
 };
+
+const NOT_READ = 'The rules could not be read. Reload the page and try again.';
 
 /**
  * The rules the host holds, read once the panel opens and again after each
@@ -78,44 +85,48 @@ const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
 const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
     const [loaded, setLoaded] = useState<Loaded>();
     const [failed, setFailed] = useState(false);
-    // Whether the next store change is this panel's own save, whose set it holds already.
-    const own = useRef(false);
-    /** The host accepted this set, so it is the set, and the change about to be announced is ours. */
-    const accept = (rules: readonly Rule[]) => {
-        setLoaded({ rules, edited: true });
-        setFailed(false);
-        own.current = true;
-    };
-    const reload = async () => {
-        const next = await read(rulesUrl);
+    // The revision this panel's own change produced, which the read below skips.
+    const own = useRef<number>(undefined);
+    // Each read takes a ticket, and only the newest read's answer is kept, so an
+    // older answer landing later never overwrites a newer one.
+    const ticket = useRef(0);
+    const take = (next: Loaded | undefined) => {
         if (next) setLoaded(next);
         setFailed(next === undefined);
     };
+    const readNewest = () => {
+        const mine = ticket.current + 1;
+        ticket.current = mine;
+        void read(rulesUrl).then((next) => {
+            if (mine === ticket.current) take(next);
+        });
+    };
+    /** The host accepted this set, so it is the set. */
+    const accept = (rules: readonly Rule[]) => take({ rules, edited: true });
     /** The host has a set this panel does not know until it reads it, which it does itself. */
     const forget = () => {
         setLoaded(undefined);
         setFailed(false);
-        own.current = true;
-        void reload();
+        readNewest();
+    };
+    /** The store change about to be announced is this panel's own, under this revision. */
+    const caused = (revision: number | undefined) => {
+        own.current = revision;
     };
     // Read on opening, and again whenever the store was built anew by something
     // other than this panel, as when the page's banner gives the store its rules back.
     useEffect(() => {
-        if (own.current) {
-            own.current = false;
-            return;
-        }
-        let open = true;
+        if (storeRevision === own.current) return;
+        const mine = ticket.current + 1;
+        ticket.current = mine;
         void read(rulesUrl).then((next) => {
-            if (!open) return;
-            if (next) setLoaded(next);
-            setFailed(next === undefined);
+            if (mine === ticket.current) take(next);
         });
         return () => {
-            open = false;
+            ticket.current += 1;
         };
     }, [rulesUrl, storeRevision]);
-    return { loaded, failed, accept, forget };
+    return { loaded, failed, accept, forget, caused };
 };
 
 /** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
@@ -258,7 +269,7 @@ export const RulesPanel = ({
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, failed, accept, forget } = useLoadedRules(rulesUrl, storeRevision);
+    const { loaded, failed, accept, forget, caused } = useLoadedRules(rulesUrl, storeRevision);
     useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
@@ -298,12 +309,17 @@ export const RulesPanel = ({
 
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
     const changed = (said: string) => {
-        onStoreChanged();
+        caused(onStoreChanged());
         setMessage(said);
         close();
     };
 
     const commit = async (set: readonly Rule[], said: string) => {
+        // A set built on rules the panel could not read is not one to post.
+        if (!editable) {
+            setMessage(NOT_READ);
+            return;
+        }
         const response = await request(rulesUrl, {
             method: 'POST',
             body: JSON.stringify({ rules: set }),
@@ -372,7 +388,7 @@ export const RulesPanel = ({
             )}
             {failed && (
                 <p className="notice" role="alert">
-                    The rules could not be read. Reload the page and try again.
+                    {NOT_READ}
                 </p>
             )}
             {form ? (
