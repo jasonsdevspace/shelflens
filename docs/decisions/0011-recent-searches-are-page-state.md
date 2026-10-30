@@ -36,10 +36,11 @@ in another tab shows on the next open.
 
 **A source, not a mode.** What was typed filters the list by prefix, on the whole phrase or on
 any word, from the first character. With nothing typed the list is the whole history, newest
-first, up to eight. Once the store has suggestions the matching recent phrases sit above them as
-a group of their own, capped at three, and a suggested query that equals a recent phrase is
-dropped so nothing appears twice. The display always answers the input, and the list never
-vanishes wholesale at the second character.
+first, up to eight. From the moment the store is asked, at two characters, the matching recent
+phrases are capped at three, so the list holds still while the answer is on its way, and once
+the store has something to suggest they sit above it as a group of their own. A suggested query
+that equals a recent phrase is dropped so nothing appears twice. The display always answers the
+input, and the list never vanishes wholesale at the second character.
 
 **A heading and a button.** The list is named by a visible heading, "Recent searches", so a
 sighted shopper knows these are their own phrases and not the store's, and the screen reader

@@ -1,4 +1,5 @@
 import type { CustomerGroup } from '../client/graphql.js';
+import { count } from '../format/count.js';
 import type { Hit } from './ProductCard.jsx';
 
 /**
@@ -34,7 +35,7 @@ const asMember = (items: readonly Hit[]): string => {
     const prices =
         discounted === 0
             ? 'every product on this page is at list price'
-            : `${discounted} ${discounted === 1 ? 'product' : 'products'} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
+            : `${count(discounted, 'product', 'products')} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
     const products =
         hidden === 0
             ? 'none is for members only'

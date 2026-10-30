@@ -83,15 +83,18 @@ export const refreshRecentSearches = (): void => {
     if (recentSearches() !== before) notify();
 };
 
-const write = (phrases: readonly string[]): void => {
+/** Writes the list, and says whether storage took it. Storage may read but refuse to write. */
+const write = (phrases: readonly string[]): boolean => {
+    let taken = true;
     try {
         if (phrases.length === 0) localStorage.removeItem(KEY);
         else localStorage.setItem(KEY, JSON.stringify(phrases));
     } catch {
-        // Nothing to do: the list is not kept in this browser.
+        taken = false;
     }
     recentSearches();
     notify();
+    return taken;
 };
 
 /** Puts a phrase first, once, however it was spelled before. */
@@ -102,9 +105,8 @@ export const rememberSearch = (phrase: string): void => {
     write([wanted, ...kept].slice(0, RECENT_LIMIT));
 };
 
-export const clearRecentSearches = (): void => {
-    write(NONE);
-};
+/** Empties the list. Answers false when storage refused, and the list is as it was. */
+export const clearRecentSearches = (): boolean => write(NONE);
 
 /** The phrases in which what was typed starts the phrase or starts a word, newest first. */
 export const matchingRecent = (phrases: readonly string[], typed: string): readonly string[] => {
@@ -117,7 +119,9 @@ export const matchingRecent = (phrases: readonly string[], typed: string): reado
 const subscribe = (listener: () => void) => {
     listeners.add(listener);
     // Another tab wrote the list.
-    const onStorage = () => refreshRecentSearches();
+    const onStorage = (event: StorageEvent) => {
+        if (event.key === KEY || event.key === null) refreshRecentSearches();
+    };
     window.addEventListener('storage', onStorage);
     refreshRecentSearches();
     return () => {

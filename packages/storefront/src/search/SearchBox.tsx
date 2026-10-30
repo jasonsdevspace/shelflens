@@ -58,9 +58,11 @@ const RECENT_BESIDE_SUGGESTIONS = 3;
 /** The options in order: recent phrases, suggested queries not already among them, products. */
 const optionsOf = (
     recent: readonly string[],
+    asked: boolean,
     suggestions: Suggestions | undefined
 ): readonly Option[] => {
-    const shown = suggestions ? recent.slice(0, RECENT_BESIDE_SUGGESTIONS) : recent;
+    // Capped from the moment the store is asked, so the list holds still through the wait.
+    const shown = asked ? recent.slice(0, RECENT_BESIDE_SUGGESTIONS) : recent;
     const seen = new Set(shown.map(fold));
     return [
         ...shown.map((phrase): Option => ({ kind: 'recent', phrase })),
@@ -91,8 +93,12 @@ const usePopover = (
     const current = answered?.phrase === phrase.trim() ? answered.suggestions : undefined;
     const suggestions =
         current && current.queries.length + current.products.length > 0 ? current : undefined;
+    const asked = isAskable(phrase);
     const matching = useMemo(() => matchingRecent(recent, phrase), [recent, phrase]);
-    const options = useMemo(() => optionsOf(matching, suggestions), [matching, suggestions]);
+    const options = useMemo(
+        () => optionsOf(matching, asked, suggestions),
+        [matching, asked, suggestions]
+    );
     const recentCount = options.filter((option) => option.kind === 'recent').length;
     return { options, recentCount, storeHas: suggestions !== undefined };
 };
@@ -216,8 +222,12 @@ const statusOf = ({ notice, open, askable, loading, error, recent, suggested }: 
     // A failure is news before a wait is: nothing is coming.
     if (error) return error;
     if (loading && suggested === 0) return 'Searching';
+    const recents = count(recent, 'recent search', 'recent searches');
+    if (suggested > 0 && recent > 0) {
+        return `${recents} and ${count(suggested, 'suggestion', 'suggestions')}`;
+    }
     if (suggested > 0) return count(suggested, 'suggestion', 'suggestions');
-    return recent > 0 ? count(recent, 'recent search', 'recent searches') : '0 suggestions';
+    return recent > 0 ? recents : '0 suggestions';
 };
 
 const OptionRow = ({
@@ -360,7 +370,10 @@ export const SearchBox = ({
     const byKeys = useRef(false);
     useScrolledIntoView(activeId, byKeys);
     // The list is named by the visible heading while it is the shopper's own history.
-    const naming = storeHas ? { 'aria-label': 'Suggestions' } : { 'aria-labelledby': headingId };
+    const naming =
+        recentCount > 0 && !storeHas
+            ? { 'aria-labelledby': headingId }
+            : { 'aria-label': 'Suggestions' };
 
     const close = () => {
         setNotice('');
@@ -401,10 +414,12 @@ export const SearchBox = ({
     };
 
     const clear = () => {
-        clearRecentSearches();
+        const cleared = clearRecentSearches();
         // Focus goes back to the box before the button it is on unmounts.
         input.current?.focus();
-        setNotice('Recent searches cleared');
+        setNotice(
+            cleared ? 'Recent searches cleared' : 'The recent searches could not be cleared.'
+        );
         setOpen(false);
         setActive(-1);
     };

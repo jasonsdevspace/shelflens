@@ -308,7 +308,7 @@ describe('what this browser searched before', () => {
         ]);
         // The heading and its clear button stay with the shopper's phrases wherever they sit.
         expect(screen.getByRole('button', { name: 'Clear recent searches' })).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('2 suggestions');
+        expect(screen.getByRole('status')).toHaveTextContent('2 recent searches and 2 suggestions');
         await user.keyboard('{ArrowDown}{Enter}');
         expect(box.onSearch).toHaveBeenCalledWith('trail runner');
     });
@@ -346,14 +346,20 @@ describe('what this browser searched before', () => {
         const box = renderBox(network.client);
         const user = userEvent.setup();
         await user.type(box.input, 'tr');
-        await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
+        // Three at most once the store is asked, so the answer never cuts the list shorter.
+        expect(screen.getAllByRole('option')).toHaveLength(3);
+        await user.keyboard('{ArrowDown}{ArrowDown}');
         expect(box.input).toHaveAttribute(
             'aria-activedescendant',
-            expect.stringContaining('option-3')
+            expect.stringContaining('option-1')
         );
         await waitFor(() => expect(network.pending).toHaveLength(1));
         network.pending[0]?.answer({ queries: ['trek poles'], products: [] });
-        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 suggestion'));
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(
+                '3 recent searches and 1 suggestion'
+            )
+        );
         expect(box.input).not.toHaveAttribute('aria-activedescendant');
         await user.keyboard('{Enter}');
         expect(box.onSearch).toHaveBeenCalledWith('tr');
@@ -378,13 +384,38 @@ describe('what this browser searched before', () => {
         await user.type(box.input, 'bo');
         await waitFor(() => expect(network.pending).toHaveLength(1));
         network.pending[0]?.fail('the network is down');
-        await waitFor(() =>
-            expect(screen.getByRole('status')).not.toHaveTextContent(/recent search|Searching/)
-        );
-        expect(screen.getByRole('status').textContent).not.toBe('');
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('down'));
         expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
             'boots',
         ]);
+        // The failure was for "bo". "boo" is a new request, not a failed one.
+        await user.type(box.input, 'o');
+        expect(screen.getByRole('status')).toHaveTextContent('Searching');
+    });
+
+    it('names the list for the store while the store is asked and no recent phrase matches', async () => {
+        rememberSearch('boots');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'zz');
+        expect(box.input).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeInTheDocument();
+    });
+
+    it('says when storage refused to let the list go', async () => {
+        rememberSearch('boots');
+        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+            throw new Error('refused');
+        });
+        const { input, user } = await openEmpty();
+        await user.tab();
+        await user.keyboard('{Enter}');
+        expect(input).toHaveFocus();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'The recent searches could not be cleared.'
+        );
+        vi.restoreAllMocks();
     });
 
     it('shows a phrase once however the store spaces its suggestion of it', async () => {

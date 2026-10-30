@@ -689,6 +689,26 @@ describe('what was searched before', () => {
         expect(localStorage.getItem('shelflens.recent')).toBeNull();
     });
 
+    it('offers a search again once it is run again after a clear', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.click(box);
+        await screen.findByRole('listbox', { name: 'Recent searches' });
+        await user.tab();
+        await user.keyboard('{Enter}');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+        await user.type(box, 'jacket{Enter}');
+        await settled();
+        await user.clear(box);
+        await user.tab();
+        await user.click(box);
+        expect(await screen.findByRole('listbox', { name: 'Recent searches' })).toHaveTextContent(
+            'jacket'
+        );
+    });
+
     it('never offers a misspelling the store corrected', async () => {
         const user = await open('?q=jackit');
         await settled();

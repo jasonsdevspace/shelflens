@@ -37,7 +37,8 @@ export const isAskable = (phrase: string): boolean => phrase.trim().length >= MI
 
 export const useSuggestions = (client: GraphQLClient, phrase: string): SuggestionState => {
     const [answered, setAnswered] = useState<SuggestionState['answered']>();
-    const [error, setError] = useState<string>();
+    // A failure, and the phrase it failed for, so a new phrase is not told of an old one.
+    const [failed, setFailed] = useState<{ readonly phrase: string; readonly message: string }>();
     const latest = useRef(createLatest());
 
     useEffect(() => {
@@ -58,19 +59,25 @@ export const useSuggestions = (client: GraphQLClient, phrase: string): Suggestio
                 .then((outcome) => {
                     if (outcome.stale) return;
                     setAnswered({ phrase: wanted, suggestions: outcome.value.suggest });
-                    setError(undefined);
+                    setFailed(undefined);
                 })
                 .catch((failure: unknown) => {
-                    setError(failure instanceof Error ? failure.message : 'the search failed');
+                    setFailed({
+                        phrase: wanted,
+                        message: failure instanceof Error ? failure.message : 'the search failed',
+                    });
                 });
         }, DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [client, phrase]);
 
     const askable = isAskable(phrase);
+    const wanted = phrase.trim();
+    const error = askable && failed?.phrase === wanted ? failed.message : undefined;
     return {
         answered: askable ? answered : undefined,
-        loading: askable && answered?.phrase !== phrase.trim(),
-        error: askable ? error : undefined,
+        // A failed request is over, not pending.
+        loading: askable && answered?.phrase !== wanted && error === undefined,
+        error,
     };
 };

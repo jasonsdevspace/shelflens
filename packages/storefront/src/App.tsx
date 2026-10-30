@@ -128,12 +128,15 @@ interface MastheadProps {
     readonly touring: boolean;
     readonly onTour: () => void;
     readonly tourButton: RefObject<HTMLButtonElement | null>;
+    /** The shopper submitted a search, whether or not it changed the page. */
+    readonly onSearched: () => void;
 }
 
 const Masthead = ({
     client,
     state,
     fresh,
+    onSearched,
     navigate,
     categories,
     group,
@@ -146,7 +149,10 @@ const Masthead = ({
         <SearchBox
             client={client}
             initialPhrase={state.phrase ?? ''}
-            onSearch={(phrase) => navigate({ ...fresh, phrase })}
+            onSearch={(phrase) => {
+                navigate({ ...fresh, phrase });
+                onSearched();
+            }}
             onPick={(sku) => navigate({ ...state, product: sku })}
         />
         <ViewerSwitch group={group} onChange={onGroup} />
@@ -242,6 +248,8 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
     const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
         useTour();
     const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
+    // Counts the searches submitted, so one run again is remembered again though the page is the same.
+    const [searched, setSearched] = useState(0);
     const isReady = readiness === 'ready';
     const { tree, store } = useStoreShape(client, isReady);
     const fresh = freshFrom(state);
@@ -290,6 +298,7 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
                                 client={client}
                                 state={state}
                                 fresh={fresh}
+                                onSearched={() => setSearched((n) => n + 1)}
                                 navigate={navigate}
                                 categories={tree}
                                 group={group}
@@ -336,6 +345,7 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
                             rulesUrl={rulesUrl}
                             onStoreChanged={storeChanged}
                             storeRevision={revision}
+                            searched={searched}
                         />
                     )}
                 </main>

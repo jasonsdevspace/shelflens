@@ -214,7 +214,6 @@ body {
     padding: 0.35rem 0.8rem 0.15rem;
 }
 
-.searchbox-group + .searchbox-group,
 li[role='group'] + li[role='group'] {
     border-top: 1px solid var(--line);
     margin-top: 0.25rem;
