@@ -107,9 +107,16 @@ export const STOPS: readonly Stop[] = [
         tests: ['packages/api/src/api.test.ts', 'packages/engine/src/search.test.ts'],
     },
     {
+        id: 'popularity',
+        title: 'What shoppers click rises, and never past a pin',
+        body: 'Open a few of these jackets, then reload and search again with explain mode on. The ones you opened rise a little, with the count under each card, and the pinned ones stay first. The nudge is capped, folds in when a visit begins rather than mid-page, and stays below the smallest boost a merchandiser would write.',
+        to: { ...EMPTY_STATE, phrase: 'jacket', explain: true },
+        tests: ['packages/engine/src/signals.test.ts', 'packages/api/src/api.test.ts'],
+    },
+    {
         id: 'nothing',
         title: 'Nothing is still a page',
-        body: 'One word here matches nothing. The page shows the results of the phrase without it, offers a spelling when a word is two typos off, offers to clear filters that emptied the page, and falls back to the most rated products.',
+        body: 'One word here matches nothing. The page shows the results of the phrase without it, offers a spelling when a word is two typos off, offers to clear filters that emptied the page, and falls back to the most clicked products, then the most rated.',
         to: { ...EMPTY_STATE, phrase: 'zzqx jacket' },
         tests: ['packages/engine/src/recover.test.ts', 'packages/storefront/src/App.test.tsx'],
     },

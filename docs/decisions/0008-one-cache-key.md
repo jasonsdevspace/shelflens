@@ -56,6 +56,17 @@ What the key does not contain is the time, so a rule with a time window may stay
 up to the cache's age limit after its window closes. That is the age limit's job, and the
 default is five minutes.
 
+**Amended with Release 2.** The clicks shoppers make nudge ranking, and they arrive all the time,
+so they could not be a rule: a rule is fingerprinted into the version, and every batch would
+have moved every key in three layers and emptied the page's memory. Nor could they be applied
+as they arrive, since then page two would disagree with page one. So the clicks are folded into
+the store when it is built, as a fingerprint in the version beside the rules', and the worker
+builds the store again only when a visit begins and the clicks have changed since. Within a
+visit the ranking holds still and every kept answer stays right. A store built with new clicks
+is a new version, so nothing kept under the old one is served again, which is the same rule the
+catalog and the rules already follow. An answer that reads the events as they are now, the rail
+beside a product, says it is volatile instead, and no layer keeps it.
+
 ### The three layers
 
 Three caches share the key, and each holds it in the form its medium allows.

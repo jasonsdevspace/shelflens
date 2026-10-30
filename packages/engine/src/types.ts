@@ -147,6 +147,13 @@ export interface EngineConfig {
      * falls back to relevance otherwise, rather than failing.
      */
     readonly sortScopes?: Readonly<Record<string, string>>;
+    /**
+     * How often each document was chosen, by id, from whatever the caller
+     * collected. A chosen document's score is raised by a bounded amount,
+     * so what shoppers pick nudges relevance without ever passing a pin or
+     * undoing a bury. Documents not named are left as they are.
+     */
+    readonly signals?: Readonly<Record<string, number>>;
     readonly limits?: {
         /** The most results one page may hold. Larger requests are clamped. */
         readonly pageSize?: number;
@@ -203,11 +210,21 @@ export interface TermMatch {
     readonly score: number;
 }
 
+/** What the signals did to one result, kept so explain mode can show it. */
+export interface SignalEffect {
+    /** How often the document was chosen. */
+    readonly count: number;
+    /** What its score was multiplied by, from one up to the cap. */
+    readonly weight: number;
+}
+
 export interface Hit {
     readonly id: string;
     readonly score: number;
     readonly matches: readonly TermMatch[];
     readonly rules: readonly RuleEffect[];
+    /** Present when the document was chosen before and its score was raised for it. */
+    readonly signal?: SignalEffect;
 }
 
 /**

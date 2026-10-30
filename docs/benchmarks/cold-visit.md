@@ -9,16 +9,16 @@ numbers leave out the network and show what the browser itself has to do.
 
 | Recorded   | Commit    | Catalog (gzip) | Page (gzip) | Worker (gzip) |
 | ---------- | --------- | -------------- | ----------- | ------------- |
-| 2026-10-29 | `7f64bc9` | 333 KB         | 82 KB       | 67 KB         |
+| 2026-10-30 | `5087d6d` | 333 KB         | 82 KB       | 68 KB         |
 
 | Run    | Ready to search | Catalog and rules downloaded | Store built | First suggestion |
 | ------ | --------------- | ---------------------------- | ----------- | ---------------- |
-| 1      | 217 ms          | 39 ms                        | 55 ms       | 191 ms           |
-| 2      | 211 ms          | 37 ms                        | 54 ms       | 188 ms           |
-| 3      | 211 ms          | 38 ms                        | 55 ms       | 189 ms           |
-| 4      | 212 ms          | 38 ms                        | 55 ms       | 189 ms           |
-| 5      | 209 ms          | 37 ms                        | 55 ms       | 188 ms           |
-| Median | 211 ms          | 38 ms                        | 55 ms       | 189 ms           |
+| 1      | 218 ms          | 38 ms                        | 66 ms       | 192 ms           |
+| 2      | 213 ms          | 39 ms                        | 57 ms       | 203 ms           |
+| 3      | 209 ms          | 37 ms                        | 55 ms       | 189 ms           |
+| 4      | 211 ms          | 38 ms                        | 55 ms       | 189 ms           |
+| 5      | 211 ms          | 38 ms                        | 56 ms       | 186 ms           |
+| Median | 211 ms          | 38 ms                        | 56 ms       | 189 ms           |
 
 "Ready to search" is measured from the start of navigation to the search box appearing, which
 happens once the worker has claimed the page. The worker reports its own two timings. The first

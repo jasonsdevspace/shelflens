@@ -53,6 +53,10 @@ query Search($input: SearchInput!, $explain: Boolean = false) {
                     action
                     weight
                 }
+                popularity {
+                    clicks
+                    weight
+                }
             }
             product {
                 ...Card

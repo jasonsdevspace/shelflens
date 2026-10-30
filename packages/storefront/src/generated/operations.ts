@@ -221,6 +221,7 @@ export type SearchQuery = {
                     readonly action: RuleAction;
                     readonly weight: number | null;
                 }>;
+                readonly popularity: { readonly clicks: number; readonly weight: number } | null;
             };
             readonly product: {
                 readonly sku: string;
@@ -532,6 +533,10 @@ export const SearchDocument = new TypedDocumentString(
           action
           weight
         }
+        popularity {
+          clicks
+          weight
+        }
       }
       product {
         ...Card
@@ -605,7 +610,7 @@ export const SearchDocument = new TypedDocumentString(
   }
   inStock
 }`,
-    { hash: 'f58a72c40c1a54b8f1da8a4359af95ba3c7b80b78ccc3a3eaed5a57ae00d656d' }
+    { hash: 'a680beefbed4cceb8066695a2d8a72803479a57c4a24b26418f902a58b1cdf37' }
 ) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString(
     `
