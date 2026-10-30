@@ -35,6 +35,8 @@ export interface SearchState {
     readonly product?: string;
     /** Whether each result says why it ranked where it did. */
     readonly explain?: boolean;
+    /** Whether the merchandiser's rules panel is open beside the results. */
+    readonly rules?: boolean;
 }
 
 export const EMPTY_STATE: SearchState = { brand: [], color: [], size: [], page: 1 };
@@ -115,6 +117,7 @@ export const parseSearchState = (search: string): SearchState => {
         page: positiveInteger(params.get('page')) ?? 1,
         ...(product && { product }),
         ...(params.get('explain') === '1' && { explain: true }),
+        ...(params.get('rules') === '1' && { rules: true }),
     };
 };
 
@@ -124,7 +127,7 @@ export const parseSearchState = (search: string): SearchState => {
  * which are ways of looking at the same page rather than a new one.
  */
 export const searchKey = (state: SearchState): string => {
-    const { sort: _sort, explain: _explain, product: _product, ...search } = state;
+    const { sort: _sort, explain: _explain, rules: _rules, product: _product, ...search } = state;
     return serializeSearchState(search);
 };
 
@@ -142,6 +145,7 @@ export const serializeSearchState = (state: SearchState): string => {
     if (state.page > 1) params.set('page', String(state.page));
     if (state.product) params.set('product', state.product);
     if (state.explain) params.set('explain', '1');
+    if (state.rules) params.set('rules', '1');
     const serialized = params.toString();
     return serialized ? `?${serialized}` : '';
 };

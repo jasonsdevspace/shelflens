@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
+    createMemoryRuleStore,
     createStore,
     createStoreApi,
     parseRulesFile,
@@ -34,14 +36,24 @@ export const storeApi = (): Plugin => ({
     configureServer(server) {
         const base = server.config.base;
         const events = createMemoryEventStore();
+        const catalog = generateCatalog();
+        const shipped = rules();
+        // The store with the rules in effect: the shipped file, or what a
+        // merchandiser saved in this dev session.
+        const built = (saved: readonly Rule[] | undefined) =>
+            createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
         const handle = createHandler({
-            api: withResponseCache(
-                createStoreApi(createStore({ catalog: generateCatalog(), rules: rules() }), {
-                    events,
-                })
-            ),
+            api: withResponseCache(createStoreApi(built(undefined), { events })),
             base,
             events,
+            rules: {
+                store: createMemoryRuleStore(),
+                shipped,
+                check: (draft) => {
+                    built(undefined).engine.reconfigure({ rules: draft });
+                },
+                build: (saved) => withResponseCache(createStoreApi(built(saved), { events })),
+            },
         });
         server.middlewares.use((request, response, next) => {
             if (request.url !== undefined && routeOf(request.url, base) !== undefined) {

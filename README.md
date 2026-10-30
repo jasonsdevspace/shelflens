@@ -21,7 +21,7 @@ such systems behave, with its own names and its own schema.
 ## Two minutes with the demo
 
 Each step is a link into the live storefront. The "Tour" button at the top of the page walks all
-seventeen stops with the test behind each. For the same story without the code, the demo carries
+eighteen stops with the test behind each. For the same story without the code, the demo carries
 [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
@@ -38,13 +38,17 @@ seventeen stops with the test behind each. For the same story without the code, 
 3. [Search "jacket" with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    Two jackets are pinned first by a rule, and every card says which word matched which term in
    which field and what the rule did. Sort by price and the pin is set aside, and the page says so.
-4. [Tick a brand under "jacket".](https://jasonsdevspace.com/shelflens/?q=jacket) The other
+4. [Press "Rules" on the jacket search, then "Add a rule".](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1&rules=1)
+   Name a jacket from the page and the results beside the panel pin it while you type. "Save
+   rule" builds the store again under a new version, and the store's own rules are one press
+   away on every page while yours are in effect.
+5. [Tick a brand under "jacket".](https://jasonsdevspace.com/shelflens/?q=jacket) The other
    brands keep their counts, because a facet counts past its own filter. Everything you did is in
    the address bar, so copy it, share it, or press back.
-5. [Search "zzqx jacket".](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket) There are no
+6. [Search "zzqx jacket".](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket) There are no
    results, so the page shows the results of "jacket" instead, offers a spelling when a word is
    two typos off, and falls back to the most clicked products, then the most rated.
-6. [Open a few jackets, then reload and search again with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
+7. [Open a few jackets, then reload and search again with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    The ones you opened rise a little, with the count under each card, and the pinned ones stay
    first. The nudge is capped and folds in when a visit begins, never mid-page.
 
@@ -65,6 +69,7 @@ version, and the tour's stops name them.
 | Paging never shows a product twice or skips one                                                                                                  | `packages/engine/src/search.test.ts`                                                                                   |
 | A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                             | `packages/engine/src/search.test.ts`, `rules.test.ts`                                                                  |
 | Pins and boosts disappear under a sort, and the page says so                                                                                     | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`                                            |
+| A rule written in the page is previewed before it is saved, and saved as a new store version                                                     | `packages/storefront/src/results/RulesPanel.test.tsx`, `packages/storefront/src/worker/handle.test.ts`                 |
 | A malformed request is a validation error with a code, never a 500                                                                               | `packages/api/src/api.test.ts`, `http.test.ts`                                                                         |
 | A product with variants shows a range, in the store's currency and locale                                                                        | `packages/storefront/src/format/money.test.ts`                                                                         |
 | What shoppers click rises a bounded amount, never past a pin, never out of a bury, and only when a visit begins                                  | `packages/engine/src/signals.test.ts`, `packages/api/src/api.test.ts`, `packages/storefront/src/worker/handle.test.ts` |
@@ -108,8 +113,8 @@ without its filters, each only if it finds something.
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
   second served locally, with the worker spending 38 ms downloading the catalog and the rules and
-  55 ms building the store. The catalog ships at 333 KB compressed, the page at 82 KB, the worker
-  at 68 KB. [The record](docs/benchmarks/cold-visit.md).
+  57 ms building the store. The catalog ships at 333 KB compressed, the page at 86 KB, the worker
+  at 70 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** The catalog stays under 400 KB compressed, the API bundled for a
   browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
   fails. The storefront runs in a real browser on a desktop and a phone profile with an

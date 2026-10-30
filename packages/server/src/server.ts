@@ -5,16 +5,21 @@ import {
     type ServerResponse,
 } from 'node:http';
 
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     type EventStore,
     GROUP_HEADER,
     isApiPath,
     isEventsPath,
+    isRulesPath,
     PERSISTED_OPERATIONS,
     receiveEvents,
+    receiveRules,
     resolveRequest,
     responseHeaders,
+    type RuleStore,
     type StoreApi,
+    VERSION_HEADER,
     viewerFromHeader,
 } from '@shelflens/api';
 
@@ -23,7 +28,8 @@ import {
  * service worker.
  *
  * One endpoint, `/graphql`, a receiver for the storefront's events at
- * `/events`, and a health check. A persisted operation is
+ * `/events`, the rules a merchandiser saves at `/rules`, and a health
+ * check. A persisted operation is
  * a `GET` naming one of the storefront's operations, and a full query is
  * a `POST`, which the host may refuse. The customer group arrives in a
  * header, standing in for the session a real store would have. Requests
@@ -49,6 +55,21 @@ export interface ServerOptions {
     readonly base?: string;
     /** Where to keep the events the storefront sends. Without one, events are refused. */
     readonly events?: EventStore;
+    /**
+     * The rules a merchandiser may save, and how the store is built again
+     * with them. Without this, the rules path is refused.
+     */
+    readonly rules?: RulesSupport;
+}
+
+export interface RulesSupport {
+    readonly store: RuleStore;
+    /** The rules the store ships, in effect when nothing is saved. */
+    readonly shipped: readonly Rule[];
+    /** Refuses a set the engine refuses, in its words. */
+    check(rules: readonly Rule[]): void;
+    /** The API over the store built with this set, or the shipped one when nothing is saved. */
+    build(saved: readonly Rule[] | undefined): StoreApi;
 }
 
 /**
@@ -116,7 +137,7 @@ export type RequestHandler = (request: IncomingMessage, response: ServerResponse
  * such as the storefront's dev server.
  */
 export const createHandler = ({
-    api,
+    api: initial,
     rateLimitPerMinute = 600,
     now = () => new Date(),
     persisted = PERSISTED_OPERATIONS,
@@ -124,8 +145,40 @@ export const createHandler = ({
     maxAgeSeconds,
     base = '/',
     events,
+    rules,
 }: ServerOptions): RequestHandler => {
+    // Replaced when a merchandiser saves rules, so every request after that
+    // is answered by the store built with them.
+    let api = initial;
     const allow = createRateLimit(rateLimitPerMinute, now);
+
+    const receiveRuleSet = async (
+        request: IncomingMessage,
+        response: ServerResponse,
+        requestId: string
+    ) => {
+        if (!rules) {
+            refuse(response, 404, 'this store keeps no rules', requestId);
+            return;
+        }
+        const { body, refused } = await bodyOf(request, response, requestId);
+        if (refused) return;
+        const receipt = await receiveRules({ method: request.method ?? 'GET', body }, rules.store, {
+            shipped: rules.shipped,
+            check: (draft) => rules.check(draft),
+        });
+        if (receipt.status === 200) {
+            send(response, { status: 200, body: receipt.body, requestId });
+            return;
+        }
+        if (receipt.status !== 204) {
+            refuse(response, receipt.status, receipt.message ?? 'refused', requestId);
+            return;
+        }
+        if (receipt.changed) api = rules.build(await rules.store.current());
+        response.writeHead(204, { 'x-request-id': requestId, [VERSION_HEADER]: api.version });
+        response.end();
+    };
     // Beacons have a budget of their own, per address, since they carry no group and
     // must not bring a shopper's searches closer to the limit.
     const allowEvents = createRateLimit(rateLimitPerMinute, now);
@@ -187,6 +240,10 @@ export const createHandler = ({
         }
         if (isEventsPath(url, base)) {
             await receive(request, response, requestId);
+            return;
+        }
+        if (isRulesPath(url, base)) {
+            await receiveRuleSet(request, response, requestId);
             return;
         }
         if (!isApiPath(url, base)) {

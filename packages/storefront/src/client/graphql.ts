@@ -39,6 +39,8 @@ export interface ClientMemory {
     readonly answers: Map<string, { readonly data: unknown; readonly at: number }>;
     readonly size: number;
     readonly maxAgeMs: number;
+    /** Drop every answer and the version they came from, as when the store is built again. */
+    forget(): void;
 }
 
 export const createClientMemory = ({
@@ -49,6 +51,10 @@ export const createClientMemory = ({
     answers: new Map(),
     size,
     maxAgeMs,
+    forget() {
+        this.answers.clear();
+        this.version = undefined;
+    },
 });
 
 export interface ClientOptions {

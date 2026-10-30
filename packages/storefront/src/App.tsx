@@ -20,6 +20,7 @@ import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
+import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
@@ -28,6 +29,8 @@ export interface AppProps {
     readonly apiUrl: string;
     /** Where the shopper's events go. */
     readonly eventsUrl: string;
+    /** Where the merchandiser's rules are read and saved. */
+    readonly rulesUrl: string;
     /** Resolves once the API can answer, which on a first visit is after the worker claims the page. */
     readonly ready: Promise<void>;
 }
@@ -73,6 +76,23 @@ const TourToggle = ({
     >
         Tour
     </button>
+);
+
+/**
+ * Said on every page while a saved set of rules is in effect, since the tour
+ * and the README describe the store's own, with the way back beside it.
+ */
+const EditedRulesNotice = ({
+    rulesUrl,
+    onReset,
+}: {
+    readonly rulesUrl: string;
+    readonly onReset: () => void;
+}) => (
+    <div className="results-aside rules-notice">
+        Your edited rules are in effect, not the store&rsquo;s own.{' '}
+        <DiscardRules onDiscard={() => void fetch(rulesUrl, { method: 'DELETE' }).then(onReset)} />
+    </div>
 );
 
 /** Who the reviewer is shopping as. A real store would take this from the session. */
@@ -135,26 +155,21 @@ const Masthead = ({
     </>
 );
 
-export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
-    const [readiness, setReadiness] = useState<Readiness>('waiting');
-    const [state, navigate] = useUrlState();
-    // The product that just closed, by any route, so the results can put focus back on its card.
+/** The product that just closed, by any route, so the results can put focus back on its card. */
+const useClosedProduct = (product: string | undefined) => {
     const [closedSku, setClosedSku] = useState<string>();
-    const lastProduct = useRef(state.product);
+    const lastProduct = useRef(product);
     useEffect(() => {
-        if (lastProduct.current !== undefined && state.product === undefined) {
+        if (lastProduct.current !== undefined && product === undefined) {
             setClosedSku(lastProduct.current);
         }
-        lastProduct.current = state.product;
-    }, [state.product]);
+        lastProduct.current = product;
+    }, [product]);
     const focused = useCallback(() => setClosedSku(undefined), []);
-    const [group, setGroup] = useState<CustomerGroup>('guest');
-    // The search the viewer was last switched on, so its results can say what changed.
-    const [switchedOn, setSwitchedOn] = useState<string>();
-    const switchGroup = (next: CustomerGroup) => {
-        setGroup(next);
-        setSwitchedOn(searchKey(state));
-    };
+    return { closedSku, focused };
+};
+
+const useTour = () => {
     const [touring, setTouring] = useState(() => !hasSeenTour());
     const [tourStop, setTourStop] = useState(0);
     // Whether the panel was asked for, as opposed to opening itself on a first visit.
@@ -169,18 +184,63 @@ export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
         setTouring(false);
         tourButton.current?.focus();
     };
+    return { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour };
+};
+
+/**
+ * The client the page asks with, and the way to start it over. A save or a
+ * reset of the rules builds the store again under a new version. Everything
+ * remembered is for the old one, so the memory is emptied and a new client
+ * makes every open question ask again.
+ */
+const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
     // One memory for both viewers: the viewer is in the key, so switching keeps both.
     const memory = useMemo(() => createClientMemory(), []);
+    const [revision, setRevision] = useState(0);
+    const storeChanged = useCallback(() => {
+        memory.forget();
+        setRevision((n) => n + 1);
+    }, [memory]);
     const client = useMemo(
         () => createClient({ url: apiUrl, group, memory }),
-        [apiUrl, group, memory]
+        // The revision is the point: a new client is a fresh set of questions.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [apiUrl, group, memory, revision]
     );
-    const isReady = readiness === 'ready';
+    return { client, storeChanged };
+};
+
+/** A new search starts over, except that explain mode is a way of looking, not a filter. */
+const freshFrom = (state: SearchState): SearchState => ({
+    ...EMPTY_STATE,
+    ...(state.explain && { explain: true }),
+});
+
+/** What the page knows about the store once it is ready: the category tree and the store line. */
+const useStoreShape = (client: GraphQLClient, isReady: boolean) => {
     const categories = useQuery(client, CategoriesDocument, isReady ? {} : undefined);
     const store = useQuery(client, StoreDocument, isReady ? {} : undefined);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
-    // A new search starts over, except that explain mode is a way of looking, not a filter.
-    const fresh: SearchState = { ...EMPTY_STATE, ...(state.explain && { explain: true }) };
+    return { tree, store };
+};
+
+export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
+    const [readiness, setReadiness] = useState<Readiness>('waiting');
+    const [state, navigate] = useUrlState();
+    const { closedSku, focused } = useClosedProduct(state.product);
+    const [group, setGroup] = useState<CustomerGroup>('guest');
+    // The search the viewer was last switched on, so its results can say what changed.
+    const [switchedOn, setSwitchedOn] = useState<string>();
+    const switchGroup = (next: CustomerGroup) => {
+        setGroup(next);
+        setSwitchedOn(searchKey(state));
+    };
+    const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
+        useTour();
+    const { client, storeChanged } = useStoreClient(apiUrl, group);
+    const isReady = readiness === 'ready';
+    const { tree, store } = useStoreShape(client, isReady);
+    const fresh = freshFrom(state);
 
     useEffect(() => {
         ready.then(
@@ -248,6 +308,9 @@ export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
                 )}
                 <main className={`content${touring ? ' has-tour' : ''}`}>
                     <Standby readiness={readiness} />
+                    {isReady && store.data?.store.rulesEdited && (
+                        <EditedRulesNotice rulesUrl={rulesUrl} onReset={storeChanged} />
+                    )}
                     {isReady && state.product !== undefined && (
                         <ProductPage
                             client={client}
@@ -266,6 +329,8 @@ export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
                             onFocused={focused}
                             group={group}
                             switchedOn={switchedOn}
+                            rulesUrl={rulesUrl}
+                            onStoreChanged={storeChanged}
                         />
                     )}
                 </main>

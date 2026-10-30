@@ -20,6 +20,14 @@ the page.
   catalog when the store is built and validated then: a rule that names a product or an attribute
   the store does not have fails the build, in the worker, the Node server and the dev server
   alike. A test runs the shipped rules against the shipped catalog.
+- **Rules can be written in the page.** "Rules" on the results page opens a panel with the rules
+  that apply to the search, and a form for one at a time: pin, boost, bury or hide a product from
+  the page or a brand from the facet, with the weight as named steps. The results beside the
+  panel are a preview from the engine with the draft in place, volatile so no cache keeps it.
+  Saving posts the whole set to the `rules` path beside `graphql`, the worker keeps it in
+  IndexedDB and builds the store again under a new version, and every page says the edited set is
+  in effect until the store's own rules are asked for back.
+  [Decision record 10](../../docs/decisions/0010-rules-live-in-the-browser.md) has the choices.
 - **Nothing is still a page.** When a search finds nothing, the API says what would find
   something, and the page shows it: a phrase a typo or two away, a shorter phrase with its
   results, the same phrase without the filters, and the most rated products as a last resort.

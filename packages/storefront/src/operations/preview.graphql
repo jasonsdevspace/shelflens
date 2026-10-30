@@ -1,0 +1,5 @@
+query Preview($input: SearchInput!, $explain: Boolean = false, $rules: [RuleInput!]!) {
+    preview(input: $input, rules: $rules) {
+        ...Results
+    }
+}

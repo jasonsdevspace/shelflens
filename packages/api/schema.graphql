@@ -29,6 +29,15 @@ type Query {
     recommendations(sku: ID!, limit: Int = 6, session: String): Recommendations
 
     """
+    The same search, with these rules in place of the store's. For a
+    merchandiser to see what a draft does before saving it: the engine is
+    reconfigured with the draft over the same index, so the answer is what
+    the search will return once the draft is saved. Reads nothing kept, and
+    is never kept.
+    """
+    preview(input: SearchInput!, rules: [RuleInput!]!): SearchResult!
+
+    """
     The category tree, roots first. Each category's children follow it.
     """
     categories: [Category!]!
@@ -78,6 +87,66 @@ A filter on one attribute. Exactly one of the three matchers is given.
 input FilterInput {
     attribute: FilterAttribute!
     match: MatchInput!
+}
+
+"""
+A merchandising rule as the rules file spells it: when it applies, and
+what it does. A rule with no action, or one that names a product or an
+attribute the store does not have, is refused with the engine's own words.
+"""
+input RuleInput {
+    id: ID!
+    name: String
+    when: RuleTriggerInput
+    active: RuleWindowInput
+
+    """
+    Products placed first, in this order, whether or not they matched.
+    """
+    pin: [ID!]
+    boost: [RuleAdjustmentInput!]
+    bury: [RuleAdjustmentInput!]
+    hide: [ID!]
+}
+
+input RuleTriggerInput {
+    """
+    The searches the rule applies to, each normalized the way a query is.
+    """
+    queries: [String!]
+
+    """
+    A filter the search must carry for the rule to apply.
+    """
+    filter: RuleFilterInput
+}
+
+input RuleFilterInput {
+    attribute: String!
+    value: String!
+}
+
+"""
+When the rule is in effect, as ISO dates. Either end may be open.
+"""
+input RuleWindowInput {
+    from: String
+    to: String
+}
+
+input RuleAdjustmentInput {
+    ids: [ID!]
+    attribute: AttributeMatchInput
+
+    """
+    What the score is multiplied by: above one boosts, below one buries.
+    """
+    weight: Float!
+}
+
+input AttributeMatchInput {
+    name: String!
+    value: String!
 }
 
 enum FilterAttribute {
@@ -541,6 +610,12 @@ type Store {
     a client builds, so a stale response can never be served after an update.
     """
     catalogVersion: String!
+
+    """
+    Whether the rules in effect are a set a visitor saved in this browser
+    rather than the ones the store ships. The page says so when they are.
+    """
+    rulesEdited: Boolean!
 
     viewer: Viewer!
 }

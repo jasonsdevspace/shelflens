@@ -18,6 +18,7 @@ import {
     fromMode,
     fromSort,
     toFilter,
+    toRule,
     toSort,
 } from './translate.js';
 
@@ -179,6 +180,19 @@ export const resolvers: Resolvers = {
             return product?.visibleTo.includes(context.viewer.group) ? product : null;
         },
 
+        preview: (_root, { input, rules }, context) => {
+            // The same search over the same index, with the draft in place of the
+            // store's rules. Nothing kept may answer it, and it is never kept.
+            context.answer.volatile = true;
+            let engine;
+            try {
+                engine = context.store.engine.reconfigure({ rules: rules.map(toRule) });
+            } catch (error) {
+                return asUserError(error);
+            }
+            return runSearch(input, { ...context, store: { ...context.store, engine } });
+        },
+
         recommendations: async (_root, { sku, limit, session }, context) => {
             // Read from the events as they are now, which no cache key covers.
             context.answer.volatile = true;
@@ -197,6 +211,7 @@ export const resolvers: Resolvers = {
             currency: context.store.catalog.currency,
             locale: context.store.catalog.locale,
             catalogVersion: context.store.version,
+            rulesEdited: context.store.rulesEdited,
             viewer: { group: context.viewer.group === 'member' ? 'MEMBER' : 'GUEST' },
         }),
     },

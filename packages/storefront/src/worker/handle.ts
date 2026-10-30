@@ -1,3 +1,4 @@
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createStore,
     createStoreApi,
@@ -5,14 +6,19 @@ import {
     fingerprint,
     isApiPath,
     isEventsPath,
+    isRulesPath,
     parseRulesFile,
     PERSISTED_OPERATIONS,
     receiveEvents,
+    receiveRules,
     resolveRequest,
     responseHeaders,
+    type RuleStore,
     type Signals,
     signalsOf,
+    type Store,
     type StoreApi,
+    VERSION_HEADER,
     withResponseCache,
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
@@ -46,6 +52,11 @@ import type { Catalog } from '@shelflens/catalog';
  * the store is built again, as a new version, only when the clicks have
  * changed since. So within one visit the ranking holds still, and paging
  * never repeats or skips a product, and the next visit sees the clicks.
+ *
+ * The rules a merchandiser saves arrive on `rules` beside the other two.
+ * A saved set stands in for the shipped file until it is reset, and the
+ * store is built again, as a new version, before the save is answered,
+ * so the next search cannot land on the old one.
  */
 
 export interface WorkerApiOptions {
@@ -62,6 +73,8 @@ export interface WorkerApiOptions {
     readonly answers?: () => Promise<AnswerStore>;
     /** Where to keep the events the page sends. Without one, events are refused. */
     readonly events?: EventStore;
+    /** Where to keep the rules a visitor saves. Without one, the rules path is refused. */
+    readonly rules?: RuleStore;
 }
 
 /** The part of the Cache API the worker uses. */
@@ -83,6 +96,12 @@ export interface Startup {
 /** What the worker tells the page once it is in charge of it. */
 export interface StartedMessage extends Startup {
     readonly type: 'shelflens:started';
+}
+
+/** The store as served: the API that answers, and the model behind it for a draft's check. */
+interface Built {
+    readonly api: StoreApi;
+    readonly model: Store;
 }
 
 export interface WorkerApi {
@@ -128,30 +147,63 @@ export const createWorkerApi = ({
     allowFullQueries = false,
     answers,
     events,
+    rules,
 }: WorkerApiOptions): WorkerApi => {
-    let store: Promise<StoreApi> | undefined;
+    let store: Promise<Built> | undefined;
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
     /** The clicks the store being served was built with, as a fingerprint. */
     let built = '';
+    /** The catalog and the shipped rules, downloaded once and kept for every build. */
+    let shipped: Promise<{ catalog: Catalog; rules: readonly Rule[] }> | undefined;
 
     /** How often each product was clicked, from everything collected so far. */
     const clicks = async () => signalsOf(events ? await events.all() : []);
 
-    /** A store from the catalog, the rules and these signals, timed for the cold visit. */
-    const build = async (signals: Signals): Promise<StoreApi> => {
-        const began = performance.now();
-        const [catalog, rules] = await Promise.all([
+    const download = () => {
+        shipped ??= Promise.all([
             fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
             rulesUrl === undefined
                 ? Promise.resolve([])
                 : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
+        ])
+            .then(([catalog, rulesFile]) => ({ catalog, rules: rulesFile }))
+            .catch((error: unknown) => {
+                shipped = undefined;
+                throw error;
+            });
+        return shipped;
+    };
+
+    /**
+     * A store from the catalog, the rules in effect, saved or shipped, and
+     * these signals, timed for the cold visit.
+     */
+    const build = async (signals: Signals): Promise<Built> => {
+        const began = performance.now();
+        const [{ catalog, rules: shippedRules }, saved] = await Promise.all([
+            download(),
+            rules?.current(),
         ]);
         const downloaded = performance.now();
-        const api = withResponseCache(
-            createStoreApi(createStore({ catalog, rules, signals }), { events })
-        );
+        const model = createStore({
+            catalog,
+            rules: saved ?? shippedRules,
+            rulesEdited: saved !== undefined,
+            signals,
+        });
+        const api = withResponseCache(createStoreApi(model, { events }));
         startup = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
-        return api;
+        return { api, model };
+    };
+
+    /** Builds the store again, as a new version, and serves it from here on. */
+    const rebuild = async (): Promise<Built> => {
+        const signals = await clicks();
+        const next = await build(signals);
+        store = Promise.resolve(next);
+        built = fingerprint(signals);
+        await dropOthers(next.api);
+        return next;
     };
 
     const isApiRequest = (request: Request): boolean =>
@@ -171,7 +223,35 @@ export const createWorkerApi = ({
         return json(receipt.status, { errors: [{ message: receipt.message }] });
     };
 
-    const load = (): Promise<StoreApi> => {
+    /** The rules path: read, replace or reset the saved set, rebuilding the store on a change. */
+    const receiveRuleSet = async (request: Request): Promise<Response> => {
+        if (!rules) return json(404, { errors: [{ message: 'this store keeps no rules' }] });
+        const current = await load();
+        const { rules: shippedRules } = await download();
+        const receipt = await receiveRules(
+            { method: request.method, body: await request.text() },
+            rules,
+            {
+                shipped: shippedRules,
+                // The engine's own check, the same one a preview runs, so a set
+                // that previews is a set that saves.
+                check: (draft) => {
+                    current.model.engine.reconfigure({ rules: draft });
+                },
+            }
+        );
+        if (receipt.status === 200) return json(200, receipt.body);
+        if (receipt.status !== 204) {
+            return json(receipt.status, { errors: [{ message: receipt.message }] });
+        }
+        const served = receipt.changed ? await rebuild() : current;
+        return new Response(null, {
+            status: 204,
+            headers: { [VERSION_HEADER]: served.api.version },
+        });
+    };
+
+    const load = (): Promise<Built> => {
         store ??= clicks()
             .then((signals) => {
                 built = fingerprint(signals);
@@ -211,7 +291,7 @@ export const createWorkerApi = ({
         }
         let api: StoreApi;
         try {
-            api = await load();
+            api = (await load()).api;
         } catch {
             return json(503, { errors: [{ message: 'the store is not ready' }] });
         }
@@ -226,7 +306,7 @@ export const createWorkerApi = ({
 
     return {
         warm: async () => {
-            await dropOthers(await load());
+            await dropOthers((await load()).api);
             return startup;
         },
         refresh: async () => {
@@ -234,19 +314,15 @@ export const createWorkerApi = ({
             // moment ago, which is as fresh as a visit needs.
             if (store === undefined) return false;
             await store;
-            const signals = await clicks();
-            const next = fingerprint(signals);
-            if (next === built) return false;
+            if (fingerprint(await clicks()) === built) return false;
             // The old store keeps answering until the new one is ready, and stays
             // if the new one cannot be built.
-            const api = await build(signals);
-            store = Promise.resolve(api);
-            built = next;
-            await dropOthers(api);
+            await rebuild();
             return true;
         },
         handle: async (request) => {
             if (isEventsPath(request.url, base)) return receive(request);
+            if (isRulesPath(request.url, base)) return receiveRuleSet(request);
             if (!isApiRequest(request)) return undefined;
             const kept = request.method === 'GET' && answers ? await answers() : undefined;
             const held = await kept?.match(request);

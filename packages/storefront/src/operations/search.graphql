@@ -24,84 +24,88 @@ fragment Card on Product {
     inStock
 }
 
-query Search($input: SearchInput!, $explain: Boolean = false) {
-    search(input: $input) {
-        total
-        page
-        pageSize
-        totalPages
-        matching
-        sort {
-            by
-            direction
-        }
-        merchandising {
-            applied
-            setAsideBySort
-        }
-        items {
-            score @include(if: $explain)
-            explanation @include(if: $explain) {
-                matches {
-                    typed
-                    matched
-                    field
-                    route
-                }
-                rules {
-                    ruleId
-                    action
-                    weight
-                }
-                popularity {
-                    clicks
-                    weight
-                }
+fragment Results on SearchResult {
+    total
+    page
+    pageSize
+    totalPages
+    matching
+    sort {
+        by
+        direction
+    }
+    merchandising {
+        applied
+        setAsideBySort
+    }
+    items {
+        score @include(if: $explain)
+        explanation @include(if: $explain) {
+            matches {
+                typed
+                matched
+                field
+                route
             }
-            product {
-                ...Card
+            rules {
+                ruleId
+                action
+                weight
+            }
+            popularity {
+                clicks
+                weight
             }
         }
-        noResults {
-            suggestion
-            foundWithoutFilters
-            relaxed {
-                phrase
-                dropped
-                result {
-                    total
-                    items {
-                        product {
-                            ...Card
-                        }
+        product {
+            ...Card
+        }
+    }
+    noResults {
+        suggestion
+        foundWithoutFilters
+        relaxed {
+            phrase
+            dropped
+            result {
+                total
+                items {
+                    product {
+                        ...Card
                     }
                 }
             }
-            popular {
-                ...Card
-            }
         }
-        facets {
-            name
-            attribute
-            ... on ValueFacet {
-                buckets {
-                    value
-                    count
-                }
-            }
-            ... on RangeFacet {
-                ranges: buckets {
-                    from
-                    to
-                    count
-                }
-            }
-            ... on StatsFacet {
+        popular {
+            ...Card
+        }
+    }
+    facets {
+        name
+        attribute
+        ... on ValueFacet {
+            buckets {
+                value
                 count
-                min
-                max
             }
         }
+        ... on RangeFacet {
+            ranges: buckets {
+                from
+                to
+                count
+            }
+        }
+        ... on StatsFacet {
+            count
+            min
+            max
+        }
+    }
+}
+
+query Search($input: SearchInput!, $explain: Boolean = false) {
+    search(input: $input) {
+        ...Results
     }
 }

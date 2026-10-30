@@ -176,11 +176,12 @@ export const createMemoryEventStore = ({
 export const isEventsPath = (url: string, base = '/'): boolean =>
     new URL(url, 'http://local').pathname === `${base}events`;
 
-/** Which of the host's two paths a URL names, parsing it once, or nothing. */
-export const routeOf = (url: string, base = '/'): 'graphql' | 'events' | undefined => {
+/** Which of the host's paths a URL names, parsing it once, or nothing. */
+export const routeOf = (url: string, base = '/'): 'graphql' | 'events' | 'rules' | undefined => {
     const { pathname } = new URL(url, 'http://local');
     if (pathname === `${base}graphql`) return 'graphql';
     if (pathname === `${base}events`) return 'events';
+    if (pathname === `${base}rules`) return 'rules';
     return undefined;
 };
 

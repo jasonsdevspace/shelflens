@@ -1,43 +1,43 @@
 {
     "recorded": {
         "date": "2026-10-30",
-        "commit": "5087d6d"
+        "commit": "2e95fe6"
     },
     "sizes": {
         "catalog": 341270,
-        "page": 83714,
-        "worker": 69442
+        "page": 88206,
+        "worker": 71192
     },
     "runs": [
         {
-            "readyMs": 218.29999999701977,
-            "downloadMs": 38.20000000298023,
-            "buildMs": 66.09999999403954,
-            "firstSuggestionMs": 191.89999999850988
-        },
-        {
-            "readyMs": 212.60000000149012,
-            "downloadMs": 39,
+            "readyMs": 216.79999999701977,
+            "downloadMs": 39.29999999701977,
             "buildMs": 56.70000000298023,
-            "firstSuggestionMs": 203.29999999701977
+            "firstSuggestionMs": 194.39999999850988
         },
         {
-            "readyMs": 209.19999999552965,
-            "downloadMs": 37.20000000298023,
-            "buildMs": 54.69999999552965,
-            "firstSuggestionMs": 189.29999999701977
+            "readyMs": 211.39999999850988,
+            "downloadMs": 39.69999999552965,
+            "buildMs": 56.600000001490116,
+            "firstSuggestionMs": 190.20000000298023
         },
         {
-            "readyMs": 210.60000000149012,
-            "downloadMs": 38.399999998509884,
-            "buildMs": 55.399999998509884,
-            "firstSuggestionMs": 188.80000000447035
-        },
-        {
-            "readyMs": 210.89999999850988,
+            "readyMs": 212,
             "downloadMs": 37.69999999552965,
-            "buildMs": 56.400000005960464,
-            "firstSuggestionMs": 186.29999999701977
+            "buildMs": 56.100000001490116,
+            "firstSuggestionMs": 191.59999999403954
+        },
+        {
+            "readyMs": 212.19999999552965,
+            "downloadMs": 38.20000000298023,
+            "buildMs": 59.5,
+            "firstSuggestionMs": 191.5
+        },
+        {
+            "readyMs": 211.89999999850988,
+            "downloadMs": 38.399999998509884,
+            "buildMs": 56.80000000447035,
+            "firstSuggestionMs": 190.5
         }
     ]
 }
