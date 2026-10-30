@@ -97,3 +97,23 @@ test('the recent searches fit the screen and audit clean', async ({ page }) => {
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
 });
+
+test('a rule half typed in the drawer survives the device turning', async ({ page }) => {
+    await page.goto('/?q=jacket&explain=1&rules=1');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    await page.getByRole('button', { name: 'Rules', expanded: false }).tap();
+    const drawer = page.getByRole('dialog', { name: 'Rules' });
+    await drawer.getByRole('button', { name: 'Add a rule' }).tap();
+    await drawer.getByRole('textbox', { name: 'Name', exact: true }).fill('Last first');
+    // Turned sideways, the page is wider than a phone, and the panel is a column.
+    await page.setViewportSize({ width: 1024, height: 600 });
+    const panel = page.getByRole('complementary', { name: 'Rules' });
+    await expect(panel.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+        'Last first'
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Rules', expanded: false }).tap();
+    await expect(drawer.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+        'Last first'
+    );
+});

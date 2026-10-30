@@ -35,7 +35,7 @@ import { Facets } from './Facets.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
-import { RulesPanel } from './RulesPanel.jsx';
+import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
 import { useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
@@ -446,8 +446,15 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
     const main = useRef<HTMLElement>(null);
-    // A draft of the rules, from the panel, previewed in place of the store's own.
-    const [draft, setDraft] = useState<readonly Rule[]>();
+    // The editor lives here, above the drawer and the column, so the panel can be drawn
+    // anew when the layout changes shape without losing the rule being typed.
+    const editor = useRulesEditor({
+        rulesUrl: props.rulesUrl,
+        onStoreChanged: props.onStoreChanged,
+        storeRevision: props.storeRevision,
+        enabled: state.rules === true,
+    });
+    const draft = editor.draft;
     const { result, loading, error, previewing, answered, own } = useResults(client, state, draft);
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
@@ -485,17 +492,14 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const side = state.rules ? (
         <RulesColumn narrow={narrow}>
             <RulesPanel
+                editor={editor}
                 phrase={state.phrase}
                 applied={applied}
-                rulesUrl={props.rulesUrl}
                 products={result.items.map((hit) => ({
                     sku: hit.product.sku,
                     name: hit.product.name,
                 }))}
                 brands={brandsOf(result)}
-                onDraft={setDraft}
-                onStoreChanged={props.onStoreChanged}
-                storeRevision={props.storeRevision}
                 byRelevance={sortKey === 'relevance'}
                 onSortByRelevance={() => {
                     const { sort: _sort, ...rest } = state;

@@ -416,6 +416,38 @@ describe('on a phone', () => {
             })
         ).toHaveValue('Last first');
     });
+    it('keeps a half typed rule when the layout crosses the phone breakpoint', async () => {
+        // A viewport the test can turn, with the listeners the page attached.
+        let phone = false;
+        const listeners = new Set<() => void>();
+        vi.stubGlobal('matchMedia', (query: string) => ({
+            get matches() {
+                return phone && query.includes('max-width');
+            },
+            media: query,
+            addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+            removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+        }));
+        const turn = (toPhone: boolean) =>
+            act(() => {
+                phone = toPhone;
+                for (const listener of listeners) listener();
+            });
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(panel).getByRole('textbox', { name: 'Name' }), 'Last first');
+        turn(true);
+        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        const drawer = screen.getByRole('dialog', { name: 'Rules' });
+        expect(within(drawer).getByRole('textbox', { name: 'Name' })).toHaveValue('Last first');
+        await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), 'SL-');
+        turn(false);
+        const again = screen.getByRole('complementary', { name: 'Rules' });
+        expect(within(again).getByRole('textbox', { name: 'Name' })).toHaveValue('Last first');
+        expect(within(again).getByRole('combobox', { name: 'Product' })).toHaveValue('SL-');
+    });
 });
 
 describe('as a member', () => {

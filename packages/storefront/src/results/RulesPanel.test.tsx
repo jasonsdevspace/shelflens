@@ -2,10 +2,10 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { createMemoryRuleStore, receiveRules, VERSION_HEADER } from '@shelflens/api';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
+import { RulesPanel, type RulesPanelProps, useRulesEditor } from './RulesPanel.jsx';
 
 /*
  * The panel on its own, over the rules path of a small host: the shipped
@@ -72,20 +72,24 @@ afterEach(() => {
 });
 
 /**
- * The page's side of the panel: a store revision that counts up on each
- * change the panel announces, as the page's own does, and once more for
- * every change made elsewhere.
+ * The page's side of the panel: the editor, a store revision that counts up on
+ * each change the panel announces, as the page's own does, and once more for
+ * every change made elsewhere. The draft goes to a spy as it changes.
  */
 const Host = ({
     props,
     shown,
     elsewhere,
+    enabled,
     onStoreChanged,
+    onDraft,
 }: {
     readonly props: Partial<RulesPanelProps>;
     readonly shown: RulesPanelProps['products'];
     readonly elsewhere: number;
+    readonly enabled: boolean;
     readonly onStoreChanged: () => void;
+    readonly onDraft: (draft: readonly Rule[] | undefined) => void;
 }) => {
     const [announced, setAnnounced] = useState(0);
     const counted = useRef(0);
@@ -95,19 +99,27 @@ const Host = ({
         setAnnounced(counted.current);
         return counted.current + elsewhere;
     };
+    const editor = useRulesEditor({
+        rulesUrl: 'http://store.test/rules',
+        onStoreChanged: changed,
+        storeRevision: announced + elsewhere,
+        enabled,
+    });
+    const { draft } = editor;
+    useEffect(() => {
+        onDraft(draft);
+    }, [draft, onDraft]);
+    if (!enabled) return null;
     return (
         <RulesPanel
+            editor={editor}
             phrase="jacket"
             applied={['featured-jackets']}
-            rulesUrl="http://store.test/rules"
             brands={brands}
-            onDraft={() => undefined}
             byRelevance
             onSortByRelevance={() => undefined}
             {...props}
             products={shown}
-            storeRevision={announced + elsewhere}
-            onStoreChanged={changed}
         />
     );
 };
@@ -116,9 +128,16 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn();
     const onStoreChanged = vi.fn();
     const onSortByRelevance = vi.fn();
-    const all = { onDraft, onSortByRelevance, ...props };
-    const host = (shown: RulesPanelProps['products'], elsewhere = 0) => (
-        <Host props={all} shown={shown} elsewhere={elsewhere} onStoreChanged={onStoreChanged} />
+    const all = { onSortByRelevance, ...props };
+    const host = (shown: RulesPanelProps['products'], elsewhere = 0, enabled = true) => (
+        <Host
+            props={all}
+            shown={shown}
+            elsewhere={elsewhere}
+            enabled={enabled}
+            onStoreChanged={onStoreChanged}
+            onDraft={onDraft}
+        />
     );
     const shown = render(host(props.products ?? products));
     return {
@@ -129,6 +148,9 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
         rerender: (next: RulesPanelProps['products']) => shown.rerender(host(next)),
         /** The store was built again by something other than the panel. */
         storeBuiltAgain: (times: number) => shown.rerender(host(props.products ?? products, times)),
+        /** The page closed the panel, and opened it again. */
+        closePanel: () => shown.rerender(host(props.products ?? products, 0, false)),
+        reopenPanel: () => shown.rerender(host(props.products ?? products, 0, true)),
         unmount: shown.unmount,
     };
 };
@@ -319,13 +341,13 @@ describe('the rules panel', () => {
         expect(draft.find((rule) => rule.id === 'all-boots')?.hide).toEqual(['SL-7']);
     });
 
-    it('takes its draft with it when it closes', async () => {
-        const { user, onDraft, unmount } = open();
+    it('lets the draft and the rule go when the page closes the panel', async () => {
+        const { user, onDraft, closePanel } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         expect(onDraft.mock.lastCall?.[0]).toBeDefined();
-        unmount();
+        closePanel();
         expect(onDraft).toHaveBeenLastCalledWith(undefined);
     });
 
@@ -443,6 +465,33 @@ describe('the rules panel', () => {
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(await store.current()).toBeUndefined();
+    });
+
+    it('edits again once a read that failed is made good by the next opening', async () => {
+        const live = fetch;
+        vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
+        const { user, closePanel, reopenPanel } = open();
+        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        vi.stubGlobal('fetch', live);
+        closePanel();
+        reopenPanel();
+        expect(await screen.findByRole('button', { name: 'Add a rule' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).toBeNull();
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    });
+
+    it('says nothing on the next opening of what was said before', async () => {
+        const { user, closePanel, reopenPanel } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Rule saved.');
+        closePanel();
+        reopenPanel();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        expect(screen.queryByRole('status')).toBeNull();
     });
 
     it('gives the store’s own rules back only after a second press', async () => {

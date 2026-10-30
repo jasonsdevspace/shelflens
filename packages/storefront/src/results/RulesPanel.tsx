@@ -1,8 +1,17 @@
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 
-import { type Form, formOf, fresh, type Named, problemsOf, ruleOf, summary } from './rule-form.js';
+import {
+    type Form,
+    formOf,
+    fresh,
+    type Named,
+    type Problems,
+    problemsOf,
+    ruleOf,
+    summary,
+} from './rule-form.js';
 import { RuleForm } from './RuleForm.js';
 
 /**
@@ -10,9 +19,11 @@ import { RuleForm } from './RuleForm.js';
  * current search, one of them open for editing, and a draft the results
  * beside this panel preview before it is saved.
  *
- * The panel owns the form and the loaded set. The draft, the whole set
- * with the edited rule in it, goes up to the results page, which asks the
- * API for a preview with it in place of the store's rules. Saving posts
+ * The page owns the editor, the form and the loaded set, through the hook
+ * below, so the panel can be drawn as a drawer or as a column and drawn
+ * anew when the layout changes shape without losing a rule being typed.
+ * The draft, the whole set with the edited rule in it, is what the page
+ * asks the API to preview in place of the store's rules. Saving posts
  * the same set to the rules path, and the host builds the store again
  * under a new version before it answers, so the next search is the one
  * the preview showed. The store's own rules are one click away, in the
@@ -21,6 +32,8 @@ import { RuleForm } from './RuleForm.js';
  */
 
 export interface RulesPanelProps {
+    /** The editor's state and actions, held by the page so the panel can be drawn anew without losing them. */
+    readonly editor: RulesEditor;
     /** The search the rules are read for. Rules apply to a search, so without one the panel says so. */
     readonly phrase: string | undefined;
     /**
@@ -28,20 +41,46 @@ export interface RulesPanelProps {
      * its sort, or nothing until the store has answered once.
      */
     readonly applied: readonly string[] | undefined;
-    /** Where the rules are read and saved. */
-    readonly rulesUrl: string;
     /** The products on the results page, which a rule can name. */
     readonly products: readonly Named[];
     /** The brands on the results page, which a boost or a bury can name. */
     readonly brands: readonly string[];
-    readonly onDraft: (rules: readonly Rule[] | undefined) => void;
-    /** The store was built again, under a new version. */
-    readonly onStoreChanged: () => number;
-    /** Counts the times the store was built again, by this panel or by the page, so a change made elsewhere is read. */
-    readonly storeRevision: number;
     /** Whether the results are sorted by relevance, where rules apply. */
     readonly byRelevance: boolean;
     readonly onSortByRelevance: () => void;
+}
+
+export interface RulesEditorOptions {
+    /** Where the rules are read and saved. */
+    readonly rulesUrl: string;
+    /** The store was built again, under a new version. Answers the revision that made. */
+    readonly onStoreChanged: () => number;
+    /** Counts the times the store was built again, by this panel or by the page, so a change made elsewhere is read. */
+    readonly storeRevision: number;
+    /** Whether the panel is open. Closed, nothing is read, and a rule being typed is let go. */
+    readonly enabled: boolean;
+}
+
+/** What the panel holds and does, kept by the page across the panel being drawn anew. */
+export interface RulesEditor {
+    /** Where the rules are read and saved. */
+    readonly rulesUrl: string;
+    readonly rules: readonly Rule[];
+    readonly edited: boolean;
+    readonly editable: boolean;
+    readonly failed: boolean;
+    readonly form: Form | undefined;
+    readonly tried: boolean;
+    readonly problems: Problems;
+    readonly message: string;
+    readonly fields: RefObject<HTMLFormElement | null>;
+    /** The whole set with the rule being typed in it, once that rule is sound, for the preview. */
+    readonly draft: readonly Rule[] | undefined;
+    readonly edit: (next: Form, products: readonly Named[]) => void;
+    readonly close: () => void;
+    readonly save: () => void;
+    readonly remove: () => void;
+    readonly reset: () => void;
 }
 
 export { STEPS } from './rule-form.js';
@@ -101,7 +140,7 @@ const NOT_YET = 'The rules are being read again. Try again in a moment.';
  * accepted is the set for the revision that save made, so the read for
  * that one revision is skipped.
  */
-const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
+const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolean) => {
     const [loaded, setLoaded] = useState<Loaded>();
     const [failedFor, setFailedFor] = useState<number>();
     // The revision this panel's own save made, whose read is skipped, once.
@@ -115,6 +154,7 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
         setLoaded({ rules, edited: true, revision });
     };
     useEffect(() => {
+        if (!enabled) return;
         if (storeRevision === own.current) {
             own.current = undefined;
             return;
@@ -123,13 +163,18 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
         ticket.current = mine;
         void read(rulesUrl).then((next) => {
             if (mine !== ticket.current) return;
-            if (next) setLoaded({ ...next, revision: storeRevision });
-            else setFailedFor(storeRevision);
+            if (next) {
+                setLoaded({ ...next, revision: storeRevision });
+                // A read that failed at this revision is made good by this one.
+                setFailedFor(undefined);
+            } else {
+                setFailedFor(storeRevision);
+            }
         });
         return () => {
             ticket.current += 1;
         };
-    }, [rulesUrl, storeRevision]);
+    }, [rulesUrl, storeRevision, enabled]);
     // The last set read is kept for the form while the next is on its way, but only
     // the set for the store as it is now can be saved over.
     return {
@@ -138,15 +183,6 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
         failed: failedFor === storeRevision,
         accept,
     };
-};
-
-/** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
-const useDraftCleared = (onDraft: RulesPanelProps['onDraft']) => {
-    const latest = useRef(onDraft);
-    useEffect(() => {
-        latest.current = onDraft;
-    }, [onDraft]);
-    useEffect(() => () => latest.current(undefined), []);
 };
 
 const RuleList = ({
@@ -268,24 +304,40 @@ const namedBy = (rules: readonly Rule[]): readonly string[] =>
         ...(rule.bury ?? []).flatMap((a) => a.ids ?? []),
     ]);
 
-export const RulesPanel = ({
-    phrase,
-    applied,
+/**
+ * The editor behind the panel. It lives in the page rather than in the
+ * panel, so the panel can be a drawer on a phone and a column beside the
+ * results on a wider screen, and crossing from one to the other draws the
+ * panel anew without losing the rule being typed.
+ */
+export const useRulesEditor = ({
     rulesUrl,
-    products,
-    brands,
-    onDraft,
     onStoreChanged,
     storeRevision,
-    byRelevance,
-    onSortByRelevance,
-}: RulesPanelProps) => {
-    const { loaded, current, failed, accept } = useLoadedRules(rulesUrl, storeRevision);
-    useDraftCleared(onDraft);
+    enabled,
+}: RulesEditorOptions): RulesEditor => {
+    const { loaded, current, failed, accept } = useLoadedRules(rulesUrl, storeRevision, enabled);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
     const [message, setMessage] = useState('');
+    const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
+    // A closed panel holds no rule being typed and previews nothing.
+    const [wasEnabled, setWasEnabled] = useState(enabled);
+    if (wasEnabled !== enabled) {
+        setWasEnabled(enabled);
+        if (!enabled) {
+            setForm(undefined);
+            setTried(false);
+            setDraft(undefined);
+            setMessage('');
+        }
+    }
+    // Whether the panel is open now, for a request that lands after it closed.
+    const isOpen = useRef(enabled);
+    useEffect(() => {
+        isOpen.current = enabled;
+    }, [enabled]);
 
     const rules = loaded?.rules ?? [];
     const editable = loaded !== undefined && current && !failed;
@@ -303,25 +355,26 @@ export const RulesPanel = ({
         rule,
     ];
 
-    const edit = (next: Form) => {
+    const edit = (next: Form, products: readonly Named[]) => {
         const shown = new Set(next.seen.map((product) => product.sku));
         const seen = [...next.seen, ...products.filter((product) => !shown.has(product.sku))];
         const merged = { ...next, seen };
         setForm(merged);
         setMessage('');
         const sound = Object.keys(problemsOf(merged, knownFor(seen))).length === 0;
-        onDraft(sound ? setWith(ruleOf(merged)) : undefined);
+        setDraft(sound ? setWith(ruleOf(merged)) : undefined);
     };
     const close = () => {
         setForm(undefined);
         setTried(false);
-        onDraft(undefined);
+        setDraft(undefined);
     };
 
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
     const changed = (said: string): number => {
         const revision = onStoreChanged();
-        setMessage(said);
+        // Said only while the panel is open: a save that lands after it closed is not news on the next open.
+        if (isOpen.current) setMessage(said);
         close();
         return revision;
     };
@@ -377,12 +430,44 @@ export const RulesPanel = ({
 
     /** The host has its own rules back. Which those are is the host's to say, so the read follows. */
     const reset = () => {
-        changed('The store’s own rules are back.');
+        changed('The store\u2019s own rules are back.');
     };
 
+    return {
+        rulesUrl,
+        rules,
+        edited: loaded?.edited ?? false,
+        editable,
+        failed,
+        form,
+        tried,
+        problems,
+        message,
+        fields,
+        draft,
+        edit,
+        close,
+        save,
+        remove,
+        reset,
+    };
+};
+
+export const RulesPanel = ({
+    editor,
+    phrase,
+    applied,
+    products,
+    brands,
+    byRelevance,
+    onSortByRelevance,
+}: RulesPanelProps) => {
+    const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
+        editor;
+    const edit = (next: Form) => editor.edit(next, products);
     return (
         <div className="rules">
-            <h2 className="facet-title">{phrase ? `Rules for “${phrase}”` : 'Rules'}</h2>
+            <h2 className="facet-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
             {!byRelevance && (
                 <p className="notice">
                     Sorting sets this search&rsquo;s rules aside.{' '}
@@ -411,9 +496,9 @@ export const RulesPanel = ({
                     existing={rules.some((rule) => rule.id === form.id)}
                     fields={fields}
                     onChange={edit}
-                    onSave={save}
-                    onCancel={close}
-                    onRemove={remove}
+                    onSave={editor.save}
+                    onCancel={editor.close}
+                    onRemove={editor.remove}
                 />
             ) : (
                 editable && (
@@ -433,7 +518,7 @@ export const RulesPanel = ({
                                 Add a rule
                             </button>
                         </div>
-                        {loaded.edited && <DiscardRules rulesUrl={rulesUrl} onReset={reset} />}
+                        {edited && <DiscardRules rulesUrl={rulesUrl} onReset={editor.reset} />}
                     </>
                 )
             )}
