@@ -34,12 +34,12 @@
                     ShelfLens is a made-up store with a real search engine behind it. Type a few
                     letters and it suggests products, forgives a typo, knows that trainers are
                     sneakers, keeps the filter counts honest, holds a promotion at the top, and can
-                    say why every result landed where it did. It is built for three people: the
-                    shopper who wants the right product in a few keystrokes, the merchandiser who
-                    wants to push a promotion and see whether it worked, and the reviewer with two
-                    minutes who wants to know whether the person who built it understands search.
-                    The whole thing runs inside your browser. There is no server behind it, and what
-                    you search and open stays on your machine.
+                    say why every result landed where it did. It is built for three people. The
+                    shopper wants the right product in a few keystrokes. The merchandiser wants to
+                    push a promotion and see whether it worked. The reviewer with two minutes wants
+                    to know whether the person who built it understands search. The whole thing runs
+                    inside your browser. There is no server behind it, and what you search and open
+                    stays on your machine.
                 </p>
                 <p><a class="tour-try" href="../">Open the demo</a></p>
 
@@ -111,8 +111,8 @@
                         member's prices to the next guest. Here the memory includes who is asking,
                         and a test proves the leak with the naive version.
                         <a href="../?product=SL-00008"
-                            >Open the product a guest cannot see, then switch "Shopping as" to
-                            Member at the top of the page.</a
+                            >Open the product a guest cannot see, then choose "Member" under
+                            "Shopping as" at the top of the page.</a
                         >
                     </p>
 
@@ -123,16 +123,20 @@
                         them. Sort by price and the pin is set aside, and the page says so instead
                         of looking broken.
                         <a href="../?q=jacket&amp;explain=1"
-                            >Search "jacket" with explanations on, then sort by price.</a
+                            >Search "jacket" with "Explain ranking" on, then choose "Price, low to
+                            high" under "Sort by".</a
                         >
                     </p>
 
                     <h3>Choosing Red never zeroes Blue</h3>
                     <p>
                         Tick one brand and a naive count drops every other brand to zero, leaving
-                        one choice per filter after the first click. Here each filter counts as if
+                        one choice per filter after the first tick. Here each filter counts as if
                         its own selection were not there, so the other brands keep their numbers.
-                        <a href="../?q=jacket">Tick a brand under "jacket" and watch the counts.</a>
+                        <a href="../?q=jacket"
+                            >Search "jacket", then tick a brand under "Brand" and watch the
+                            counts.</a
+                        >
                     </p>
 
                     <h3>Nothing is still a page</h3>
@@ -164,14 +168,14 @@
                         from your next visit, by a small capped amount, and never above a product a
                         merchandiser pinned.
                         <a href="../?q=jacket&amp;explain=1"
-                            >Open a few jackets, then reload and search again with explanations
+                            >Open a few jackets, then reload and search again with "Explain ranking"
                             on.</a
                         >
                     </p>
 
                     <p>
-                        The Tour button in the store's top bar walks seventeen of these, each with
-                        the test behind it.
+                        The "Tour" button at the top of the page walks through seventeen of these,
+                        each with the test behind it.
                     </p>
                 </section>
 

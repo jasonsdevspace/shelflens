@@ -1,6 +1,6 @@
 # ShelfLens
 
-A product search engine, and the store built on it. **[Try the
+A product search engine, and the store built on it. **[Open the
 demo](https://jasonsdevspace.com/shelflens/)**, which opens a tour of the interesting parts on a
 first visit.
 
@@ -20,8 +20,8 @@ such systems behave, with its own names and its own schema.
 
 ## Two minutes with the demo
 
-Each step is a link into the live storefront. The tour button in the masthead walks all seventeen
-stops with the test behind each. For the same story without the code, the demo carries
+Each step is a link into the live storefront. The "Tour" button at the top of the page walks all
+seventeen stops with the test behind each. For the same story without the code, the demo carries
 [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
@@ -29,13 +29,13 @@ stops with the test behind each. For the same story without the code, the demo c
    list. This one never does. A burst of keystrokes costs one request, and the popover is a
    combobox you can drive from the keyboard.
 2. [Open the product a guest cannot see.](https://jasonsdevspace.com/shelflens/?product=SL-00008)
-   Switch to member in the masthead: it appears, marked as members only, and back on the results
+   Choose "Member" under "Shopping as" at the top of the page: it appears, marked as members only, and back on the results
    every price that dropped says it is a member price, with one line saying what the switch
    changed on the page. A cache keyed on the query alone would serve a member's answer to the
    next guest, and a test proves it does. Beneath any product is a rail: the most rated in its
    category until you have viewed a second product, then what you viewed, under a heading that
    says which it is.
-3. [Search "jacket" in explain mode.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
+3. [Search "jacket" with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    Two jackets are pinned first by a rule, and every card says which word matched which term in
    which field and what the rule did. Sort by price and the pin is set aside, and the page says so.
 4. [Tick a brand under "jacket".](https://jasonsdevspace.com/shelflens/?q=jacket) The other
@@ -44,7 +44,7 @@ stops with the test behind each. For the same story without the code, the demo c
 5. [Search "zzqx jacket".](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket) There are no
    results, so the page shows the results of "jacket" instead, offers a spelling when a word is
    two typos off, and falls back to the most clicked products, then the most rated.
-6. [Open a few jackets, then reload and search again with explain mode on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
+6. [Open a few jackets, then reload and search again with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    The ones you opened rise a little, with the count under each card, and the pinned ones stay
    first. The nudge is capped and folds in when a visit begins, never mid-page.
 
@@ -57,7 +57,7 @@ version, and the tour's stops name them.
 | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | A late answer to an earlier phrase must not win                                                                                                  | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it                                 |
 | A burst of keystrokes is one request                                                                                                             | `packages/storefront/src/search/SearchBox.test.tsx`                                                                    |
-| The popover is a combobox: arrow keys, Escape, announcements, an accessibility audit                                                             | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`                                         |
+| The suggestion list works from the keyboard: arrow keys, Escape, announcements, an audit                                                         | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`                                         |
 | A cache keyed on the query alone serves a member's price to a guest                                                                              | `packages/api/src/cache.test.ts`                                                                                       |
 | "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                                                              | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                                                            |
 | Choosing "Red" never zeroes "Blue"                                                                                                               | `packages/engine/src/facets.test.ts`                                                                                   |

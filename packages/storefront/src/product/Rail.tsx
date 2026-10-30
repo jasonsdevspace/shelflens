@@ -22,8 +22,8 @@ export const RAIL_HEADING_ID = 'rail-heading';
 
 export const railHeading = (rail: RailData): string =>
     rail.source === 'VIEWED_TOGETHER'
-        ? 'Viewed this, also viewed'
-        : `Popular in ${rail.category.name}`;
+        ? 'Viewed with this product'
+        : `Top rated in ${rail.category.name}`;
 
 export const Rail = ({ rail, state, navigate }: RailProps) => {
     if (rail.items.length === 0) return null;

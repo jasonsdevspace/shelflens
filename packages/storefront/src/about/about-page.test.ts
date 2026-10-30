@@ -72,8 +72,10 @@ describe('the explainer', () => {
             'twenty',
         ];
         const count = words[STOPS.length] ?? String(STOPS.length);
-        expect(page).toContain(`walks ${count} of these`);
-        expect(readme).toContain(`walks all ${count}`);
+        // Both are wrapped by their formatters, so the words are read across line breaks.
+        const flat = (text: string) => text.replace(/\s+/g, ' ');
+        expect(flat(page)).toContain(`walks through ${count} of these`);
+        expect(flat(readme)).toContain(`walks all ${count}`);
     });
 
     it('carries the same strip and footer links as the store', () => {

@@ -21,7 +21,7 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     await tour.getByRole('button', { name: 'Next' }).click();
     await tour.getByRole('button', { name: 'Next' }).click();
     await tour.getByRole('button', { name: 'Next' }).click();
-    await expect(tour).toContainText('A cache key that forgets who is asking');
+    await expect(tour).toContainText('The cache that forgets who is asking');
     await tour.getByRole('link', { name: 'Try it' }).click();
     await expect(page).toHaveURL(/product=SL-00008/);
     await expect(page.getByRole('alert')).toContainText('There is no product');
