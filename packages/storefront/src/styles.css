@@ -976,3 +976,127 @@ body {
     border-radius: 0.5rem;
     cursor: pointer;
 }
+
+/*
+ * The explainer at about/: prose at a reading measure, sharing the
+ * wordmark's left edge, with the demo's own steps for type and space.
+ */
+.skip {
+    position: absolute;
+    left: 1rem;
+    top: -10rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.375rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    z-index: 10;
+}
+
+.skip:focus-visible {
+    top: 1rem;
+}
+
+.about {
+    max-width: 42rem;
+    line-height: 1.55;
+}
+
+.about h1 {
+    margin: 1rem 0 0.5rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.about-pitch {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+}
+
+.about section {
+    margin-top: 2rem;
+    padding-block: 2rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.about h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.about h3 {
+    margin: 1.5rem 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.about p {
+    margin: 0 0 1rem;
+}
+
+.about p:last-child {
+    margin-bottom: 0;
+}
+
+.about a:not(.tour-try) {
+    text-decoration: underline;
+}
+
+.about code {
+    font-size: 0.9rem;
+}
+
+.about-where {
+    margin: 0;
+}
+
+.eyebrow {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The steps stack, one under the next, with the arrow between them saying so. */
+.flow {
+    list-style: none;
+    margin: 1rem 0;
+    padding: 0;
+    display: grid;
+    gap: 1.5rem;
+}
+
+.flow li {
+    position: relative;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.flow li + li::before {
+    content: '\2193' / '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -1.5rem;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    text-align: center;
+    color: var(--control);
+}
+
+.flow strong {
+    display: block;
+    font-weight: 500;
+}
+
+.flow-note {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--muted);
+}
+
+.about .tour-try {
+    padding: 0.5rem 0.9rem;
+}

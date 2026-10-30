@@ -24,6 +24,11 @@ the page.
   something, and the page shows it: a phrase a typo or two away, a shorter phrase with its
   results, the same phrase without the filters, and the most rated products as a last resort.
   Each is one click away, and each changes the URL like anything else.
+- **A page on how it works.** `about/index.html` is a second page in the build, static, sharing
+  the stylesheet, the strip and the footer, that tells the same story as the README's two minutes
+  and the tour in words a non-engineer can follow. A test holds its links to the README's steps
+  and its stop count to the tour's, and a link from it into the store marks the tour seen, so
+  the tour does not open over what the reader was sent to see.
 - **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit
   and walks the gotchas the project exists to show, one stop each, with a link that puts the page
   in the state that shows it and the name of the test that proves it. A test checks every named

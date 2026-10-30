@@ -304,3 +304,53 @@ test('a second product shows the first beside it, and the first shows its catego
     await expect(rail.getByRole('link').first()).toContainText(firstName ?? '');
     await audit(page);
 });
+
+test('the explainer reads without the store, audits clean, and sends a reader in with the tour closed', async ({
+    page,
+    browser,
+}) => {
+    await page.goto('/about/');
+    await expect(page).toHaveTitle('How ShelfLens works');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('How ShelfLens works');
+    await expect(page.getByRole('navigation', { name: 'Portfolio' })).toContainText('How it works');
+    await audit(page);
+
+    // The skip link is the first stop, and lands on the content.
+    await page.keyboard.press('Tab');
+    const skip = page.getByRole('link', { name: 'Skip to content' });
+    await expect(skip).toBeFocused();
+    await skip.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+
+    // A story's link opens the store in its state, and the tour stays closed. In a
+    // context of its own, with nothing marking the tour seen ahead of the page.
+    const context = await browser.newContext();
+    try {
+        const fresh = await context.newPage();
+        await fresh.goto('/about/');
+        await fresh.getByRole('link', { name: /Open the product a guest cannot see/ }).click();
+        await expect(fresh).toHaveURL(/\?product=SL-00008$/);
+        await expect(fresh.getByRole('alert')).toContainText('There is no product');
+        await expect(fresh.getByRole('button', { name: 'Tour' })).toHaveAttribute(
+            'aria-expanded',
+            'false'
+        );
+        await fresh.goBack();
+        await expect(fresh).toHaveURL(/\/about\/$/);
+    } finally {
+        await context.close();
+    }
+});
+
+test('the store links to the explainer from its strip and its footer', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
+    await page
+        .getByRole('navigation', { name: 'Portfolio' })
+        .getByRole('link', { name: 'How it works' })
+        .click();
+    await expect(page).toHaveURL(/\/about\/$/);
+    await page.goBack();
+    await page.getByRole('contentinfo').getByRole('link', { name: 'How it works' }).click();
+    await expect(page).toHaveURL(/\/about\/$/);
+});

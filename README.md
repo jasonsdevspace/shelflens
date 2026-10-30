@@ -21,7 +21,8 @@ such systems behave, with its own names and its own schema.
 ## Two minutes with the demo
 
 Each step is a link into the live storefront. The tour button in the masthead walks all sixteen
-stops with the test behind each.
+stops with the test behind each. For the same story without the code, the demo carries
+[a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
    arrive after the answer to "trail", and a client that shows whatever came last shows the wrong
@@ -77,14 +78,14 @@ without its filters, each only if it finds something.
 
 ## What is here
 
-| Package                                        | What it is                                                                                                                                                                                                                                                                           |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, [on npm](https://www.npmjs.com/package/@jasonsdevspace/shelflens): one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies.    |
-| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                                                                                    |
-| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                                                                                           |
-| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, the shape over HTTP, and the receiver for the shopper's events. Nothing from Node, so it runs in a service worker                                              |
-| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                                                                                |
-| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the product page with its rail, the tour, the collector that sends what the shopper did, and the service worker that is the API in the browser and keeps those events |
+| Package                                        | What it is                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@jasonsdevspace/shelflens`](packages/engine) | The search engine, [on npm](https://www.npmjs.com/package/@jasonsdevspace/shelflens): one normalization for catalog and query, exact-then-fuzzy matching, phrase synonyms, facets, merchandising rules, a recovery for nothing, and an explanation on every hit. No dependencies.                                           |
+| [`@shelflens/catalog`](packages/catalog)       | A deterministic generator for the store's product catalog, so every test and benchmark runs against the same data                                                                                                                                                                                                           |
+| [`@shelflens/search`](packages/search)         | The catalog mapped onto the engine: field weights, facets, synonyms, customer groups, the golden queries and the benchmark                                                                                                                                                                                                  |
+| [`@shelflens/api`](packages/api)               | The GraphQL API the storefront is written against: the schema, its generated types, the resolvers, the one cache key, the shape over HTTP, and the receiver for the shopper's events. Nothing from Node, so it runs in a service worker                                                                                     |
+| [`@shelflens/server`](packages/server)         | The same API over HTTP, for local runs and anything that cannot host a service worker                                                                                                                                                                                                                                       |
+| [`@shelflens/storefront`](packages/storefront) | The demo: a typed GraphQL client of its own, the popover, the results page, explain mode, the no-results page, the product page with its rail, the tour, a page on how it works in plain words, the collector that sends what the shopper did, and the service worker that is the API in the browser and keeps those events |
 
 ## What was measured
 
@@ -198,7 +199,8 @@ packages/
 ├── api/         the schema, its generated types, the resolvers, the cache key, the shape over HTTP,
 │                and the events receiver
 ├── server/      the API behind HTTP, with a rate limit and a request id
-└── storefront/  the demo page
+└── storefront/  the demo page, and theme.js, the script both pages run before their first paint
+    ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
     └── src/     app (the URL as state, categories, the store context), client (the GraphQL
                  client, its memory and the latest-request helper), search (the popover),
