@@ -153,6 +153,8 @@ export const createWorkerApi = ({
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
     /** The clicks the store being served was built with, as a fingerprint. */
     let built = '';
+    /** The saved rules the store was built with, as text, so a build with the same is skipped. */
+    let builtRules = '';
     /** The catalog and the shipped rules, downloaded once and kept for every build. */
     let shipped: Promise<{ catalog: Catalog; rules: readonly Rule[] }> | undefined;
 
@@ -174,16 +176,23 @@ export const createWorkerApi = ({
         return shipped;
     };
 
+    /** What a build is made from, read together so the two are from one moment. */
+    const inputs = async () => {
+        const [signals, saved] = await Promise.all([clicks(), rules?.current()]);
+        return { signals, saved };
+    };
+    const remember = (signals: Signals, saved: readonly Rule[] | undefined) => {
+        built = fingerprint(signals);
+        builtRules = JSON.stringify(saved ?? null);
+    };
+
     /**
      * A store from the catalog, the rules in effect, saved or shipped, and
      * these signals, timed for the cold visit.
      */
-    const build = async (signals: Signals): Promise<Built> => {
+    const build = async (signals: Signals, saved: readonly Rule[] | undefined): Promise<Built> => {
         const began = performance.now();
-        const [{ catalog, rules: shippedRules }, saved] = await Promise.all([
-            download(),
-            rules?.current(),
-        ]);
+        const { catalog, rules: shippedRules } = await download();
         const downloaded = performance.now();
         const model = createStore({
             catalog,
@@ -196,11 +205,17 @@ export const createWorkerApi = ({
         return { api, model };
     };
 
+    /**
+     * Builds, unless the build ahead in the queue was made from the same clicks
+     * and the same rules, as when a visit's refresh and a save arrive together.
+     */
     const buildAgain = async (): Promise<Built> => {
-        const signals = await clicks();
-        const next = await build(signals);
+        const { signals, saved } = await inputs();
+        const same = fingerprint(signals) === built && JSON.stringify(saved ?? null) === builtRules;
+        if (same && store) return store;
+        const next = await build(signals, saved);
         store = Promise.resolve(next);
-        built = fingerprint(signals);
+        remember(signals, saved);
         await dropOthers(next.api);
         return next;
     };
@@ -263,10 +278,10 @@ export const createWorkerApi = ({
     };
 
     const load = (): Promise<Built> => {
-        store ??= clicks()
-            .then((signals) => {
-                built = fingerprint(signals);
-                return build(signals);
+        store ??= inputs()
+            .then(({ signals, saved }) => {
+                remember(signals, saved);
+                return build(signals, saved);
             })
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.

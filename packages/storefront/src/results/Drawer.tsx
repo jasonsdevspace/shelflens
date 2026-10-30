@@ -15,12 +15,14 @@ export interface DrawerProps {
     readonly title: string;
     /** What the button at the bottom says, which closes the drawer. */
     readonly done: string;
+    /** Whether what the drawer holds stays mounted while it is closed, as a form being typed must. */
+    readonly keep?: boolean;
     readonly children: ReactNode;
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export const Drawer = ({ opener, title, done, children }: DrawerProps) => {
+export const Drawer = ({ opener, title, done, keep = false, children }: DrawerProps) => {
     const id = useId();
     const [open, setOpen] = useState(false);
     const openButton = useRef<HTMLButtonElement>(null);
@@ -78,32 +80,34 @@ export const Drawer = ({ opener, title, done, children }: DrawerProps) => {
                     aria-hidden="true"
                 />
             )}
-            <div
-                className="drawer-panel"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={`${id}-title`}
-                hidden={!open}
-                onKeyDown={trap}
-            >
-                <div className="drawer-head">
-                    <h2 id={`${id}-title`} className="drawer-title">
-                        {title}
-                    </h2>
-                    <button
-                        ref={closer}
-                        type="button"
-                        className="drawer-close"
-                        onClick={() => setOpen(false)}
-                    >
-                        Close
+            {(open || keep) && (
+                <div
+                    className="drawer-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={`${id}-title`}
+                    hidden={!open}
+                    onKeyDown={trap}
+                >
+                    <div className="drawer-head">
+                        <h2 id={`${id}-title`} className="drawer-title">
+                            {title}
+                        </h2>
+                        <button
+                            ref={closer}
+                            type="button"
+                            className="drawer-close"
+                            onClick={() => setOpen(false)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                    <div className="drawer-body">{children}</div>
+                    <button type="button" className="drawer-done" onClick={() => setOpen(false)}>
+                        {done}
                     </button>
                 </div>
-                <div className="drawer-body">{children}</div>
-                <button type="button" className="drawer-done" onClick={() => setOpen(false)}>
-                    {done}
-                </button>
-            </div>
+            )}
         </div>
     );
 };

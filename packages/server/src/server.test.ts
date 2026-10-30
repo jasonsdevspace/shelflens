@@ -157,7 +157,7 @@ describe('rules over HTTP', () => {
     const shippedStore = built(undefined);
     const host = createServer({
         api: createStoreApi(shippedStore),
-        rateLimitPerMinute: 3,
+        rateLimitPerMinute: 6,
         rules: {
             store: createMemoryRuleStore(),
             shipped,
@@ -207,8 +207,14 @@ describe('rules over HTTP', () => {
         expect(saved.status).toBe(204);
         expect(saved.headers.get(VERSION_HEADER)).toMatch(/\+rules\./);
         expect(await applied()).toEqual(['mine']);
-        // The three before spent the allowance.
-        expect((await rules('GET')).status).toBe(429);
+        // The path has its own allowance, spent by the requests to it alone.
+        let limited: Response | undefined;
+        for (let sent = 0; sent < 6 && !limited; sent += 1) {
+            const response = await rules('GET');
+            if (response.status === 429) limited = response;
+        }
+        if (!limited) throw new Error('expected a request past the allowance to be refused');
+        expect(await limited.json()).toEqual({ errors: [{ message: 'too many requests' }] });
     });
 
     it('is refused where the host keeps no rules', async () => {

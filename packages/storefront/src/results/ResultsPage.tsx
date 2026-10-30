@@ -66,6 +66,8 @@ export interface ResultsPageProps {
     readonly rulesUrl: string;
     /** The store was built again under a new version, so everything remembered is stale. */
     readonly onStoreChanged: () => void;
+    /** Counts the times the store was built again, so the panel can read its rules anew. */
+    readonly storeRevision: number;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -233,7 +235,7 @@ const RulesColumn = ({
     readonly children: ReactNode;
 }) =>
     narrow ? (
-        <Drawer opener="Rules" title="Rules" done="See the results">
+        <Drawer opener="Rules" title="Rules" done="See the results" keep>
             {children}
         </Drawer>
     ) : (
@@ -348,6 +350,34 @@ const Notices = ({
     </>
 );
 
+/**
+ * The ids of the rules the store applied or set aside, as one array that
+ * changes only when they do, and nothing until the store has answered once.
+ */
+const useAppliedRules = (
+    result: Result | undefined,
+    loading: boolean,
+    previewing: boolean,
+    search: string
+): readonly string[] | undefined => {
+    const ids =
+        loading || previewing || !result
+            ? undefined
+            : [...result.merchandising.applied, ...result.merchandising.setAsideBySort];
+    // The last answer from the store itself for this search, kept through a preview
+    // and through the request after it, so the list beside the results never blanks
+    // or shows a draft's. Another search starts over. It is state, so the same array
+    // comes back until the ids themselves change.
+    const [kept, setKept] = useState({ search, ids });
+    const differs = (a: readonly string[], b: readonly string[]) =>
+        a.length !== b.length || a.some((id, i) => id !== b[i]);
+    if (kept.search !== search) setKept({ search, ids });
+    else if (ids !== undefined && (kept.ids === undefined || differs(ids, kept.ids))) {
+        setKept({ search, ids });
+    }
+    return kept.search === search ? kept.ids : ids;
+};
+
 /** What an answer puts under the toolbar: the notices, the cards or the nothing page, and the pages. */
 const Answer = ({
     result,
@@ -387,17 +417,19 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const [draft, setDraft] = useState<readonly Rule[]>();
     const { result, loading, error, previewing } = useResults(client, state, draft);
     const narrow = useMediaQuery(NARROW);
+    const applied = useAppliedRules(result, loading, previewing, searchKey(state));
     useReturnFocus(main, focusSku, !loading, onFocused);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
-    // An error with nothing yet shown is the page. With an answer shown, it takes the
-    // place of the cards, and the panel beside them stays, with whatever is typed in it.
+    // An error is the page, except with the panel open: the answer before it stays
+    // shown, the error takes the place of the cards, and the panel stays with whatever
+    // is typed in it. A new search closes the panel, so what stays is for this search.
     const alert = error ? (
         <p className="notice" role="alert">
             {error}
         </p>
     ) : undefined;
-    if (!result) {
+    if (!result || (alert && !state.rules)) {
         return (
             <>
                 {status}
@@ -407,13 +439,12 @@ export const ResultsPage = (props: ResultsPageProps) => {
     }
 
     const sortKey = state.sort ?? sortKeyOf(result.sort);
-    const setAside = result.merchandising.setAsideBySort;
     const empty = result.total === 0;
     // Nothing found and nothing ticked means nothing to narrow. With a filter on, the
     // facets stay, since unticking it is the way out, and the drawer stays open mid-use.
     const facetless = empty && !hasFilters(state);
+    // The panel clears its draft as it goes, so closing is leaving the URL.
     const closeRules = () => {
-        setDraft(undefined);
         const { rules: _rules, ...rest } = state;
         navigate(rest);
     };
@@ -421,7 +452,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         <RulesColumn narrow={narrow}>
             <RulesPanel
                 phrase={state.phrase}
-                applied={loading ? undefined : [...result.merchandising.applied, ...setAside]}
+                applied={applied}
                 rulesUrl={props.rulesUrl}
                 products={result.items.map((hit) => ({
                     sku: hit.product.sku,
@@ -430,6 +461,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                 brands={brandsOf(result)}
                 onDraft={setDraft}
                 onStoreChanged={props.onStoreChanged}
+                storeRevision={props.storeRevision}
                 byRelevance={sortKey === 'relevance'}
                 onSortByRelevance={() => {
                     const { sort: _sort, ...rest } = state;

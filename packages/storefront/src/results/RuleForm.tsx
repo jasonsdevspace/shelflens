@@ -4,6 +4,7 @@ import {
     ACTIONS,
     type Form,
     keptLine,
+    type Named,
     namesProducts,
     type Problems,
     STEPS,
@@ -22,7 +23,7 @@ export interface RuleFormProps {
     readonly problems: Problems;
     /** Whether a save was tried, which is when problems are shown. */
     readonly tried: boolean;
-    readonly products: readonly { readonly sku: string; readonly name: string }[];
+    readonly products: readonly Named[];
     readonly brands: readonly string[];
     /** Whether the rule is one the store already has, which can be removed. */
     readonly existing: boolean;
@@ -61,7 +62,7 @@ const Field = ({
 );
 
 /** The name the page or the rule has shown for a SKU, which outlives the product's place on the page. */
-const nameOf = (named: readonly { sku: string; name: string }[], sku: string): string =>
+const nameOf = (named: readonly Named[], sku: string): string =>
     named.find((product) => product.sku === sku.trim())?.name ?? '';
 
 const ProductFields = ({
@@ -108,7 +109,11 @@ const ProductFields = ({
             ))}
         </datalist>
         <span id={`${id}-skus`} className="facet-count">
-            {under(tried, problems.skus, 'A SKU from the results on this page')}
+            {under(
+                tried,
+                problems.skus,
+                'A product the results have shown, or one a saved rule names'
+            )}
         </span>
         {(form.action === 'pin' || form.action === 'hide') && (
             <button

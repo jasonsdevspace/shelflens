@@ -20,7 +20,7 @@ import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
-import { DiscardRules, NOT_RESTORED } from './results/RulesPanel.jsx';
+import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
@@ -88,25 +88,12 @@ const EditedRulesNotice = ({
 }: {
     readonly rulesUrl: string;
     readonly onReset: () => void;
-}) => {
-    const [failed, setFailed] = useState(false);
-    const discard = async () => {
-        try {
-            const response = await fetch(rulesUrl, { method: 'DELETE' });
-            if (response.ok) onReset();
-            else setFailed(true);
-        } catch {
-            setFailed(true);
-        }
-    };
-    return (
-        <div className="results-aside rules-notice">
-            Your edited rules are in effect, not the store&rsquo;s own.{' '}
-            {failed && <span role="alert">{NOT_RESTORED} </span>}
-            <DiscardRules onDiscard={() => void discard()} />
-        </div>
-    );
-};
+}) => (
+    <div className="results-aside rules-notice">
+        Your edited rules are in effect, not the store&rsquo;s own.{' '}
+        <DiscardRules rulesUrl={rulesUrl} onReset={onReset} />
+    </div>
+);
 
 /** Who the reviewer is shopping as. A real store would take this from the session. */
 const ViewerSwitch = ({
@@ -220,7 +207,7 @@ const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [apiUrl, group, memory, revision]
     );
-    return { client, storeChanged };
+    return { client, storeChanged, revision };
 };
 
 /** A new search starts over, except that explain mode is a way of looking, not a filter. */
@@ -250,7 +237,7 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
     };
     const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
         useTour();
-    const { client, storeChanged } = useStoreClient(apiUrl, group);
+    const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
     const isReady = readiness === 'ready';
     const { tree, store } = useStoreShape(client, isReady);
     const fresh = freshFrom(state);
@@ -344,6 +331,7 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
                             switchedOn={switchedOn}
                             rulesUrl={rulesUrl}
                             onStoreChanged={storeChanged}
+                            storeRevision={revision}
                         />
                     )}
                 </main>

@@ -74,11 +74,12 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn();
     const onStoreChanged = vi.fn();
     const onSortByRelevance = vi.fn();
-    const panel = (shown: RulesPanelProps['products']) => (
+    const panel = (shown: RulesPanelProps['products'], revision = 0) => (
         <RulesPanel
             phrase="jacket"
             applied={['featured-jackets']}
             rulesUrl="http://store.test/rules"
+            storeRevision={revision}
             brands={brands}
             onDraft={onDraft}
             onStoreChanged={onStoreChanged}
@@ -95,6 +96,8 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
         onStoreChanged,
         onSortByRelevance,
         rerender: (next: RulesPanelProps['products']) => shown.rerender(panel(next)),
+        storeBuiltAgain: (revision: number) =>
+            shown.rerender(panel(props.products ?? products, revision)),
         unmount: shown.unmount,
     };
 };
@@ -328,7 +331,7 @@ describe('the rules panel', () => {
         );
     });
 
-    it('holds the set the host accepted when the read after a save fails, and edits no further', async () => {
+    it('holds the set the host accepted without reading it back', async () => {
         const { user } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
@@ -340,8 +343,9 @@ describe('the rules panel', () => {
         );
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
         expect(await screen.findByRole('status')).toHaveTextContent('Rule saved.');
-        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
-        expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
+        expect(screen.queryByRole('alert')).toBeNull();
+        await user.click(screen.getByRole('button', { name: 'Show every rule' }));
+        expect(screen.getByRole('list', { name: 'Every rule' })).toHaveTextContent('Trail first');
         expect((await store.current())?.map((rule) => rule.name)).toContain('Trail first');
     });
 
@@ -351,10 +355,28 @@ describe('the rules panel', () => {
         await user.click(await screen.findByRole('button', { name: 'Use the store’s rules' }));
         vi.stubGlobal('fetch', () => Promise.resolve(new Response('down', { status: 503 })));
         await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
-        expect(await screen.findByRole('status')).toHaveTextContent(
+        expect(await screen.findByRole('alert')).toHaveTextContent(
             'The store’s rules could not be brought back. Try again.'
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Use the store’s rules' })).toBeInTheDocument();
+    });
+
+    it('reads the rules again when the page, not the panel, built the store anew', async () => {
+        await store.replace([shipped[1] as (typeof shipped)[number]]);
+        const { storeBuiltAgain } = open();
+        expect(
+            await screen.findByRole('button', { name: 'Use the store’s rules' })
+        ).toBeInTheDocument();
+        // The banner above the page gave the store its own rules back.
+        await store.reset();
+        storeBuiltAgain(1);
+        await waitFor(() =>
+            expect(screen.queryByRole('button', { name: 'Use the store’s rules' })).toBeNull()
+        );
+        expect(screen.getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
+            'Featured jackets'
+        );
     });
 
     it('gives the store’s own rules back only after a second press', async () => {

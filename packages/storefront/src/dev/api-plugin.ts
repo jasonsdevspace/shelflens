@@ -43,8 +43,9 @@ export const storeApi = (): Plugin => ({
         const built = (saved: readonly Rule[] | undefined) =>
             createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
         const shippedStore = built(undefined);
+        const shippedApi = withResponseCache(createStoreApi(shippedStore, { events }));
         const handle = createHandler({
-            api: withResponseCache(createStoreApi(shippedStore, { events })),
+            api: shippedApi,
             base,
             events,
             rules: {
@@ -54,7 +55,10 @@ export const storeApi = (): Plugin => ({
                 check: (draft) => {
                     shippedStore.engine.reconfigure({ rules: draft });
                 },
-                build: (saved) => withResponseCache(createStoreApi(built(saved), { events })),
+                build: (saved) =>
+                    saved === undefined
+                        ? shippedApi
+                        : withResponseCache(createStoreApi(built(saved), { events })),
             },
         });
         server.middlewares.use((request, response, next) => {
