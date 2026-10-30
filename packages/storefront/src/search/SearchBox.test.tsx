@@ -295,9 +295,8 @@ describe('what this browser searched before', () => {
         await waitFor(() =>
             expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeVisible()
         );
-        const groups = screen.getAllByRole('group');
-        expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toHaveLength(2);
-        expect(groups[0]).toHaveTextContent('Recent searches');
+        expect(screen.getByRole('group', { name: 'Recent searches' })).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Suggestions' })).toBeInTheDocument();
         const names = screen
             .getAllByRole('option')
             .map((option) => option.querySelector('.searchbox-query, .searchbox-product-name'));
@@ -307,8 +306,8 @@ describe('what this browser searched before', () => {
             'trail one',
             'trail two',
         ]);
-        // The heading and its clear button belong to the list of recent phrases alone.
-        expect(screen.queryByRole('button', { name: 'Clear recent searches' })).toBeNull();
+        // The heading and its clear button stay with the shopper's phrases wherever they sit.
+        expect(screen.getByRole('button', { name: 'Clear recent searches' })).toBeInTheDocument();
         expect(screen.getByRole('status')).toHaveTextContent('2 suggestions');
         await user.keyboard('{ArrowDown}{Enter}');
         expect(box.onSearch).toHaveBeenCalledWith('trail runner');
@@ -329,7 +328,46 @@ describe('what this browser searched before', () => {
             'gift card',
         ]);
         expect(screen.queryByRole('group', { name: 'Suggestions' })).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Clear recent searches' })).toBeNull();
+        expect(screen.getByRole('listbox', { name: 'Recent searches' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear recent searches' })).toBeInTheDocument();
+    });
+
+    it('starts the highlight over when the store\u2019s answer re-cuts the list', async () => {
+        for (const phrase of [
+            'trail map',
+            'trail shoes',
+            'trail mix',
+            'trail jacket',
+            'trail runner',
+        ]) {
+            rememberSearch(phrase);
+        }
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'tr');
+        await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
+        expect(box.input).toHaveAttribute(
+            'aria-activedescendant',
+            expect.stringContaining('option-3')
+        );
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: ['trek poles'], products: [] });
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 suggestion'));
+        expect(box.input).not.toHaveAttribute('aria-activedescendant');
+        await user.keyboard('{Enter}');
+        expect(box.onSearch).toHaveBeenCalledWith('tr');
+    });
+
+    it('drops the highlight with Escape on the clear button, so Enter submits what is typed', async () => {
+        rememberSearch('boots');
+        const { input, user, onSearch } = await openEmpty();
+        await user.keyboard('{ArrowDown}');
+        await user.tab();
+        await user.keyboard('{Escape}');
+        expect(input).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(onSearch).not.toHaveBeenCalled();
     });
 
     it('says a failed request even while recent phrases match', async () => {

@@ -82,6 +82,8 @@ describe('recent searches', () => {
         expect(matchingRecent(phrases, 'r')).toEqual(['trail runner', 'Rain jacket']);
         expect(matchingRecent(phrases, 'JACK')).toEqual(['Rain jacket']);
         expect(matchingRecent(phrases, '  tra ')).toEqual(['trail runner']);
+        expect(matchingRecent(['light trail runner'], 'trail r')).toEqual(['light trail runner']);
+        expect(matchingRecent(['light trail runner'], 'ght tr')).toEqual([]);
         expect(matchingRecent(phrases, 'x')).toEqual([]);
     });
 
@@ -90,5 +92,7 @@ describe('recent searches', () => {
         localStorage.setItem('shelflens.recent', JSON.stringify(many));
         expect(recentSearches()).toHaveLength(RECENT_LIMIT);
         expect(recentSearches()[0]).toBe('phrase 0');
+        localStorage.setItem('shelflens.recent', JSON.stringify(['boots', 'Boots', 'jacket']));
+        expect(recentSearches()).toEqual(['boots', 'jacket']);
     });
 });

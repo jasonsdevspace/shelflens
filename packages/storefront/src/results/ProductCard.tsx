@@ -1,4 +1,5 @@
 import { useStoreInfo } from '../app/StoreContext.jsx';
+import { count } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
@@ -39,7 +40,7 @@ type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
 
 /** What the clicks did, in the shopper's words: in how many visits, and by how much. */
 const popularityText = ({ clicks, weight }: Popularity): string =>
-    `Clicked in ${clicks} ${clicks === 1 ? 'visit' : 'visits'} before, score raised by ${Math.round((weight - 1) * 100)}%`;
+    `Clicked in ${count(clicks, 'visit', 'visits')} before, score raised by ${Math.round((weight - 1) * 100)}%`;
 
 const effectText = (effect: Effect): string => {
     const weight = effect.weight === null ? '' : ` by ${effect.weight}`;

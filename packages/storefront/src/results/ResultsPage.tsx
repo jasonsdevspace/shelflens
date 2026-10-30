@@ -399,8 +399,12 @@ const useRememberedSearch = (
     // Close matches for a misspelling are the store's work, not a search to run again.
     const found =
         own && result !== undefined && result.total > 0 && result.matching !== 'CORRECTED';
+    // Once per phrase: a page, a filter or a sort under it is the same search.
+    const remembered = useRef<string>(undefined);
     useEffect(() => {
-        if (phrase && found) rememberSearch(phrase);
+        if (!phrase || !found || remembered.current === phrase) return;
+        remembered.current = phrase;
+        rememberSearch(phrase);
     }, [phrase, found]);
 };
 

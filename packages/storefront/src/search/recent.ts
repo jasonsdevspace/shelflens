@@ -19,8 +19,11 @@ export const RECENT_LIMIT = 8;
 
 const NONE: readonly string[] = [];
 
-/** One spelling for comparing phrases: trimmed, one space between words, lowercase. */
-export const fold = (phrase: string): string => phrase.trim().replace(/\s+/g, ' ').toLowerCase();
+/** One spacing for a phrase: trimmed, one space between words. What is stored. */
+const squeeze = (phrase: string): string => phrase.trim().replace(/\s+/g, ' ');
+
+/** One spelling for comparing phrases: squeezed and lowercase. */
+export const fold = (phrase: string): string => squeeze(phrase).toLowerCase();
 
 const listeners = new Set<() => void>();
 // The last text read and the list made of it, so the same array comes back while
@@ -34,8 +37,15 @@ const parse = (text: string | null): readonly string[] => {
         const parsed: unknown = JSON.parse(text);
         if (!Array.isArray(parsed)) return NONE;
         // Storage can hold anything: another tab, an older build, a hand edit.
+        const seen = new Set<string>();
         return parsed
             .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+            .filter((p) => {
+                const key = fold(p);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
             .slice(0, RECENT_LIMIT);
     } catch {
         return NONE;
@@ -86,7 +96,7 @@ const write = (phrases: readonly string[]): void => {
 
 /** Puts a phrase first, once, however it was spelled before. */
 export const rememberSearch = (phrase: string): void => {
-    const wanted = phrase.trim().replace(/\s+/g, ' ');
+    const wanted = squeeze(phrase);
     if (!wanted) return;
     const kept = recentSearches().filter((p) => fold(p) !== fold(wanted));
     write([wanted, ...kept].slice(0, RECENT_LIMIT));
@@ -96,16 +106,12 @@ export const clearRecentSearches = (): void => {
     write(NONE);
 };
 
-/** The phrases that start with what was typed, as a whole or at any word, newest first. */
+/** The phrases in which what was typed starts the phrase or starts a word, newest first. */
 export const matchingRecent = (phrases: readonly string[], typed: string): readonly string[] => {
     const wanted = fold(typed);
     if (!wanted) return phrases;
-    return phrases.filter((phrase) => {
-        const folded = fold(phrase);
-        return (
-            folded.startsWith(wanted) || folded.split(' ').some((word) => word.startsWith(wanted))
-        );
-    });
+    // A space before each makes "starts a word" one test, for one word typed or several.
+    return phrases.filter((phrase) => ` ${fold(phrase)}`.includes(` ${wanted}`));
 };
 
 const subscribe = (listener: () => void) => {

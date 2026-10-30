@@ -77,24 +77,36 @@ const optionsOf = (
 const keyOf = (option: Option): string =>
     option.kind === 'product' ? `p:${option.product.sku}` : `${option.kind[0]}:${option.phrase}`;
 
-/** What the popover lists for the phrase: the matching recent phrases, then the store's suggestions. */
+/**
+ * What the popover lists for the phrase: the matching recent phrases, then the
+ * store's suggestions. The store is in play only once it has answered this
+ * phrase with something: one test, so the cap on recent phrases, the grouping
+ * and the list's name never disagree.
+ */
 const usePopover = (
     recent: readonly string[],
     phrase: string,
-    askable: boolean,
-    suggestions: Suggestions | undefined
+    answered: { readonly phrase: string; readonly suggestions: Suggestions } | undefined
 ) => {
+    const current = answered?.phrase === phrase.trim() ? answered.suggestions : undefined;
+    const suggestions =
+        current && current.queries.length + current.products.length > 0 ? current : undefined;
     const matching = useMemo(() => matchingRecent(recent, phrase), [recent, phrase]);
     const options = useMemo(() => optionsOf(matching, suggestions), [matching, suggestions]);
     const recentCount = options.filter((option) => option.kind === 'recent').length;
-    return {
-        options,
-        recentCount,
-        // Recent phrases alone, with their heading and the way to clear them, until two
-        // characters are typed and the store is asked. Deciding on the typing rather than
-        // on the answer keeps the heading in place while the answer is on its way.
-        recentOnly: !askable && recentCount > 0,
-    };
+    return { options, recentCount, storeHas: suggestions !== undefined };
+};
+
+/** The highlight is an index into the list, so it starts over when the list is another. */
+const useHighlight = (options: readonly Option[]) => {
+    const [active, setActive] = useState(-1);
+    const keys = options.map(keyOf).join('\n');
+    const [listed, setListed] = useState(keys);
+    if (listed !== keys) {
+        setListed(keys);
+        setActive(-1);
+    }
+    return [active, setActive] as const;
 };
 
 interface Choosing {
@@ -257,26 +269,29 @@ const OptionRow = ({
     </li>
 );
 
-/** Recent phrases beside suggestions are a group of their own, so a screen reader hears where the shopper's own history ends. */
+/** A group within the list, named by an element of its own or by one already on the page. */
 const Group = ({
-    id,
+    labelledBy,
     title,
     children,
 }: {
-    readonly id: string;
-    readonly title: string;
+    readonly labelledBy: string;
+    readonly title?: string;
     readonly children: ReactNode;
 }) => (
-    <li role="group" aria-labelledby={id}>
-        <div id={id} role="presentation" className="searchbox-group-title">
-            {title}
-        </div>
+    <li role="group" aria-labelledby={labelledBy}>
+        {title !== undefined && (
+            <div id={labelledBy} role="presentation" className="searchbox-group-title">
+                {title}
+            </div>
+        )}
         <ul role="presentation" className="searchbox-group">
             {children}
         </ul>
     </li>
 );
 
+/** The heading the eye and the screen reader share for the shopper's own phrases, and the way to clear them. */
 const RecentHead = ({
     headingId,
     onClear,
@@ -330,26 +345,23 @@ export const SearchBox = ({
         setPhrase(initialPhrase);
     }
     const [open, setOpen] = useState(false);
-    const [active, setActive] = useState(-1);
     // Said once after the recent searches are cleared, ahead of the usual count.
     const [notice, setNotice] = useState('');
     const { answered, loading, error } = useSuggestions(client, phrase);
     const recent = useRecentSearches();
-
     const askable = isAskable(phrase);
-    const { options, recentCount, recentOnly } = usePopover(
-        recent,
-        phrase,
-        askable,
-        answered?.suggestions
-    );
+    const { options, recentCount, storeHas } = usePopover(recent, phrase, answered);
+    const [active, setActive] = useHighlight(options);
     const expanded = open && (options.length > 0 || (askable && loading));
     const listId = `${id}-listbox`;
     const headingId = `${id}-recent`;
     const optionId = (index: number) => `${id}-option-${index}`;
-
     const activeId = active >= 0 ? optionId(active) : undefined;
     const byKeys = useRef(false);
+    useScrolledIntoView(activeId, byKeys);
+    // The list is named by the visible heading while it is the shopper's own history.
+    const naming = storeHas ? { 'aria-label': 'Suggestions' } : { 'aria-labelledby': headingId };
+
     const close = () => {
         setNotice('');
         setOpen(false);
@@ -360,10 +372,6 @@ export const SearchBox = ({
         if (next) setNotice('');
         setOpen(next);
     };
-    useScrolledIntoView(activeId, byKeys);
-    // The list is named by the visible heading while it is the shopper's own history.
-    const naming = recentOnly ? { 'aria-labelledby': headingId } : { 'aria-label': 'Suggestions' };
-
     const { choose, submit, move } = useChoosing({
         options,
         active,
@@ -407,7 +415,6 @@ export const SearchBox = ({
         askable,
         loading,
         error,
-        // The count is of the store's suggestions, not of the shopper's own phrases above them.
         recent: recentCount,
         suggested: options.length - recentCount,
     });
@@ -426,8 +433,9 @@ export const SearchBox = ({
             }}
         />
     );
-    const grouped = askable && recentCount > 0;
-    const suggested = options.slice(recentCount);
+    // Beside the store's suggestions the shopper's own phrases are a group of their own,
+    // named by the heading above them, so a screen reader hears where they end.
+    const grouped = storeHas && recentCount > 0;
 
     return (
         <div className="searchbox">
@@ -467,7 +475,7 @@ export const SearchBox = ({
                 {status}
             </div>
             <div ref={popover} className="searchbox-popover" hidden={!expanded}>
-                {recentOnly && (
+                {recentCount > 0 && (
                     <RecentHead
                         headingId={headingId}
                         onClear={clear}
@@ -475,23 +483,21 @@ export const SearchBox = ({
                         onEscape={() => {
                             // Focus first: focusing the box opens the popover, and the close must win.
                             input.current?.focus();
-                            setOpen(false);
+                            close();
                         }}
                     />
                 )}
                 <ul id={listId} className="searchbox-list" role="listbox" {...naming}>
                     {grouped ? (
                         <>
-                            <Group id={`${id}-group-recent`} title="Recent searches">
+                            <Group labelledBy={headingId}>
                                 {options.slice(0, recentCount).map(renderOption)}
                             </Group>
-                            {suggested.length > 0 && (
-                                <Group id={`${id}-group-suggested`} title="Suggestions">
-                                    {suggested.map((option, i) =>
-                                        renderOption(option, recentCount + i)
-                                    )}
-                                </Group>
-                            )}
+                            <Group labelledBy={`${id}-group-suggested`} title="Suggestions">
+                                {options
+                                    .slice(recentCount)
+                                    .map((option, i) => renderOption(option, recentCount + i))}
+                            </Group>
                         </>
                     ) : (
                         options.map(renderOption)
