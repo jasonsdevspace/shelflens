@@ -31,6 +31,9 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     expect(boxFont).not.toContain('monospace');
     expect(await page.evaluate(() => document.querySelectorAll('.host input').length)).toBe(0);
 
+    // The pointer rests where the Count button was, which the list may open under,
+    // and an option under the pointer is highlighted. Parked out of the way.
+    await page.mouse.move(0, 0);
     await search.fill('boot');
     const listbox = page.getByRole('listbox', { name: 'Suggestions' });
     await expect(listbox).toBeVisible();
