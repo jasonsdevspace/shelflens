@@ -69,12 +69,11 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     const scrolledAfter = await listbox.evaluate((el) => el.parentElement?.scrollTop ?? 0);
     expect(scrolledAfter).toBeGreaterThan(scrolledBefore);
 
-    // Typed again, so the highlight starts over at the first suggested query.
+    // Typed again, so nothing is highlighted, and Enter searches what was typed.
     await search.fill('');
     await search.fill('boot');
     await expect(listbox).toBeVisible();
-    await search.press('ArrowDown');
     await search.press('Enter');
-    await expect(page).toHaveURL(/\/\?q=/);
+    await expect(page).toHaveURL(/\/\?q=boot/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for');
 });
