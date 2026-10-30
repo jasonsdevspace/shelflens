@@ -413,7 +413,9 @@ describe('rules in the worker', () => {
         await events.append([
             { id: 'c', kind: 'click', at: 1, sku: jacket[1]?.sku ?? '', session: 's', position: 1 },
         ]);
-        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [jacket[2]?.sku] }];
+        const third = jacket[2];
+        if (!third) throw new Error('expected three jackets');
+        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [third.sku] }];
         // The refresh starts first and reads the rules as they are, then the save lands.
         const [refreshed, saved] = await Promise.all([
             api.refresh(),
@@ -434,7 +436,9 @@ describe('rules in the worker', () => {
         expect(beforeBody.data.search.merchandising.applied).toEqual(['shipped']);
         expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(false);
 
-        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [jacket[2]?.sku] }];
+        const third = jacket[2];
+        if (!third) throw new Error('expected three jackets');
+        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [third.sku] }];
         const previewed = await api.handle(preview(draft));
         expect(previewed?.headers.get('cache-control')).toBe('no-store');
         const previewBody = await body(previewed);

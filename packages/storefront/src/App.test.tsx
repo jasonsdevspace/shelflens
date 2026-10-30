@@ -573,6 +573,37 @@ describe('as a merchandiser', () => {
         expect(cards().map(sku)).toEqual(before);
     });
 
+    it('tells the open panel when the banner gives the store its own rules back', async () => {
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
+        await within(panel).findByRole('status');
+        const banner = screen.getByText(/Your edited rules are in effect/).closest('div');
+        await user.click(
+            within(banner as HTMLElement).getByRole('button', { name: 'Use the store’s rules' })
+        );
+        await user.click(
+            within(banner as HTMLElement).getByRole('button', { name: 'Yes, discard' })
+        );
+        await waitFor(() =>
+            expect(screen.queryByText(/Your edited rules are in effect/)).toBeNull()
+        );
+        await settled();
+        await waitFor(() =>
+            expect(
+                within(panel).queryByRole('button', { name: 'Use the store’s rules' })
+            ).toBeNull()
+        );
+        expect(within(panel).getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
+            'featured-jacket'
+        );
+        expect(within(panel).queryByRole('button', { name: 'Show every rule' })).toBeNull();
+    });
+
     it('keeps the draft off the page once the panel closes', async () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();

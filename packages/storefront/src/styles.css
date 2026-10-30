@@ -918,10 +918,6 @@ body {
     background: rgba(0, 0, 0, 0.4);
 }
 
-.drawer-panel[hidden] {
-    display: none;
-}
-
 .drawer-panel {
     position: fixed;
     z-index: 21;
@@ -933,6 +929,10 @@ body {
     flex-direction: column;
     background: var(--bg);
     box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-panel[hidden] {
+    display: none;
 }
 
 .drawer-head {

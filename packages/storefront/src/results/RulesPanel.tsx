@@ -25,7 +25,7 @@ export interface RulesPanelProps {
     readonly phrase: string | undefined;
     /**
      * The ids of the rules the engine applied to this search, or set aside for
-     * its sort, or nothing while the store's own answer is still on its way.
+     * its sort, or nothing until the store has answered once.
      */
     readonly applied: readonly string[] | undefined;
     /** Where the rules are read and saved. */
@@ -37,6 +37,8 @@ export interface RulesPanelProps {
     readonly onDraft: (rules: readonly Rule[] | undefined) => void;
     /** The store was built again, under a new version. */
     readonly onStoreChanged: () => void;
+    /** Counts the times the store was built again, by this panel or by the page, so a change made elsewhere is read. */
+    readonly storeRevision: number;
     /** Whether the results are sorted by relevance, where rules apply. */
     readonly byRelevance: boolean;
     readonly onSortByRelevance: () => void;
@@ -45,20 +47,25 @@ export interface RulesPanelProps {
 export { STEPS } from './rule-form.js';
 
 const NOT_SAVED = 'The rules could not be saved. Try again.';
-export const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
+const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
 
 interface Loaded {
     readonly rules: readonly Rule[];
     readonly edited: boolean;
 }
 
-const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
+/** The rules path, asked once. Nothing comes back when the request itself could not be made. */
+const request = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
     try {
-        const response = await fetch(rulesUrl);
-        return response.ok ? ((await response.json()) as Loaded) : undefined;
+        return await fetch(url, init);
     } catch {
         return undefined;
     }
+};
+
+const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
+    const response = await request(rulesUrl);
+    return response?.ok ? ((await response.json()) as Loaded) : undefined;
 };
 
 /**
@@ -68,19 +75,36 @@ const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
  * the host has just accepted is the set, whether or not the read after it
  * answers, so a save never builds on what was there before the last one.
  */
-const useLoadedRules = (rulesUrl: string) => {
+const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
     const [loaded, setLoaded] = useState<Loaded>();
     const [failed, setFailed] = useState(false);
+    // Whether the next store change is this panel's own save, whose set it holds already.
+    const own = useRef(false);
+    /** The host accepted this set, so it is the set, and the change about to be announced is ours. */
+    const accept = (rules: readonly Rule[]) => {
+        setLoaded({ rules, edited: true });
+        setFailed(false);
+        own.current = true;
+    };
     const reload = async () => {
         const next = await read(rulesUrl);
         if (next) setLoaded(next);
         setFailed(next === undefined);
     };
-    const accept = (rules: readonly Rule[]) => {
-        setLoaded({ rules, edited: true });
+    /** The host has a set this panel does not know until it reads it, which it does itself. */
+    const forget = () => {
+        setLoaded(undefined);
         setFailed(false);
+        own.current = true;
+        void reload();
     };
+    // Read on opening, and again whenever the store was built anew by something
+    // other than this panel, as when the page's banner gives the store its rules back.
     useEffect(() => {
+        if (own.current) {
+            own.current = false;
+            return;
+        }
         let open = true;
         void read(rulesUrl).then((next) => {
             if (!open) return;
@@ -90,8 +114,8 @@ const useLoadedRules = (rulesUrl: string) => {
         return () => {
             open = false;
         };
-    }, [rulesUrl]);
-    return { loaded, failed, reload, accept };
+    }, [rulesUrl, storeRevision]);
+    return { loaded, failed, accept, forget };
 };
 
 /** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
@@ -155,19 +179,36 @@ const RuleList = ({
 };
 
 /** Two steps to give up a saved set, since there is no undo for it. */
-export const DiscardRules = ({ onDiscard }: { readonly onDiscard: () => void }) => {
+export const DiscardRules = ({
+    rulesUrl,
+    onReset,
+}: {
+    readonly rulesUrl: string;
+    /** The host has its own rules back. */
+    readonly onReset: () => void;
+}) => {
     const [asking, setAsking] = useState(false);
+    const [failure, setFailure] = useState<string>();
+    const discard = async () => {
+        const failed = await discardRules(rulesUrl);
+        setFailure(failed);
+        setAsking(false);
+        if (failed === undefined) onReset();
+    };
     if (!asking) {
         return (
-            <button type="button" className="facets-clear" onClick={() => setAsking(true)}>
-                Use the store&rsquo;s rules
-            </button>
+            <>
+                {failure !== undefined && <span role="alert">{failure} </span>}
+                <button type="button" className="facets-clear" onClick={() => setAsking(true)}>
+                    Use the store&rsquo;s rules
+                </button>
+            </>
         );
     }
     return (
         <p className="notice">
             Discard your rules? They cannot be brought back.{' '}
-            <button type="button" className="facets-clear" onClick={onDiscard}>
+            <button type="button" className="facets-clear" onClick={() => void discard()}>
                 Yes, discard
             </button>{' '}
             <button type="button" className="facets-clear" onClick={() => setAsking(false)}>
@@ -180,6 +221,13 @@ export const DiscardRules = ({ onDiscard }: { readonly onDiscard: () => void }) 
 const failureOf = async (response: Response, otherwise: string): Promise<string> => {
     const body = (await response.json().catch(() => ({}))) as { errors?: { message: string }[] };
     return body.errors?.[0]?.message ?? otherwise;
+};
+
+/** Asks the host for its own rules back. Answers with what went wrong, or nothing. */
+const discardRules = async (rulesUrl: string): Promise<string | undefined> => {
+    const response = await request(rulesUrl, { method: 'DELETE' });
+    if (!response) return NOT_RESTORED;
+    return response.ok ? undefined : failureOf(response, NOT_RESTORED);
 };
 
 const versionLine = (response: Response, said: string): string => {
@@ -206,10 +254,11 @@ export const RulesPanel = ({
     brands,
     onDraft,
     onStoreChanged,
+    storeRevision,
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, failed, reload, accept } = useLoadedRules(rulesUrl);
+    const { loaded, failed, accept, forget } = useLoadedRules(rulesUrl, storeRevision);
     useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
@@ -235,11 +284,11 @@ export const RulesPanel = ({
     const edit = (next: Form) => {
         const shown = new Set(next.seen.map((product) => product.sku));
         const seen = [...next.seen, ...products.filter((product) => !shown.has(product.sku))];
-        const form = { ...next, seen };
-        setForm(form);
+        const merged = { ...next, seen };
+        setForm(merged);
         setMessage('');
-        const sound = Object.keys(problemsOf(form, knownFor(seen))).length === 0;
-        onDraft(sound ? setWith(ruleOf(form)) : undefined);
+        const sound = Object.keys(problemsOf(merged, knownFor(seen))).length === 0;
+        onDraft(sound ? setWith(ruleOf(merged)) : undefined);
     };
     const close = () => {
         setForm(undefined);
@@ -248,29 +297,28 @@ export const RulesPanel = ({
     };
 
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
-    const changed = async (said: string) => {
+    const changed = (said: string) => {
         onStoreChanged();
         setMessage(said);
         close();
-        await reload();
     };
 
     const commit = async (set: readonly Rule[], said: string) => {
-        if (!editable) return;
-        try {
-            const response = await fetch(rulesUrl, {
-                method: 'POST',
-                body: JSON.stringify({ rules: set }),
-            });
-            if (!response.ok) {
-                setMessage(await failureOf(response, NOT_SAVED));
-                return;
-            }
-            accept(set);
-            await changed(versionLine(response, said));
-        } catch {
+        const response = await request(rulesUrl, {
+            method: 'POST',
+            body: JSON.stringify({ rules: set }),
+        });
+        if (!response) {
             setMessage(NOT_SAVED);
+            return;
         }
+        if (!response.ok) {
+            setMessage(await failureOf(response, NOT_SAVED));
+            return;
+        }
+        // The host has the set, so the panel does too, without reading it back.
+        accept(set);
+        changed(versionLine(response, said));
     };
 
     // A failed save puts focus on the first field with a problem, once the
@@ -300,17 +348,10 @@ export const RulesPanel = ({
         }
     };
 
-    const discard = async () => {
-        try {
-            const response = await fetch(rulesUrl, { method: 'DELETE' });
-            if (!response.ok) {
-                setMessage(await failureOf(response, NOT_RESTORED));
-                return;
-            }
-            await changed('The store’s own rules are back.');
-        } catch {
-            setMessage(NOT_RESTORED);
-        }
+    /** The host has its own rules back. Which those are is the host's to say, so the panel reads. */
+    const reset = () => {
+        forget();
+        changed('The store’s own rules are back.');
     };
 
     return (
@@ -366,7 +407,7 @@ export const RulesPanel = ({
                                 Add a rule
                             </button>
                         </div>
-                        {loaded.edited && <DiscardRules onDiscard={() => void discard()} />}
+                        {loaded.edited && <DiscardRules rulesUrl={rulesUrl} onReset={reset} />}
                     </>
                 )
             )}
