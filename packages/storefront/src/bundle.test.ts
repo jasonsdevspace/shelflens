@@ -19,8 +19,8 @@ const BUDGET_BYTES = 100 * 1024;
 
 /**
  * The widget's budget. It carries the box, the client and a React of its
- * own, and React is nine tenths of it. Measured at 75 KB compressed when
- * the budget was set.
+ * own, and React is nine tenths of it. Measured at 76 KB compressed when
+ * the budget was set, by this build and by the shipped file alike.
  */
 const WIDGET_BUDGET_BYTES = 85 * 1024;
 

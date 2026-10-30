@@ -36,8 +36,7 @@ demo's host page carries both to show it. An iframe isolates more than this and 
 less: the popover cannot extend past the frame's box, a pick has to reach the top window by a
 message, and every question the brief asks a record about stops being a question. What a
 shadow root does not stop is inheritance, so the widget's container pins the font, the color,
-the line height and the letter spacing, and takes its colors from the one standard property a
-host sets to theme it, `color-scheme`, through `light-dark()`. The store's own theme script sets
+the line height and the letter spacing, and takes its colors from the one standard property a host sets to theme it, `color-scheme`, through `light-dark()`, with the light value first for a browser that does not know it. The store's own theme script sets
 that property, so on the demo's host page the widget switches with the portfolio and the store.
 Layout and the stacking context sit on that inner container rather than on `:host`, where a host
 rule on the element would win, and the element is given `display: block` as an inline style at mount, which only an `!important` could beat.
@@ -45,19 +44,19 @@ rule on the element would win, and the element is given `display: block` as an i
 **The top layer.** A stacking context of its own makes the popover's order private but leaves the
 widget in the host's order at `auto`, so a fixed banner at a high z-index paints over the list
 and an ancestor that clips cuts it off. Those are the two ways a widget's list usually loses, and
-a demo with that banner would show the widget losing. The popover is a `popover="manual"`
-element that the box shows while the list is open and hides when it closes, placed under the box
-from the box's own rectangle and followed on scroll and resize. The top layer beats every z-index
-and every clip, and it is the same element in the same tree, so every id the box refers to still
-resolves, focus moving onto the clear button is still focus within the popover, and a screen
-reader hears the same list. The store's own page uses the same placement, which replaced a rule
-that put the phone's list at a fixed distance under the store's masthead and would have been
-wrong on any other page.
+a demo with that banner would show the widget losing. Where the browser has a top layer the
+popover is a `popover="manual"` element that the box shows while the list is open and hides when
+it closes, placed from the box's own rectangle, under the box or above it when there is more room
+there, within the viewport's edges, and followed on scroll, on resize and on any layout the page
+shifts under it. The top layer beats every z-index and every clip, and it is the same element in
+the same tree, so every id the box refers to still resolves, focus moving onto the clear button is
+still focus within the popover, and a screen reader hears the same list. The store's own page
+uses the same placement. A browser without a top layer gets the list as it always was, under the
+box and as wide as it, which no host can promise to keep in view.
 
 **A React of its own.** The widget's file carries React and nothing in it reads or sets a global
 the host's React depends on, so any version on the host is left alone, and a host built on React
-mounts the widget from an effect and calls the returned function from the cleanup. That costs
-the widget's size: React is nine tenths of the file, measured at 68 KB compressed of 75 KB. A lighter runtime with React's shape would take most of that out, and does carry the hooks the box uses. It was not taken because the repo then has two frameworks and two
+mounts the widget from an effect and calls the returned function from the cleanup. That costs the widget's size: React is nine tenths of the file, which ships minified at 77 KB compressed, as an ordinary build with one entry rather than library mode, which leaves whitespace in an ES file. A lighter runtime with React's shape would take most of that out, and does carry the hooks the box uses. It was not taken because the repo then has two frameworks and two
 sets of behavior to test, and one search box has to look the same in both. The record says what
 that choice costs so it can be revisited.
 

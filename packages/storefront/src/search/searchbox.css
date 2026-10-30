@@ -45,18 +45,19 @@
 }
 
 /*
- * The popover lives in the browser's top layer while it is open, placed under
- * the box by the box itself, so nothing a page stacks or clips can cover it.
- * The browser's own popover defaults for position, inset, size, border and
- * colors are set here to what the list needs.
+ * The popover sits under the box, as wide as the box. Where the browser has
+ * a top layer the box opens the list there instead, placed from the box's
+ * rectangle by the box itself, so nothing a page stacks or clips can cover
+ * it. The browser's own popover defaults for position, inset, size, border
+ * and colors are set to what the list needs.
  */
 .searchbox-popover {
-    position: fixed;
-    inset: auto;
+    position: absolute;
     z-index: 10;
-    margin: 0;
+    left: 0;
+    right: 0;
+    margin: 0.25rem 0 0;
     padding: 0.25rem 0;
-    width: auto;
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--line);
@@ -64,6 +65,24 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     max-height: 70vh;
     overflow-y: auto;
+}
+
+.searchbox-popover[popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: auto;
+}
+
+@media (max-width: 40rem) {
+    /* Without a top layer: over the whole width, and no taller than what the keyboard leaves. */
+    .searchbox-popover:not([popover]) {
+        position: fixed;
+        left: 0.5rem;
+        right: 0.5rem;
+        top: 4rem;
+        max-height: calc(100dvh - 4.5rem);
+    }
 }
 
 .searchbox-popover[hidden] {

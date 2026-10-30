@@ -31,8 +31,11 @@ export interface MountOptions {
     readonly placeholder?: string;
 }
 
-const openStore = (storeUrl: string, search: string) => {
-    window.location.assign(`${storeUrl}${search}`);
+/** Opens the store with one parameter set, whatever query or fragment the store's URL carries. */
+const openStore = (storeUrl: string, key: string, value: string) => {
+    const url = new URL(storeUrl, window.location.href);
+    url.searchParams.set(key, value);
+    window.location.assign(url.href);
 };
 
 const Widget = ({ apiUrl, storeUrl, group, onSearch, onPick, placeholder }: MountOptions) => {
@@ -47,29 +50,27 @@ const Widget = ({ apiUrl, storeUrl, group, onSearch, onPick, placeholder }: Moun
             <SearchBox
                 client={client}
                 {...(placeholder !== undefined && { placeholder })}
-                onSearch={
-                    onSearch ??
-                    ((phrase) => openStore(storeUrl, `?q=${encodeURIComponent(phrase)}`))
-                }
-                onPick={
-                    onPick ?? ((sku) => openStore(storeUrl, `?product=${encodeURIComponent(sku)}`))
-                }
+                onSearch={onSearch ?? ((phrase) => openStore(storeUrl, 'q', phrase))}
+                onPick={onPick ?? ((sku) => openStore(storeUrl, 'product', sku))}
             />
         </StoreProvider>
     );
 };
 
-/** Gives the shadow root its sheet, as a constructed sheet where the browser has them. */
-const dress = (shadow: ShadowRoot, css: string) => {
+/** Gives the shadow root its sheet, as a constructed sheet where the browser has them, and answers with the way to take it off. */
+const dress = (shadow: ShadowRoot, css: string): (() => void) => {
     if ('adoptedStyleSheets' in shadow && 'replaceSync' in CSSStyleSheet.prototype) {
         const sheet = new CSSStyleSheet();
         sheet.replaceSync(css);
-        shadow.adoptedStyleSheets = [sheet];
-        return;
+        shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
+        return () => {
+            shadow.adoptedStyleSheets = shadow.adoptedStyleSheets.filter((kept) => kept !== sheet);
+        };
     }
     const style = document.createElement('style');
     style.textContent = css;
     shadow.append(style);
+    return () => style.remove();
 };
 
 /**
@@ -78,9 +79,11 @@ const dress = (shadow: ShadowRoot, css: string) => {
  */
 export const mountShelfLens = (element: HTMLElement, options: MountOptions): (() => void) => {
     const shadow = element.shadowRoot ?? element.attachShadow({ mode: 'open' });
-    // Set on the element itself, where a host rule on the element would otherwise win.
+    // Set on the element itself, where a host rule on the element would otherwise win,
+    // and put back on the way out, so the element is the host's again.
+    const wasDisplayed = element.style.getPropertyValue('display');
     element.style.setProperty('display', 'block');
-    dress(shadow, `${frame}\n${searchbox}`);
+    const undress = dress(shadow, `${frame}\n${searchbox}`);
     const container = document.createElement('div');
     container.className = 'shelflens';
     shadow.append(container);
@@ -93,5 +96,7 @@ export const mountShelfLens = (element: HTMLElement, options: MountOptions): (()
     return () => {
         root.unmount();
         container.remove();
+        undress();
+        element.style.setProperty('display', wasDisplayed);
     };
 };

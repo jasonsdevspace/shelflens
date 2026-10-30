@@ -1,6 +1,6 @@
 import { generateCatalog } from '@shelflens/catalog';
 import { fireEvent, within } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createWorkerApi } from '../worker/handle.js';
 import { serving } from '../worker/serving.js';
@@ -14,7 +14,7 @@ import { mountShelfLens } from './index.jsx';
 
 const catalog = generateCatalog({ seed: 42, products: 120 });
 
-beforeAll(() => {
+const stubFetch = () => {
     const worker = createWorkerApi({
         catalogUrl: 'catalog.json',
         rulesUrl: 'rules.json',
@@ -24,10 +24,19 @@ beforeAll(() => {
         const response = await worker.handle(new Request(input, init));
         return response ?? new Response('not found', { status: 404 });
     });
-});
+};
+
+beforeAll(stubFetch);
 
 afterEach(() => {
     document.body.innerHTML = '';
+    // A test may have stood in for the location. The network stays in place.
+    vi.unstubAllGlobals();
+    stubFetch();
+});
+
+afterAll(() => {
+    vi.unstubAllGlobals();
 });
 
 describe('the widget', () => {
@@ -77,7 +86,6 @@ describe('the widget', () => {
         const box = await within(inside).findByRole('combobox', { name: 'Search the store' });
         fireEvent.change(box, { target: { value: 'rain jacket' } });
         fireEvent.keyDown(box, { key: 'Enter' });
-        expect(assign).toHaveBeenCalledWith('/store/?q=rain%20jacket');
-        vi.unstubAllGlobals();
+        expect(assign).toHaveBeenCalledWith('http://localhost:3000/store/?q=rain+jacket');
     });
 });

@@ -3,17 +3,27 @@
  * stop at the root, but inherited properties do not, so the container pins
  * the font and the color. The tokens follow the host's color-scheme, which
  * is the one standard property a host sets to theme the widget, and the
- * store's own theme script sets it on the demo's host page.
+ * store's own theme script sets it on the demo's host page. Each token is
+ * given its light value first, for a browser that does not know light-dark().
  */
 .shelflens {
+    --bg: #ffffff;
     --bg: light-dark(#ffffff, #121212);
+    --fg: #1a1a1a;
     --fg: light-dark(#1a1a1a, #f0f0f0);
+    --muted: #5c5c5c;
     --muted: light-dark(#5c5c5c, #a5a5a5);
+    --line: #d9d9d9;
     --line: light-dark(#d9d9d9, #3a3a3a);
+    --accent: #1f4fd8;
     --accent: light-dark(#1f4fd8, #8fb0ff);
+    --on-accent: #ffffff;
     --on-accent: light-dark(#ffffff, #121212);
+    --highlight: #eef2fd;
     --highlight: light-dark(#eef2fd, #1e2a4a);
+    --control: #8a8a8a;
     --control: light-dark(#8a8a8a, #6e6e6e);
+    --warn: #b7472a;
     --warn: light-dark(#b7472a, #e8795a);
     display: block;
     position: relative;

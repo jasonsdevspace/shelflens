@@ -469,6 +469,10 @@ describe('what this browser searched before', () => {
 });
 
 describe('the box inside a shadow root', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it('scrolls the highlighted option into view through its own tree', async () => {
         const host = document.createElement('div');
         document.body.append(host);

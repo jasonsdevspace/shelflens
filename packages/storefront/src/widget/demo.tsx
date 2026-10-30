@@ -46,6 +46,17 @@ if (!target) throw new Error('the page has no element for the search box');
 // In development the dev server answers the API. In production the worker does,
 // once it controls this page, which is under its scope like the store's own.
 const ready = import.meta.env.DEV ? Promise.resolve() : controlledByWorker(`${base}sw.js`, base);
-void Promise.all([ready, widget()]).then(([, { mountShelfLens }]) => {
-    mountShelfLens(target, { apiUrl: `${base}graphql`, storeUrl: base });
-});
+Promise.all([ready, widget()])
+    .then(([, { mountShelfLens }]) => {
+        mountShelfLens(target, { apiUrl: `${base}graphql`, storeUrl: base });
+    })
+    .catch((failure: unknown) => {
+        // A browser without a service worker, or a file that did not arrive: said in place.
+        const notice = document.createElement('p');
+        notice.className = 'notice';
+        notice.setAttribute('role', 'alert');
+        notice.textContent =
+            'The search box could not start in this browser. It needs a service worker.';
+        target.replaceChildren(notice);
+        console.error(failure);
+    });

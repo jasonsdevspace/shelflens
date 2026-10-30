@@ -212,6 +212,31 @@ const TOP_LAYER = typeof HTMLElement !== 'undefined' && 'togglePopover' in HTMLE
 const GAP_PX = 4;
 const EDGE_PX = 12;
 
+/** How little room under the box is too little, so the list opens above it instead. */
+const ROOM_PX = 160;
+
+/**
+ * Places the list under the box, from the box's rectangle, within the viewport.
+ * With too little room under the box and more above it, the list opens above,
+ * and it never reaches past the viewport's edge, so every option can be seen.
+ */
+const placeUnder = (box: HTMLElement, field: HTMLElement) => {
+    const rect = field.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom - GAP_PX - EDGE_PX;
+    const above = rect.top - GAP_PX - EDGE_PX;
+    const flipped = below < ROOM_PX && above > below;
+    const width = Math.min(rect.width, window.innerWidth - 2 * EDGE_PX);
+    const left = Math.min(Math.max(EDGE_PX, rect.left), window.innerWidth - EDGE_PX - width);
+    box.style.setProperty('left', `${left}px`);
+    box.style.setProperty('width', `${width}px`);
+    box.style.setProperty('top', flipped ? 'auto' : `${rect.bottom + GAP_PX}px`);
+    box.style.setProperty(
+        'bottom',
+        flipped ? `${window.innerHeight - rect.top + GAP_PX}px` : 'auto'
+    );
+    box.style.setProperty('max-height', `${Math.max(0, flipped ? above : below)}px`);
+};
+
 /**
  * Puts the popover in the browser's top layer while it is open, over
  * anything a page stacks or clips, and places it under the box from the
@@ -233,21 +258,20 @@ const usePlacedPopover = (
             box.togglePopover(false);
             return;
         }
-        const place = () => {
-            const rect = field.getBoundingClientRect();
-            const room = Math.max(120, window.innerHeight - rect.bottom - GAP_PX - EDGE_PX);
-            box.style.setProperty('left', `${rect.left}px`);
-            box.style.setProperty('top', `${rect.bottom + GAP_PX}px`);
-            box.style.setProperty('width', `${rect.width}px`);
-            box.style.setProperty('max-height', `${room}px`);
-        };
+        const place = () => placeUnder(box, field);
         place();
         box.togglePopover(true);
+        // The box moves with a scroll, a resize, and any layout the page or the host
+        // shifts under it, such as an image or a font landing late.
         window.addEventListener('scroll', place, true);
         window.addEventListener('resize', place);
+        const watched = new ResizeObserver(place);
+        watched.observe(field);
+        watched.observe(document.body);
         return () => {
             window.removeEventListener('scroll', place, true);
             window.removeEventListener('resize', place);
+            watched.disconnect();
         };
     }, [expanded, input, popover]);
 };
