@@ -485,3 +485,34 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await expect(layout).toHaveAttribute('aria-busy', 'false');
     expect(await order()).toEqual(before);
 });
+
+test('what this browser searched before is offered on the next visit, filtered as you type, and cleared from the box', async ({
+    page,
+}) => {
+    await page.goto('/?q=jacket');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const search = page.getByRole('combobox', { name: 'Search the store' });
+    await search.fill('boot');
+    await search.press('Enter');
+    await expect(page).toHaveURL(/q=boot/);
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+
+    await page.goto('/');
+    await search.click();
+    const recent = page.getByRole('listbox', { name: 'Recent searches' });
+    await expect(recent).toBeVisible();
+    await expect(recent.getByRole('option')).toHaveText(['boot', 'jacket']);
+    await audit(page);
+    await search.fill('j');
+    await expect(recent.getByRole('option')).toHaveText(['jacket']);
+    await search.fill('');
+    await page.getByRole('button', { name: 'Clear recent searches' }).click();
+    await expect(search).toBeFocused();
+    await expect(
+        page.getByRole('status').filter({ hasText: 'Recent searches cleared' })
+    ).toBeVisible();
+    await expect(recent).toBeHidden();
+    await page.reload();
+    await search.click();
+    await expect(search).toHaveAttribute('aria-expanded', 'false');
+});

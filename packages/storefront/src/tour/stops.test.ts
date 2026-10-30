@@ -28,6 +28,7 @@ describe('the tour', () => {
             'stale',
             'debounce',
             'combobox',
+            'recent',
             'cache-key',
             'normalization',
             'facets',

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createClient, type GraphQLClient } from '../client/graphql.js';
 import type { SuggestQuery } from '../generated/operations.js';
+import { clearRecentSearches, rememberSearch } from './recent.js';
 import { SearchBox } from './SearchBox.jsx';
 import { DEBOUNCE_MS } from './useSuggestions.js';
 
@@ -222,5 +223,126 @@ describe('the popover as a combobox', () => {
         expect(option).toHaveTextContent('Ostara');
         expect(option).toHaveTextContent('$49 to $59');
         expect(option.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    });
+});
+
+describe('what this browser searched before', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        clearRecentSearches();
+    });
+
+    const openEmpty = async () => {
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.click(box.input);
+        return { ...box, user, network };
+    };
+
+    it('offers the recent phrases on focus, under a heading the eye and the screen reader share', async () => {
+        rememberSearch('boots');
+        rememberSearch('trail runner');
+        const { input } = await openEmpty();
+        const listbox = screen.getByRole('listbox', { name: 'Recent searches' });
+        expect(screen.getByText('Recent searches')).toBeVisible();
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+            'boots',
+        ]);
+        expect(screen.getByRole('status')).toHaveTextContent('2 recent searches');
+        expect(input).toHaveAttribute('aria-controls', listbox.id);
+        const audit = await axe.run(document.body, {
+            rules: { 'color-contrast': { enabled: false }, region: { enabled: false } },
+        });
+        expect(audit.violations).toEqual([]);
+    });
+
+    it('opens nothing when nothing was searched before', async () => {
+        const { input } = await openEmpty();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByText('Recent searches')).toBeNull();
+        expect(screen.getByRole('status')).toHaveTextContent('');
+    });
+
+    it('filters the recent phrases by what is typed, from the first character', async () => {
+        rememberSearch('boots');
+        rememberSearch('trail runner');
+        const { input, user, network } = await openEmpty();
+        await user.type(input, 'r');
+        expect(network.pending).toHaveLength(0);
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+        ]);
+        expect(screen.getByRole('status')).toHaveTextContent('1 recent search');
+        await user.clear(input);
+        await user.type(input, 'x');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('keeps matching recent phrases above the suggestions, in groups, and never twice', async () => {
+        rememberSearch('trail jacket');
+        rememberSearch('trail runner');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'trail');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer(suggestionsFor('trail'));
+        await waitFor(() =>
+            expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeVisible()
+        );
+        const groups = screen.getAllByRole('group');
+        expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toHaveLength(2);
+        expect(groups[0]).toHaveTextContent('Recent searches');
+        const names = screen
+            .getAllByRole('option')
+            .map((option) => option.querySelector('.searchbox-query, .searchbox-product-name'));
+        expect(names.map((name) => name?.textContent)).toEqual([
+            'trail runner',
+            'trail jacket',
+            'trail one',
+            'trail two',
+        ]);
+        // The heading and its clear button belong to the list of recent phrases alone.
+        expect(screen.queryByRole('button', { name: 'Clear recent searches' })).toBeNull();
+        expect(screen.getByRole('status')).toHaveTextContent('2 suggestions');
+        await user.keyboard('{ArrowDown}{Enter}');
+        expect(box.onSearch).toHaveBeenCalledWith('trail runner');
+    });
+
+    it('clears from a button reached by Tab, says so, and puts focus back in the box', async () => {
+        rememberSearch('boots');
+        const { input, user } = await openEmpty();
+        await user.tab();
+        const clear = screen.getByRole('button', { name: 'Clear recent searches' });
+        expect(clear).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        await user.keyboard('{Enter}');
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByRole('status')).toHaveTextContent('Recent searches cleared');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+        await user.type(input, 'b');
+        expect(screen.getByRole('status')).toHaveTextContent('');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('never clears from the arrow keys: the last option is a phrase', async () => {
+        rememberSearch('boots');
+        const { user, onSearch } = await openEmpty();
+        await user.keyboard('{ArrowUp}{Enter}');
+        expect(onSearch).toHaveBeenCalledWith('boots');
+        expect(localStorage.getItem('shelflens.recent')).not.toBeNull();
+    });
+
+    it('closes on Escape from the clear button, with focus back in the box', async () => {
+        rememberSearch('boots');
+        const { input, user } = await openEmpty();
+        await user.tab();
+        await user.keyboard('{Escape}');
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
     });
 });

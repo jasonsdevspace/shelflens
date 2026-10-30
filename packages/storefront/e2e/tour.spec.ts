@@ -17,10 +17,10 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     await expect(tour).toContainText('Stop 1 of');
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
-    // The cache key stop lands on the product only members may see.
-    await tour.getByRole('button', { name: 'Next' }).click();
-    await tour.getByRole('button', { name: 'Next' }).click();
-    await tour.getByRole('button', { name: 'Next' }).click();
+    // The cache key stop, the fifth, lands on the product only members may see.
+    for (let next = 0; next < 4; next += 1) {
+        await tour.getByRole('button', { name: 'Next' }).click();
+    }
     await expect(tour).toContainText('The cache that forgets who is asking');
     await tour.getByRole('link', { name: 'Try it' }).click();
     await expect(page).toHaveURL(/product=SL-00008/);
