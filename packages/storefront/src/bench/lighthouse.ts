@@ -18,7 +18,7 @@ import { startPreview } from './preview.js';
  */
 
 const PORT = 4176;
-const PAGES = ['/', '/?q=jacket&explain=1', '/?category=shoes', '/?product=SL-00001'];
+const PAGES = ['/', '/?q=jacket&explain=1', '/?category=shoes', '/?product=SL-00001', '/about/'];
 
 const main = async () => {
     const preview = await startPreview(PORT);
@@ -32,7 +32,10 @@ const main = async () => {
         const page = await browser.newPage();
         for (const path of PAGES) {
             await page.goto(`${preview.origin}${path}`);
-            await page.getByRole('combobox', { name: 'Search the store' }).waitFor();
+            // The store is ready once the worker answers. The explainer has no store.
+            if (!path.startsWith('/about')) {
+                await page.getByRole('combobox', { name: 'Search the store' }).waitFor();
+            }
             const result = await lighthouse(`${preview.origin}${path}`, {
                 port: chrome.port,
                 onlyCategories: ['accessibility'],

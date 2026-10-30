@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"
+        />
+        <script>
+            // The theme the portfolio saved, or the system's when nothing is saved,
+            // applied before the first paint so the page never flashes the other
+            // one, and again whenever the system changes or the portfolio saves a
+            // choice in another tab. Same origin, same key, so jasonsdevspace.com
+            // and this page switch together.
+            (function () {
+                var root = document.documentElement;
+                var media = window.matchMedia('(prefers-color-scheme: dark)');
+                var saved = function () {
+                    try {
+                        var s = localStorage.getItem('theme');
+                        return s === 'dark' || s === 'light' ? s : null;
+                    } catch (e) {
+                        return null;
+                    }
+                };
+                var apply = function () {
+                    root.setAttribute('data-theme', saved() || (media.matches ? 'dark' : 'light'));
+                };
+                apply();
+                media.addEventListener('change', apply);
+                window.addEventListener('storage', function (event) {
+                    if (event.key === null || event.key === 'theme') apply();
+                });
+            })();
+        </script>
+        <meta
+            name="description"
+            content="What the ShelfLens search demo shows, in plain words: what happens when you type, what usually goes wrong in a store's search, and what to try."
+        />
+        <title>How ShelfLens works</title>
+    </head>
+    <body>
+        <a class="skip" href="#main-content">Skip to content</a>
+        <nav class="portfolio" aria-label="Portfolio">
+            <a href="https://jasonsdevspace.com/#work">A demo by Jason Poteet</a>
+            <a href="./" aria-current="page">How it works</a>
+            <a href="https://github.com/jasonsdevspace/shelflens">Source on GitHub</a>
+        </nav>
+        <header class="masthead">
+            <div class="masthead-row">
+                <a class="brand" href="../">ShelfLens</a>
+                <span class="notice about-where">How it works</span>
+            </div>
+        </header>
+        <main class="content" id="main-content" tabindex="-1">
+            <div class="about">
+                <h1>How ShelfLens works</h1>
+                <p class="about-pitch">
+                    ShelfLens is a made-up store with a real search engine behind it. Type a few
+                    letters and it suggests products, forgives a typo, knows that trainers are
+                    sneakers, keeps the filter counts honest, holds a promotion at the top, and can
+                    say why every result landed where it did. It is built for three people: the
+                    shopper who wants the right product in a few keystrokes, the merchandiser who
+                    wants to push a promotion and see whether it worked, and the reviewer with two
+                    minutes who wants to know whether the person who built it understands search.
+                    The whole thing runs inside your browser. There is no server behind it, and what
+                    you search and open stays on your machine.
+                </p>
+                <p><a class="tour-try" href="../">Open the demo</a></p>
+
+                <section aria-labelledby="typing">
+                    <p class="eyebrow">01</p>
+                    <h2 id="typing">What happens when you type</h2>
+                    <ol class="flow">
+                        <li>
+                            <strong>You type.</strong>
+                            <span class="flow-note">A letter at a time, as fast as you like.</span>
+                        </li>
+                        <li>
+                            <strong>The box waits a beat.</strong>
+                            <span class="flow-note"
+                                >A tenth of a second after your last keystroke it sends one request,
+                                not one per letter, and gives it a ticket.</span
+                            >
+                        </li>
+                        <li>
+                            <strong>The store answers from inside your browser.</strong>
+                            <span class="flow-note"
+                                >A small program the page installed on your first visit holds the
+                                whole catalog and the merchandising rules. Nothing you type leaves
+                                your machine.</span
+                            >
+                        </li>
+                        <li>
+                            <strong>It matches and ranks.</strong>
+                            <span class="flow-note"
+                                >It tidies your words the way it tidied the catalog, so accents,
+                                hyphens and plurals do not matter. It tries exact matches first,
+                                then words one typo away, then the store's synonyms. A rule can pin
+                                a promotion to the top. Then it counts the brands, colors, sizes,
+                                prices and ratings left.</span
+                            >
+                        </li>
+                        <li>
+                            <strong>You see the answer to what you typed last.</strong>
+                            <span class="flow-note"
+                                >The answer comes back with its ticket. If a newer request has gone
+                                out since, the old answer is dropped. The address bar updates, so
+                                you can copy the page, share it, or press back.</span
+                            >
+                        </li>
+                    </ol>
+                </section>
+
+                <section aria-labelledby="wrong">
+                    <p class="eyebrow">02</p>
+                    <h2 id="wrong">What usually goes wrong, and does not here</h2>
+                    <p>
+                        Each of these is a mistake real stores make. Each has a test that fails on
+                        the naive version. Each link opens the demo in the right place, and your
+                        browser's back button brings you here.
+                    </p>
+
+                    <h3>The late answer</h3>
+                    <p>
+                        Type "trail runner" fast and the answer for "tra" can arrive after the
+                        answer for "trail". A page that shows whatever came last shows the wrong
+                        list. Here a late answer is ignored.
+                        <a href="../">Type "trail runner" quickly and watch the list.</a>
+                    </p>
+
+                    <h3>The cache that forgets who is asking</h3>
+                    <p>
+                        A member sees lower prices from some brands, and one product a guest cannot
+                        see at all. A cache that remembers answers by the search alone would hand a
+                        member's prices to the next guest. Here the memory includes who is asking,
+                        and a test proves the leak with the naive version.
+                        <a href="../?product=SL-00008"
+                            >Open the product a guest cannot see, then switch "Shopping as" to
+                            Member at the top of the page.</a
+                        >
+                    </p>
+
+                    <h3>Why is this product first?</h3>
+                    <p>
+                        Under every result, explain mode says which of your words matched what, and
+                        which rule pinned or boosted it. Two jackets sit first because a rule pinned
+                        them. Sort by price and the pin is set aside, and the page says so instead
+                        of looking broken.
+                        <a href="../?q=jacket&amp;explain=1"
+                            >Search "jacket" with explanations on, then sort by price.</a
+                        >
+                    </p>
+
+                    <h3>Choosing Red never zeroes Blue</h3>
+                    <p>
+                        Tick one brand and a naive count drops every other brand to zero, leaving
+                        one choice per filter after the first click. Here each filter counts as if
+                        its own selection were not there, so the other brands keep their numbers.
+                        <a href="../?q=jacket">Tick a brand under "jacket" and watch the counts.</a>
+                    </p>
+
+                    <h3>Nothing is still a page</h3>
+                    <p>
+                        When a search finds nothing, the page shows results for the phrase without
+                        the odd word, offers a spelling when a word is two typos off, offers to
+                        clear a filter that emptied the page, and falls back to the most rated
+                        products.
+                        <a href="../?q=zzqx%20jacket"
+                            >Search "zzqx jacket" and see what the page does with nothing.</a
+                        >
+                    </p>
+
+                    <h3>A rail that never lies</h3>
+                    <p>
+                        Under each product is a row of related products. Until you have looked at a
+                        second product it shows the category's most rated and says so. After that it
+                        shows what you viewed, under a heading that says why. It never shows the
+                        product itself, or one you are not allowed to see.
+                        <a href="../?product=SL-00001"
+                            >Open a product, then open one from its rail.</a
+                        >
+                    </p>
+
+                    <p>
+                        The Tour button in the store's top bar walks sixteen of these, each with the
+                        test behind it.
+                    </p>
+                </section>
+
+                <section aria-labelledby="hood">
+                    <p class="eyebrow">03</p>
+                    <h2 id="hood">Under the hood, briefly</h2>
+                    <p>The rest is for engineers.</p>
+                    <p>
+                        The engine is a TypeScript package with no dependencies, published on npm as
+                        <a href="https://www.npmjs.com/package/@jasonsdevspace/shelflens"
+                            ><code>@jasonsdevspace/shelflens</code></a
+                        >. It indexes a hundred thousand products in 84 MB and answers the widest
+                        queries in about a tenth of a second. A GraphQL API sits over it and runs in
+                        a service worker in the demo, or in Node when asked, behind a typed client
+                        written in the repo so the stale response and the cache key are visible code
+                        rather than library settings. Every hard part above has a test that fails on
+                        the naive version, and every choice with a real alternative is a decision
+                        record.
+                    </p>
+                    <p>
+                        The <a href="https://github.com/jasonsdevspace/shelflens">README</a> is the
+                        case study, and the
+                        <a
+                            href="https://github.com/jasonsdevspace/shelflens/tree/main/docs/decisions"
+                            >decision records</a
+                        >
+                        are beside it.
+                    </p>
+                </section>
+
+                <section aria-labelledby="who">
+                    <p class="eyebrow">04</p>
+                    <h2 id="who">Who made it</h2>
+                    <p>
+                        Jason Poteet, as a portfolio project. If this is the kind of work you are
+                        hiring for,
+                        <a href="https://jasonsdevspace.com/#contact">get in touch</a>.
+                    </p>
+                </section>
+            </div>
+        </main>
+        <footer class="colophon">
+            <p>
+                ShelfLens is a portfolio project by
+                <a href="https://jasonsdevspace.com/">Jason Poteet</a>. The
+                <a href="https://github.com/jasonsdevspace/shelflens">source</a> and
+                <a href="https://github.com/jasonsdevspace">more work</a> are on GitHub, under the
+                <a href="https://github.com/jasonsdevspace/shelflens/blob/main/LICENSE"
+                    >MIT license</a
+                >.
+            </p>
+        </footer>
+        <script type="module" src="/src/about.ts"></script>
+    </body>
+</html>
