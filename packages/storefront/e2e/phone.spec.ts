@@ -77,3 +77,23 @@ test('the explainer fits a phone, with its steps stacked and nothing scrolling s
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
 });
+
+test('the recent searches fit the screen and audit clean', async ({ page }) => {
+    await page.goto('/?q=jacket');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    await page.goto('/');
+    const search = page.getByRole('combobox', { name: 'Search the store' });
+    await search.tap();
+    const recent = page.getByRole('listbox', { name: 'Recent searches' });
+    await expect(recent).toBeVisible();
+    const box = await page.locator('.searchbox-popover').boundingBox();
+    const viewport = page.viewportSize();
+    expect(box).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    if (box && viewport) {
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    }
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+});

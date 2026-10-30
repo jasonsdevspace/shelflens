@@ -1,5 +1,7 @@
 import type { Rule, RuleAdjustment, RuleTrigger } from '@jasonsdevspace/shelflens';
 
+import { count } from '../format/count.js';
+
 /**
  * What the rules form holds, and how it becomes a rule.
  *
@@ -198,15 +200,15 @@ export const problemsOf = (form: Form, known: ReadonlySet<string>): Problems => 
     return problems;
 };
 
-const count = (n: number) => `${n} ${n === 1 ? 'product' : 'products'}`;
+const products = (n: number) => count(n, 'product', 'products');
 const named = (adjustment: RuleAdjustment) =>
-    adjustment.attribute ? adjustment.attribute.value : count(adjustment.ids?.length ?? 0);
+    adjustment.attribute ? adjustment.attribute.value : products(adjustment.ids?.length ?? 0);
 
 /** What a rule does, in a few words, for the list. */
 export const summary = (rule: Rule): string => {
     const parts: string[] = [];
-    if (rule.pin) parts.push(`Pins ${count(rule.pin.length)}`);
-    if (rule.hide) parts.push(`Hides ${count(rule.hide.length)}`);
+    if (rule.pin) parts.push(`Pins ${products(rule.pin.length)}`);
+    if (rule.hide) parts.push(`Hides ${products(rule.hide.length)}`);
     for (const boost of rule.boost ?? []) parts.push(`Boosts ${named(boost)} by ${boost.weight}`);
     for (const bury of rule.bury ?? []) parts.push(`Buries ${named(bury)} by ${bury.weight}`);
     if (rule.active?.from) parts.push(`Active from ${rule.active.from.slice(0, 10)}`);

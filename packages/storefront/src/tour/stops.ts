@@ -51,6 +51,16 @@ export const STOPS: readonly Stop[] = [
         ],
     },
     {
+        id: 'recent',
+        title: 'What you searched before stays with you',
+        body: 'Search for something, then empty the box. What this browser searched before is offered first, under "Recent searches", filtered as you type, with "Clear" beside it. The list lives in this browser alone and never leaves it, and a search that found nothing is never offered again.',
+        to: EMPTY_STATE,
+        tests: [
+            'packages/storefront/src/search/recent.test.ts',
+            'packages/storefront/src/search/SearchBox.test.tsx',
+        ],
+    },
+    {
         id: 'cache-key',
         title: 'The cache that forgets who is asking',
         body: 'This product does not exist for a guest. Choose "Member" under "Shopping as" at the top of the page and it appears, and the brands that give members a discount show lower prices. A cache keyed on the query alone would serve a member\u2019s answer to the next guest, and a test proves it does.',

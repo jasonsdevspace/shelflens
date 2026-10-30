@@ -21,13 +21,14 @@ such systems behave, with its own names and its own schema.
 ## Two minutes with the demo
 
 Each step is a link into the live storefront. The "Tour" button at the top of the page walks all
-eighteen stops with the test behind each. For the same story without the code, the demo carries
+nineteen stops with the test behind each. For the same story without the code, the demo carries
 [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
    arrive after the answer to "trail", and a client that shows whatever came last shows the wrong
    list. This one never does. A burst of keystrokes costs one request, and the popover is a
-   combobox you can drive from the keyboard.
+   combobox you can drive from the keyboard. Press into the empty box afterward and what this
+   browser searched before is offered first, with "Clear" beside it.
 2. [Open the product a guest cannot see.](https://jasonsdevspace.com/shelflens/?product=SL-00008)
    Choose "Member" under "Shopping as" at the top of the page: it appears, marked as members only, and back on the results
    every price that dropped says it is a member price, with one line saying what the switch
@@ -57,24 +58,25 @@ eighteen stops with the test behind each. For the same story without the code, t
 The project exists for these. Each one that claims a failure has a test that fails on the naive
 version, and the tour's stops name them.
 
-| Gotcha                                                                                                                                           | Where it is tested                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| A late answer to an earlier phrase must not win                                                                                                  | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it                                 |
-| A burst of keystrokes is one request                                                                                                             | `packages/storefront/src/search/SearchBox.test.tsx`                                                                    |
-| The suggestion list works from the keyboard: arrow keys, Escape, announcements, an audit                                                         | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`                                         |
-| A cache keyed on the query alone serves a member's price to a guest                                                                              | `packages/api/src/cache.test.ts`                                                                                       |
-| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                                                              | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                                                            |
-| Choosing "Red" never zeroes "Blue"                                                                                                               | `packages/engine/src/facets.test.ts`                                                                                   |
-| The URL is the page, and a value it cannot read is ignored                                                                                       | `packages/storefront/src/app/url.test.ts`                                                                              |
-| Paging never shows a product twice or skips one                                                                                                  | `packages/engine/src/search.test.ts`                                                                                   |
-| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                             | `packages/engine/src/search.test.ts`, `rules.test.ts`                                                                  |
-| Pins and boosts disappear under a sort, and the page says so                                                                                     | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`                                            |
-| A rule written in the page is previewed before it is saved, and saved as a new store version                                                     | `packages/storefront/src/results/RulesPanel.test.tsx`, `packages/storefront/src/worker/handle.test.ts`                 |
-| A malformed request is a validation error with a code, never a 500                                                                               | `packages/api/src/api.test.ts`, `http.test.ts`                                                                         |
-| A product with variants shows a range, in the store's currency and locale                                                                        | `packages/storefront/src/format/money.test.ts`                                                                         |
-| What shoppers click rises a bounded amount, never past a pin, never out of a bury, and only when a visit begins                                  | `packages/engine/src/signals.test.ts`, `packages/api/src/api.test.ts`, `packages/storefront/src/worker/handle.test.ts` |
-| The rail beside a product is never empty, never the product itself, and says whether it is what was viewed together or the category's most rated | `packages/api/src/recommend.test.ts`, `packages/storefront/src/App.test.tsx`                                           |
-| Telemetry never blocks the page, counts a twice delivered batch once, carries nothing personal, and stops under Global Privacy Control           | `packages/storefront/src/events/collector.test.ts`, `packages/api/src/events.test.ts`                                  |
+| Gotcha                                                                                                                                                       | Where it is tested                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| A late answer to an earlier phrase must not win                                                                                                              | `packages/storefront/src/client/latest.test.ts`, `search/SearchBox.test.tsx` beside it                                 |
+| A burst of keystrokes is one request                                                                                                                         | `packages/storefront/src/search/SearchBox.test.tsx`                                                                    |
+| What this browser searched before is offered first, filtered as you type, kept in this browser, cleared by one button, and never a search that found nothing | `packages/storefront/src/search/recent.test.ts`, `packages/storefront/src/search/SearchBox.test.tsx`                   |
+| The suggestion list works from the keyboard: arrow keys, Escape, announcements, an audit                                                                     | `packages/storefront/src/search/SearchBox.test.tsx`, `packages/storefront/e2e`                                         |
+| A cache keyed on the query alone serves a member's price to a guest                                                                                          | `packages/api/src/cache.test.ts`                                                                                       |
+| "Café" and "cafe", "T-Shirt" and "tshirt", "shoes" and "shoe" match                                                                                          | `packages/engine/src/normalize.test.ts`, `synonyms.test.ts`                                                            |
+| Choosing "Red" never zeroes "Blue"                                                                                                                           | `packages/engine/src/facets.test.ts`                                                                                   |
+| The URL is the page, and a value it cannot read is ignored                                                                                                   | `packages/storefront/src/app/url.test.ts`                                                                              |
+| Paging never shows a product twice or skips one                                                                                                              | `packages/engine/src/search.test.ts`                                                                                   |
+| A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                                         | `packages/engine/src/search.test.ts`, `rules.test.ts`                                                                  |
+| Pins and boosts disappear under a sort, and the page says so                                                                                                 | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`                                            |
+| A rule written in the page is previewed before it is saved, and saved as a new store version                                                                 | `packages/storefront/src/results/RulesPanel.test.tsx`, `packages/storefront/src/worker/handle.test.ts`                 |
+| A malformed request is a validation error with a code, never a 500                                                                                           | `packages/api/src/api.test.ts`, `http.test.ts`                                                                         |
+| A product with variants shows a range, in the store's currency and locale                                                                                    | `packages/storefront/src/format/money.test.ts`                                                                         |
+| What shoppers click rises a bounded amount, never past a pin, never out of a bury, and only when a visit begins                                              | `packages/engine/src/signals.test.ts`, `packages/api/src/api.test.ts`, `packages/storefront/src/worker/handle.test.ts` |
+| The rail beside a product is never empty, never the product itself, and says whether it is what was viewed together or the category's most rated             | `packages/api/src/recommend.test.ts`, `packages/storefront/src/App.test.tsx`                                           |
+| Telemetry never blocks the page, counts a twice delivered batch once, carries nothing personal, and stops under Global Privacy Control                       | `packages/storefront/src/events/collector.test.ts`, `packages/api/src/events.test.ts`                                  |
 
 Three product additions carry the rest of the story. **The rail** beside a product and **the
 nudge** in ranking are built from what this browser viewed and clicked, kept in the browser and

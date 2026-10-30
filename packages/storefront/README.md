@@ -20,6 +20,13 @@ the page.
   catalog when the store is built and validated then: a rule that names a product or an attribute
   the store does not have fails the build, in the worker, the Node server and the dev server
   alike. A test runs the shipped rules against the shipped catalog.
+- **What this browser searched before.** The box offers the phrases this browser searched
+  before, filtered as you type, under a visible heading with a "Clear" button beside it. They
+  are kept in local storage and never sent anywhere, so Global Privacy Control, which is about
+  sharing, leaves them alone. A phrase joins the list only once its search found something, so
+  a typo that found nothing is never offered again.
+  [Decision record 11](../../docs/decisions/0011-recent-searches-are-page-state.md) has the
+  choices.
 - **Rules can be written in the page.** "Rules" on the results page opens a panel with the rules
   that apply to the search, and a form for one at a time: pin, boost, bury or hide a product from
   the page or a brand from the facet, with the weight as named steps. The results beside the

@@ -27,3 +27,6 @@ so the evidence was still fresh.
 10. [A rule is previewed by the engine, and saved as a new store version](0010-rules-live-in-the-browser.md):
     the preview is the real ranking, the edited set stays in the visitor's browser, and a save
     moves every cache key at once.
+11. [Recent searches are page state, kept in local storage](0011-recent-searches-are-page-state.md):
+    never the worker's events, filtered as a source rather than shown as a mode, cleared by a
+    button beside a visible heading, and joined only by a search that found something.

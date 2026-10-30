@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createClient, type GraphQLClient } from '../client/graphql.js';
 import type { SuggestQuery } from '../generated/operations.js';
+import { clearRecentSearches, rememberSearch } from './recent.js';
 import { SearchBox } from './SearchBox.jsx';
 import { DEBOUNCE_MS } from './useSuggestions.js';
 
@@ -21,6 +22,7 @@ interface Pending {
     readonly phrase: string;
     readonly signal: AbortSignal | undefined;
     answer(suggestions: Suggestions): void;
+    fail(message: string): void;
 }
 
 const product = (sku: string, name: string): Suggestions['products'][number] => ({
@@ -56,6 +58,7 @@ const createNetwork = () => {
             pending.push({
                 phrase: variables.phrase,
                 signal,
+                fail: (message) => reject(new Error(message)),
                 answer: (suggest) =>
                     resolve(
                         new Response(JSON.stringify({ data: { suggest } }), {
@@ -222,5 +225,245 @@ describe('the popover as a combobox', () => {
         expect(option).toHaveTextContent('Ostara');
         expect(option).toHaveTextContent('$49 to $59');
         expect(option.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    });
+});
+
+describe('what this browser searched before', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        clearRecentSearches();
+    });
+
+    const openEmpty = async () => {
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.click(box.input);
+        return { ...box, user, network };
+    };
+
+    it('offers the recent phrases on focus, under a heading the eye and the screen reader share', async () => {
+        rememberSearch('boots');
+        rememberSearch('trail runner');
+        const { input } = await openEmpty();
+        const listbox = screen.getByRole('listbox', { name: 'Recent searches' });
+        expect(screen.getByText('Recent searches')).toBeVisible();
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+            'boots',
+        ]);
+        expect(screen.getByRole('status')).toHaveTextContent('2 recent searches');
+        expect(input).toHaveAttribute('aria-controls', listbox.id);
+        const audit = await axe.run(document.body, {
+            rules: { 'color-contrast': { enabled: false }, region: { enabled: false } },
+        });
+        expect(audit.violations).toEqual([]);
+    });
+
+    it('opens nothing when nothing was searched before', async () => {
+        const { input } = await openEmpty();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByText('Recent searches')).toBeNull();
+        expect(screen.getByRole('status')).toHaveTextContent('');
+    });
+
+    it('filters the recent phrases by what is typed, from the first character', async () => {
+        rememberSearch('boots');
+        rememberSearch('trail runner');
+        const { input, user, network } = await openEmpty();
+        await user.type(input, 'r');
+        expect(network.pending).toHaveLength(0);
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+        ]);
+        expect(screen.getByRole('status')).toHaveTextContent('1 recent search');
+        await user.clear(input);
+        await user.type(input, 'x');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('keeps matching recent phrases above the suggestions, in groups, and never twice', async () => {
+        rememberSearch('trail jacket');
+        rememberSearch('trail runner');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'trail');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer(suggestionsFor('trail'));
+        await waitFor(() =>
+            expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeVisible()
+        );
+        expect(screen.getByRole('group', { name: 'Recent searches' })).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Suggestions' })).toBeInTheDocument();
+        const names = screen
+            .getAllByRole('option')
+            .map((option) => option.querySelector('.searchbox-query, .searchbox-product-name'));
+        expect(names.map((name) => name?.textContent)).toEqual([
+            'trail runner',
+            'trail jacket',
+            'trail one',
+            'trail two',
+        ]);
+        // The heading and its clear button stay with the shopper's phrases wherever they sit.
+        expect(screen.getByRole('button', { name: 'Clear recent searches' })).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('2 recent searches and 2 suggestions');
+        await user.keyboard('{ArrowDown}{Enter}');
+        expect(box.onSearch).toHaveBeenCalledWith('trail runner');
+    });
+
+    it('keeps the recent phrases, and no empty group, when the store has nothing to add', async () => {
+        rememberSearch('gift card');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'gi');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: [], products: [] });
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent('1 recent search')
+        );
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'gift card',
+        ]);
+        expect(screen.queryByRole('group', { name: 'Suggestions' })).toBeNull();
+        expect(screen.getByRole('listbox', { name: 'Recent searches' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear recent searches' })).toBeInTheDocument();
+    });
+
+    it('starts the highlight over when the store\u2019s answer re-cuts the list', async () => {
+        for (const phrase of [
+            'trail map',
+            'trail shoes',
+            'trail mix',
+            'trail jacket',
+            'trail runner',
+        ]) {
+            rememberSearch(phrase);
+        }
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'tr');
+        // Three at most once the store is asked, so the answer never cuts the list shorter.
+        expect(screen.getAllByRole('option')).toHaveLength(3);
+        await user.keyboard('{ArrowDown}{ArrowDown}');
+        expect(box.input).toHaveAttribute(
+            'aria-activedescendant',
+            expect.stringContaining('option-1')
+        );
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: ['trek poles'], products: [] });
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(
+                '3 recent searches and 1 suggestion'
+            )
+        );
+        expect(box.input).not.toHaveAttribute('aria-activedescendant');
+        await user.keyboard('{Enter}');
+        expect(box.onSearch).toHaveBeenCalledWith('tr');
+    });
+
+    it('drops the highlight with Escape on the clear button, so Enter submits what is typed', async () => {
+        rememberSearch('boots');
+        const { input, user, onSearch } = await openEmpty();
+        await user.keyboard('{ArrowDown}');
+        await user.tab();
+        await user.keyboard('{Escape}');
+        expect(input).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(onSearch).not.toHaveBeenCalled();
+    });
+
+    it('says a failed request even while recent phrases match', async () => {
+        rememberSearch('boots');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'bo');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.fail('the network is down');
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('down'));
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'boots',
+        ]);
+        // The failure was for "bo". "boo" is a new request, not a failed one.
+        await user.type(box.input, 'o');
+        expect(screen.getByRole('status')).toHaveTextContent('Searching');
+    });
+
+    it('names the list for the store while the store is asked and no recent phrase matches', async () => {
+        rememberSearch('boots');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'zz');
+        expect(box.input).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeInTheDocument();
+    });
+
+    it('says when storage refused to let the list go', async () => {
+        rememberSearch('boots');
+        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+            throw new Error('refused');
+        });
+        const { input, user } = await openEmpty();
+        await user.tab();
+        await user.keyboard('{Enter}');
+        expect(input).toHaveFocus();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'The recent searches could not be cleared.'
+        );
+        vi.restoreAllMocks();
+    });
+
+    it('shows a phrase once however the store spaces its suggestion of it', async () => {
+        rememberSearch('trail runner');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'trail');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: ['trail  runner', 'trail jacket'], products: [] });
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 suggestion'));
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+            'trail jacket',
+        ]);
+    });
+
+    it('clears from a button reached by Tab, says so, and puts focus back in the box', async () => {
+        rememberSearch('boots');
+        const { input, user } = await openEmpty();
+        await user.tab();
+        const clear = screen.getByRole('button', { name: 'Clear recent searches' });
+        expect(clear).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        await user.keyboard('{Enter}');
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByRole('status')).toHaveTextContent('Recent searches cleared');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+        await user.type(input, 'b');
+        expect(screen.getByRole('status')).toHaveTextContent('');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('never clears from the arrow keys: the last option is a phrase', async () => {
+        rememberSearch('boots');
+        const { user, onSearch } = await openEmpty();
+        await user.keyboard('{ArrowUp}{Enter}');
+        expect(onSearch).toHaveBeenCalledWith('boots');
+        expect(localStorage.getItem('shelflens.recent')).not.toBeNull();
+    });
+
+    it('closes on Escape from the clear button, with focus back in the box', async () => {
+        rememberSearch('boots');
+        const { input, user } = await openEmpty();
+        await user.tab();
+        await user.keyboard('{Escape}');
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute('aria-expanded', 'false');
     });
 });

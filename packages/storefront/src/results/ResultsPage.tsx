@@ -28,6 +28,7 @@ import {
     type SearchQueryVariables,
     type TypedDocumentString,
 } from '../generated/operations.js';
+import { fold, recentSearches, rememberSearch } from '../search/recent.js';
 import { Drawer } from './Drawer.jsx';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
@@ -68,6 +69,8 @@ export interface ResultsPageProps {
     readonly onStoreChanged: () => number;
     /** Counts the times the store was built again, so the panel can read its rules anew. */
     readonly storeRevision: number;
+    /** Counts the searches submitted, so a search run again is remembered again. */
+    readonly searched: number;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -168,7 +171,9 @@ const useResults = (
     const result = data && ('preview' in data ? data.preview : data.search);
     // Whether the result is the answer to this request, rather than one before it.
     const answered = !loading && error === undefined;
-    return { result, loading, error, previewing, answered };
+    // Whether the result is the store's own answer to this search, not a preview.
+    const own = answered && !previewing;
+    return { result, loading, error, previewing, answered, own };
 };
 
 type Result = NonNullable<ReturnType<typeof useResults>['result']>;
@@ -381,6 +386,31 @@ const useAppliedRules = (
     return kept.search === search ? kept.ids : ids;
 };
 
+/**
+ * A phrase joins this browser's recent searches once its search has found
+ * something, so a typo that found nothing is never offered again, and the
+ * nothing-found page stays a page with a way forward rather than a place
+ * to return to.
+ */
+const useRememberedSearch = (
+    phrase: string | undefined,
+    result: Result | undefined,
+    /** Whether the result is the store's own answer to this search, not a preview or an older one. */
+    own: boolean,
+    /** Counts the searches submitted, so one run again after a clear joins the list again. */
+    searched: number
+) => {
+    // Close matches for a misspelling are the store's work, not a search to run again.
+    const found =
+        own && result !== undefined && result.total > 0 && result.matching !== 'CORRECTED';
+    useEffect(() => {
+        // A page, a filter or a sort under the phrase is the same search, already first.
+        if (phrase && found && fold(recentSearches()[0] ?? '') !== fold(phrase)) {
+            rememberSearch(phrase);
+        }
+    }, [phrase, found, searched]);
+};
+
 /** What an answer puts under the toolbar: the notices, the cards or the nothing page, and the pages. */
 const Answer = ({
     result,
@@ -418,9 +448,10 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const main = useRef<HTMLElement>(null);
     // A draft of the rules, from the panel, previewed in place of the store's own.
     const [draft, setDraft] = useState<readonly Rule[]>();
-    const { result, loading, error, previewing, answered } = useResults(client, state, draft);
+    const { result, loading, error, previewing, answered, own } = useResults(client, state, draft);
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
+    useRememberedSearch(state.phrase, result, own, props.searched);
     useReturnFocus(main, focusSku, !loading, onFocused);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 

@@ -661,6 +661,77 @@ describe('as a merchandiser', () => {
     });
 });
 
+describe('what was searched before', () => {
+    beforeEach(() => {
+        localStorage.removeItem('shelflens.recent');
+    });
+
+    it('offers a search that found something on the next focus, and forgets it on request', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.type(box, 'boot{Enter}');
+        await settled();
+        await user.clear(box);
+        await user.tab();
+        await user.click(box);
+        const recent = await screen.findByRole('listbox', { name: 'Recent searches' });
+        expect(recent).toBeVisible();
+        expect(
+            within(recent)
+                .getAllByRole('option')
+                .map((option) => option.textContent)
+        ).toEqual(['boot', 'jacket']);
+        await user.tab();
+        await user.keyboard('{Enter}');
+        expect(screen.queryByRole('listbox', { name: 'Recent searches' })).toBeNull();
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+    });
+
+    it('offers a search again once it is run again after a clear', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.click(box);
+        await screen.findByRole('listbox', { name: 'Recent searches' });
+        await user.tab();
+        await user.keyboard('{Enter}');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+        await user.type(box, 'jacket{Enter}');
+        await settled();
+        await user.clear(box);
+        await user.tab();
+        await user.click(box);
+        expect(await screen.findByRole('listbox', { name: 'Recent searches' })).toHaveTextContent(
+            'jacket'
+        );
+    });
+
+    it('never offers a misspelling the store corrected', async () => {
+        const user = await open('?q=jackit');
+        await settled();
+        expect(heading()).toHaveTextContent('showing close matches');
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.click(box);
+        expect(box).toHaveAttribute('aria-expanded', 'false');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+    });
+
+    it('never offers a search that found nothing', async () => {
+        const user = await open('?q=zzqx');
+        await settled();
+        expect(heading()).toHaveTextContent('0 results for "zzqx"');
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.click(box);
+        expect(box).toHaveAttribute('aria-expanded', 'false');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+    });
+});
+
 describe('beside a product', () => {
     const subject = catalog.products.find((p) => p.visibleTo.length === 2);
     if (!subject) throw new Error('expected a product every viewer may see');
@@ -815,7 +886,7 @@ describe('the tour', () => {
         localStorage.removeItem('shelflens.tour');
         const user = await open();
         const tour = screen.getByRole('complementary', { name: 'Tour' });
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await user.click(within(tour).getByRole('button', { name: 'Next' }));
         }
         expect(tour).toHaveTextContent('The cache that forgets who is asking');
