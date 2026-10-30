@@ -37,7 +37,8 @@ import type { Catalog } from '@shelflens/catalog';
  *
  * Events the page sends to `events` beside `graphql` are kept in the
  * store the worker is given, and answered with nothing, since the page
- * never waits for them.
+ * never waits for them. The API reads the same store for the fields that
+ * are built from them.
  */
 
 export interface WorkerApiOptions {
@@ -146,7 +147,9 @@ export const createWorkerApi = ({
         ])
             .then(([catalog, rules]) => {
                 const downloaded = performance.now();
-                const api = withResponseCache(createStoreApi(createStore({ catalog, rules })));
+                const api = withResponseCache(
+                    createStoreApi(createStore({ catalog, rules }), { events })
+                );
                 startup = {
                     downloadMs: downloaded - began,
                     buildMs: performance.now() - downloaded,

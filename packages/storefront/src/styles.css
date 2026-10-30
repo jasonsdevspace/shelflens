@@ -813,6 +813,10 @@ body {
     cursor: pointer;
 }
 
+.rail {
+    margin-top: 2rem;
+}
+
 .product-head {
     display: flex;
     gap: 1.5rem;

@@ -13,7 +13,8 @@ import { isStoreRequest, type StoreRequest, type StoreResponse } from './execute
  * server and the service worker cannot disagree about either.
  *
  * An answer is cacheable only when the URL names the version it was
- * computed from and the answer has no errors. Then the version is in the
+ * computed from, the answer has no errors, and the answer does not say it
+ * depends on something the version does not cover. Then the version is in the
  * URL, the viewer is in a header the cache varies on, and the answer can
  * sit in a browser or shared cache for its age with nothing to invalidate:
  * a new version is a new URL.
@@ -136,5 +137,7 @@ export const responseHeaders = ({
     [VERSION_HEADER]: version,
     vary: GROUP_HEADER,
     'cache-control':
-        expected === version && !response.errors ? `public, max-age=${maxAgeSeconds}` : 'no-store',
+        expected === version && !response.errors && !response.extensions?.volatile
+            ? `public, max-age=${maxAgeSeconds}`
+            : 'no-store',
 });

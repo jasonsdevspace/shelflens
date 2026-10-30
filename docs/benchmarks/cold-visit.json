@@ -1,43 +1,43 @@
 {
     "recorded": {
         "date": "2026-10-29",
-        "commit": "5862173"
+        "commit": "7f64bc9"
     },
     "sizes": {
         "catalog": 341270,
-        "page": 83038,
-        "worker": 67681
+        "page": 83649,
+        "worker": 68839
     },
     "runs": [
         {
-            "readyMs": 217.5,
-            "downloadMs": 39.70000000298023,
-            "buildMs": 57.19999999925494,
-            "firstSuggestionMs": 191.89999999850988
-        },
-        {
-            "readyMs": 211.60000000149012,
-            "downloadMs": 39.69999999925494,
-            "buildMs": 56.69999999925494,
-            "firstSuggestionMs": 190.80000000074506
-        },
-        {
-            "readyMs": 209.69999999925494,
-            "downloadMs": 37.79999999701977,
-            "buildMs": 59,
-            "firstSuggestionMs": 189
-        },
-        {
-            "readyMs": 211.69999999925494,
+            "readyMs": 216.69999999925494,
             "downloadMs": 38.69999999925494,
-            "buildMs": 56.399999998509884,
-            "firstSuggestionMs": 189.30000000074506
+            "buildMs": 54.80000000074506,
+            "firstSuggestionMs": 190.5
         },
         {
-            "readyMs": 211.69999999925494,
-            "downloadMs": 40,
-            "buildMs": 57.30000000074506,
-            "firstSuggestionMs": 189.5
+            "readyMs": 211.09999999776483,
+            "downloadMs": 36.70000000298023,
+            "buildMs": 54.29999999701977,
+            "firstSuggestionMs": 187.89999999850988
+        },
+        {
+            "readyMs": 210.89999999850988,
+            "downloadMs": 38,
+            "buildMs": 54.599999997764826,
+            "firstSuggestionMs": 188.90000000223517
+        },
+        {
+            "readyMs": 212.09999999776483,
+            "downloadMs": 37.5,
+            "buildMs": 55.30000000074506,
+            "firstSuggestionMs": 188.89999999850988
+        },
+        {
+            "readyMs": 209.39999999850988,
+            "downloadMs": 37.400000002235174,
+            "buildMs": 54.80000000074506,
+            "firstSuggestionMs": 187.70000000298023
         }
     ]
 }

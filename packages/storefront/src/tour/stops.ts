@@ -121,6 +121,13 @@ export const STOPS: readonly Stop[] = [
         tests: ['packages/storefront/src/format/money.test.ts'],
     },
     {
+        id: 'cold-start',
+        title: 'A rail that is never empty, and never lies',
+        body: 'Beneath this product is a rail. With nothing viewed yet it shows the most rated in the category and says so. Open a second product and the first leads its rail under a heading that says why. It never shows the product itself, never a product you cannot see, and starts over when you clear site data.',
+        to: { ...EMPTY_STATE, product: 'SL-00001' },
+        tests: ['packages/api/src/recommend.test.ts', 'packages/storefront/src/App.test.tsx'],
+    },
+    {
         id: 'telemetry',
         title: 'Telemetry that cannot hurt the page',
         body: 'Search, open a product, then look in DevTools under Application, IndexedDB, shelflens-events. What you did is sent in batches with sendBeacon, so it never blocks the page, a batch delivered twice counts once, nothing in it could name you, and with Global Privacy Control on nothing is sent at all.',

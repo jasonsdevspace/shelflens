@@ -282,6 +282,33 @@ describe('events inside the worker', () => {
         expect((await events.all()).map((event) => event.id)).toEqual(['e1']);
     });
 
+    it('reads what it kept when asked what to show beside a product, and marks the answer volatile', async () => {
+        const events = createMemoryEventStore();
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            allowFullQueries: true,
+            events,
+        });
+        const [a, b] = catalog.products.filter((p) => p.visibleTo.length === 2);
+        if (!a || !b) throw new Error('expected two products');
+        await events.append([{ id: 'v', kind: 'view', at: 1, sku: a.sku, session: 't' }]);
+        const response = await api.handle(
+            posted({
+                query: `{ recommendations(sku: "${b.sku}", session: "t") { source items { sku } } }`,
+            })
+        );
+        expect(response?.headers.get('cache-control')).toBe('no-store');
+        const answer = (await response?.json()) as {
+            data: { recommendations: { source: string; items: { sku: string }[] } };
+            extensions: unknown;
+        };
+        expect(answer.extensions).toEqual({ volatile: true });
+        expect(answer.data.recommendations.source).toBe('VIEWED_TOGETHER');
+        expect(answer.data.recommendations.items[0]?.sku).toBe(a.sku);
+    });
+
     it('refuses events when it has nowhere to keep them, and leaves other paths to the network', async () => {
         const api = createWorkerApi({
             catalogUrl: 'catalog.json',

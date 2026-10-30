@@ -15,6 +15,7 @@ import {
 } from './client/graphql.js';
 import { createCollector } from './events/collector.js';
 import { EventsProvider } from './events/EventsContext.jsx';
+import { sessionId } from './events/session.js';
 import { safeLocale } from './format/money.js';
 import { CategoriesDocument, StoreDocument, type StoreQuery } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
@@ -192,7 +193,10 @@ export const App = ({ apiUrl, eventsUrl, ready }: AppProps) => {
 
     // What the shopper does, sent in batches once the store answers, and never awaited.
     // Making the collector touches nothing, so the effect is what attaches it to the page.
-    const collector = useMemo(() => createCollector({ url: eventsUrl, ready }), [eventsUrl, ready]);
+    const collector = useMemo(
+        () => createCollector({ url: eventsUrl, ready, session: sessionId }),
+        [eventsUrl, ready]
+    );
     useEffect(() => collector.attach(window), [collector]);
     // A search is the phrase changing, once, however the shopper then narrows, pages or
     // opens a product under it.

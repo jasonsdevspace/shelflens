@@ -12,6 +12,7 @@ export {
     type CacheKeyParts,
 } from './cache-key.js';
 export {
+    type Answer,
     type Context,
     createStore,
     GROUP_HEADER,
@@ -43,6 +44,7 @@ export {
     isStoreRequest,
     type Limits,
     type StoreApi,
+    type StoreApiOptions,
     type StoreRequest,
     type StoreResponse,
 } from './execute.js';
@@ -58,5 +60,13 @@ export {
     responseHeaders,
     VERSION_HEADER,
 } from './http.js';
+export {
+    recommend,
+    RECOMMENDATION_LIMIT,
+    type RecommendationRequest,
+    type RecommendationsModel,
+    type RecommendationSource,
+    viewedWith,
+} from './recommend.js';
 export { parseRulesFile } from './rules-file.js';
 export { buildStoreSchema, schemaSource } from './schema.js';

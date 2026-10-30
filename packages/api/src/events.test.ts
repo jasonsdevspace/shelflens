@@ -41,7 +41,13 @@ describe('an event batch', () => {
             parseEventBatch([
                 event(),
                 event({ id: 'e2', kind: 'click', sku: 'SL-00001', position: 3 }),
-                event({ id: 'e3', kind: 'view', phrase: undefined, sku: 'SL-00001' }),
+                event({
+                    id: 'e3',
+                    kind: 'view',
+                    phrase: undefined,
+                    sku: 'SL-00001',
+                    session: 'tab',
+                }),
             ])
         ).toEqual([
             { id: 'e1', kind: 'search', at: 1_700_000_000_000, phrase: 'jacket' },
@@ -53,7 +59,7 @@ describe('an event batch', () => {
                 sku: 'SL-00001',
                 position: 3,
             },
-            { id: 'e3', kind: 'view', at: 1_700_000_000_000, sku: 'SL-00001' },
+            { id: 'e3', kind: 'view', at: 1_700_000_000_000, sku: 'SL-00001', session: 'tab' },
         ]);
     });
 
@@ -73,6 +79,8 @@ describe('an event batch', () => {
         expect(parseEventBatch([event({ id: '' })])).toBe(undefined);
         expect(parseEventBatch([event({ position: 0 })])).toBe(undefined);
         expect(parseEventBatch([event({ sku: 'x'.repeat(33) })])).toBe(undefined);
+        expect(parseEventBatch([event({ session: 'x'.repeat(65) })])).toBe(undefined);
+        expect(parseEventBatch([event({ session: '' })])).toBe(undefined);
         expect(parseEventBatch(Array.from({ length: BATCH_LIMIT + 1 }, () => event()))).toBe(
             undefined
         );

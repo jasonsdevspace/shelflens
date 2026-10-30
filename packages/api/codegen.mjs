@@ -38,6 +38,7 @@ export default {
                     Variant: '@shelflens/catalog#Variant as VariantModel',
                     Brand: '@shelflens/catalog#Brand as BrandModel',
                     Category: '@shelflens/catalog#Category as CategoryModel',
+                    Recommendations: '../recommend.js#RecommendationsModel',
                     SearchHit: '../resolvers.js#HitModel',
                     SearchResult: '../resolvers.js#SearchResultModel',
                     NoResults: '../resolvers.js#NoResultsModel',

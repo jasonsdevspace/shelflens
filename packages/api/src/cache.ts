@@ -14,7 +14,9 @@ import type { StoreApi, StoreRequest, StoreResponse } from './execute.js';
  *
  * The key is the project's one definition, so this layer cannot serve one
  * group's answer to another. Rules with a time window are the one thing
- * the key does not see, which is what the age limit is for.
+ * the key does not see, which is what the age limit is for. An answer that
+ * says it is volatile, because it read the events collected so far, is
+ * not kept at all.
  */
 
 export interface ResponseCacheOptions {
@@ -80,7 +82,7 @@ export const createResponseCache = (
         };
         const response: Promise<StoreResponse> = api.run(request, viewer, clock).then(
             (answer) => {
-                settle(entries.get(id), !answer.errors);
+                settle(entries.get(id), !answer.errors && !answer.extensions?.volatile);
                 return answer;
             },
             (error: unknown) => {

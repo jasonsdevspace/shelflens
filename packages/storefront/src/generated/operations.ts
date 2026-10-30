@@ -54,6 +54,15 @@ export type RangeInput = {
     readonly to?: number | null | undefined;
 };
 
+export type RecommendationSource =
+    /**
+     * Nothing has been viewed with this product yet, so the list is the
+     * category's most rated.
+     */
+    | 'CATEGORY_BESTSELLERS'
+    /** At least one product viewed in the same tab as this one leads the list. */
+    | 'VIEWED_TOGETHER';
+
 export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
 export type SearchInput = {
@@ -135,6 +144,33 @@ export type ProductQuery = {
             readonly size: string;
             readonly inStock: boolean;
             readonly price: { readonly amount: number; readonly currency: string };
+        }>;
+    } | null;
+};
+
+export type RecommendationsQueryVariables = Exact<{
+    sku: string | number;
+    limit?: number | null | undefined;
+    session?: string | null | undefined;
+}>;
+
+export type RecommendationsQuery = {
+    readonly recommendations: {
+        readonly source: RecommendationSource;
+        readonly category: { readonly id: string; readonly name: string };
+        readonly items: ReadonlyArray<{
+            readonly sku: string;
+            readonly name: string;
+            readonly colors: ReadonlyArray<string>;
+            readonly membersOnly: boolean;
+            readonly inStock: boolean;
+            readonly brand: { readonly name: string };
+            readonly price: {
+                readonly memberPrice: boolean;
+                readonly min: { readonly amount: number; readonly currency: string };
+                readonly max: { readonly amount: number; readonly currency: string };
+            };
+            readonly rating: { readonly average: number; readonly count: number } | null;
         }>;
     } | null;
 };
@@ -424,6 +460,47 @@ export const ProductDocument = new TypedDocumentString(
     `,
     { hash: 'ad1f2602a0218504d86ebd70506c6431131da90fc42706b534e6edad855b44bc' }
 ) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
+export const RecommendationsDocument = new TypedDocumentString(
+    `
+    query Recommendations($sku: ID!, $limit: Int = 6, $session: String) {
+  recommendations(sku: $sku, limit: $limit, session: $session) {
+    source
+    category {
+      id
+      name
+    }
+    items {
+      ...Card
+    }
+  }
+}
+    fragment Card on Product {
+  sku
+  name
+  colors
+  brand {
+    name
+  }
+  membersOnly
+  price {
+    memberPrice
+    min {
+      amount
+      currency
+    }
+    max {
+      amount
+      currency
+    }
+  }
+  rating {
+    average
+    count
+  }
+  inStock
+}`,
+    { hash: '7a4d5268f4c6013a102fe689beedda204b450f4377062c93b0a2428b12ff28c5' }
+) as unknown as TypedDocumentString<RecommendationsQuery, RecommendationsQueryVariables>;
 export const SearchDocument = new TypedDocumentString(
     `
     query Search($input: SearchInput!, $explain: Boolean = false) {

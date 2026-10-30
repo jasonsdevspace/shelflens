@@ -57,6 +57,8 @@ export interface CollectorOptions {
     readonly queueLimit?: number;
     readonly now?: () => number;
     readonly id?: () => string;
+    /** The tab the events happen in. Asked for each time, so storage may change it. */
+    readonly session?: () => string | undefined;
 }
 
 export const PAUSE_MS = 2_000;
@@ -84,14 +86,27 @@ export const trackingAllowed = (): boolean =>
     typeof navigator === 'undefined' ||
     (navigator as { globalPrivacyControl?: boolean }).globalPrivacyControl !== true;
 
-const stripUndefined = (event: Recorded, id: string, at: number): StoreEvent => ({
+const stripUndefined = (
+    event: Recorded,
+    id: string,
+    at: number,
+    session: string | undefined
+): StoreEvent => ({
     id,
     kind: event.kind,
     at,
     ...(event.phrase !== undefined && { phrase: event.phrase }),
     ...(event.sku !== undefined && { sku: event.sku }),
     ...(event.position !== undefined && { position: event.position }),
+    ...(session !== undefined && { session }),
 });
+
+/**
+ * A view goes at once rather than after the pause. The page it opened asks
+ * what to show beside the product, and that answer counts what this tab
+ * viewed before, so the view before this one should already be there.
+ */
+const AT_ONCE: ReadonlySet<EventKind> = new Set(['view']);
 
 export const createCollector = ({
     url,
@@ -102,6 +117,7 @@ export const createCollector = ({
     queueLimit = QUEUE_LIMIT,
     now = Date.now,
     id = randomId,
+    session = () => undefined,
 }: CollectorOptions): Collector => {
     let queue: StoreEvent[] = [];
     let armed = false;
@@ -139,9 +155,11 @@ export const createCollector = ({
     return {
         record: (event) => {
             if (!allowed) return;
-            queue.push(stripUndefined(event, id(), now()));
+            queue.push(stripUndefined(event, id(), now(), session()));
             if (queue.length > queueLimit) queue = queue.slice(queue.length - queueLimit);
-            schedule();
+            if (AT_ONCE.has(event.kind)) flush();
+            // Whatever the browser declined, or did not get asked for, waits for the pause.
+            if (queue.length > 0) schedule();
         },
         flush,
         attach: (target) => {

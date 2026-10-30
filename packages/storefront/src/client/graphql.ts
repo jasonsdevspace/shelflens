@@ -96,6 +96,7 @@ export interface GraphQLClient {
 interface Envelope<Result> {
     readonly data?: Result;
     readonly errors?: readonly GraphQLErrorShape[];
+    readonly extensions?: { readonly volatile?: boolean };
 }
 
 /** The persisted name a generated document carries, if it has one. */
@@ -194,8 +195,10 @@ export const createClient = ({
             if (!response.ok || envelope.data === undefined) {
                 throw new GraphQLClientError([], response.status);
             }
-            // Keyed under the version that answered, which may be new.
-            remember(keyOf(operation, variables), envelope.data);
+            // Keyed under the version that answered, which may be new. An answer that
+            // depends on more than the version says so, and is asked for every time.
+            if (!envelope.extensions?.volatile)
+                remember(keyOf(operation, variables), envelope.data);
             return envelope.data as never;
         },
     };

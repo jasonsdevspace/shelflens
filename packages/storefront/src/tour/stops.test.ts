@@ -38,6 +38,7 @@ describe('the tour', () => {
             'explain',
             'nothing',
             'prices',
+            'cold-start',
             'telemetry',
             'errors',
         ]);

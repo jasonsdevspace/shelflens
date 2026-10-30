@@ -5,6 +5,7 @@ import type {
     Brand as BrandModel,
     Category as CategoryModel,
 } from '@shelflens/catalog';
+import type { RecommendationsModel } from '../recommend.js';
 import type { HitModel, SearchResultModel, NoResultsModel, RelaxedModel } from '../resolvers.js';
 import type { Facet as FacetModel } from '@jasonsdevspace/shelflens';
 import type { Context } from '../context.js';
@@ -183,6 +184,15 @@ export type Query = {
     /** The category tree, roots first. Each category's children follow it. */
     readonly categories: ReadonlyArray<Category>;
     readonly product: Maybe<Product>;
+    /**
+     * What to show beside a product: the products viewed with it, filled to the
+     * limit with the most rated in its category, never the product itself. The
+     * tab asking is taken to have viewed the product already, so what it viewed
+     * before counts from the first visit. Nothing when the viewer may not see
+     * the product. The answer reads the events collected so far, so it is never
+     * cached.
+     */
+    readonly recommendations: Maybe<Recommendations>;
     /** Search the catalog. An empty phrase browses, which is how a category page works. */
     readonly search: SearchResult;
     /** The store itself, and the viewer's place in it. */
@@ -199,6 +209,19 @@ export type Query = {
  * response contains is the viewer's view.
  */
 export type QueryProductArgs = {
+    sku: Scalars['ID']['input'];
+};
+
+/**
+ * The search API of one store, as seen by one shopper.
+ *
+ * Who the shopper is comes from the request, not from the query, so no query
+ * can ask for another customer group's prices or products. Everything a
+ * response contains is the viewer's view.
+ */
+export type QueryRecommendationsArgs = {
+    limit?: InputMaybe<Scalars['Int']['input']>;
+    session: InputMaybe<Scalars['String']['input']>;
     sku: Scalars['ID']['input'];
 };
 
@@ -253,6 +276,24 @@ export type Rating = {
     readonly __typename?: 'Rating';
     readonly average: Scalars['Float']['output'];
     readonly count: Scalars['Int']['output'];
+};
+
+export type RecommendationSource =
+    /**
+     * Nothing has been viewed with this product yet, so the list is the
+     * category's most rated.
+     */
+    | 'CATEGORY_BESTSELLERS'
+    /** At least one product viewed in the same tab as this one leads the list. */
+    | 'VIEWED_TOGETHER';
+
+/** What stands beside a product, and where it came from. */
+export type Recommendations = {
+    readonly __typename?: 'Recommendations';
+    /** The product's leaf category, which the fallback draws from. */
+    readonly category: Category;
+    readonly items: ReadonlyArray<Product>;
+    readonly source: RecommendationSource;
 };
 
 export type RelaxedSearch = {
@@ -545,6 +586,8 @@ export type ResolversTypes = {
     RangeFacet: ResolverTypeWrapper<FacetModel>;
     RangeInput: RangeInput;
     Rating: ResolverTypeWrapper<Rating>;
+    RecommendationSource: RecommendationSource;
+    Recommendations: ResolverTypeWrapper<RecommendationsModel>;
     RelaxedSearch: ResolverTypeWrapper<RelaxedModel>;
     RuleAction: RuleAction;
     RuleEffect: ResolverTypeWrapper<RuleEffect>;
@@ -590,6 +633,7 @@ export type ResolversParentTypes = {
     RangeFacet: FacetModel;
     RangeInput: RangeInput;
     Rating: Rating;
+    Recommendations: RecommendationsModel;
     RelaxedSearch: RelaxedModel;
     RuleEffect: RuleEffect;
     SearchHit: HitModel;
@@ -715,6 +759,12 @@ export type QueryResolvers<
         ContextType,
         RequireFields<QueryProductArgs, 'sku'>
     >;
+    recommendations?: Resolver<
+        Maybe<ResolversTypes['Recommendations']>,
+        ParentType,
+        ContextType,
+        RequireFields<QueryRecommendationsArgs, 'limit' | 'sku'>
+    >;
     search?: Resolver<
         ResolversTypes['SearchResult'],
         ParentType,
@@ -755,6 +805,16 @@ export type RatingResolvers<
 > = {
     average?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
     count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type RecommendationsResolvers<
+    ContextType = Context,
+    ParentType extends ResolversParentTypes['Recommendations'] =
+        ResolversParentTypes['Recommendations'],
+> = {
+    category?: Resolver<ResolversTypes['Category'], ParentType, ContextType>;
+    items?: Resolver<ReadonlyArray<ResolversTypes['Product']>, ParentType, ContextType>;
+    source?: Resolver<ResolversTypes['RecommendationSource'], ParentType, ContextType>;
 };
 
 export type RelaxedSearchResolvers<
@@ -901,6 +961,7 @@ export type Resolvers<ContextType = Context> = {
     RangeBucket?: RangeBucketResolvers<ContextType>;
     RangeFacet?: RangeFacetResolvers<ContextType>;
     Rating?: RatingResolvers<ContextType>;
+    Recommendations?: RecommendationsResolvers<ContextType>;
     RelaxedSearch?: RelaxedSearchResolvers<ContextType>;
     RuleEffect?: RuleEffectResolvers<ContextType>;
     SearchHit?: SearchHitResolvers<ContextType>;
