@@ -4,7 +4,7 @@ import { routeOf } from '@shelflens/api';
 
 import { createIndexedDbEventStore } from './event-db.js';
 import { createWorkerApi, type StartedMessage } from './handle.js';
-import { CLAIM_MESSAGE, VISIT_MESSAGE } from './register.js';
+import { CLAIM_MESSAGE, VISIT_MESSAGE, VISITED_MESSAGE } from './register.js';
 
 /**
  * The service worker that is the demo's API.
@@ -46,13 +46,20 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim().then(announce));
 });
 
+/** Folds the clicks in for a visit. A store that cannot be rebuilt keeps serving. */
+const refreshed = () => api.refresh().catch(() => false);
+
 self.addEventListener('message', (event) => {
     const data = event.data as { type?: unknown } | null;
     if (data?.type === CLAIM_MESSAGE.type) {
         // A claim is a visit too: fold the clicks first, then take the page.
-        event.waitUntil(api.refresh().then(() => self.clients.claim().then(announce)));
+        event.waitUntil(refreshed().then(() => self.clients.claim().then(announce)));
     }
-    if (data?.type === VISIT_MESSAGE.type) event.waitUntil(api.refresh());
+    if (data?.type === VISIT_MESSAGE.type) {
+        // Answer on the port the page sent, once the visit's store is ready.
+        const [port] = event.ports;
+        event.waitUntil(refreshed().then(() => port?.postMessage(VISITED_MESSAGE)));
+    }
 });
 
 self.addEventListener('fetch', (event) => {

@@ -74,23 +74,24 @@ describe('signals in ranking', () => {
         expect(after?.score).toBeCloseTo((before?.score ?? 0) * SIGNAL_CAP, 10);
     });
 
-    it('leaves a buried product buried', () => {
+    it('leaves a buried product exactly where the bury put it, whatever its count', () => {
         const rules: Rule[] = [
             {
                 id: 'bury-c',
                 when: { queries: ['trail runner'] },
-                bury: [{ ids: ['c'], weight: 0.5 }],
+                bury: [{ ids: ['c'], weight: 0.9 }],
             },
         ];
-        const engine = createEngine(documents, { ...config, rules, signals: { c: 100_000 } });
+        const buriedOnly = createEngine(documents, { ...config, rules });
+        const engine = buriedOnly.reconfigure({ signals: { c: 100_000 } });
         const hits = engine.search({ query: 'trail runner' }).hits;
-        const order = hits.map((hit) => hit.id);
-        // Still behind the two it tied with before the bury, and behind the weaker match too.
-        expect(order.indexOf('c')).toBe(order.length - 1);
         const buried = hits.find((hit) => hit.id === 'c');
-        expect(buried?.rules).toEqual([{ ruleId: 'bury-c', action: 'bury', weight: 0.5 }]);
-        expect(buried?.signal?.count).toBe(100_000);
-        expect(buried?.score).toBeLessThan(hits[0]?.score ?? 0);
+        expect(buried?.rules).toEqual([{ ruleId: 'bury-c', action: 'bury', weight: 0.9 }]);
+        expect(buried?.signal).toBeUndefined();
+        const plain = buriedOnly
+            .search({ query: 'trail runner' })
+            .hits.find((hit) => hit.id === 'c');
+        expect(buried?.score).toBe(plain?.score);
     });
 
     it('changes nothing under a sort that is not relevance, and nothing without signals', () => {

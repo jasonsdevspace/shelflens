@@ -370,8 +370,13 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
         'Pinned to the top'
     );
 
-    // Open the last result three times. Each open is a click the worker keeps.
+    // Open the last result from three visits. A visit is the tab's id, so a new
+    // one is given before each open, as three shoppers would have.
     for (let i = 0; i < 3; i += 1) {
+        await page.evaluate(
+            (visit) => sessionStorage.setItem('shelflens.session', visit),
+            `visit-${i}`
+        );
         await page.locator(`.card-link[data-sku="${last}"]`).click();
         await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
         await page.goBack();
@@ -380,19 +385,13 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
     // Nothing moves within this visit.
     await expect(cards.last()).toHaveAttribute('data-sku', last);
 
-    // The next visit folds the clicks in. The worker is told on load and builds the
-    // store again, so the first answer of the visit may still be the old one.
+    // The next visit folds the clicks in: the page waits for the worker's word
+    // before it searches, so the very first answer is from the new store.
     await page.reload();
-    await expect
-        .poll(
-            async () => {
-                await page.reload();
-                await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-                return page.locator(`.card:has([data-sku="${last}"]) .card-explain`).textContent();
-            },
-            { timeout: 15_000 }
-        )
-        .toContain('Clicked 3 times before');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
+        'Clicked in 3 visits before'
+    );
     const after = await cards.evaluateAll((links) =>
         links.map((link) => link.getAttribute('data-sku'))
     );

@@ -89,9 +89,9 @@ the same index without rebuilding it.
 Beside the rules, `signals` names how often each document was chosen, from whatever the host
 collected. A chosen document's relevance score is multiplied by a bounded weight, rising with the
 log of the count to a cap of 1.25, so the first few choices count most and a thousand more change
-nothing. The cap sits below the smallest boost a merchandiser would write, a bury stays buried
-under it, and a pin is placed before any score is compared, so a signal never passes one. A hit
-that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
+nothing. The cap sits below the smallest boost a merchandiser would write, and a document a rule
+pinned or buried takes no signal at all, so the crowd never moves what a merchandiser placed. A
+hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
 new counts over the same index.
 
 Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and

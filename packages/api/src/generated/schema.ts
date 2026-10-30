@@ -121,9 +121,10 @@ export type NoResults = {
     /** How many products the same phrase finds with every filter removed. */
     readonly foundWithoutFilters: Scalars['Int']['output'];
     /**
-     * The most clicked products the viewer may see, within the category being
-     * browsed, by the clicks collected as of the store's build, then the most
-     * rated. With no clicks yet, the most rated.
+     * Among the fifty most rated products the viewer may see within the
+     * category being browsed, the most clicked first, by the clicks collected
+     * as of the store's build, then the most rated. With no clicks yet, the
+     * most rated.
      */
     readonly popular: ReadonlyArray<Product>;
     /**
@@ -140,7 +141,10 @@ export type NoResults = {
 
 export type Popularity = {
     readonly __typename?: 'Popularity';
-    /** How often the product was clicked in the results, as of the store's build. */
+    /**
+     * In how many visits the product was clicked in the results, as of the
+     * store's build.
+     */
     readonly clicks: Scalars['Int']['output'];
     /** What the score was multiplied by, from one up to the cap. */
     readonly weight: Scalars['Float']['output'];

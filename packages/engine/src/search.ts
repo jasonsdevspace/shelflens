@@ -321,11 +321,10 @@ const passing = (
     return result;
 };
 
-/** Applies the rules' boosts and buries to the scores, and remembers each effect. */
 /**
  * The most a signal may raise a score, as a multiplier. Below the smallest
  * boost a merchandiser would write, so a rule always says more than the
- * crowd, and above a bury it still leaves the product buried.
+ * crowd. A pinned or buried document takes no signal at all.
  */
 export const SIGNAL_CAP = 1.25;
 
@@ -348,6 +347,10 @@ interface Adjusted {
     readonly signals: ReadonlyMap<number, SignalEffect>;
 }
 
+/**
+ * Applies the rules' boosts and buries to the scores, then the signal for
+ * a document the rules left alone, and remembers each effect.
+ */
 const adjustScores = (
     index: Index,
     candidates: Candidates,
@@ -366,8 +369,11 @@ const adjustScores = (
             own.push(...adjusted.effects);
         }
         if (own.length > 0) rules.set(doc, own);
-        const count = signals[id];
-        if (count !== undefined && count > 0) {
+        // A pinned document is placed by the pin, not its score, and a buried one
+        // stays where the merchandiser put it, so neither takes the signal.
+        const ruled = own.some((effect) => effect.action === 'pin' || effect.action === 'bury');
+        const count = Object.hasOwn(signals, id) ? signals[id] : undefined;
+        if (!ruled && count !== undefined && count > 0) {
             const weight = signalWeight(count);
             candidates.scores[i] = (candidates.scores[i] ?? 0) * weight;
             chosen.set(doc, { count, weight });

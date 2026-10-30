@@ -9,8 +9,9 @@ provenance, and has a release on GitHub with the entry below as its notes.
 - Signals: `EngineConfig.signals` names how often each document was chosen, and a chosen
   document's relevance score is multiplied by a bounded weight, from one up to a cap of 1.25 at a
   hundred choices, rising with the log of the count. The cap sits below the smallest boost a
-  merchandiser would write and leaves a bury buried, and a pin is placed by the comparator, so a
-  signal never passes one. `reconfigure` takes `signals` as it takes rules.
+  merchandiser would write, and a document a rule pinned or buried takes no signal at all, so
+  the crowd never moves what a merchandiser placed. `reconfigure` takes `signals` as it takes
+  rules.
 - Every hit that was raised carries `signal`, the count and the weight, for explain mode.
 - `signalWeight`, `SIGNAL_CAP` and `SIGNAL_SATURATION` are exported, so a host can show what a
   count would do.

@@ -50,14 +50,16 @@ describe('the explanation on a card', () => {
         expect(lines).toEqual([
             'Result 1, score 25.34',
             'Pinned to the top by rule featured-jackets',
-            'Clicked 3 times before, score raised by 10%',
+            'Clicked in 3 visits before, score raised by 10%',
             '"jacket" matched "jacket" in the name',
         ]);
     });
 
     it('says one click in the singular, and nothing when nothing was clicked', () => {
         card(hitWith({ matches: [], rules: [], popularity: { clicks: 1, weight: 1.05 } }));
-        expect(screen.getByText('Clicked 1 time before, score raised by 5%')).toBeInTheDocument();
+        expect(
+            screen.getByText('Clicked in 1 visit before, score raised by 5%')
+        ).toBeInTheDocument();
     });
 
     it('says when the product is shown to members only, before the rules', () => {

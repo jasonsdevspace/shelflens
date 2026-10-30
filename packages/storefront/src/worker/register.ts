@@ -28,6 +28,32 @@ export const CLAIM_MESSAGE = { type: 'shelflens:claim' } as const;
 /** What a page sends its worker on every load, so the clicks collected so far count. */
 export const VISIT_MESSAGE = { type: 'shelflens:visit' } as const;
 
+/** What the worker answers once the visit's store is ready. */
+export const VISITED_MESSAGE = { type: 'shelflens:visited' } as const;
+
+/** How long a page waits for that answer before searching anyway. */
+export const VISIT_TIMEOUT_MS = 3000;
+
+/**
+ * Tells the worker a visit has begun and waits for its answer, so every
+ * request of the visit is answered by one store. A worker that does not
+ * answer in time is searched anyway, since a page that never loads would
+ * be worse than one visit answered by two versions.
+ */
+export const announceVisit = (
+    worker: Pick<ServiceWorker, 'postMessage'>,
+    timeoutMs = VISIT_TIMEOUT_MS
+): Promise<void> =>
+    new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const timer = setTimeout(resolve, timeoutMs);
+        channel.port1.onmessage = () => {
+            clearTimeout(timer);
+            resolve();
+        };
+        worker.postMessage(VISIT_MESSAGE, [channel.port2]);
+    });
+
 const browserHost = (): WorkerHost => ({
     serviceWorker: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
     reload: () => window.location.reload(),
@@ -59,7 +85,7 @@ export const controlledByWorker = async (
     });
     const registration = await serviceWorker.register(scriptUrl, { type: 'module', scope });
     if (controlled) {
-        serviceWorker.controller?.postMessage(VISIT_MESSAGE);
+        if (serviceWorker.controller) await announceVisit(serviceWorker.controller);
         return;
     }
     // Already active and not in charge: nothing is going to claim this page unasked.

@@ -213,9 +213,10 @@ type NoResults {
     foundWithoutFilters: Int!
 
     """
-    The most clicked products the viewer may see, within the category being
-    browsed, by the clicks collected as of the store's build, then the most
-    rated. With no clicks yet, the most rated.
+    Among the fifty most rated products the viewer may see within the
+    category being browsed, the most clicked first, by the clicks collected
+    as of the store's build, then the most rated. With no clicks yet, the
+    most rated.
     """
     popular: [Product!]!
 }
@@ -271,7 +272,8 @@ type Explanation {
 
 type Popularity {
     """
-    How often the product was clicked in the results, as of the store's build.
+    In how many visits the product was clicked in the results, as of the
+    store's build.
     """
     clicks: Int!
 

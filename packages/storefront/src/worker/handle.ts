@@ -10,6 +10,7 @@ import {
     receiveEvents,
     resolveRequest,
     responseHeaders,
+    type Signals,
     signalsOf,
     type StoreApi,
     withResponseCache,
@@ -130,11 +131,28 @@ export const createWorkerApi = ({
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<StoreApi> | undefined;
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
-    /** The clicks the store was built with, as a fingerprint. */
+    /** The clicks the store being served was built with, as a fingerprint. */
     let built = '';
 
     /** How often each product was clicked, from everything collected so far. */
     const clicks = async () => signalsOf(events ? await events.all() : []);
+
+    /** A store from the catalog, the rules and these signals, timed for the cold visit. */
+    const build = async (signals: Signals): Promise<StoreApi> => {
+        const began = performance.now();
+        const [catalog, rules] = await Promise.all([
+            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
+            rulesUrl === undefined
+                ? Promise.resolve([])
+                : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
+        ]);
+        const downloaded = performance.now();
+        const api = withResponseCache(
+            createStoreApi(createStore({ catalog, rules, signals }), { events })
+        );
+        startup = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
+        return api;
+    };
 
     const isApiRequest = (request: Request): boolean =>
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
@@ -154,25 +172,10 @@ export const createWorkerApi = ({
     };
 
     const load = (): Promise<StoreApi> => {
-        const began = performance.now();
-        store ??= Promise.all([
-            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
-            rulesUrl === undefined
-                ? Promise.resolve([])
-                : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
-            clicks(),
-        ])
-            .then(([catalog, rules, signals]) => {
-                const downloaded = performance.now();
-                const api = withResponseCache(
-                    createStoreApi(createStore({ catalog, rules, signals }), { events })
-                );
+        store ??= clicks()
+            .then((signals) => {
                 built = fingerprint(signals);
-                startup = {
-                    downloadMs: downloaded - began,
-                    buildMs: performance.now() - downloaded,
-                };
-                return api;
+                return build(signals);
             })
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
@@ -227,11 +230,19 @@ export const createWorkerApi = ({
             return startup;
         },
         refresh: async () => {
+            // A store still being built was built from the clicks as they were a
+            // moment ago, which is as fresh as a visit needs.
             if (store === undefined) return false;
-            if (fingerprint(await clicks()) === built) return false;
-            // Requests from here on wait for the new store, under its new version.
-            store = undefined;
-            await dropOthers(await load());
+            await store;
+            const signals = await clicks();
+            const next = fingerprint(signals);
+            if (next === built) return false;
+            // The old store keeps answering until the new one is ready, and stays
+            // if the new one cannot be built.
+            const api = await build(signals);
+            store = Promise.resolve(api);
+            built = next;
+            await dropOthers(api);
             return true;
         },
         handle: async (request) => {

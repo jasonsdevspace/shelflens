@@ -37,9 +37,9 @@ const matchText = (match: Match): string =>
 
 type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
 
-/** What the clicks did, in the shopper's words: how many, and by how much. */
+/** What the clicks did, in the shopper's words: in how many visits, and by how much. */
 const popularityText = ({ clicks, weight }: Popularity): string =>
-    `Clicked ${clicks} ${clicks === 1 ? 'time' : 'times'} before, score raised by ${Math.round((weight - 1) * 100)}%`;
+    `Clicked in ${clicks} ${clicks === 1 ? 'visit' : 'visits'} before, score raised by ${Math.round((weight - 1) * 100)}%`;
 
 const effectText = (effect: Effect): string => {
     const weight = effect.weight === null ? '' : ` by ${effect.weight}`;
