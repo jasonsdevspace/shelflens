@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -465,5 +465,41 @@ describe('what this browser searched before', () => {
         await user.keyboard('{Escape}');
         expect(input).toHaveFocus();
         expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+});
+
+describe('the box inside a shadow root', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('scrolls the highlighted option into view through its own tree', async () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'open' });
+        const container = document.createElement('div');
+        shadow.append(container);
+        const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+        const network = createNetwork();
+        const onSearch = vi.fn();
+        render(<SearchBox client={network.client} onSearch={onSearch} onPick={vi.fn()} />, {
+            container,
+        });
+        // A simulated user types at the document, which does not see into the shadow
+        // tree, so the keystrokes go to the box as events.
+        const input = within(container).getByRole('combobox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: 'trail' } });
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer(suggestionsFor('trail'));
+        await waitFor(() => expect(input).toHaveAttribute('aria-expanded', 'true'));
+        fireEvent.keyDown(input, { key: 'ArrowDown' });
+        fireEvent.keyDown(input, { key: 'ArrowDown' });
+        const second = within(container).getAllByRole('option')[1];
+        expect(scrolled).toHaveBeenCalled();
+        expect(scrolled.mock.instances[scrolled.mock.instances.length - 1]).toBe(second);
+        fireEvent.keyDown(input, { key: 'Enter' });
+        expect(onSearch).toHaveBeenCalledWith('trail jacket');
+        host.remove();
     });
 });

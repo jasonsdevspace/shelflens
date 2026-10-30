@@ -52,6 +52,10 @@ nineteen stops with the test behind each. For the same story without the code, t
 7. [Open a few jackets, then reload and search again with "Explain ranking" on.](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1)
    The ones you opened rise a little, with the count under each card, and the pinned ones stay
    first. The nudge is capped and folds in when a visit begins, never mid-page.
+8. [Open the search box on a page that is not the store's.](https://jasonsdevspace.com/shelflens/widget/)
+   That page styles every list item, button and input, stacks a banner over everything, clips
+   the box the widget sits in, and runs a React of its own. The widget keeps its look, opens its
+   list over the banner, and sends a search to the store.
 
 ## The gotchas, and the test behind each
 
@@ -72,6 +76,7 @@ version, and the tour's stops name them.
 | A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                                         | `packages/engine/src/search.test.ts`, `rules.test.ts`                                                                  |
 | Pins and boosts disappear under a sort, and the page says so                                                                                                 | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.test.tsx`                                            |
 | A rule written in the page is previewed before it is saved, and saved as a new store version                                                                 | `packages/storefront/src/results/RulesPanel.test.tsx`, `packages/storefront/src/worker/handle.test.ts`                 |
+| The widget keeps its look under a host page's CSS, opens its list over the host's z-index and out of its clipping, and leaves the host's own React counting  | `packages/storefront/src/widget/widget.test.tsx`, `packages/storefront/e2e/widget.spec.ts`                             |
 | A malformed request is a validation error with a code, never a 500                                                                                           | `packages/api/src/api.test.ts`, `http.test.ts`                                                                         |
 | A product with variants shows a range, in the store's currency and locale                                                                                    | `packages/storefront/src/format/money.test.ts`                                                                         |
 | What shoppers click rises a bounded amount, never past a pin, never out of a bury, and only when a visit begins                                              | `packages/engine/src/signals.test.ts`, `packages/api/src/api.test.ts`, `packages/storefront/src/worker/handle.test.ts` |

@@ -189,12 +189,97 @@ const KEYS: Readonly<Record<string, (keyed: Keyed) => void>> = {
  * long list. The pointer is left alone: scrolling under it would change
  * which option it rests on.
  */
-const useScrolledIntoView = (elementId: string | undefined, byKeys: RefObject<boolean>) => {
+const useScrolledIntoView = (
+    elementId: string | undefined,
+    byKeys: RefObject<boolean>,
+    input: RefObject<HTMLInputElement | null>
+) => {
     useEffect(() => {
-        if (elementId && byKeys.current) {
-            document.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
+        if (!elementId || !byKeys.current) return;
+        // The option is in the same tree as the box, which may be a shadow root rather
+        // than the document, and both know their elements by id.
+        const tree = input.current?.getRootNode();
+        if (tree instanceof Document || tree instanceof ShadowRoot) {
+            tree.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
         }
-    }, [elementId, byKeys]);
+    }, [elementId, byKeys, input]);
+};
+
+/** Whether this browser has a top layer for popovers. A test document does not, and shows the list in place. */
+const TOP_LAYER = typeof HTMLElement !== 'undefined' && 'togglePopover' in HTMLElement.prototype;
+
+/** How far below the box the popover sits, and how close to the viewport's edge it may reach. */
+const GAP_PX = 4;
+const EDGE_PX = 12;
+
+/** How little room under the box is too little, so the list opens above it instead. */
+const ROOM_PX = 160;
+
+/**
+ * Places the list under the box, from the box's rectangle, within the viewport.
+ * With too little room under the box and more above it, the list opens above,
+ * and it never reaches past the viewport's edge, so every option can be seen.
+ */
+const placeUnder = (box: HTMLElement, field: HTMLElement) => {
+    const rect = field.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom - GAP_PX - EDGE_PX;
+    const above = rect.top - GAP_PX - EDGE_PX;
+    const flipped = below < ROOM_PX && above > below;
+    // The viewport's width without a scrollbar, so the list never sits under one.
+    const viewport = document.documentElement.clientWidth;
+    const width = Math.min(rect.width, viewport - 2 * EDGE_PX);
+    const left = Math.min(Math.max(EDGE_PX, rect.left), viewport - EDGE_PX - width);
+    box.style.setProperty('left', `${left}px`);
+    box.style.setProperty('width', `${width}px`);
+    box.style.setProperty('top', flipped ? 'auto' : `${rect.bottom + GAP_PX}px`);
+    box.style.setProperty(
+        'bottom',
+        flipped ? `${window.innerHeight - rect.top + GAP_PX}px` : 'auto'
+    );
+    box.style.setProperty('max-height', `${Math.max(0, flipped ? above : below)}px`);
+};
+
+/**
+ * Puts the popover in the browser's top layer while it is open, over
+ * anything a page stacks or clips, and places it under the box from the
+ * box's own rectangle, following a scroll or a resize. A popover in the
+ * top layer is the same element in the same tree, so every id the box
+ * refers to still resolves, and focus moving onto its button is still
+ * focus within it.
+ */
+const usePlacedPopover = (
+    expanded: boolean,
+    input: RefObject<HTMLInputElement | null>,
+    popover: RefObject<HTMLDivElement | null>
+) => {
+    useEffect(() => {
+        const box = popover.current;
+        const field = input.current;
+        if (!box || !field || !TOP_LAYER) return;
+        if (!expanded) {
+            box.togglePopover(false);
+            return;
+        }
+        const place = () => placeUnder(box, field);
+        // The list's own scrolling is the one scroll that cannot move the box.
+        const scrolled = (event: Event) => {
+            if (!(event.target instanceof Node && box.contains(event.target))) place();
+        };
+        place();
+        box.togglePopover(true);
+        // The box moves with a scroll, a resize, and any layout the page or the host
+        // shifts under it, such as an image or a font landing late.
+        window.addEventListener('scroll', scrolled, true);
+        window.addEventListener('resize', place);
+        const watched = new ResizeObserver(place);
+        watched.observe(field);
+        watched.observe(document.body);
+        return () => {
+            window.removeEventListener('scroll', scrolled, true);
+            window.removeEventListener('resize', place);
+            watched.disconnect();
+        };
+    }, [expanded, input, popover]);
 };
 
 interface Said {
@@ -368,7 +453,8 @@ export const SearchBox = ({
     const optionId = (index: number) => `${id}-option-${index}`;
     const activeId = active >= 0 ? optionId(active) : undefined;
     const byKeys = useRef(false);
-    useScrolledIntoView(activeId, byKeys);
+    useScrolledIntoView(activeId, byKeys, input);
+    usePlacedPopover(expanded, input, popover);
     // The list is named by the visible heading while it is the shopper's own history.
     const naming =
         recentCount > 0 && !storeHas
@@ -489,7 +575,12 @@ export const SearchBox = ({
             <div className="searchbox-status" role="status" aria-live="polite">
                 {status}
             </div>
-            <div ref={popover} className="searchbox-popover" hidden={!expanded}>
+            <div
+                ref={popover}
+                className="searchbox-popover"
+                popover={TOP_LAYER ? 'manual' : undefined}
+                hidden={!expanded}
+            >
                 {recentCount > 0 && (
                     <RecentHead
                         headingId={headingId}

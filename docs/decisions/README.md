@@ -30,3 +30,6 @@ so the evidence was still fresh.
 11. [Recent searches are page state, kept in local storage](0011-recent-searches-are-page-state.md):
     never the worker's events, filtered as a source rather than shown as a mode, cleared by a
     button beside a visible heading, and joined only by a search that found something.
+12. [The widget keeps its own tree, and its popover takes the top layer](0012-the-widget-keeps-its-own-tree.md):
+    a shadow root over scoped CSS, the top layer over a stacking context, a React of its own
+    with the cost measured, and a demo that is honest about what a real embed still lacks.
