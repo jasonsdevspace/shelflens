@@ -68,7 +68,7 @@ export interface RulesSupport {
     readonly shipped: readonly Rule[];
     /** Refuses a set the engine refuses, in its words. */
     check(rules: readonly Rule[]): void;
-    /** The API over the store built with this set, or the shipped one when nothing is saved. */
+    /** The API over the store built with this saved set. A reset serves the API the host started with. */
     build(saved: readonly Rule[]): StoreApi;
 }
 

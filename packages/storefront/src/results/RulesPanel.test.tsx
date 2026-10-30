@@ -417,6 +417,18 @@ describe('the rules panel', () => {
         expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
     });
 
+    it('keeps the last set under an open form while the next is read', async () => {
+        const { user, storeBuiltAgain, onDraft } = open();
+        await user.click(await screen.findByRole('button', { name: /Featured jackets/ }));
+        vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
+        storeBuiltAgain(1);
+        // The rule is still one the store has, and the draft still carries the whole set.
+        expect(screen.getByRole('button', { name: 'Remove rule' })).toBeInTheDocument();
+        await user.type(screen.getByRole('textbox', { name: 'Name' }), '!');
+        const draft = onDraft.mock.lastCall?.[0] as Rule[];
+        expect(draft.map((rule) => rule.id)).toEqual(['all-boots', 'featured-jackets']);
+    });
+
     it('refuses a save while the rules for a change made elsewhere are still being read', async () => {
         const { user, storeBuiltAgain, onStoreChanged } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });

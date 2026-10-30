@@ -49,24 +49,25 @@ export { STEPS } from './rule-form.js';
 const NOT_SAVED = 'The rules could not be saved. Try again.';
 const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
 
-interface Loaded {
-    readonly rules: readonly Rule[];
-    readonly edited: boolean;
-    /** The store revision this set is the rules of. Another revision means another set. */
-    readonly revision: number;
-}
-
 interface RulesBody {
     readonly rules: readonly Rule[];
     readonly edited: boolean;
 }
 
+interface Loaded extends RulesBody {
+    /** The store revision this set is the rules of. Another revision means another set. */
+    readonly revision: number;
+}
+
+const isRule = (rule: unknown): boolean =>
+    typeof rule === 'object' && rule !== null && typeof (rule as { id?: unknown }).id === 'string';
+
 /** Whether a body is what the rules path answers, so a stray page with a 200 is not taken for one. */
-const isRulesBody = (body: unknown): body is RulesBody =>
-    typeof body === 'object' &&
-    body !== null &&
-    Array.isArray((body as { rules?: unknown }).rules) &&
-    typeof (body as { edited?: unknown }).edited === 'boolean';
+const isRulesBody = (body: unknown): body is RulesBody => {
+    if (typeof body !== 'object' || body === null) return false;
+    const { rules, edited } = body as { rules?: unknown; edited?: unknown };
+    return Array.isArray(rules) && rules.every(isRule) && typeof edited === 'boolean';
+};
 
 /** The rules path, asked once. Nothing comes back when the request itself could not be made. */
 const request = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
@@ -102,7 +103,7 @@ const NOT_YET = 'The rules are being read again. Try again in a moment.';
  */
 const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
     const [loaded, setLoaded] = useState<Loaded>();
-    const [failed, setFailed] = useState(false);
+    const [failedFor, setFailedFor] = useState<number>();
     // The revision this panel's own save made, whose read is skipped, once.
     const own = useRef<number>(undefined);
     // Each read takes a ticket and only the newest read's answer is kept, so an
@@ -112,7 +113,6 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
     const accept = (rules: readonly Rule[], revision: number) => {
         own.current = revision;
         setLoaded({ rules, edited: true, revision });
-        setFailed(false);
     };
     useEffect(() => {
         if (storeRevision === own.current) {
@@ -124,15 +124,20 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number) => {
         void read(rulesUrl).then((next) => {
             if (mine !== ticket.current) return;
             if (next) setLoaded({ ...next, revision: storeRevision });
-            setFailed(next === undefined);
+            else setFailedFor(storeRevision);
         });
         return () => {
             ticket.current += 1;
         };
     }, [rulesUrl, storeRevision]);
-    /** The set for the store as it is now, or nothing while it is still being read. */
-    const current = loaded?.revision === storeRevision ? loaded : undefined;
-    return { loaded: current, failed, accept };
+    // The last set read is kept for the form while the next is on its way, but only
+    // the set for the store as it is now can be saved over.
+    return {
+        loaded,
+        current: loaded?.revision === storeRevision,
+        failed: failedFor === storeRevision,
+        accept,
+    };
 };
 
 /** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
@@ -275,7 +280,7 @@ export const RulesPanel = ({
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, failed, accept } = useLoadedRules(rulesUrl, storeRevision);
+    const { loaded, current, failed, accept } = useLoadedRules(rulesUrl, storeRevision);
     useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
@@ -283,7 +288,7 @@ export const RulesPanel = ({
     const fields = useRef<HTMLFormElement>(null);
 
     const rules = loaded?.rules ?? [];
-    const editable = loaded !== undefined && !failed;
+    const editable = loaded !== undefined && current && !failed;
     // A product the rule may name: one the page showed while the rule was open, since
     // a hide or a bury takes it off the preview the moment it is named, or one a saved
     // rule already names, which the host has checked.
@@ -370,7 +375,6 @@ export const RulesPanel = ({
         }
     };
 
-    /** The host has its own rules back. Which those are is the host's to say, so the panel reads. */
     /** The host has its own rules back. Which those are is the host's to say, so the read follows. */
     const reset = () => {
         changed('The store’s own rules are back.');
