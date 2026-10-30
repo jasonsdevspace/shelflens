@@ -94,10 +94,30 @@ const proseOf = (source) =>
             text: line.replace(/`[^`]*`/g, '').replace(/&[a-z]+;/gi, ''),
         }));
 
+/**
+ * The page with every script block blanked, line breaks kept, so the line
+ * numbers still match. Found by scanning for the tags rather than with a
+ * pattern, since a pattern over HTML is easy to get subtly wrong.
+ */
+const withoutScripts = (source) => {
+    const lower = source.toLowerCase();
+    let out = '';
+    let at = 0;
+    for (;;) {
+        const open = lower.indexOf('<script', at);
+        if (open === -1) return out + source.slice(at);
+        let close = lower.indexOf('</script', open);
+        if (close === -1) close = source.length;
+        const end =
+            close === source.length ? close : source.indexOf('>', close) + 1 || source.length;
+        out += source.slice(at, open) + source.slice(open, end).replace(/[^\n]/g, '');
+        at = end;
+    }
+};
+
 /** The text of an HTML page, with its scripts and its tags removed, line by line. */
 const textOf = (source) =>
-    source
-        .replace(/<script[\s\S]*?<\/script>/gi, (block) => block.replace(/[^\n]/g, ''))
+    withoutScripts(source)
         .split('\n')
         .map((line, index) => ({
             index,
