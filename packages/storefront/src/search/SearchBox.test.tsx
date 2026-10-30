@@ -22,6 +22,7 @@ interface Pending {
     readonly phrase: string;
     readonly signal: AbortSignal | undefined;
     answer(suggestions: Suggestions): void;
+    fail(message: string): void;
 }
 
 const product = (sku: string, name: string): Suggestions['products'][number] => ({
@@ -57,6 +58,7 @@ const createNetwork = () => {
             pending.push({
                 phrase: variables.phrase,
                 signal,
+                fail: (message) => reject(new Error(message)),
                 answer: (suggest) =>
                     resolve(
                         new Response(JSON.stringify({ data: { suggest } }), {
@@ -310,6 +312,56 @@ describe('what this browser searched before', () => {
         expect(screen.getByRole('status')).toHaveTextContent('2 suggestions');
         await user.keyboard('{ArrowDown}{Enter}');
         expect(box.onSearch).toHaveBeenCalledWith('trail runner');
+    });
+
+    it('keeps the recent phrases, and no empty group, when the store has nothing to add', async () => {
+        rememberSearch('gift card');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'gi');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: [], products: [] });
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent('1 recent search')
+        );
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'gift card',
+        ]);
+        expect(screen.queryByRole('group', { name: 'Suggestions' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Clear recent searches' })).toBeNull();
+    });
+
+    it('says a failed request even while recent phrases match', async () => {
+        rememberSearch('boots');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'bo');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.fail('the network is down');
+        await waitFor(() =>
+            expect(screen.getByRole('status')).not.toHaveTextContent(/recent search|Searching/)
+        );
+        expect(screen.getByRole('status').textContent).not.toBe('');
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'boots',
+        ]);
+    });
+
+    it('shows a phrase once however the store spaces its suggestion of it', async () => {
+        rememberSearch('trail runner');
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'trail');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.answer({ queries: ['trail  runner', 'trail jacket'], products: [] });
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 suggestion'));
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'trail runner',
+            'trail jacket',
+        ]);
     });
 
     it('clears from a button reached by Tab, says so, and puts focus back in the box', async () => {

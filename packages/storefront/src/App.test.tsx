@@ -689,6 +689,17 @@ describe('what was searched before', () => {
         expect(localStorage.getItem('shelflens.recent')).toBeNull();
     });
 
+    it('never offers a misspelling the store corrected', async () => {
+        const user = await open('?q=jackit');
+        await settled();
+        expect(heading()).toHaveTextContent('showing close matches');
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.click(box);
+        expect(box).toHaveAttribute('aria-expanded', 'false');
+        expect(localStorage.getItem('shelflens.recent')).toBeNull();
+    });
+
     it('never offers a search that found nothing', async () => {
         const user = await open('?q=zzqx');
         await settled();

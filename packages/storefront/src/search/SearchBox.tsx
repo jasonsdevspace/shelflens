@@ -2,6 +2,7 @@ import {
     type FocusEvent,
     type KeyboardEvent,
     type ReactNode,
+    type RefObject,
     useEffect,
     useId,
     useMemo,
@@ -11,8 +12,15 @@ import {
 
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { GraphQLClient } from '../client/graphql.js';
+import { count } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
-import { clearRecentSearches, matchingRecent, useRecentSearches } from './recent.js';
+import {
+    clearRecentSearches,
+    fold,
+    matchingRecent,
+    refreshRecentSearches,
+    useRecentSearches,
+} from './recent.js';
 import { Swatch } from './Swatch.jsx';
 import { isAskable, type Suggestions, useSuggestions } from './useSuggestions.js';
 
@@ -47,8 +55,6 @@ type Option =
 /** How many recent phrases sit above the suggestions once there are suggestions to show. */
 const RECENT_BESIDE_SUGGESTIONS = 3;
 
-const fold = (phrase: string) => phrase.trim().toLowerCase();
-
 /** The options in order: recent phrases, suggested queries not already among them, products. */
 const optionsOf = (
     recent: readonly string[],
@@ -75,16 +81,19 @@ const keyOf = (option: Option): string =>
 const usePopover = (
     recent: readonly string[],
     phrase: string,
+    askable: boolean,
     suggestions: Suggestions | undefined
 ) => {
     const matching = useMemo(() => matchingRecent(recent, phrase), [recent, phrase]);
     const options = useMemo(() => optionsOf(matching, suggestions), [matching, suggestions]);
+    const recentCount = options.filter((option) => option.kind === 'recent').length;
     return {
         options,
-        // Recent phrases alone, with their heading and the way to clear them, until
-        // the store has something to suggest beside them.
-        recentOnly: matching.length > 0 && suggestions === undefined,
-        recentCount: options.filter((option) => option.kind === 'recent').length,
+        recentCount,
+        // Recent phrases alone, with their heading and the way to clear them, until two
+        // characters are typed and the store is asked. Deciding on the typing rather than
+        // on the answer keeps the heading in place while the answer is on its way.
+        recentOnly: !askable && recentCount > 0,
     };
 };
 
@@ -157,23 +166,29 @@ const KEYS: Readonly<Record<string, (keyed: Keyed) => void>> = {
     Escape: ({ close }) => close(),
 };
 
-const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-/** Keeps the highlighted option in view as the arrow keys move it through a long list. */
-const useScrolledIntoView = (elementId: string | undefined) => {
+/**
+ * Keeps the highlighted option in view as the arrow keys move it through a
+ * long list. The pointer is left alone: scrolling under it would change
+ * which option it rests on.
+ */
+const useScrolledIntoView = (elementId: string | undefined, byKeys: RefObject<boolean>) => {
     useEffect(() => {
-        if (elementId) document.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
-    }, [elementId]);
+        if (elementId && byKeys.current) {
+            document.getElementById(elementId)?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [elementId, byKeys]);
 };
 
 interface Said {
     readonly notice: string;
     readonly open: boolean;
-    readonly recentOnly: boolean;
     readonly askable: boolean;
     readonly loading: boolean;
     readonly error: string | undefined;
-    readonly shown: number;
+    /** How many of the shopper's own phrases are listed. */
+    readonly recent: number;
+    /** How many of the store's suggestions are listed. */
+    readonly suggested: number;
 }
 
 /**
@@ -182,13 +197,15 @@ interface Said {
  * count of none and an error are news too. A clear is said once, whatever else
  * is true.
  */
-const statusOf = ({ notice, open, recentOnly, askable, loading, error, shown }: Said): string => {
+const statusOf = ({ notice, open, askable, loading, error, recent, suggested }: Said): string => {
     if (notice) return notice;
     if (!open) return '';
-    if (recentOnly) return count(shown, 'recent search', 'recent searches');
-    if (!askable) return '';
-    if (loading && shown === 0) return 'Searching';
-    return error ?? count(shown, 'suggestion', 'suggestions');
+    if (!askable) return recent > 0 ? count(recent, 'recent search', 'recent searches') : '';
+    // A failure is news before a wait is: nothing is coming.
+    if (error) return error;
+    if (loading && suggested === 0) return 'Searching';
+    if (suggested > 0) return count(suggested, 'suggestion', 'suggestions');
+    return recent > 0 ? count(recent, 'recent search', 'recent searches') : '0 suggestions';
 };
 
 const OptionRow = ({
@@ -320,14 +337,30 @@ export const SearchBox = ({
     const recent = useRecentSearches();
 
     const askable = isAskable(phrase);
-    const { options, recentOnly, recentCount } = usePopover(recent, phrase, answered?.suggestions);
+    const { options, recentCount, recentOnly } = usePopover(
+        recent,
+        phrase,
+        askable,
+        answered?.suggestions
+    );
     const expanded = open && (options.length > 0 || (askable && loading));
     const listId = `${id}-listbox`;
     const headingId = `${id}-recent`;
     const optionId = (index: number) => `${id}-option-${index}`;
 
     const activeId = active >= 0 ? optionId(active) : undefined;
-    useScrolledIntoView(activeId);
+    const byKeys = useRef(false);
+    const close = () => {
+        setNotice('');
+        setOpen(false);
+        setActive(-1);
+    };
+    /** Opening by the keys says the count again, so a clear said once is not said over a list. */
+    const openBy = (next: boolean) => {
+        if (next) setNotice('');
+        setOpen(next);
+    };
+    useScrolledIntoView(activeId, byKeys);
     // The list is named by the visible heading while it is the shopper's own history.
     const naming = recentOnly ? { 'aria-labelledby': headingId } : { 'aria-label': 'Suggestions' };
 
@@ -338,8 +371,11 @@ export const SearchBox = ({
         onSearch,
         onPick,
         setPhrase,
-        setOpen,
-        setActive,
+        setOpen: openBy,
+        setActive: (update) => {
+            byKeys.current = true;
+            setActive(update);
+        },
     });
 
     const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -352,10 +388,6 @@ export const SearchBox = ({
     /** Focus moving within the popover, to the clear button, is not leaving. */
     const leaving = (event: FocusEvent) =>
         !(event.relatedTarget instanceof Node && popover.current?.contains(event.relatedTarget));
-    const close = () => {
-        setOpen(false);
-        setActive(-1);
-    };
     const closeIfLeft = (event: FocusEvent) => {
         if (leaving(event)) close();
     };
@@ -372,12 +404,12 @@ export const SearchBox = ({
     const status = statusOf({
         notice,
         open,
-        recentOnly,
         askable,
         loading,
         error,
         // The count is of the store's suggestions, not of the shopper's own phrases above them.
-        shown: recentOnly ? options.length : options.length - recentCount,
+        recent: recentCount,
+        suggested: options.length - recentCount,
     });
 
     const renderOption = (option: Option, index: number) => (
@@ -388,10 +420,14 @@ export const SearchBox = ({
             active={index === active}
             locale={locale}
             onChoose={choose}
-            onHover={() => setActive(index)}
+            onHover={() => {
+                byKeys.current = false;
+                setActive(index);
+            }}
         />
     );
-    const grouped = !recentOnly && recentCount > 0;
+    const grouped = askable && recentCount > 0;
+    const suggested = options.slice(recentCount);
 
     return (
         <div className="searchbox">
@@ -421,6 +457,7 @@ export const SearchBox = ({
                 }}
                 onFocus={() => {
                     setNotice('');
+                    refreshRecentSearches();
                     setOpen(true);
                 }}
                 onBlur={closeIfLeft}
@@ -448,11 +485,13 @@ export const SearchBox = ({
                             <Group id={`${id}-group-recent`} title="Recent searches">
                                 {options.slice(0, recentCount).map(renderOption)}
                             </Group>
-                            <Group id={`${id}-group-suggested`} title="Suggestions">
-                                {options
-                                    .slice(recentCount)
-                                    .map((option, i) => renderOption(option, recentCount + i))}
-                            </Group>
+                            {suggested.length > 0 && (
+                                <Group id={`${id}-group-suggested`} title="Suggestions">
+                                    {suggested.map((option, i) =>
+                                        renderOption(option, recentCount + i)
+                                    )}
+                                </Group>
+                            )}
                         </>
                     ) : (
                         options.map(renderOption)

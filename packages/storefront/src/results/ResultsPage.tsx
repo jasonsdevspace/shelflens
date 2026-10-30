@@ -396,7 +396,9 @@ const useRememberedSearch = (
     /** Whether the result is the store's own answer to this search, not a preview or an older one. */
     own: boolean
 ) => {
-    const found = own && result !== undefined && result.total > 0;
+    // Close matches for a misspelling are the store's work, not a search to run again.
+    const found =
+        own && result !== undefined && result.total > 0 && result.matching !== 'CORRECTED';
     useEffect(() => {
         if (phrase && found) rememberSearch(phrase);
     }, [phrase, found]);

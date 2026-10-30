@@ -7,7 +7,9 @@ import { useSyncExternalStore } from 'react';
  * document, and then nothing is kept and nothing is offered.
  *
  * The list is read through one store, so every box on the page sees the
- * same list and a change made here or in another tab reaches them all.
+ * same list. It is read from storage when a box opens, when this page
+ * writes it, and when another tab does, and otherwise served from memory,
+ * so a keystroke never costs a storage read.
  */
 
 const KEY = 'shelflens.recent';
@@ -17,7 +19,8 @@ export const RECENT_LIMIT = 8;
 
 const NONE: readonly string[] = [];
 
-const fold = (phrase: string): string => phrase.trim().replace(/\s+/g, ' ').toLowerCase();
+/** One spelling for comparing phrases: trimmed, one space between words, lowercase. */
+export const fold = (phrase: string): string => phrase.trim().replace(/\s+/g, ' ').toLowerCase();
 
 const listeners = new Set<() => void>();
 // The last text read and the list made of it, so the same array comes back while
@@ -29,9 +32,11 @@ const parse = (text: string | null): readonly string[] => {
     if (!text) return NONE;
     try {
         const parsed: unknown = JSON.parse(text);
-        return Array.isArray(parsed)
-            ? parsed.filter((p): p is string => typeof p === 'string')
-            : NONE;
+        if (!Array.isArray(parsed)) return NONE;
+        // Storage can hold anything: another tab, an older build, a hand edit.
+        return parsed
+            .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+            .slice(0, RECENT_LIMIT);
     } catch {
         return NONE;
     }
@@ -45,11 +50,7 @@ const textOf = (): string | null => {
     }
 };
 
-/**
- * The list as it stands, read from storage each time so a change made in
- * another tab shows on the next open. The same array comes back while the
- * stored text is the same.
- */
+/** The list as storage holds it now. The same array comes back while the stored text is the same. */
 export const recentSearches = (): readonly string[] => {
     const text = textOf();
     if (text !== lastText) {
@@ -59,8 +60,17 @@ export const recentSearches = (): readonly string[] => {
     return lastList;
 };
 
-const changed = () => {
+/** The list as last read, without touching storage. */
+const peek = (): readonly string[] => lastList;
+
+const notify = () => {
     for (const listener of listeners) listener();
+};
+
+/** Reads storage again, as when a box opens, and tells every box if the list changed. */
+export const refreshRecentSearches = (): void => {
+    const before = lastList;
+    if (recentSearches() !== before) notify();
 };
 
 const write = (phrases: readonly string[]): void => {
@@ -70,10 +80,11 @@ const write = (phrases: readonly string[]): void => {
     } catch {
         // Nothing to do: the list is not kept in this browser.
     }
-    changed();
+    recentSearches();
+    notify();
 };
 
-/** Puts a phrase first, once, however it was capitalized before. */
+/** Puts a phrase first, once, however it was spelled before. */
 export const rememberSearch = (phrase: string): void => {
     const wanted = phrase.trim().replace(/\s+/g, ' ');
     if (!wanted) return;
@@ -83,15 +94,6 @@ export const rememberSearch = (phrase: string): void => {
 
 export const clearRecentSearches = (): void => {
     write(NONE);
-};
-
-const subscribe = (listener: () => void) => {
-    listeners.add(listener);
-    window.addEventListener('storage', listener);
-    return () => {
-        listeners.delete(listener);
-        window.removeEventListener('storage', listener);
-    };
 };
 
 /** The phrases that start with what was typed, as a whole or at any word, newest first. */
@@ -106,6 +108,18 @@ export const matchingRecent = (phrases: readonly string[], typed: string): reado
     });
 };
 
+const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    // Another tab wrote the list.
+    const onStorage = () => refreshRecentSearches();
+    window.addEventListener('storage', onStorage);
+    refreshRecentSearches();
+    return () => {
+        listeners.delete(listener);
+        window.removeEventListener('storage', onStorage);
+    };
+};
+
 /** The list, kept current as it changes here or in another tab. */
 export const useRecentSearches = (): readonly string[] =>
-    useSyncExternalStore(subscribe, recentSearches, () => NONE);
+    useSyncExternalStore(subscribe, peek, () => NONE);

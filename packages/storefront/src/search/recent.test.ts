@@ -84,4 +84,11 @@ describe('recent searches', () => {
         expect(matchingRecent(phrases, '  tra ')).toEqual(['trail runner']);
         expect(matchingRecent(phrases, 'x')).toEqual([]);
     });
+
+    it('takes only so many from storage, and nothing blank, whatever another tab wrote', () => {
+        const many = ['', ...Array.from({ length: 40 }, (_, i) => `phrase ${i}`)];
+        localStorage.setItem('shelflens.recent', JSON.stringify(many));
+        expect(recentSearches()).toHaveLength(RECENT_LIMIT);
+        expect(recentSearches()[0]).toBe('phrase 0');
+    });
 });
