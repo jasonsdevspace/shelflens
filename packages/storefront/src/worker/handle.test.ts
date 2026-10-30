@@ -398,6 +398,34 @@ describe('rules in the worker', () => {
             rules,
         });
 
+    it('builds one store at a time, so a refresh racing a save cannot undo it', async () => {
+        const events = createMemoryEventStore();
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            rulesUrl: 'rules.json',
+            base: BASE,
+            fetch: serving(catalog, { rules: [] }),
+            allowFullQueries: true,
+            rules: createMemoryRuleStore(),
+            events,
+        });
+        await api.warm();
+        await events.append([
+            { id: 'c', kind: 'click', at: 1, sku: jacket[1]?.sku ?? '', session: 's', position: 1 },
+        ]);
+        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [jacket[2]?.sku] }];
+        // The refresh starts first and reads the rules as they are, then the save lands.
+        const [refreshed, saved] = await Promise.all([
+            api.refresh(),
+            api.handle(rulesRequest('POST', { rules: draft })),
+        ]);
+        expect(refreshed).toBe(true);
+        expect(saved?.status).toBe(204);
+        const after = await api.handle(search());
+        expect(after?.headers.get(VERSION_HEADER)).toBe(saved?.headers.get(VERSION_HEADER));
+        expect((await body(after)).data.search.merchandising.applied).toEqual(['mine']);
+    });
+
     it('serves the shipped rules until a set is saved, and then that set as a new version', async () => {
         const api = worker();
         const before = await api.handle(search());

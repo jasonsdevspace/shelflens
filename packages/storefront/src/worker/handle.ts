@@ -196,13 +196,24 @@ export const createWorkerApi = ({
         return { api, model };
     };
 
-    /** Builds the store again, as a new version, and serves it from here on. */
-    const rebuild = async (): Promise<Built> => {
+    const buildAgain = async (): Promise<Built> => {
         const signals = await clicks();
         const next = await build(signals);
         store = Promise.resolve(next);
         built = fingerprint(signals);
         await dropOthers(next.api);
+        return next;
+    };
+    // One build at a time, in the order asked, so a visit's refresh racing a save
+    // cannot finish last with a store built from the rules before the save.
+    let building: Promise<void> = Promise.resolve();
+    /** Builds the store again, as a new version, and serves it from here on. */
+    const rebuild = (): Promise<Built> => {
+        const next = building.then(buildAgain, buildAgain);
+        building = next.then(
+            () => undefined,
+            () => undefined
+        );
         return next;
     };
 

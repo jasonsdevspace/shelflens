@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 
 import {
     createMemoryEventStore,
+    createMemoryRuleStore,
     createStore,
     createStoreApi,
     GROUP_HEADER,
@@ -143,5 +144,74 @@ describe('events over HTTP', () => {
         expect(got.status).toBe(405);
         const nowhere = await fetch(`${bareBase}/events`, { method: 'POST', body: '[]' });
         expect(nowhere.status).toBe(404);
+    });
+});
+
+describe('rules over HTTP', () => {
+    const catalog = generateCatalog({ seed: 42, products: 200 });
+    const jacket = catalog.products.find((p) => /jacket/i.test(p.name));
+    if (!jacket) throw new Error('expected a jacket');
+    const shipped = [{ id: 'shipped', when: { queries: ['jacket'] }, pin: [jacket.sku] }];
+    const built = (saved: readonly (typeof shipped)[number][] | undefined) =>
+        createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
+    const shippedStore = built(undefined);
+    const host = createServer({
+        api: createStoreApi(shippedStore),
+        rateLimitPerMinute: 3,
+        rules: {
+            store: createMemoryRuleStore(),
+            shipped,
+            check: (draft) => {
+                shippedStore.engine.reconfigure({ rules: draft });
+            },
+            build: (saved) => createStoreApi(built(saved as typeof shipped)),
+        },
+    });
+    let hostBase = '';
+    beforeAll(async () => {
+        await new Promise<void>((resolve) => host.listen(0, resolve));
+        hostBase = `http://127.0.0.1:${(host.address() as AddressInfo).port}`;
+    });
+    afterAll(async () => {
+        await new Promise<void>((resolve) => host.close(() => resolve()));
+    });
+    const rules = (method: string, body?: unknown) =>
+        fetch(`${hostBase}/rules`, {
+            method,
+            ...(body !== undefined && { body: JSON.stringify(body) }),
+        });
+    const applied = async () => {
+        const response = await fetch(`${hostBase}/graphql`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                query: '{ search(input: { phrase: "jacket" }) { merchandising { applied } } }',
+            }),
+        });
+        return (
+            (await response.json()) as {
+                data: { search: { merchandising: { applied: string[] } } };
+            }
+        ).data.search.merchandising.applied;
+    };
+
+    it('serves the shipped set, replaces it under a new version, and rates the path', async () => {
+        expect(await (await rules('GET')).json()).toEqual({ rules: shipped, edited: false });
+        expect(await applied()).toEqual(['shipped']);
+        const refused = await rules('POST', { rules: [{ id: 'ghost', pin: ['SL-99999'] }] });
+        expect(refused.status).toBe(400);
+        expect(await applied()).toEqual(['shipped']);
+        const saved = await rules('POST', {
+            rules: [{ id: 'mine', when: { queries: ['jacket'] }, pin: [jacket.sku] }],
+        });
+        expect(saved.status).toBe(204);
+        expect(saved.headers.get(VERSION_HEADER)).toMatch(/\+rules\./);
+        expect(await applied()).toEqual(['mine']);
+        // The three before spent the allowance.
+        expect((await rules('GET')).status).toBe(429);
+    });
+
+    it('is refused where the host keeps no rules', async () => {
+        expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
     });
 });

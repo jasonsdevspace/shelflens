@@ -571,6 +571,70 @@ describe('as a merchandiser', () => {
             expect(screen.queryByRole('complementary', { name: 'Rules' })).toBeNull()
         );
     });
+
+    it('saves a hide rule, though the product it names has left the preview', async () => {
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await settled();
+        expect(cards().map(sku)).not.toContain(last);
+        await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
+        expect(await within(panel).findByRole('status')).toHaveTextContent(/Rule saved\./);
+        await settled();
+        expect(cards().map(sku)).not.toContain(last);
+    });
+
+    it('drops the draft with the panel when a new search closes it', async () => {
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.clear(box);
+        await user.type(box, 'boot{Enter}');
+        await settled();
+        expect(window.location.search).toBe('?q=boot&explain=1');
+        await user.click(screen.getByRole('button', { name: 'Rules' }));
+        await settled();
+        expect(screen.queryByText(/Previewing a draft/)).toBeNull();
+    });
+
+    it('keeps a half written rule while the drawer is closed to see the results', async () => {
+        vi.stubGlobal('matchMedia', (query: string) => ({
+            matches: query.includes('max-width'),
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }));
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        const drawer = screen.getByRole('dialog', { name: 'Rules' });
+        await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(drawer).getByRole('textbox', { name: 'Name' }), 'Last first');
+        await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), last);
+        await user.click(within(drawer).getByRole('button', { name: 'See the results' }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        expect(
+            within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('textbox', {
+                name: 'Name',
+            })
+        ).toHaveValue('Last first');
+        vi.stubGlobal('matchMedia', undefined);
+    });
 });
 
 describe('beside a product', () => {

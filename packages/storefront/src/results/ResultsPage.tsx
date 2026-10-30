@@ -393,6 +393,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         <RulesColumn narrow={narrow}>
             <RulesPanel
                 phrase={state.phrase}
+                applied={[...result.merchandising.applied, ...setAside]}
                 rulesUrl={props.rulesUrl}
                 products={result.items.map((hit) => ({
                     sku: hit.product.sku,

@@ -24,6 +24,8 @@ export interface Form {
     readonly step: number;
     /** The parts of an existing rule the form does not edit, kept as they are. */
     readonly kept: Kept;
+    /** The products the page has shown while this rule was open, which it may still name. */
+    readonly seen: readonly string[];
 }
 
 export interface Kept {
@@ -80,6 +82,7 @@ export const fresh = (phrase: string | undefined): Form => ({
     brand: '',
     step: 1,
     kept: {},
+    seen: [],
 });
 
 /** Whether a rule names products or a brand, for the two kinds of adjustment. */
@@ -120,6 +123,7 @@ export const formOf = (rule: Rule): Form => {
             ...(rule.when?.filter && { filter: rule.when.filter }),
             ...(rule.active && { active: rule.active }),
         },
+        seen: [],
     };
 };
 
@@ -187,15 +191,6 @@ export const problemsOf = (form: Form, known: ReadonlySet<string>): Problems => 
         problems.brand = 'Choose a brand.';
     }
     return problems;
-};
-
-/** Whether a rule applies to the search in the box. A rule with no trigger applies to every search. */
-export const applies = (rule: Rule, phrase: string | undefined): boolean => {
-    const queries = rule.when?.queries;
-    if (!queries || queries.length === 0) return true;
-    if (!phrase) return false;
-    const wanted = phrase.trim().toLowerCase();
-    return queries.some((query) => query.trim().toLowerCase() === wanted);
 };
 
 const count = (n: number) => `${n} ${n === 1 ? 'product' : 'products'}`;

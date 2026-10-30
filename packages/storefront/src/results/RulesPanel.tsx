@@ -2,7 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
 import { useEffect, useRef, useState } from 'react';
 
-import { applies, type Form, formOf, fresh, problemsOf, ruleOf, summary } from './rule-form.js';
+import { type Form, formOf, fresh, problemsOf, ruleOf, summary } from './rule-form.js';
 import { RuleForm } from './RuleForm.js';
 
 /**
@@ -23,6 +23,8 @@ import { RuleForm } from './RuleForm.js';
 export interface RulesPanelProps {
     /** The search the rules are read for. Rules apply to a search, so without one the panel says so. */
     readonly phrase: string | undefined;
+    /** The ids of the rules the engine applied to this search, or set aside for its sort. */
+    readonly applied: readonly string[];
     /** Where the rules are read and saved. */
     readonly rulesUrl: string;
     /** The products on the results page, which a rule can name. */
@@ -45,44 +47,67 @@ interface Loaded {
 }
 
 const read = async (rulesUrl: string): Promise<Loaded | undefined> => {
-    const response = await fetch(rulesUrl);
-    return response.ok ? ((await response.json()) as Loaded) : undefined;
+    try {
+        const response = await fetch(rulesUrl);
+        return response.ok ? ((await response.json()) as Loaded) : undefined;
+    } catch {
+        return undefined;
+    }
 };
 
-/** The rules the host holds, read once the panel opens and again after each save. */
+/**
+ * The rules the host holds, read once the panel opens and again after each
+ * save. Until they are read nothing can be edited, since a save posts the
+ * whole set and a set built on nothing would wipe the store's rules.
+ */
 const useLoadedRules = (rulesUrl: string) => {
     const [loaded, setLoaded] = useState<Loaded>();
+    const [failed, setFailed] = useState(false);
     const reload = async () => {
         const next = await read(rulesUrl);
         if (next) setLoaded(next);
+        setFailed(next === undefined);
     };
     useEffect(() => {
         let open = true;
         void read(rulesUrl).then((next) => {
-            if (open && next) setLoaded(next);
+            if (!open) return;
+            if (next) setLoaded(next);
+            setFailed(next === undefined);
         });
         return () => {
             open = false;
         };
     }, [rulesUrl]);
-    return { loaded, reload };
+    return { loaded, failed, reload };
+};
+
+/** The draft is the panel's, so it goes with the panel: a closed panel previews nothing. */
+const useDraftCleared = (onDraft: RulesPanelProps['onDraft']) => {
+    const latest = useRef(onDraft);
+    useEffect(() => {
+        latest.current = onDraft;
+    }, [onDraft]);
+    useEffect(() => () => latest.current(undefined), []);
 };
 
 const RuleList = ({
     rules,
+    applied,
     phrase,
     onPick,
 }: {
     readonly rules: readonly Rule[];
+    readonly applied: readonly string[];
     readonly phrase: string | undefined;
     readonly onPick: (rule: Rule) => void;
 }) => {
     const [showAll, setShowAll] = useState(false);
-    const applying = rules.filter((rule) => applies(rule, phrase));
+    const applying = rules.filter((rule) => applied.includes(rule.id));
     const listed = showAll ? rules : applying;
     return (
         <>
-            {!phrase && !showAll && (
+            {!phrase && applying.length === 0 && !showAll && (
                 <p className="notice">
                     A rule applies to a search. Search for something to see the rules that apply to
                     it.
@@ -139,9 +164,11 @@ export const DiscardRules = ({ onDiscard }: { readonly onDiscard: () => void }) 
     );
 };
 
+const NOT_SAVED = 'The rules could not be saved. Try again.';
+
 const failureOf = async (response: Response): Promise<string> => {
     const body = (await response.json().catch(() => ({}))) as { errors?: { message: string }[] };
-    return body.errors?.[0]?.message ?? 'The rules could not be saved. Try again.';
+    return body.errors?.[0]?.message ?? NOT_SAVED;
 };
 
 const versionLine = (response: Response, said: string): string => {
@@ -151,8 +178,22 @@ const versionLine = (response: Response, said: string): string => {
         : `${said}.`;
 };
 
+const union = (...lists: readonly (readonly string[])[]): readonly string[] => [
+    ...new Set(lists.flat()),
+];
+
+/** Every product a rule names, which the host has already checked exist. */
+const namedBy = (rules: readonly Rule[]): readonly string[] =>
+    rules.flatMap((rule) => [
+        ...(rule.pin ?? []),
+        ...(rule.hide ?? []),
+        ...(rule.boost ?? []).flatMap((a) => a.ids ?? []),
+        ...(rule.bury ?? []).flatMap((a) => a.ids ?? []),
+    ]);
+
 export const RulesPanel = ({
     phrase,
+    applied,
     rulesUrl,
     products,
     brands,
@@ -161,14 +202,19 @@ export const RulesPanel = ({
     byRelevance,
     onSortByRelevance,
 }: RulesPanelProps) => {
-    const { loaded, reload } = useLoadedRules(rulesUrl);
+    const { loaded, failed, reload } = useLoadedRules(rulesUrl);
+    useDraftCleared(onDraft);
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
     const [message, setMessage] = useState('');
     const fields = useRef<HTMLFormElement>(null);
 
     const rules = loaded?.rules ?? [];
-    const known = new Set(products.map((product) => product.sku));
+    const onPage = products.map((product) => product.sku);
+    // A product the rule may name: one on the page, one the page showed while the
+    // rule was open, since a hide or a bury takes it off the preview the moment it
+    // is named, or one a saved rule already names, which the host has checked.
+    const known = new Set(union(onPage, form?.seen ?? [], namedBy(rules)));
     const problems = form ? problemsOf(form, known) : {};
     const valid = form !== undefined && Object.keys(problems).length === 0;
 
@@ -179,10 +225,13 @@ export const RulesPanel = ({
     ];
 
     const edit = (next: Form) => {
-        setForm(next);
+        const seen = union(next.seen, onPage);
+        const form = { ...next, seen };
+        setForm(form);
         setMessage('');
-        const sound = Object.keys(problemsOf(next, known)).length === 0;
-        onDraft(sound ? setWith(ruleOf(next)) : undefined);
+        const sound =
+            Object.keys(problemsOf(form, new Set(union(seen, namedBy(rules))))).length === 0;
+        onDraft(sound ? setWith(ruleOf(form)) : undefined);
     };
     const close = () => {
         setForm(undefined);
@@ -190,23 +239,29 @@ export const RulesPanel = ({
         onDraft(undefined);
     };
 
+    /** The store is new: the page forgets first, so nothing it shows next is from before. */
     const changed = async (said: string) => {
+        onStoreChanged();
         setMessage(said);
         close();
         await reload();
-        onStoreChanged();
     };
 
     const commit = async (set: readonly Rule[], said: string) => {
-        const response = await fetch(rulesUrl, {
-            method: 'POST',
-            body: JSON.stringify({ rules: set }),
-        });
-        if (!response.ok) {
-            setMessage(await failureOf(response));
-            return;
+        if (!loaded) return;
+        try {
+            const response = await fetch(rulesUrl, {
+                method: 'POST',
+                body: JSON.stringify({ rules: set }),
+            });
+            if (!response.ok) {
+                setMessage(await failureOf(response));
+                return;
+            }
+            await changed(versionLine(response, said));
+        } catch {
+            setMessage(NOT_SAVED);
         }
-        await changed(versionLine(response, said));
     };
 
     // A failed save puts focus on the first field with a problem, once the
@@ -228,16 +283,25 @@ export const RulesPanel = ({
     };
 
     const remove = () => {
-        if (form)
+        if (form) {
             void commit(
                 rules.filter((kept) => kept.id !== form.id),
                 'Rule removed'
             );
+        }
     };
 
     const discard = async () => {
-        await fetch(rulesUrl, { method: 'DELETE' });
-        await changed('The store’s own rules are back.');
+        try {
+            const response = await fetch(rulesUrl, { method: 'DELETE' });
+            if (!response.ok) {
+                setMessage(await failureOf(response));
+                return;
+            }
+            await changed('The store’s own rules are back.');
+        } catch {
+            setMessage(NOT_SAVED);
+        }
     };
 
     return (
@@ -256,6 +320,11 @@ export const RulesPanel = ({
                     {message}
                 </p>
             )}
+            {failed && !loaded && (
+                <p className="notice" role="alert">
+                    The rules could not be read. Reload the page and try again.
+                </p>
+            )}
             {form ? (
                 <RuleForm
                     form={form}
@@ -271,19 +340,26 @@ export const RulesPanel = ({
                     onRemove={remove}
                 />
             ) : (
-                <>
-                    <RuleList rules={rules} phrase={phrase} onPick={(rule) => edit(formOf(rule))} />
-                    <div className="rules-actions">
-                        <button
-                            type="button"
-                            className="facet-more"
-                            onClick={() => edit(fresh(phrase))}
-                        >
-                            Add a rule
-                        </button>
-                    </div>
-                    {loaded?.edited && <DiscardRules onDiscard={() => void discard()} />}
-                </>
+                loaded && (
+                    <>
+                        <RuleList
+                            rules={rules}
+                            applied={applied}
+                            phrase={phrase}
+                            onPick={(rule) => edit(formOf(rule))}
+                        />
+                        <div className="rules-actions">
+                            <button
+                                type="button"
+                                className="facet-more"
+                                onClick={() => edit(fresh(phrase))}
+                            >
+                                Add a rule
+                            </button>
+                        </div>
+                        {loaded.edited && <DiscardRules onDiscard={() => void discard()} />}
+                    </>
+                )
             )}
         </div>
     );

@@ -88,12 +88,29 @@ const EditedRulesNotice = ({
 }: {
     readonly rulesUrl: string;
     readonly onReset: () => void;
-}) => (
-    <div className="results-aside rules-notice">
-        Your edited rules are in effect, not the store&rsquo;s own.{' '}
-        <DiscardRules onDiscard={() => void fetch(rulesUrl, { method: 'DELETE' }).then(onReset)} />
-    </div>
-);
+}) => {
+    const [failed, setFailed] = useState(false);
+    const discard = async () => {
+        try {
+            const response = await fetch(rulesUrl, { method: 'DELETE' });
+            if (response.ok) onReset();
+            else setFailed(true);
+        } catch {
+            setFailed(true);
+        }
+    };
+    return (
+        <div className="results-aside rules-notice">
+            Your edited rules are in effect, not the store&rsquo;s own.{' '}
+            {failed && (
+                <span role="alert">
+                    The store&rsquo;s rules could not be brought back. Try again.{' '}
+                </span>
+            )}
+            <DiscardRules onDiscard={() => void discard()} />
+        </div>
+    );
+};
 
 /** Who the reviewer is shopping as. A real store would take this from the session. */
 const ViewerSwitch = ({

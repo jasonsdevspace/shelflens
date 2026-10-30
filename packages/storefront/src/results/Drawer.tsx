@@ -78,33 +78,32 @@ export const Drawer = ({ opener, title, done, children }: DrawerProps) => {
                     aria-hidden="true"
                 />
             )}
-            {open && (
-                <div
-                    className="drawer-panel"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby={`${id}-title`}
-                    onKeyDown={trap}
-                >
-                    <div className="drawer-head">
-                        <h2 id={`${id}-title`} className="drawer-title">
-                            {title}
-                        </h2>
-                        <button
-                            ref={closer}
-                            type="button"
-                            className="drawer-close"
-                            onClick={() => setOpen(false)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                    <div className="drawer-body">{children}</div>
-                    <button type="button" className="drawer-done" onClick={() => setOpen(false)}>
-                        {done}
+            <div
+                className="drawer-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`${id}-title`}
+                hidden={!open}
+                onKeyDown={trap}
+            >
+                <div className="drawer-head">
+                    <h2 id={`${id}-title`} className="drawer-title">
+                        {title}
+                    </h2>
+                    <button
+                        ref={closer}
+                        type="button"
+                        className="drawer-close"
+                        onClick={() => setOpen(false)}
+                    >
+                        Close
                     </button>
                 </div>
-            )}
+                <div className="drawer-body">{children}</div>
+                <button type="button" className="drawer-done" onClick={() => setOpen(false)}>
+                    {done}
+                </button>
+            </div>
         </div>
     );
 };
