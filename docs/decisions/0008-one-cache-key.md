@@ -67,6 +67,12 @@ is a new version, so nothing kept under the old one is served again, which is th
 catalog and the rules already follow. An answer that reads the events as they are now, the rail
 beside a product, says it is volatile instead, and no layer keeps it.
 
+**Amended with the rules editor.** A set of rules a merchandiser saves in the page is a new store
+version by the same rule: the worker builds the store again with the saved set and the version
+carries its fingerprint, so nothing kept under the old one is served again and nothing is
+invalidated by name. A preview of a draft is volatile, like the rail, since the draft is a
+question nobody asks twice. [Decision 10](0010-rules-live-in-the-browser.md) has the rest.
+
 ### The three layers
 
 Three caches share the key, and each holds it in the form its medium allows.

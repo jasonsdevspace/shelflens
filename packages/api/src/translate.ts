@@ -1,4 +1,13 @@
-import type { Filter, Hit, MatchKind, MatchMode, SortClause } from '@jasonsdevspace/shelflens';
+import type {
+    Filter,
+    Hit,
+    MatchKind,
+    MatchMode,
+    Rule,
+    RuleAdjustment,
+    RuleTrigger,
+    SortClause,
+} from '@jasonsdevspace/shelflens';
 import { GraphQLError } from 'graphql';
 
 import type {
@@ -6,6 +15,8 @@ import type {
     FilterInput,
     Matching,
     MatchRoute,
+    RuleAdjustmentInput,
+    RuleInput,
     SortClause as SortClauseModel,
     SortField,
     SortInput,
@@ -83,6 +94,42 @@ export const toFilter = (input: FilterInput): Filter => {
     if (isSet(match.eq)) return { attribute, eq: match.eq };
     if (isSet(match.in)) return { attribute, in: match.in };
     throw badInput(`a filter on ${input.attribute} needs eq, in or range`);
+};
+
+/** A rule as the engine takes it, with nothing the input left null. */
+export const toRule = (input: RuleInput): Rule => {
+    const adjustment = (a: RuleAdjustmentInput): RuleAdjustment => ({
+        ...(isSet(a.ids) && { ids: a.ids }),
+        ...(isSet(a.attribute) && {
+            attribute: { name: a.attribute.name, value: a.attribute.value },
+        }),
+        weight: a.weight,
+    });
+    const when = input.when;
+    const trigger: RuleTrigger | undefined = when
+        ? {
+              ...(isSet(when.queries) && { queries: when.queries }),
+              ...(isSet(when.filter) && {
+                  filter: { attribute: when.filter.attribute, value: when.filter.value },
+              }),
+          }
+        : undefined;
+    const active = input.active;
+    return {
+        id: input.id,
+        ...(isSet(input.name) && { name: input.name }),
+        ...(trigger && { when: trigger }),
+        ...(active && {
+            active: {
+                ...(isSet(active.from) && { from: active.from }),
+                ...(isSet(active.to) && { to: active.to }),
+            },
+        }),
+        ...(isSet(input.pin) && { pin: input.pin }),
+        ...(isSet(input.boost) && { boost: input.boost.map(adjustment) }),
+        ...(isSet(input.bury) && { bury: input.bury.map(adjustment) }),
+        ...(isSet(input.hide) && { hide: input.hide }),
+    };
 };
 
 export const toSort = (input: SortInput): SortClause => ({

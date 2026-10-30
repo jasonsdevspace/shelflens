@@ -5,6 +5,7 @@ import { routeOf } from '@shelflens/api';
 import { createIndexedDbEventStore } from './event-db.js';
 import { createWorkerApi, type StartedMessage } from './handle.js';
 import { CLAIM_MESSAGE, VISIT_MESSAGE, VISITED_MESSAGE } from './register.js';
+import { createIndexedDbRuleStore } from './rule-db.js';
 
 /**
  * The service worker that is the demo's API.
@@ -24,6 +25,7 @@ const api = createWorkerApi({
     base: new URL(self.registration.scope).pathname,
     answers: () => caches.open('shelflens-answers'),
     events: createIndexedDbEventStore(),
+    rules: createIndexedDbRuleStore(),
 });
 
 /** Tells every page this worker is in charge of how the store started. */

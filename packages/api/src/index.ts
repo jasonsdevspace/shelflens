@@ -68,6 +68,15 @@ export {
     type RecommendationSource,
     viewedWith,
 } from './recommend.js';
+export {
+    createMemoryRuleStore,
+    isRulesPath,
+    receiveRules,
+    type RulesHost,
+    type RulesReceipt,
+    type RulesRequest,
+    type RuleStore,
+} from './rules.js';
 export { parseRulesFile } from './rules-file.js';
 export { buildStoreSchema, schemaSource } from './schema.js';
 export { type Signals, signalsOf } from './signals.js';

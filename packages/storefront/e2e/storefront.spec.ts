@@ -434,3 +434,54 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
     expect(after.indexOf(last)).toBeLessThan(before.indexOf(last));
     await audit(page);
 });
+
+test('a merchandiser previews a rule on the page, saves it as a new version, and gets the store back', async ({
+    page,
+}) => {
+    await page.goto('/?q=jacket');
+    const cards = page.getByRole('list', { name: 'Products' }).getByRole('link');
+    const layout = page.locator('.results-layout');
+    const order = () =>
+        cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-sku')));
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    const before = await order();
+    const last = before[before.length - 1] ?? '';
+
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await expect(page).toHaveURL(/explain=1&rules=1$/);
+    const panel = page.getByRole('complementary', { name: 'Rules' });
+    await expect(panel.getByRole('list', { name: 'Rules that apply' })).toContainText(
+        'Featured jackets'
+    );
+    await panel.getByRole('button', { name: 'Add a rule' }).click();
+    await panel.getByRole('textbox', { name: 'Name', exact: true }).fill('Last first');
+    await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
+    await expect(page.getByText('Previewing a draft')).toBeVisible();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    const previewed = await order();
+    expect(previewed.indexOf(last)).toBeLessThan(before.indexOf(last));
+    await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
+        'Pinned to the top by rule'
+    );
+    await audit(page);
+
+    await panel.getByRole('button', { name: 'Save rule' }).click();
+    await expect(panel.getByRole('status')).toContainText('Rule saved. The store is now version');
+    const notice = page.locator('.rules-notice');
+    await expect(notice).toContainText('Your edited rules are in effect');
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect(await order()).toEqual(previewed);
+
+    // The set is the worker's, so it outlives the page.
+    await page.reload();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    await expect(notice).toContainText('Your edited rules are in effect');
+    expect(await order()).toEqual(previewed);
+    await audit(page);
+
+    await notice.getByRole('button', { name: 'Use the store\u2019s rules' }).click();
+    await notice.getByRole('button', { name: 'Yes, discard' }).click();
+    await expect(notice).toBeHidden();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect(await order()).toEqual(before);
+});

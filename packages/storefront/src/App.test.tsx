@@ -1,4 +1,4 @@
-import { createMemoryEventStore } from '@shelflens/api';
+import { createMemoryEventStore, createMemoryRuleStore } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -26,6 +26,7 @@ if (!featured) throw new Error('expected a jacket in the catalog');
 const rules = [{ id: 'featured-jacket', when: { queries: ['jacket'] }, pin: [featured.sku] }];
 
 let events = createMemoryEventStore();
+let savedRules = createMemoryRuleStore();
 
 beforeAll(() => {
     const worker = createWorkerApi({
@@ -38,6 +39,11 @@ beforeAll(() => {
             append: (batch) => events.append(batch),
             all: () => events.all(),
         },
+        rules: {
+            current: () => savedRules.current(),
+            replace: (rules) => savedRules.replace(rules),
+            reset: () => savedRules.reset(),
+        },
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const response = await worker.handle(new Request(input, init));
@@ -47,6 +53,7 @@ beforeAll(() => {
 
 beforeEach(() => {
     events = createMemoryEventStore();
+    savedRules = createMemoryRuleStore();
     sessionStorage.clear();
     window.history.replaceState(null, '', '/');
     // The tour opens itself on a first visit. These tests are not that visit.
@@ -63,6 +70,7 @@ const open = async (search = '') => {
         <App
             apiUrl="http://store.test/graphql"
             eventsUrl="http://store.test/events"
+            rulesUrl="http://store.test/rules"
             ready={Promise.resolve()}
         />
     );
@@ -331,6 +339,10 @@ describe('on a phone', () => {
             removeEventListener: () => {},
         }));
     };
+    // The stub outlives restoreAllMocks, and the tests after these are not on a phone.
+    afterEach(() => {
+        vi.stubGlobal('matchMedia', undefined);
+    });
 
     it('leaves focus alone when the results mount', async () => {
         narrow();
@@ -434,6 +446,7 @@ describe('as a member', () => {
             <App
                 apiUrl="http://store.test/graphql"
                 eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
                 ready={Promise.resolve()}
             />
         );
@@ -477,6 +490,85 @@ describe('explain mode', () => {
         await settled();
         expect(screen.getByText(/set aside the pins and boosts/)).toHaveTextContent(
             'Sorting by price, low to high set aside the pins and boosts from featured-jacket.'
+        );
+    });
+});
+
+describe('as a merchandiser', () => {
+    const sku = (card: HTMLElement) => card.getAttribute('data-sku') ?? '';
+    const explanation = (card: HTMLElement, rank: number) =>
+        within(card.closest('li') as HTMLElement).getByRole('list', {
+            name: `Why this is result ${rank}`,
+        });
+
+    it('previews a pin on the page while it is typed, then saves it as the store', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        const before = cards().map(sku);
+        const last = before[before.length - 1] ?? '';
+        await user.click(screen.getByRole('button', { name: 'Rules' }));
+        expect(window.location.search).toBe('?q=jacket&explain=1&rules=1');
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        expect(within(panel).getByRole('heading', { name: 'Rules for “jacket”' })).toBeVisible();
+        expect(within(panel).getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
+            'featured-jacket'
+        );
+
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(panel).getByRole('textbox', { name: 'Name' }), 'Last first');
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+        // Pinned in rule order: the store's pin first, then the draft's.
+        const previewed = cards();
+        expect(previewed.slice(0, 2).map(sku)).toEqual([featured.sku, last]);
+        expect(explanation(previewed[1] as HTMLElement, 2)).toHaveTextContent(
+            /Pinned to the top by rule jacket-/
+        );
+        // The store itself has not moved.
+        expect((await fetch('http://store.test/rules').then((r) => r.json())).edited).toBe(false);
+
+        await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
+        expect(await within(panel).findByRole('status')).toHaveTextContent(
+            /Rule saved\. The store is now version rules\.[0-9a-f]+\./
+        );
+        await settled();
+        expect(screen.queryByText(/Previewing a draft/)).toBeNull();
+        expect(cards().slice(0, 2).map(sku)).toEqual([featured.sku, last]);
+        expect(screen.getByText(/Your edited rules are in effect/)).toBeVisible();
+
+        // Everything remembered was for the old store, so a fresh page says the same.
+        await user.click(screen.getByRole('button', { name: 'Rules' }));
+        await user.click(screen.getByRole('button', { name: 'Explain ranking' }));
+        await settled();
+        expect(cards().slice(0, 2).map(sku)).toEqual([featured.sku, last]);
+
+        await user.click(screen.getByRole('button', { name: 'Use the store’s rules' }));
+        await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
+        await waitFor(() =>
+            expect(screen.queryByText(/Your edited rules are in effect/)).toBeNull()
+        );
+        await settled();
+        expect(cards().map(sku)).toEqual(before);
+    });
+
+    it('keeps the draft off the page once the panel closes', async () => {
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await settled();
+        expect(cards().map(sku)).not.toContain(last);
+        await user.click(within(panel).getByRole('button', { name: 'Cancel' }));
+        await settled();
+        expect(cards().map(sku)).toContain(last);
+        await user.click(screen.getByRole('button', { name: 'Rules' }));
+        expect(window.location.search).toBe('?q=jacket&explain=1');
+        await waitFor(() =>
+            expect(screen.queryByRole('complementary', { name: 'Rules' })).toBeNull()
         );
     });
 });
@@ -571,8 +663,12 @@ describe('when nothing matches', () => {
         await settled();
         expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
         expect(screen.getByText(/Nothing matched "zzqx jacket" with these filters/)).toBeVisible();
-        // The facets stay, behind the Filters button here, so the filter can be unticked.
-        expect(screen.getByRole('button', { name: /Filters/ })).toBeInTheDocument();
+        // The facet column stays, with the way out of the filter in it.
+        expect(
+            within(screen.getByRole('form', { name: 'Narrow the results' })).getByRole('button', {
+                name: 'Clear all filters',
+            })
+        ).toBeInTheDocument();
     });
 
     it('never offers to leave the category being browsed', async () => {

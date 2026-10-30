@@ -22,6 +22,11 @@ export type Scalars = {
     Float: { input: number; output: number };
 };
 
+export type AttributeMatchInput = {
+    readonly name: Scalars['String']['input'];
+    readonly value: Scalars['String']['input'];
+};
+
 export type Brand = {
     readonly __typename?: 'Brand';
     readonly id: Scalars['ID']['output'];
@@ -201,6 +206,14 @@ export type Query = {
     readonly __typename?: 'Query';
     /** The category tree, roots first. Each category's children follow it. */
     readonly categories: ReadonlyArray<Category>;
+    /**
+     * The same search, with these rules in place of the store's. For a
+     * merchandiser to see what a draft does before saving it: the engine is
+     * reconfigured with the draft over the same index, so the answer is what
+     * the search will return once the draft is saved. Reads nothing kept, and
+     * is never kept.
+     */
+    readonly preview: SearchResult;
     readonly product: Maybe<Product>;
     /**
      * What to show beside a product: the products viewed with it, filled to the
@@ -217,6 +230,18 @@ export type Query = {
     readonly store: Store;
     /** What a phrase still being typed could become: completed queries, and products. */
     readonly suggest: Suggestions;
+};
+
+/**
+ * The search API of one store, as seen by one shopper.
+ *
+ * Who the shopper is comes from the request, not from the query, so no query
+ * can ask for another customer group's prices or products. Everything a
+ * response contains is the viewer's view.
+ */
+export type QueryPreviewArgs = {
+    input: SearchInput;
+    rules: ReadonlyArray<RuleInput>;
 };
 
 /**
@@ -324,12 +349,54 @@ export type RelaxedSearch = {
 
 export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
+export type RuleAdjustmentInput = {
+    readonly attribute?: InputMaybe<AttributeMatchInput>;
+    readonly ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+    /** What the score is multiplied by: above one boosts, below one buries. */
+    readonly weight: Scalars['Float']['input'];
+};
+
 export type RuleEffect = {
     readonly __typename?: 'RuleEffect';
     readonly action: RuleAction;
     readonly ruleId: Scalars['ID']['output'];
     /** The score multiplier, for a boost or a bury. */
     readonly weight: Maybe<Scalars['Float']['output']>;
+};
+
+export type RuleFilterInput = {
+    readonly attribute: Scalars['String']['input'];
+    readonly value: Scalars['String']['input'];
+};
+
+/**
+ * A merchandising rule as the rules file spells it: when it applies, and
+ * what it does. A rule with no action, or one that names a product or an
+ * attribute the store does not have, is refused with the engine's own words.
+ */
+export type RuleInput = {
+    readonly active?: InputMaybe<RuleWindowInput>;
+    readonly boost?: InputMaybe<ReadonlyArray<RuleAdjustmentInput>>;
+    readonly bury?: InputMaybe<ReadonlyArray<RuleAdjustmentInput>>;
+    readonly hide?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+    readonly id: Scalars['ID']['input'];
+    readonly name?: InputMaybe<Scalars['String']['input']>;
+    /** Products placed first, in this order, whether or not they matched. */
+    readonly pin?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+    readonly when?: InputMaybe<RuleTriggerInput>;
+};
+
+export type RuleTriggerInput = {
+    /** A filter the search must carry for the rule to apply. */
+    readonly filter?: InputMaybe<RuleFilterInput>;
+    /** The searches the rule applies to, each normalized the way a query is. */
+    readonly queries?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+};
+
+/** When the rule is in effect, as ISO dates. Either end may be open. */
+export type RuleWindowInput = {
+    readonly from?: InputMaybe<Scalars['String']['input']>;
+    readonly to?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SearchHit = {
@@ -432,6 +499,11 @@ export type Store = {
     readonly currency: Scalars['String']['output'];
     readonly locale: Scalars['String']['output'];
     readonly name: Scalars['String']['output'];
+    /**
+     * Whether the rules in effect are a set a visitor saved in this browser
+     * rather than the ones the store ships. The page says so when they are.
+     */
+    readonly rulesEdited: Scalars['Boolean']['output'];
     readonly viewer: Viewer;
 };
 
@@ -580,6 +652,7 @@ export type DirectiveResolverFn<
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+    AttributeMatchInput: AttributeMatchInput;
     Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
     Brand: ResolverTypeWrapper<BrandModel>;
     Category: ResolverTypeWrapper<CategoryModel>;
@@ -609,7 +682,12 @@ export type ResolversTypes = {
     Recommendations: ResolverTypeWrapper<RecommendationsModel>;
     RelaxedSearch: ResolverTypeWrapper<RelaxedModel>;
     RuleAction: RuleAction;
+    RuleAdjustmentInput: RuleAdjustmentInput;
     RuleEffect: ResolverTypeWrapper<RuleEffect>;
+    RuleFilterInput: RuleFilterInput;
+    RuleInput: RuleInput;
+    RuleTriggerInput: RuleTriggerInput;
+    RuleWindowInput: RuleWindowInput;
     SearchHit: ResolverTypeWrapper<HitModel>;
     SearchInput: SearchInput;
     SearchResult: ResolverTypeWrapper<SearchResultModel>;
@@ -632,6 +710,7 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+    AttributeMatchInput: AttributeMatchInput;
     Boolean: Scalars['Boolean']['output'];
     Brand: BrandModel;
     Category: CategoryModel;
@@ -655,7 +734,12 @@ export type ResolversParentTypes = {
     Rating: Rating;
     Recommendations: RecommendationsModel;
     RelaxedSearch: RelaxedModel;
+    RuleAdjustmentInput: RuleAdjustmentInput;
     RuleEffect: RuleEffect;
+    RuleFilterInput: RuleFilterInput;
+    RuleInput: RuleInput;
+    RuleTriggerInput: RuleTriggerInput;
+    RuleWindowInput: RuleWindowInput;
     SearchHit: HitModel;
     SearchInput: SearchInput;
     SearchResult: SearchResultModel;
@@ -782,6 +866,12 @@ export type QueryResolvers<
     ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query'],
 > = {
     categories?: Resolver<ReadonlyArray<ResolversTypes['Category']>, ParentType, ContextType>;
+    preview?: Resolver<
+        ResolversTypes['SearchResult'],
+        ParentType,
+        ContextType,
+        RequireFields<QueryPreviewArgs, 'input' | 'rules'>
+    >;
     product?: Resolver<
         Maybe<ResolversTypes['Product']>,
         ParentType,
@@ -918,6 +1008,7 @@ export type StoreResolvers<
     currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     locale?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    rulesEdited?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     viewer?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType>;
 };
 

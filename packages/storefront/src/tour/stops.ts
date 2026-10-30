@@ -107,6 +107,16 @@ export const STOPS: readonly Stop[] = [
         tests: ['packages/api/src/api.test.ts', 'packages/engine/src/search.test.ts'],
     },
     {
+        id: 'rules-editor',
+        title: 'Write a rule and see it work before you save',
+        body: 'Press "Add a rule" and name a jacket from the page. The results beside the panel pin it while you type. "Save rule" builds the store again under a new version, so nothing remembered from the old one is served, and "Use the store\u2019s rules" brings the store\u2019s own back.',
+        to: { ...EMPTY_STATE, phrase: 'jacket', explain: true, rules: true },
+        tests: [
+            'packages/storefront/src/results/RulesPanel.test.tsx',
+            'packages/storefront/src/worker/handle.test.ts',
+        ],
+    },
+    {
         id: 'popularity',
         title: 'What shoppers click rises, and never past a pin',
         body: 'Open a few of these jackets, then reload and search again with "Explain ranking" on. The ones you opened rise a little, with the count under each card, and the pinned ones stay first. The nudge is capped, folds in when a visit begins rather than mid-page, and stays below the smallest boost a merchandiser would write.',

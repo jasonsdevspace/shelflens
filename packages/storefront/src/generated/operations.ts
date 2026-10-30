@@ -4,6 +4,11 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 export type Incremental<T> =
     T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+export type AttributeMatchInput = {
+    readonly name: string;
+    readonly value: string;
+};
+
 export type CustomerGroup = 'GUEST' | 'MEMBER';
 
 export type FilterAttribute =
@@ -65,6 +70,48 @@ export type RecommendationSource =
 
 export type RuleAction = 'BOOST' | 'BURY' | 'PIN';
 
+export type RuleAdjustmentInput = {
+    readonly attribute?: AttributeMatchInput | null | undefined;
+    readonly ids?: ReadonlyArray<string | number> | null | undefined;
+    /** What the score is multiplied by: above one boosts, below one buries. */
+    readonly weight: number;
+};
+
+export type RuleFilterInput = {
+    readonly attribute: string;
+    readonly value: string;
+};
+
+/**
+ * A merchandising rule as the rules file spells it: when it applies, and
+ * what it does. A rule with no action, or one that names a product or an
+ * attribute the store does not have, is refused with the engine's own words.
+ */
+export type RuleInput = {
+    readonly active?: RuleWindowInput | null | undefined;
+    readonly boost?: ReadonlyArray<RuleAdjustmentInput> | null | undefined;
+    readonly bury?: ReadonlyArray<RuleAdjustmentInput> | null | undefined;
+    readonly hide?: ReadonlyArray<string | number> | null | undefined;
+    readonly id: string | number;
+    readonly name?: string | null | undefined;
+    /** Products placed first, in this order, whether or not they matched. */
+    readonly pin?: ReadonlyArray<string | number> | null | undefined;
+    readonly when?: RuleTriggerInput | null | undefined;
+};
+
+export type RuleTriggerInput = {
+    /** A filter the search must carry for the rule to apply. */
+    readonly filter?: RuleFilterInput | null | undefined;
+    /** The searches the rule applies to, each normalized the way a query is. */
+    readonly queries?: ReadonlyArray<string> | null | undefined;
+};
+
+/** When the rule is in effect, as ISO dates. Either end may be open. */
+export type RuleWindowInput = {
+    readonly from?: string | null | undefined;
+    readonly to?: string | null | undefined;
+};
+
 export type SearchInput = {
     /** Which facets to count, by name. Every facet when omitted, none when empty. */
     readonly facets?: ReadonlyArray<string> | null | undefined;
@@ -114,6 +161,134 @@ export type CategoriesQuery = {
         readonly name: string;
         readonly path: ReadonlyArray<string>;
     }>;
+};
+
+export type PreviewQueryVariables = Exact<{
+    input: SearchInput;
+    explain?: boolean | null | undefined;
+    rules: ReadonlyArray<RuleInput> | RuleInput;
+}>;
+
+export type PreviewQuery = {
+    readonly preview: {
+        readonly total: number;
+        readonly page: number;
+        readonly pageSize: number;
+        readonly totalPages: number;
+        readonly matching: Matching;
+        readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
+        readonly merchandising: {
+            readonly applied: ReadonlyArray<string>;
+            readonly setAsideBySort: ReadonlyArray<string>;
+        };
+        readonly items: ReadonlyArray<{
+            readonly score?: number;
+            readonly explanation?: {
+                readonly matches: ReadonlyArray<{
+                    readonly typed: string;
+                    readonly matched: string;
+                    readonly field: string;
+                    readonly route: MatchRoute;
+                }>;
+                readonly rules: ReadonlyArray<{
+                    readonly ruleId: string;
+                    readonly action: RuleAction;
+                    readonly weight: number | null;
+                }>;
+                readonly popularity: { readonly clicks: number; readonly weight: number } | null;
+            };
+            readonly product: {
+                readonly sku: string;
+                readonly name: string;
+                readonly colors: ReadonlyArray<string>;
+                readonly membersOnly: boolean;
+                readonly inStock: boolean;
+                readonly brand: { readonly name: string };
+                readonly price: {
+                    readonly memberPrice: boolean;
+                    readonly min: { readonly amount: number; readonly currency: string };
+                    readonly max: { readonly amount: number; readonly currency: string };
+                };
+                readonly rating: { readonly average: number; readonly count: number } | null;
+            };
+        }>;
+        readonly noResults: {
+            readonly suggestion: string | null;
+            readonly foundWithoutFilters: number;
+            readonly relaxed: {
+                readonly phrase: string;
+                readonly dropped: ReadonlyArray<string>;
+                readonly result: {
+                    readonly total: number;
+                    readonly items: ReadonlyArray<{
+                        readonly product: {
+                            readonly sku: string;
+                            readonly name: string;
+                            readonly colors: ReadonlyArray<string>;
+                            readonly membersOnly: boolean;
+                            readonly inStock: boolean;
+                            readonly brand: { readonly name: string };
+                            readonly price: {
+                                readonly memberPrice: boolean;
+                                readonly min: {
+                                    readonly amount: number;
+                                    readonly currency: string;
+                                };
+                                readonly max: {
+                                    readonly amount: number;
+                                    readonly currency: string;
+                                };
+                            };
+                            readonly rating: {
+                                readonly average: number;
+                                readonly count: number;
+                            } | null;
+                        };
+                    }>;
+                };
+            } | null;
+            readonly popular: ReadonlyArray<{
+                readonly sku: string;
+                readonly name: string;
+                readonly colors: ReadonlyArray<string>;
+                readonly membersOnly: boolean;
+                readonly inStock: boolean;
+                readonly brand: { readonly name: string };
+                readonly price: {
+                    readonly memberPrice: boolean;
+                    readonly min: { readonly amount: number; readonly currency: string };
+                    readonly max: { readonly amount: number; readonly currency: string };
+                };
+                readonly rating: { readonly average: number; readonly count: number } | null;
+            }>;
+        } | null;
+        readonly facets: ReadonlyArray<
+            | {
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+                  readonly ranges: ReadonlyArray<{
+                      readonly from: number | null;
+                      readonly to: number | null;
+                      readonly count: number;
+                  }>;
+              }
+            | {
+                  readonly count: number;
+                  readonly min: number | null;
+                  readonly max: number | null;
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+              }
+            | {
+                  readonly name: string;
+                  readonly attribute: FilterAttribute;
+                  readonly buckets: ReadonlyArray<{
+                      readonly value: string;
+                      readonly count: number;
+                  }>;
+              }
+        >;
+    };
 };
 
 export type ProductQueryVariables = Exact<{
@@ -188,6 +363,117 @@ export type CardFragment = {
         readonly max: { readonly amount: number; readonly currency: string };
     };
     readonly rating: { readonly average: number; readonly count: number } | null;
+};
+
+export type ResultsFragment = {
+    readonly total: number;
+    readonly page: number;
+    readonly pageSize: number;
+    readonly totalPages: number;
+    readonly matching: Matching;
+    readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
+    readonly merchandising: {
+        readonly applied: ReadonlyArray<string>;
+        readonly setAsideBySort: ReadonlyArray<string>;
+    };
+    readonly items: ReadonlyArray<{
+        readonly score?: number;
+        readonly explanation?: {
+            readonly matches: ReadonlyArray<{
+                readonly typed: string;
+                readonly matched: string;
+                readonly field: string;
+                readonly route: MatchRoute;
+            }>;
+            readonly rules: ReadonlyArray<{
+                readonly ruleId: string;
+                readonly action: RuleAction;
+                readonly weight: number | null;
+            }>;
+            readonly popularity: { readonly clicks: number; readonly weight: number } | null;
+        };
+        readonly product: {
+            readonly sku: string;
+            readonly name: string;
+            readonly colors: ReadonlyArray<string>;
+            readonly membersOnly: boolean;
+            readonly inStock: boolean;
+            readonly brand: { readonly name: string };
+            readonly price: {
+                readonly memberPrice: boolean;
+                readonly min: { readonly amount: number; readonly currency: string };
+                readonly max: { readonly amount: number; readonly currency: string };
+            };
+            readonly rating: { readonly average: number; readonly count: number } | null;
+        };
+    }>;
+    readonly noResults: {
+        readonly suggestion: string | null;
+        readonly foundWithoutFilters: number;
+        readonly relaxed: {
+            readonly phrase: string;
+            readonly dropped: ReadonlyArray<string>;
+            readonly result: {
+                readonly total: number;
+                readonly items: ReadonlyArray<{
+                    readonly product: {
+                        readonly sku: string;
+                        readonly name: string;
+                        readonly colors: ReadonlyArray<string>;
+                        readonly membersOnly: boolean;
+                        readonly inStock: boolean;
+                        readonly brand: { readonly name: string };
+                        readonly price: {
+                            readonly memberPrice: boolean;
+                            readonly min: { readonly amount: number; readonly currency: string };
+                            readonly max: { readonly amount: number; readonly currency: string };
+                        };
+                        readonly rating: {
+                            readonly average: number;
+                            readonly count: number;
+                        } | null;
+                    };
+                }>;
+            };
+        } | null;
+        readonly popular: ReadonlyArray<{
+            readonly sku: string;
+            readonly name: string;
+            readonly colors: ReadonlyArray<string>;
+            readonly membersOnly: boolean;
+            readonly inStock: boolean;
+            readonly brand: { readonly name: string };
+            readonly price: {
+                readonly memberPrice: boolean;
+                readonly min: { readonly amount: number; readonly currency: string };
+                readonly max: { readonly amount: number; readonly currency: string };
+            };
+            readonly rating: { readonly average: number; readonly count: number } | null;
+        }>;
+    } | null;
+    readonly facets: ReadonlyArray<
+        | {
+              readonly name: string;
+              readonly attribute: FilterAttribute;
+              readonly ranges: ReadonlyArray<{
+                  readonly from: number | null;
+                  readonly to: number | null;
+                  readonly count: number;
+              }>;
+          }
+        | {
+              readonly count: number;
+              readonly min: number | null;
+              readonly max: number | null;
+              readonly name: string;
+              readonly attribute: FilterAttribute;
+          }
+        | {
+              readonly name: string;
+              readonly attribute: FilterAttribute;
+              readonly buckets: ReadonlyArray<{ readonly value: string; readonly count: number }>;
+          }
+    >;
 };
 
 export type SearchQueryVariables = Exact<{
@@ -325,6 +611,7 @@ export type StoreQuery = {
         readonly currency: string;
         readonly locale: string;
         readonly catalogVersion: string;
+        readonly rulesEdited: boolean;
         readonly viewer: { readonly group: CustomerGroup };
     };
 };
@@ -400,6 +687,114 @@ export const CardFragmentDoc = new TypedDocumentString(
     `,
     { fragmentName: 'Card' }
 ) as unknown as TypedDocumentString<CardFragment, unknown>;
+export const ResultsFragmentDoc = new TypedDocumentString(
+    `
+    fragment Results on SearchResult {
+  total
+  page
+  pageSize
+  totalPages
+  matching
+  sort {
+    by
+    direction
+  }
+  merchandising {
+    applied
+    setAsideBySort
+  }
+  items {
+    score @include(if: $explain)
+    explanation @include(if: $explain) {
+      matches {
+        typed
+        matched
+        field
+        route
+      }
+      rules {
+        ruleId
+        action
+        weight
+      }
+      popularity {
+        clicks
+        weight
+      }
+    }
+    product {
+      ...Card
+    }
+  }
+  noResults {
+    suggestion
+    foundWithoutFilters
+    relaxed {
+      phrase
+      dropped
+      result {
+        total
+        items {
+          product {
+            ...Card
+          }
+        }
+      }
+    }
+    popular {
+      ...Card
+    }
+  }
+  facets {
+    name
+    attribute
+    ... on ValueFacet {
+      buckets {
+        value
+        count
+      }
+    }
+    ... on RangeFacet {
+      ranges: buckets {
+        from
+        to
+        count
+      }
+    }
+    ... on StatsFacet {
+      count
+      min
+      max
+    }
+  }
+}
+    fragment Card on Product {
+  sku
+  name
+  colors
+  brand {
+    name
+  }
+  membersOnly
+  price {
+    memberPrice
+    min {
+      amount
+      currency
+    }
+    max {
+      amount
+      currency
+    }
+  }
+  rating {
+    average
+    count
+  }
+  inStock
+}`,
+    { fragmentName: 'Results' }
+) as unknown as TypedDocumentString<ResultsFragment, unknown>;
 export const CategoriesDocument = new TypedDocumentString(
     `
     query Categories {
@@ -412,6 +807,119 @@ export const CategoriesDocument = new TypedDocumentString(
     `,
     { hash: '463ddcc741f6ba20223714607b778a7cdb236fc1d16e2939567560d699374587' }
 ) as unknown as TypedDocumentString<CategoriesQuery, CategoriesQueryVariables>;
+export const PreviewDocument = new TypedDocumentString(
+    `
+    query Preview($input: SearchInput!, $explain: Boolean = false, $rules: [RuleInput!]!) {
+  preview(input: $input, rules: $rules) {
+    ...Results
+  }
+}
+    fragment Card on Product {
+  sku
+  name
+  colors
+  brand {
+    name
+  }
+  membersOnly
+  price {
+    memberPrice
+    min {
+      amount
+      currency
+    }
+    max {
+      amount
+      currency
+    }
+  }
+  rating {
+    average
+    count
+  }
+  inStock
+}
+fragment Results on SearchResult {
+  total
+  page
+  pageSize
+  totalPages
+  matching
+  sort {
+    by
+    direction
+  }
+  merchandising {
+    applied
+    setAsideBySort
+  }
+  items {
+    score @include(if: $explain)
+    explanation @include(if: $explain) {
+      matches {
+        typed
+        matched
+        field
+        route
+      }
+      rules {
+        ruleId
+        action
+        weight
+      }
+      popularity {
+        clicks
+        weight
+      }
+    }
+    product {
+      ...Card
+    }
+  }
+  noResults {
+    suggestion
+    foundWithoutFilters
+    relaxed {
+      phrase
+      dropped
+      result {
+        total
+        items {
+          product {
+            ...Card
+          }
+        }
+      }
+    }
+    popular {
+      ...Card
+    }
+  }
+  facets {
+    name
+    attribute
+    ... on ValueFacet {
+      buckets {
+        value
+        count
+      }
+    }
+    ... on RangeFacet {
+      ranges: buckets {
+        from
+        to
+        count
+      }
+    }
+    ... on StatsFacet {
+      count
+      min
+      max
+    }
+  }
+}`,
+    { hash: 'beccaf1eab8e94219df1864319400dd49adc3491559463464b4ea0d87d19721b' }
+) as unknown as TypedDocumentString<PreviewQuery, PreviewQueryVariables>;
 export const ProductDocument = new TypedDocumentString(
     `
     query Product($sku: ID!) {
@@ -506,83 +1014,7 @@ export const SearchDocument = new TypedDocumentString(
     `
     query Search($input: SearchInput!, $explain: Boolean = false) {
   search(input: $input) {
-    total
-    page
-    pageSize
-    totalPages
-    matching
-    sort {
-      by
-      direction
-    }
-    merchandising {
-      applied
-      setAsideBySort
-    }
-    items {
-      score @include(if: $explain)
-      explanation @include(if: $explain) {
-        matches {
-          typed
-          matched
-          field
-          route
-        }
-        rules {
-          ruleId
-          action
-          weight
-        }
-        popularity {
-          clicks
-          weight
-        }
-      }
-      product {
-        ...Card
-      }
-    }
-    noResults {
-      suggestion
-      foundWithoutFilters
-      relaxed {
-        phrase
-        dropped
-        result {
-          total
-          items {
-            product {
-              ...Card
-            }
-          }
-        }
-      }
-      popular {
-        ...Card
-      }
-    }
-    facets {
-      name
-      attribute
-      ... on ValueFacet {
-        buckets {
-          value
-          count
-        }
-      }
-      ... on RangeFacet {
-        ranges: buckets {
-          from
-          to
-          count
-        }
-      }
-      ... on StatsFacet {
-        count
-        min
-        max
-      }
-    }
+    ...Results
   }
 }
     fragment Card on Product {
@@ -609,8 +1041,87 @@ export const SearchDocument = new TypedDocumentString(
     count
   }
   inStock
+}
+fragment Results on SearchResult {
+  total
+  page
+  pageSize
+  totalPages
+  matching
+  sort {
+    by
+    direction
+  }
+  merchandising {
+    applied
+    setAsideBySort
+  }
+  items {
+    score @include(if: $explain)
+    explanation @include(if: $explain) {
+      matches {
+        typed
+        matched
+        field
+        route
+      }
+      rules {
+        ruleId
+        action
+        weight
+      }
+      popularity {
+        clicks
+        weight
+      }
+    }
+    product {
+      ...Card
+    }
+  }
+  noResults {
+    suggestion
+    foundWithoutFilters
+    relaxed {
+      phrase
+      dropped
+      result {
+        total
+        items {
+          product {
+            ...Card
+          }
+        }
+      }
+    }
+    popular {
+      ...Card
+    }
+  }
+  facets {
+    name
+    attribute
+    ... on ValueFacet {
+      buckets {
+        value
+        count
+      }
+    }
+    ... on RangeFacet {
+      ranges: buckets {
+        from
+        to
+        count
+      }
+    }
+    ... on StatsFacet {
+      count
+      min
+      max
+    }
+  }
 }`,
-    { hash: 'a680beefbed4cceb8066695a2d8a72803479a57c4a24b26418f902a58b1cdf37' }
+    { hash: '6364550e05c98c2178ccf363fbc8c495d5cc9c0ea39e311f50b46698e27c5719' }
 ) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString(
     `
@@ -620,13 +1131,14 @@ export const StoreDocument = new TypedDocumentString(
     currency
     locale
     catalogVersion
+    rulesEdited
     viewer {
       group
     }
   }
 }
     `,
-    { hash: '3960ca1d5ba26a4c79028bb83a879f117652f124db84228f33c8300e60c387c9' }
+    { hash: 'af560856a9c26e64ee20e289269a3236179615f05e9c0a945dac0576e2570e3f' }
 ) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
 export const SuggestDocument = new TypedDocumentString(
     `

@@ -4,6 +4,7 @@ query Store {
         currency
         locale
         catalogVersion
+        rulesEdited
         viewer {
             group
         }

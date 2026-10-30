@@ -202,6 +202,107 @@ describe('searching', () => {
     });
 });
 
+describe('a merchandiser\u2019s preview', () => {
+    const SELECTION = `total matching
+        merchandising { applied setAsideBySort }
+        items { product { sku } explanation { rules { ruleId action weight } } }`;
+    const jackets = () =>
+        catalog.products.filter((p) => /jacket/i.test(p.name) && p.visibleTo.length === 2);
+
+    it('answers what the search will answer once the draft is saved, and is never kept', async () => {
+        const [a, b, c] = jackets();
+        if (!a || !b || !c) throw new Error('expected three jackets');
+        const draft = [
+            { id: 'promo-b', name: 'B first', when: { queries: ['jacket'] }, pin: [b.sku] },
+            { id: 'no-c', when: { queries: ['jacket'] }, hide: [c.sku] },
+            { id: 'lift-a', when: { queries: ['jacket'] }, boost: [{ ids: [a.sku], weight: 1.5 }] },
+        ];
+        const input = { phrase: 'jacket', pageSize: 10 };
+        const previewed = await run(
+            `query ($input: SearchInput!, $rules: [RuleInput!]!) { preview(input: $input, rules: $rules) { ${SELECTION} } }`,
+            { input, rules: draft }
+        );
+        expect(previewed.extensions).toEqual({ volatile: true });
+        const saved = createStoreApi(createStore({ catalog, rules: draft }));
+        const searched = await saved.run(
+            {
+                query: `query ($input: SearchInput!) { search(input: $input) { ${SELECTION} } }`,
+                variables: { input },
+            },
+            guest
+        );
+        expect(data(previewed).preview).toEqual(data(searched).search);
+        expect(data(previewed).preview.items[0].product.sku).toBe(b.sku);
+        expect(data(previewed).preview.merchandising.applied).toEqual([
+            'promo-b',
+            'no-c',
+            'lift-a',
+        ]);
+    });
+
+    it('leaves the store as it was, and refuses a draft the engine refuses in its own words', async () => {
+        const after = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 3 } })).search;
+        expect(after.merchandising.applied).toEqual(['promo']);
+        const refused = await run(
+            `query ($input: SearchInput!, $rules: [RuleInput!]!) { preview(input: $input, rules: $rules) { total } }`,
+            {
+                input: { phrase: 'jacket' },
+                rules: [{ id: 'ghost', when: { queries: ['jacket'] }, pin: ['SL-99999'] }],
+            }
+        );
+        expect(refused.errors?.[0]).toMatchObject({
+            message: expect.stringContaining('SL-99999') as string,
+            extensions: { code: 'BAD_USER_INPUT' },
+        });
+    });
+
+    it('carries a trigger\u2019s filter and a window into the engine, as the rules file would', async () => {
+        const [a] = jackets();
+        if (!a) throw new Error('expected a jacket');
+        const brand = a.brand;
+        const input = {
+            phrase: 'jacket',
+            pageSize: 5,
+            filters: [{ attribute: 'BRAND', match: { eq: brand } }],
+        };
+        // The window is judged against the time the request names.
+        const week = (active: { from?: string; to?: string }) =>
+            api.run(
+                {
+                    query: `query ($input: SearchInput!, $rules: [RuleInput!]!) { preview(input: $input, rules: $rules) { ${SELECTION} } }`,
+                    variables: {
+                        input,
+                        rules: [
+                            {
+                                id: 'brand-week',
+                                when: {
+                                    queries: ['jacket'],
+                                    filter: { attribute: 'brand', value: brand },
+                                },
+                                active,
+                                pin: [a.sku],
+                            },
+                        ],
+                    },
+                },
+                guest,
+                new Date('2026-06-01')
+            );
+        const now = data(await week({ from: '2000-01-01', to: '2999-01-01' })).preview;
+        expect(now.merchandising.applied).toEqual(['brand-week']);
+        expect(now.items[0].product.sku).toBe(a.sku);
+        const past = data(await week({ to: '2001-01-01' })).preview;
+        expect(past.merchandising.applied).toEqual([]);
+    });
+
+    it('says whether the rules in effect were saved by a visitor', async () => {
+        expect(data(await run('{ store { rulesEdited } }')).store.rulesEdited).toBe(false);
+        const edited = createStoreApi(createStore({ catalog, rules: [], rulesEdited: true }));
+        const answer = await edited.run({ query: '{ store { rulesEdited } }' }, guest);
+        expect(data(answer).store.rulesEdited).toBe(true);
+    });
+});
+
 describe('what shoppers clicked', () => {
     const jackets = () =>
         catalog.products.filter((p) => /jacket/i.test(p.name) && p.visibleTo.length === 2);

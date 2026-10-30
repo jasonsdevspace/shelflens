@@ -1,6 +1,7 @@
 // @vitest-environment node
 import {
     createMemoryEventStore,
+    createMemoryRuleStore,
     createStore,
     GPC_HEADER,
     GROUP_HEADER,
@@ -362,5 +363,125 @@ describe('clicks in the worker', () => {
         expect(risen.indexOf(last)).toBeLessThan(before.indexOf(last));
         // The same clicks again are no reason to build again.
         expect(await api.refresh()).toBe(false);
+    });
+});
+
+describe('rules in the worker', () => {
+    const jacket = catalog.products.filter(
+        (p) => /jacket/i.test(p.name) && p.visibleTo.length === 2
+    );
+    const SELECTION = `total merchandising { applied } items { product { sku } explanation { rules { ruleId action } } }`;
+    const search = () =>
+        posted({ query: `{ search(input: { phrase: "jacket", pageSize: 5 }) { ${SELECTION} } }` });
+    const preview = (rules: unknown) =>
+        posted({
+            query: `query ($rules: [RuleInput!]!) { preview(input: { phrase: "jacket", pageSize: 5 }, rules: $rules) { ${SELECTION} } }`,
+            variables: { rules },
+        });
+    const rulesRequest = (method: string, body?: unknown) =>
+        new Request('https://example.test/shelflens/rules', {
+            method,
+            ...(body !== undefined && { body: JSON.stringify(body) }),
+        });
+    // A body reads once, so each answer is read into a loose shape and kept.
+    const body = async (response: Response | undefined) => await response?.json();
+
+    const worker = (rules = createMemoryRuleStore()) =>
+        createWorkerApi({
+            catalogUrl: 'catalog.json',
+            rulesUrl: 'rules.json',
+            base: BASE,
+            fetch: serving(catalog, {
+                rules: [{ id: 'shipped', when: { queries: ['jacket'] }, pin: [jacket[0]?.sku] }],
+            }),
+            allowFullQueries: true,
+            rules,
+        });
+
+    it('serves the shipped rules until a set is saved, and then that set as a new version', async () => {
+        const api = worker();
+        const before = await api.handle(search());
+        const shippedVersion = before?.headers.get(VERSION_HEADER);
+        const beforeBody = await body(before);
+        expect(beforeBody.data.search.merchandising.applied).toEqual(['shipped']);
+        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(false);
+
+        const draft = [{ id: 'mine', when: { queries: ['jacket'] }, pin: [jacket[2]?.sku] }];
+        const previewed = await api.handle(preview(draft));
+        expect(previewed?.headers.get('cache-control')).toBe('no-store');
+        const previewBody = await body(previewed);
+
+        const saved = await api.handle(rulesRequest('POST', { rules: draft }));
+        expect(saved?.status).toBe(204);
+        expect(saved?.headers.get(VERSION_HEADER)).not.toBe(shippedVersion);
+
+        const after = await api.handle(search());
+        expect(after?.headers.get(VERSION_HEADER)).toBe(saved?.headers.get(VERSION_HEADER));
+        // The done line: what the preview showed is what the search returns once saved.
+        const afterBody = await body(after);
+        expect(afterBody.data.search).toEqual(previewBody.data.preview);
+        expect(afterBody.data.search.items[0].product.sku).toBe(jacket[2]?.sku);
+        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(true);
+        expect(
+            (await body(await api.handle(posted({ query: '{ store { rulesEdited } }' })))).data
+                .store.rulesEdited
+        ).toBe(true);
+    });
+
+    it('refuses a set the engine refuses, keeps the set it had, and resets to the shipped file', async () => {
+        const api = worker();
+        const refused = await api.handle(
+            rulesRequest('POST', {
+                rules: [{ id: 'ghost', when: { queries: ['jacket'] }, pin: ['SL-99999'] }],
+            })
+        );
+        expect(refused?.status).toBe(400);
+        expect((await body(refused)).errors[0].message).toContain('SL-99999');
+        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
+            'shipped',
+        ]);
+
+        await api.handle(
+            rulesRequest('POST', {
+                rules: [{ id: 'mine', when: { queries: ['jacket'] }, hide: [jacket[0]?.sku] }],
+            })
+        );
+        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
+            'mine',
+        ]);
+        const reset = await api.handle(rulesRequest('DELETE'));
+        expect(reset?.status).toBe(204);
+        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
+            'shipped',
+        ]);
+        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(false);
+    });
+
+    it('drops every answer kept under the old version when a set is saved', async () => {
+        const kept = new Map<string, Response>();
+        const answers: AnswerStore = {
+            match: (request) => Promise.resolve(kept.get(request.url)),
+            put: (request, response) => {
+                kept.set(request.url, response);
+                return Promise.resolve();
+            },
+            keys: () => Promise.resolve([...kept.keys()].map((url) => new Request(url))),
+            delete: (request) => Promise.resolve(kept.delete(request.url)),
+        };
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            answers: () => Promise.resolve(answers),
+            rules: createMemoryRuleStore(),
+        });
+        const first = await api.handle(persisted({ op: STORE }));
+        const current = first?.headers.get(VERSION_HEADER) ?? '';
+        await api.handle(persisted({ op: STORE, v: current }));
+        expect(kept.size).toBe(1);
+        await api.handle(
+            rulesRequest('POST', { rules: [{ id: 'mine', pin: [catalog.products[0]?.sku] }] })
+        );
+        expect(kept.size).toBe(0);
     });
 });

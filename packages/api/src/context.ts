@@ -24,6 +24,8 @@ export interface Store {
     readonly brands: ReadonlyMap<string, Brand>;
     /** How often each product was clicked, folded in when the store was built. */
     readonly signals: Signals;
+    /** Whether the rules are a set a visitor saved rather than the ones the store ships. */
+    readonly rulesEdited: boolean;
     /** Changes whenever the catalog, the rules or the signals change. */
     readonly version: string;
 }
@@ -67,6 +69,8 @@ export interface StoreOptions {
      * is a new version and nothing kept under the old one is served again.
      */
     readonly signals?: Signals;
+    /** Whether the rules are a set a visitor saved, which the page says. */
+    readonly rulesEdited?: boolean;
 }
 
 export const createStore = ({
@@ -75,6 +79,7 @@ export const createStore = ({
     rules = [],
     rulesVersion = fingerprint(rules),
     signals = {},
+    rulesEdited = false,
 }: StoreOptions): Store => {
     const base = createStoreEngine(catalog);
     const chosen = Object.keys(signals).length > 0;
@@ -89,6 +94,7 @@ export const createStore = ({
         categories: new Map(catalog.categories.map((category) => [category.id, category])),
         brands: new Map(catalog.brands.map((brand) => [brand.id, brand])),
         signals,
+        rulesEdited,
         version: `${catalog.version}+rules.${rulesVersion}${chosen ? `+clicks.${fingerprint(signals)}` : ''}`,
     };
 };

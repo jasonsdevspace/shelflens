@@ -24,3 +24,6 @@ so the evidence was still fresh.
 9. [Events land beside the API, and stay in the browser](0009-events-stay-in-the-browser.md): a
    plain post rather than a mutation, IndexedDB in the worker rather than memory, and no seeded
    history, so the cold start stays something the demo can show.
+10. [A rule is previewed by the engine, and saved as a new store version](0010-rules-live-in-the-browser.md):
+    the preview is the real ranking, the edited set stays in the visitor's browser, and a save
+    moves every cache key at once.
