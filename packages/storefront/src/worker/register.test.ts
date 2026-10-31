@@ -4,6 +4,7 @@ import {
     announceVisit,
     CLAIM_MESSAGE,
     controlledByWorker,
+    isOwnController,
     VISIT_MESSAGE,
     VISITED_MESSAGE,
     type WorkerHost,
@@ -14,10 +15,19 @@ import {
  * reloads once when a new one takes over.
  */
 
-const fakeContainer = ({ controlled, active }: { controlled: boolean; active: boolean }) => {
+const fakeContainer = ({
+    controlled,
+    active,
+    scriptURL = new URL('/sw.js', globalThis.location.href).href,
+}: {
+    controlled: boolean;
+    active: boolean;
+    scriptURL?: string;
+}) => {
     const target = new EventTarget();
     // A worker that answers a visit on the port it was sent, as the real one does.
     const worker = {
+        scriptURL,
         postMessage: vi.fn((message: unknown, transfer?: readonly MessagePort[]) => {
             if ((message as { type?: string }).type === VISIT_MESSAGE.type) {
                 transfer?.[0]?.postMessage(VISITED_MESSAGE);
@@ -115,5 +125,37 @@ describe('announcing a visit', () => {
         const began = Date.now();
         await announceVisit(silent, 20);
         expect(Date.now() - began).toBeGreaterThanOrEqual(15);
+    });
+
+    it('waits for its own worker when the worker of another scope controls the page', async () => {
+        const container = fakeContainer({ controlled: true, active: false });
+        const { host, reload } = hostWith(container);
+        let ready = false;
+        const waiting = controlledByWorker('/try/sw.js?store=try', '/try/', host).then(() => {
+            ready = true;
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(ready).toBe(false);
+        expect(container.worker.postMessage).not.toHaveBeenCalledWith(
+            VISIT_MESSAGE,
+            expect.anything()
+        );
+        container.takeOver();
+        await waiting;
+        expect(ready).toBe(true);
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('counts only the worker the page registers as its own, read against the page', () => {
+        const worker = (scriptURL: string) => ({ scriptURL }) as ServiceWorker;
+        const demo = worker('https://example.test/shelflens/sw.js');
+        const visitor = worker('https://example.test/shelflens/sw.js?store=try');
+        const page = 'https://example.test/shelflens/try/';
+        expect(isOwnController(visitor, '../sw.js?store=try', page)).toBe(true);
+        expect(isOwnController(visitor, '/shelflens/sw.js?store=try', page)).toBe(true);
+        expect(isOwnController(demo, '../sw.js?store=try', page)).toBe(false);
+        expect(isOwnController(demo, 'sw.js', 'https://example.test/shelflens/')).toBe(true);
+        expect(isOwnController(null, 'sw.js', page)).toBe(false);
     });
 });

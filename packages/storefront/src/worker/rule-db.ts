@@ -8,7 +8,8 @@ import type { RuleStore } from '@shelflens/api';
  * when the shipped file is in effect.
  */
 
-const DB_NAME = 'shelflens-rules';
+/** The demo's database. The page for a visitor's own catalog names its own. */
+export const DEFAULT_DB_NAME = 'shelflens-rules';
 const STORE_NAME = 'rules';
 const KEY = 'saved';
 
@@ -25,9 +26,8 @@ const done = (transaction: IDBTransaction): Promise<void> =>
         transaction.onabort = () => reject(transaction.error ?? new Error('the write aborted'));
     });
 
-const openAt = (version?: number): Promise<IDBDatabase> => {
-    const opening =
-        version === undefined ? indexedDB.open(DB_NAME) : indexedDB.open(DB_NAME, version);
+const openAt = (name: string, version?: number): Promise<IDBDatabase> => {
+    const opening = version === undefined ? indexedDB.open(name) : indexedDB.open(name, version);
     opening.onupgradeneeded = () => {
         opening.result.createObjectStore(STORE_NAME);
     };
@@ -35,18 +35,18 @@ const openAt = (version?: number): Promise<IDBDatabase> => {
 };
 
 /** Opens the database with its store in place, one version up if someone else made it empty. */
-const open = async (): Promise<IDBDatabase> => {
-    const db = await openAt();
+const open = async (name: string): Promise<IDBDatabase> => {
+    const db = await openAt(name);
     if (db.objectStoreNames.contains(STORE_NAME)) return db;
     const next = db.version + 1;
     db.close();
-    return openAt(next);
+    return openAt(name, next);
 };
 
-export const createIndexedDbRuleStore = (): RuleStore => {
+export const createIndexedDbRuleStore = (name = DEFAULT_DB_NAME): RuleStore => {
     let db: Promise<IDBDatabase> | undefined;
     const database = () => {
-        db ??= open().catch((error: unknown) => {
+        db ??= open(name).catch((error: unknown) => {
             db = undefined;
             throw error;
         });

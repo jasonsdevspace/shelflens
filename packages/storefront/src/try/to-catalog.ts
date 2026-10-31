@@ -8,6 +8,7 @@ import {
     slugify,
 } from '@shelflens/catalog';
 
+import { contentVersion } from './check.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
@@ -288,19 +289,14 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
     }
 
     // The version is the content, so loading a second file can never be
-    // answered from what the first one left in a cache. The load time is
-    // left out, so loading the same file again keeps its answers.
-    const currency = currencyOfPrices(prices);
-    const content = products.map(({ createdAt: _loaded, ...product }) => product);
-    const catalog: Catalog = {
-        version: `try-${fingerprint({ currency, content })}`,
-        seed: 0,
-        currency,
-        locale: 'en-US',
+    // answered from what the first one left in a cache.
+    const parts = {
+        currency: currencyOfPrices(prices),
         brands: book.brands(),
         categories: tree.categories(),
         products,
     };
+    const catalog: Catalog = { version: contentVersion(parts), seed: 0, locale: 'en-US', ...parts };
     const memberPrices = products.some(
         (product) => product.price.member.min !== product.price.guest.min
     );

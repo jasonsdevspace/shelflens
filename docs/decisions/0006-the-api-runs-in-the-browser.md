@@ -63,6 +63,13 @@ Option B, with option A available at any time.
   does, and the widget never does: it is handed the API's address and knows nothing about which
   host answers. A page on another origin is answered by the Node server, which the host runs with
   that origin named and nothing else allowed. Record 12 has the widget.
+- The same worker, registered again under `try/` with `?store=try`, serves a visitor's own catalog.
+  It builds its store from a catalog the page hands it on a `catalog` path rather than from the
+  shipped file, and keeps its answers, events and rules under names of its own, since caches and
+  databases are named for the whole site and a scope does not keep them apart. The demo's worker and
+  its names are unchanged, and a page counts itself ready only once the worker controlling it is the
+  one it registered, so a page under `try/` never asks the demo's worker for a catalog it does not
+  have.
 
 ## How it is tested
 
