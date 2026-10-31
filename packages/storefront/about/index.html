@@ -216,12 +216,14 @@
                     <h2 id="yours">Try it on your own products</h2>
                     <p>
                         The engine is a package anyone can install, so the demo lets you try it on
-                        your own catalog first. Pick or drop a CSV or JSON file of up to ten
+                        your own catalog first. Choose or drop a CSV or JSON file of up to ten
                         thousand products. The page guesses which column is the name, the price and
-                        each filter, and you can correct any guess. Then the same storefront
-                        searches it, with suggestions, filter counts, "Explain ranking" and rules of
-                        your own, and so does a made-up store's page. The file is read in your
-                        browser and stays there. Nothing is uploaded.
+                        each filter, and you can correct any guess.
+                    </p>
+                    <p>
+                        Then the same storefront searches it, with suggestions, filter counts,
+                        "Explain ranking" and rules of your own. The search box on someone else's
+                        page searches it too. The file is read in your browser and never uploaded.
                         <a href="../try/"
                             >Press "Try it with a sample of 200 products", or choose a file of your
                             own.</a
@@ -241,9 +243,9 @@
                         queries in about a tenth of a second. A GraphQL API sits over it and runs in
                         a service worker in the demo, or in Node when asked, behind a typed client
                         written in the repo so the stale response and the cache key are visible code
-                        rather than library settings. Every hard part above has a test that fails on
-                        the naive version, and every choice with a real alternative is a decision
-                        record.
+                        rather than library settings. Every hard part in "What usually goes wrong"
+                        has a test that fails on the naive version, and every choice with a real
+                        alternative is a decision record.
                     </p>
                     <p>
                         The <a href="https://github.com/jasonsdevspace/shelflens">README</a> is the
