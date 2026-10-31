@@ -201,6 +201,11 @@ needs a tag from main, a green run and one click, and nothing that happens in CI
 change what `latest` points at. A version with a hyphen, such as `0.2.0-rc.1`, is staged under
 the `next` tag and marked as a prerelease.
 
+The storefront is released the same way with a tag such as `storefront-v1.2.0`, against
+`packages/storefront/package.json` and `packages/storefront/CHANGELOG.md`. It is deployed from main
+already, so its release is a page on GitHub naming the version and what changed, and nothing goes
+to npm. The engine's release stays the one marked latest.
+
 The schema is `packages/api/schema.graphql` and the storefront's operations are in
 `packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
 committing the generated types and the persisted operations, which CI checks. The demo's
