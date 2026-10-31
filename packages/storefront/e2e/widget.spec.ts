@@ -29,6 +29,11 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     // selectors see no input at all, since the box is in the widget's own tree.
     const boxFont = await search.evaluate((el) => getComputedStyle(el).fontFamily);
     expect(boxFont).not.toContain('monospace');
+    // The clipping box hands everything in it a crosshair, and the widget sets it aside.
+    const frameCursor = await page
+        .locator('.shelflens')
+        .evaluate((el) => getComputedStyle(el).cursor);
+    expect(frameCursor).toBe('auto');
     expect(await page.evaluate(() => document.querySelectorAll('.host input').length)).toBe(0);
 
     // The pointer rests where the Count button was, which the list may open under,
@@ -40,11 +45,17 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     const option = listbox.getByRole('option').first();
     const optionStyle = await option.evaluate((el) => {
         const style = getComputedStyle(el);
-        return { color: style.color, listStyle: style.listStyleType, font: style.fontFamily };
+        return {
+            color: style.color,
+            listStyle: style.listStyleType,
+            font: style.fontFamily,
+            cursor: style.cursor,
+        };
     });
     expect(optionStyle.color).not.toBe('rgb(183, 71, 42)');
     expect(optionStyle.listStyle).toBe('none');
     expect(optionStyle.font).not.toContain('Georgia');
+    expect(optionStyle.cursor).toBe('pointer');
 
     // The list is in the top layer: over the host's banner and out of the clipping box.
     const box = await listbox.boundingBox();

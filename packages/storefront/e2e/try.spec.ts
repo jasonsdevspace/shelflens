@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, type Request, test } from '@playwright/test';
+import { expect, type Locator, type Page, type Request, test } from '@playwright/test';
 
 /*
  * A visitor's own catalog, through the worker registered for try/.
@@ -158,6 +158,10 @@ test('puts a wrong guess right before searching, and the store shows what was ch
         ),
     });
     await expect(page.getByLabel('Price', { exact: true })).toHaveValue('Cost');
+    // Each guess is a dropdown and each column a checkbox, and both show the pointer.
+    const cursor = (locator: Locator) => locator.evaluate((el) => getComputedStyle(el).cursor);
+    expect(await cursor(page.getByLabel('Price', { exact: true }))).toBe('pointer');
+    expect(await cursor(page.locator('.try-search-only label').first())).toBe('pointer');
     const preview = page.getByRole('list', { name: 'Preview' });
     await expect(preview).toContainText('$40');
     await page.getByLabel('Price', { exact: true }).selectOption('Retail');

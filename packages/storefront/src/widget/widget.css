@@ -1,7 +1,8 @@
 /*
  * The widget's frame inside its shadow root. Selectors from the host page
  * stop at the root, but inherited properties do not, so the container pins
- * the font, at a size no host's root font size can scale, and the color.
+ * the font, at a size no host's root font size can scale, the color, and
+ * the cursor, so a cursor the host sets does not show over the widget.
  * The tokens follow the host's color-scheme, which is the one standard
  * property a host sets to theme the widget, and the store's own theme script
  * sets it on the demo's host page. A custom property takes any value, so the
@@ -30,6 +31,7 @@
     letter-spacing: normal;
     text-transform: none;
     color: var(--fg);
+    cursor: auto;
 }
 
 @supports (color: light-dark(#000, #fff)) {
