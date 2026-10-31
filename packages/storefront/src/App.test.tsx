@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 import { App } from './App.jsx';
 import { createWorkerApi } from './worker/handle.js';
+import { StoreDidNotStart, WorkerUnsupported } from './worker/register.js';
 import { serving } from './worker/serving.js';
 
 /*
@@ -91,6 +92,41 @@ const settled = () =>
     waitFor(() =>
         expect(document.querySelector('.results-layout')).not.toHaveAttribute('aria-busy', 'true')
     );
+
+describe('a store that does not start', () => {
+    const startWith = (ready: Promise<void>, retry = vi.fn()) => {
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={ready}
+                retry={retry}
+            />
+        );
+        return retry;
+    };
+
+    it('offers to try again when the store did not start this time', async () => {
+        const retry = startWith(Promise.reject(new StoreDidNotStart('the store took too long')));
+        const alert = await screen.findByRole('alert');
+        expect(
+            within(alert).getByRole('heading', { level: 1, name: 'The store could not start' })
+        ).toBeInTheDocument();
+        expect(alert).toHaveTextContent('Check your connection and try again.');
+        await userEvent.setup().click(within(alert).getByRole('button', { name: 'Try again' }));
+        expect(retry).toHaveBeenCalledOnce();
+        expect(screen.queryByText('Preparing the store.')).not.toBeInTheDocument();
+    });
+
+    it('says what to do instead in a browser that cannot run it, with nothing to retry', async () => {
+        startWith(Promise.reject(new WorkerUnsupported('no service worker')));
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Open this page in a regular, non-private window.');
+        expect(alert).not.toHaveTextContent(/service worker/i);
+        expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
+    });
+});
 
 describe('browsing', () => {
     it('shows every product in catalog order with the facets beside them', async () => {

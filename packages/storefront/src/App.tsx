@@ -31,6 +31,7 @@ import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
+import { WorkerUnsupported } from './worker/register.js';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -49,22 +50,53 @@ export interface AppProps {
     readonly viewerSwitch?: boolean;
     /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
     readonly banner?: ReactNode;
+    /** Starts the store again after it did not start, which a fresh load of the page does. */
+    readonly retry?: (() => void) | undefined;
+    /** Whether the results heading takes focus once the first results land. */
+    readonly focusOnArrival?: boolean | undefined;
 }
 
-type Readiness = 'waiting' | 'ready' | 'failed';
+/**
+ * Whether the store answers yet. A browser that cannot run it is told what
+ * to do instead, and a store that did not start this time can be tried again.
+ */
+type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
 
 /** What the page says while the store is not answering yet, or cannot. */
-const Standby = ({ readiness }: { readonly readiness: Readiness }) => {
+const Standby = ({
+    readiness,
+    retry,
+}: {
+    readonly readiness: Readiness;
+    readonly retry: (() => void) | undefined;
+}) => {
     if (readiness === 'waiting') return <p className="notice">Preparing the store.</p>;
-    if (readiness === 'failed') {
+    if (readiness === 'unsupported') {
         return (
-            <p className="notice" role="alert">
-                The store could not start in this browser. It needs a service worker.
-            </p>
+            <div className="notice standby" role="alert">
+                <h1 className="results-heading">The store could not start in this browser</h1>
+                <p>
+                    It runs as a small program the page installs, and this browser did not allow it.
+                    Open this page in a regular, non-private window.
+                </p>
+            </div>
+        );
+    }
+    if (readiness === 'unavailable') {
+        return (
+            <div className="notice standby" role="alert">
+                <h1 className="results-heading">The store could not start</h1>
+                <p>Check your connection and try again.</p>
+                <button type="button" className="standby-retry" onClick={retry ?? reloadPage}>
+                    Try again
+                </button>
+            </div>
         );
     }
     return null;
 };
+
+const reloadPage = () => globalThis.location.reload();
 
 /** Opens and closes the tour, and says which panel it controls. */
 const TourToggle = ({
@@ -107,19 +139,21 @@ const EditedRulesNotice = ({
 /** What is said above the results: the store starting, a page's banner, and edited rules. */
 const Notices = ({
     readiness,
+    retry,
     banner,
     rulesEdited,
     rulesUrl,
     onReset,
 }: {
     readonly readiness: Readiness;
+    readonly retry: (() => void) | undefined;
     readonly banner: ReactNode;
     readonly rulesEdited: boolean;
     readonly rulesUrl: string;
     readonly onReset: () => void;
 }) => (
     <>
-        <Standby readiness={readiness} />
+        <Standby readiness={readiness} retry={retry} />
         {readiness === 'ready' && banner}
         {readiness === 'ready' && rulesEdited && (
             <EditedRulesNotice rulesUrl={rulesUrl} onReset={onReset} />
@@ -278,6 +312,8 @@ export const App = ({
     tour = true,
     viewerSwitch = true,
     banner,
+    retry,
+    focusOnArrival,
 }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
@@ -301,7 +337,8 @@ export const App = ({
     useEffect(() => {
         ready.then(
             () => setReadiness('ready'),
-            () => setReadiness('failed')
+            (error: unknown) =>
+                setReadiness(error instanceof WorkerUnsupported ? 'unsupported' : 'unavailable')
         );
     }, [ready]);
 
@@ -368,6 +405,7 @@ export const App = ({
                 <main className={`content${touring ? ' has-tour' : ''}`}>
                     <Notices
                         readiness={readiness}
+                        retry={retry}
                         banner={banner}
                         rulesEdited={store.data?.store.rulesEdited ?? false}
                         rulesUrl={rulesUrl}
@@ -395,6 +433,7 @@ export const App = ({
                             onStoreChanged={storeChanged}
                             storeRevision={revision}
                             searched={searched}
+                            focusOnArrival={focusOnArrival}
                         />
                     )}
                 </main>

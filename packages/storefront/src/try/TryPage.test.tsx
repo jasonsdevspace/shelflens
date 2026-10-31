@@ -320,3 +320,40 @@ describe('the page for a visitor’s own catalog', () => {
         ).toBeInTheDocument();
     });
 });
+
+describe('while the store is built', () => {
+    it('keeps focus on a heading that says so, then hands it to the results', async () => {
+        let release: () => void = () => undefined;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        // The worker's answer waits, so the page can be read while the store is built.
+        failure = (request) => {
+            if (request.method !== 'PUT' || !new URL(request.url).pathname.endsWith('catalog')) {
+                return undefined;
+            }
+            failure = undefined;
+            return held.then(async () =>
+                fetch(request.url, {
+                    method: request.method,
+                    headers: request.headers,
+                    body: await request.text(),
+                })
+            );
+        };
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        const building = await screen.findByRole('heading', {
+            level: 1,
+            name: 'Building the store from your 200 products',
+        });
+        await waitFor(() => expect(building).toHaveFocus());
+        release();
+        await screen.findByText(/your own catalog of 200 products/);
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+    });
+});

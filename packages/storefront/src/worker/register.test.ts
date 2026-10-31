@@ -5,9 +5,11 @@ import {
     CLAIM_MESSAGE,
     controlledByWorker,
     isOwnController,
+    StoreDidNotStart,
     VISIT_MESSAGE,
     VISITED_MESSAGE,
     type WorkerHost,
+    WorkerUnsupported,
 } from './register.js';
 
 /*
@@ -109,9 +111,49 @@ describe('registering the worker', () => {
     });
 
     it('refuses a browser with no service worker', async () => {
-        await expect(
-            controlledByWorker('/sw.js', '/', { serviceWorker: undefined, reload: vi.fn() })
-        ).rejects.toThrow('needs a service worker');
+        const refused = controlledByWorker('/sw.js', '/', {
+            serviceWorker: undefined,
+            reload: vi.fn(),
+        });
+        await expect(refused).rejects.toThrow('needs a service worker');
+        await expect(refused).rejects.toBeInstanceOf(WorkerUnsupported);
+    });
+
+    it('refuses a browser that will not register the worker, as some private windows do', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        container.register.mockImplementation(() =>
+            Promise.reject(new Error('the operation is insecure'))
+        );
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host)).rejects.toBeInstanceOf(
+            WorkerUnsupported
+        );
+    });
+
+    it('gives up as soon as the worker being installed is discarded, as a failed download leaves it', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const installing = Object.assign(new EventTarget(), { state: 'installing' });
+        container.register.mockImplementation(() =>
+            Promise.resolve({
+                active: null,
+                installing,
+                waiting: null,
+            } as unknown as ServiceWorkerRegistration)
+        );
+        const { host } = hostWith(container);
+        const start = controlledByWorker('/sw.js', '/', host);
+        await vi.waitFor(() => expect(container.register).toHaveBeenCalled());
+        installing.state = 'redundant';
+        installing.dispatchEvent(new Event('statechange'));
+        await expect(start).rejects.toBeInstanceOf(StoreDidNotStart);
+    });
+
+    it('gives up on a start that stalls with nothing failing', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host, 20)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
     });
 });
 

@@ -51,10 +51,12 @@ type Stage =
           readonly replacing?: boolean;
       }
     | { readonly kind: 'reading'; readonly name: string }
-    | { readonly kind: 'loading' }
+    | { readonly kind: 'loading'; readonly products: number }
     | {
           readonly kind: 'searching';
           readonly loaded: Loaded;
+          /** Searched just now from the visitor's file, so the results take focus as they land. */
+          readonly arrived?: boolean;
           readonly problem?: string;
           /** Asked first, since removing the products discards the visitor's saved rules. */
           readonly confirm?: boolean;
@@ -114,6 +116,41 @@ const useHeadingFocus = (key: string, announce: boolean) => {
     }, [key, announce]);
     return heading;
 };
+
+/**
+ * While the store is built from the visitor's file. Its heading takes the
+ * focus the pressed button had, so a keyboard or screen reader user is told
+ * what is happening rather than being left at the top of the page.
+ */
+const Building = ({
+    products,
+    announce,
+}: {
+    readonly products: number;
+    readonly announce: boolean;
+}) => {
+    const heading = useHeadingFocus('loading', announce);
+    return (
+        <section className="try-stage" aria-labelledby="try-building">
+            <h1 id="try-building" ref={heading} tabIndex={-1}>
+                Building the store from your {count(products, 'product', 'products')}
+            </h1>
+        </section>
+    );
+};
+
+/**
+ * Waits until the browser has painted, so a stage set just before slow work
+ * shows before that work holds the page.
+ */
+const nextPaint = () =>
+    new Promise<void>((resolve) => {
+        if (typeof requestAnimationFrame !== 'function') {
+            setTimeout(resolve, 0);
+            return;
+        }
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
 
 /** Where a file is chosen, dropped, or the sample is taken. */
 const Chooser = ({
@@ -461,9 +498,7 @@ const BeforeStore = ({
             <main className="content try">
                 {stage.kind === 'starting' && <p className="notice">Preparing the store.</p>}
                 {stage.kind === 'loading' && (
-                    <p className="notice" role="status">
-                        Building the store from your products.
-                    </p>
+                    <Building products={stage.products} announce={announce} />
                 )}
                 {stage.kind === 'failed' && (
                     <p className="notice" role="alert">
@@ -611,8 +646,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { catalog } = whole;
             const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
             pending.current = true;
-            setStage({ kind: 'loading' });
+            setStage({ kind: 'loading', products: catalog.products.length });
             try {
+                // Preparing a large file for the worker holds the page, so the stage shows first.
+                await nextPaint();
                 const response = await changeCatalog(
                     catalogUrl,
                     { method: 'PUT', body: JSON.stringify(catalog) },
@@ -631,7 +668,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 clearSearch(base);
                 setStage(
                     loaded
-                        ? { kind: 'searching', loaded }
+                        ? { kind: 'searching', loaded, arrived: true }
                         : {
                               ...review,
                               problem: `The store did not keep your products. Press "${retry}" to try again.`,
@@ -772,6 +809,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 ready={Promise.resolve()}
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
+                focusOnArrival={stage.arrived === true}
                 banner={
                     <CatalogBar
                         loaded={stage.loaded}
