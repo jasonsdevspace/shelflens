@@ -1,0 +1,82 @@
+{
+    "recorded": {
+        "date": "2026-10-31",
+        "commit": "55c9a1a",
+        "machine": "Apple M2 Max, 12 cores",
+        "node": "v24.3.0"
+    },
+    "results": [
+        {
+            "products": 2000,
+            "catalogBytes": 3732927,
+            "parseMs": 9.36,
+            "buildMs": 68.56,
+            "suggest": {
+                "samples": 650,
+                "p50Ms": 0.22,
+                "p95Ms": 0.87,
+                "maxMs": 2.2
+            },
+            "search": {
+                "samples": 85,
+                "p50Ms": 0.36,
+                "p95Ms": 0.5,
+                "maxMs": 1.12
+            }
+        },
+        {
+            "products": 5000,
+            "catalogBytes": 9325578,
+            "parseMs": 22.38,
+            "buildMs": 126.39,
+            "suggest": {
+                "samples": 650,
+                "p50Ms": 0.28,
+                "p95Ms": 1.75,
+                "maxMs": 5.05
+            },
+            "search": {
+                "samples": 85,
+                "p50Ms": 0.38,
+                "p95Ms": 0.67,
+                "maxMs": 1.17
+            }
+        },
+        {
+            "products": 10000,
+            "catalogBytes": 18695573,
+            "parseMs": 51.64,
+            "buildMs": 261.03,
+            "suggest": {
+                "samples": 650,
+                "p50Ms": 0.41,
+                "p95Ms": 3.48,
+                "maxMs": 9.98
+            },
+            "search": {
+                "samples": 85,
+                "p50Ms": 0.53,
+                "p95Ms": 1.45,
+                "maxMs": 1.84
+            }
+        },
+        {
+            "products": 25000,
+            "catalogBytes": 46956343,
+            "parseMs": 121.12,
+            "buildMs": 641.08,
+            "suggest": {
+                "samples": 650,
+                "p50Ms": 0.84,
+                "p95Ms": 10.37,
+                "maxMs": 29.84
+            },
+            "search": {
+                "samples": 85,
+                "p50Ms": 0.9,
+                "p95Ms": 2.82,
+                "maxMs": 3.59
+            }
+        }
+    ]
+}

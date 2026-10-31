@@ -118,6 +118,10 @@ without its filters, each only if it finds something.
 - **The popover.** Results must be visible within 150 ms of the last keystroke. The search box
   waits 100 ms for the typing to pause, and the slowest suggestion on the demo catalog takes well
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
+- **How large a catalog can be.** The same measurements at five, ten and twenty five thousand
+  products, slowed four times for a phone. Ten thousand still answers within the 50 ms and starts
+  its store within two seconds, and twenty five thousand does not, so a visitor's own catalog is
+  capped at ten thousand rows. [The record](docs/benchmarks/catalog-size.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
   second served locally, with the worker spending 38 ms downloading the catalog and the rules and
   57 ms building the store. The catalog ships at 333 KB compressed, the page at 86 KB, the worker
@@ -178,10 +182,11 @@ npm run catalog -- --products 50 --out data/catalog.json
 npm run bench
 npm run bench:popover
 npm run bench:cold
+npm run bench:sizes
 npm run api
 ```
 
-The first writes a catalog to look at. The next three run the benchmarks and write their results
+The first writes a catalog to look at. The next four run the benchmarks and write their results
 to `docs/benchmarks/`. The last serves the API on port 8080, so a query can be sent by hand:
 
 ```bash

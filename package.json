@@ -25,6 +25,7 @@
         "catalog": "tsx packages/catalog/src/cli.ts",
         "bench": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/search/src/bench-cli.ts && prettier --write docs/benchmarks",
         "bench:popover": "npm run build && tsx packages/storefront/src/bench/bench-cli.ts && prettier --write docs/benchmarks",
+        "bench:sizes": "npm run build && tsx packages/storefront/src/bench/sizes-cli.ts && prettier --write docs/benchmarks",
         "bench:cold": "npm run storefront && tsx packages/storefront/src/bench/cold-visit.ts && prettier --write docs/benchmarks",
         "lighthouse": "tsx packages/storefront/src/bench/lighthouse.ts",
         "api": "npm run build && node packages/server/dist/main.js",
