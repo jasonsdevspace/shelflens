@@ -56,6 +56,11 @@ nineteen stops with the test behind each. For the same story without the code, t
    That page styles every list item, button and input, stacks a banner over everything, clips
    the box the widget sits in, and runs a React of its own. The widget keeps its look, opens its
    list over the banner, and sends a search to the store.
+9. [Load a file of your own products, or take the sample.](https://jasonsdevspace.com/shelflens/try/)
+   The page guesses which column is the name, the price and each filter, and you can correct any
+   guess. Then the same storefront searches it, with your own rules, and so does the search box
+   on a made-up store's page. The file is read in your browser and never uploaded, and the cap of
+   ten thousand products comes from a benchmark.
 
 ## The gotchas, and the test behind each
 
