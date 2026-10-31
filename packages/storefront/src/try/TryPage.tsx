@@ -288,7 +288,7 @@ const Review = ({
                     )}
                     {replacing === true ? (
                         <Ask
-                            question="This file replaces the products you are searching, and your rules go with them. Search it anyway?"
+                            question="Searching this file replaces your products and discards the rules you saved for them. Search it anyway?"
                             yes="Yes, search this file"
                             no="Keep my products"
                             onYes={onReplace}
@@ -366,6 +366,7 @@ const CatalogBar = ({
     onConfirm,
     onKeep,
     onFocused,
+    widgetUrl,
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
@@ -376,6 +377,8 @@ const CatalogBar = ({
     readonly onConfirm: () => void;
     readonly onKeep: () => void;
     readonly onFocused: () => void;
+    /** The store's page that embeds the search box over these products. */
+    readonly widgetUrl: string;
 }) => {
     const remove = useRef<HTMLButtonElement>(null);
     // After a removal kept or failed, the visitor is put back on the button they
@@ -394,9 +397,9 @@ const CatalogBar = ({
             </span>{' '}
             {confirm === true ? (
                 <Ask
-                    question="Your rules go with these products, so removing them discards your rules too. Remove them anyway?"
+                    question="Removing your products also discards the rules you saved for them. Remove them anyway?"
                     yes="Yes, remove them"
-                    no="Keep my rules"
+                    no="Keep my products"
                     onYes={onConfirm}
                     onNo={onKeep}
                 />
@@ -407,7 +410,10 @@ const CatalogBar = ({
                     </button>{' '}
                     <button ref={remove} type="button" className="try-link" onClick={onRemove}>
                         Remove your products
-                    </button>
+                    </button>{' '}
+                    <a className="try-link" href={widgetUrl}>
+                        See your products on a store&rsquo;s page
+                    </a>
                 </>
             )}
             {problem && (
@@ -777,6 +783,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         onConfirm={() => void onRemove(true)}
                         onKeep={keepRules}
                         onFocused={focused}
+                        widgetUrl={`${base}widget/`}
                     />
                 }
             />

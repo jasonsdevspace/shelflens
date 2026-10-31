@@ -1,0 +1,50 @@
+/*
+ * A host page's own styles, shared by the widget's host pages and written to
+ * reach everything they can: a font and a color on every list item, a look on
+ * every button and input, a banner stacked over everything, and a box that
+ * clips what it holds. The widget sits inside all of it and keeps its own look
+ * and place.
+ */
+.host ul li {
+    color: #b7472a;
+    list-style: disc;
+    font-family: Georgia, serif;
+    font-style: italic;
+}
+.host button {
+    background: #ffd166;
+    border: 3px dashed #1a1a1a;
+    border-radius: 0;
+    font-family: Georgia, serif;
+}
+.host input {
+    background: #1a1a1a;
+    color: #7cf29a;
+    border: 4px double #7cf29a;
+    font-family: monospace;
+}
+.host-banner {
+    position: fixed;
+    top: 7.5rem;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 0.5rem 1rem;
+    background: #ffd166;
+    color: #1a1a1a;
+    font-weight: 600;
+    text-align: center;
+}
+.host-clip {
+    overflow: hidden;
+    height: 6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+.host-counter {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1rem;
+}

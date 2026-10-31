@@ -78,6 +78,16 @@ again keeps its answers.
   again, which at the cap costs about what a cold start's build does, a third of a second on a
   laptop and about a second and a quarter slowed for a phone, by the
   [catalog size benchmark](../benchmarks/catalog-size.md), inside its two-second budget.
+- The widget over a visitor's catalog runs on a made-up store's page at `try/widget/`, embedded
+  as a store would embed it and showing the snippet a store adds. The visitor's worker answers
+  only the pages it controls, those under `try/`, and it keeps the catalog in this site's
+  storage. Another site cannot reach that storage, and an iframe of `try/` on another site is
+  given storage of its own, which starts empty. So the widget over a visitor's catalog cannot run
+  on another site without sending the file there, which this record rules out. A store embedding
+  the package on its own site points the same snippet at its own API, over its own catalog, as
+  record 12 says. With nothing loaded, the page says so and links to "Choose a file".
+- A visitor's store keeps its own list of recent searches, so a phrase searched on the demo is
+  never offered over a visitor's products, or the other way round.
 - The page for a visitor's catalog runs only on the built site, where its worker does. The dev
   server answers the demo's API and nothing else.
 
@@ -95,3 +105,8 @@ again keeps its answers.
   in explain mode, saved, kept across a reload and absent from the demo, the question when a
   new file would replace them, kept and then answered yes, and the rules gone once it is loaded.
   Discarding gives back the engine's order.
+- In a real browser on a desktop and a phone, the made-up store's page under `try/widget/` over a
+  made-up file: a suggestion only that file has, the list over the page's banner and out of its
+  clipping box, every request on the page's own origin and every search sent to the visitor's
+  store under `try/`, Enter and a pick landing on the visitor's store, and the notice with
+  nothing loaded.

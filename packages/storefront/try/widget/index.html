@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"
+        />
+        <!-- theme-script -->
+        <meta
+            name="description"
+            content="The ShelfLens search box on a made-up store's page, embedded the way a real store would embed it. It searches a file of your own products, and the file stays in your browser."
+        />
+        <title>ShelfLens on a store's page, with your products</title>
+        <link rel="stylesheet" href="/src/styles.css" />
+        <link rel="stylesheet" href="/src/widget/host.css" />
+        <style>
+            /* The snippet a store adds, scrolling within itself on a narrow screen. */
+            .host pre {
+                overflow-x: auto;
+                padding: 1rem;
+                border: 1px solid var(--line);
+                border-radius: 0.5rem;
+                font-size: 0.875rem;
+            }
+        </style>
+    </head>
+    <body data-store="try">
+        <a class="skip" href="#main-content">Skip to content</a>
+        <nav class="portfolio" aria-label="Portfolio">
+            <a href="https://jasonsdevspace.com/#work">A demo by Jason Poteet</a>
+            <a href="../../about/">How it works</a>
+            <a href="https://github.com/jasonsdevspace/shelflens">Source on GitHub</a>
+        </nav>
+        <header class="masthead">
+            <div class="masthead-row">
+                <a class="brand" href="../../">ShelfLens</a>
+                <span class="notice about-where">On a store's page</span>
+            </div>
+        </header>
+        <div class="host-banner" aria-hidden="true">
+            Maple Street Home's own banner, stacked over everything
+        </div>
+        <main class="content host" id="main-content" tabindex="-1">
+            <div class="about">
+                <h1>Maple Street Home</h1>
+                <p class="about-pitch">
+                    Maple Street Home is a made-up store, and this is its own page. Its styles reach
+                    every list item, button and input. A banner sits over everything, a box clips
+                    what it holds, and the page runs a React of its own. The ShelfLens search box is
+                    embedded here the way a real store would embed it, and it searches the file of
+                    products you loaded. Type a few letters from one of your products and watch the
+                    list. It keeps its own look and opens over the banner and out of the clipped
+                    box.
+                </p>
+                <div class="host-clip">
+                    <div id="shelflens-search"></div>
+                </div>
+                <ul>
+                    <li>Free delivery on orders over $50. This is the store's own list style.</li>
+                    <li>The suggestion list in the search box does not look like this.</li>
+                </ul>
+                <div id="host-app"></div>
+                <h2>What a store adds to its page</h2>
+                <pre><code>&lt;div id="shelflens-search"&gt;&lt;/div&gt;
+&lt;script type="module"&gt;
+    import { mountShelfLens } from 'https://your-store.example/widget.js';
+    mountShelfLens(document.getElementById('shelflens-search'), {
+        apiUrl: 'https://your-store.example/graphql',
+        storeUrl: 'https://your-store.example/',
+    });
+&lt;/script&gt;</code></pre>
+                <p>
+                    A real store points the box at its own search API and its own catalog. This page
+                    points it at the file you loaded instead. That file never leaves your browser.
+                    It is kept in this site's storage, so only a page on this site can search it,
+                    and no other site can reach it.
+                </p>
+                <p>
+                    <a href="../">Back to your products</a>, or read
+                    <a href="../../about/">how it works</a>.
+                </p>
+            </div>
+        </main>
+        <script type="module" src="/src/widget/demo.tsx"></script>
+    </body>
+</html>

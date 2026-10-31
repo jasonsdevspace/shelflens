@@ -73,7 +73,9 @@ either passes a callback instead.
   another site runs the Node server with that origin named. The server answers the preflight for
   the origins the host names and refuses every other, and keeps the events and rules paths to the
   origins named for them, since a refused answer a browser cannot read is still a request the
-  server acted on. The browser test mounts the widget from a second origin against it.
+  server acted on. The browser test mounts the widget from a second origin against it. A second
+  host page, at `try/widget/`, mounts the same file over a visitor's own catalog, and it runs only
+  on this site, for the reasons record 13 gives.
 - The widget reads this browser's recent searches and never writes them, since a phrase joins on
   a landed result and the widget's default search opens the store before one lands. On the demo
   the store's page records it. On another origin the list stays empty.

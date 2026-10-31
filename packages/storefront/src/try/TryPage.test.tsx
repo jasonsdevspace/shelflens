@@ -181,9 +181,7 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
         expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
-        expect(
-            screen.getByText(/This file replaces the products you are searching/)
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Searching this file replaces your products/)).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Keep my products' }));
         await screen.findByText(/your own catalog of 200 products/);
         expect(await rules.current()).toEqual(SAVED);
@@ -225,7 +223,7 @@ describe('the page for a visitor’s own catalog', () => {
             return undefined;
         };
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        expect(await screen.findByRole('button', { name: 'Keep my rules' })).toHaveFocus();
+        expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
         await userEvent.dblClick(screen.getByRole('button', { name: 'Yes, remove them' }));
         expect(await chooser()).toBeInTheDocument();
         expect(removals).toBe(1);
@@ -237,7 +235,7 @@ describe('the page for a visitor’s own catalog', () => {
         await loadSample();
         await rules.replace(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        await userEvent.click(await screen.findByRole('button', { name: 'Keep my rules' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Keep my products' }));
         expect(screen.getByRole('button', { name: 'Remove your products' })).toHaveFocus();
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         const yes = await screen.findByRole('button', { name: 'Yes, remove them' });

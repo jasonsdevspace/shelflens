@@ -12,7 +12,15 @@ import { useSyncExternalStore } from 'react';
  * so a keystroke never costs a storage read.
  */
 
-const KEY = 'shelflens.recent';
+/**
+ * Where the list is kept. A visitor's own store, under try/, keeps a list of
+ * its own, so a phrase searched on the demo is never offered over a visitor's
+ * products, or the other way round.
+ */
+export const recentKeyFor = (path: string, base: string = import.meta.env.BASE_URL): string =>
+    path.startsWith(`${base}try/`) ? 'shelflens.try.recent' : 'shelflens.recent';
+
+const KEY = recentKeyFor(typeof window === 'undefined' ? '' : window.location.pathname);
 
 /** How many phrases are kept. Older ones fall off the end. */
 export const RECENT_LIMIT = 8;

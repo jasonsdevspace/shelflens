@@ -7,8 +7,9 @@ import { storeApi } from './src/dev/api-plugin.js';
 import { themeScript } from './src/dev/theme-plugin.js';
 
 /**
- * The page, the explainer beside it at about/, the widget's host page, and
- * the page for a visitor's own catalog at try/. The service worker is
+ * The page, the explainer beside it at about/, the widget's host page, the
+ * page for a visitor's own catalog at try/, and the widget's host page over
+ * that catalog at try/widget/. The service worker is
  * built separately, by vite.sw.config.ts, because it has to be one file
  * with no shared chunks.
  *
@@ -35,6 +36,7 @@ export default defineConfig({
                 about: fileURLToPath(new URL('./about/index.html', import.meta.url)),
                 widget: fileURLToPath(new URL('./widget/index.html', import.meta.url)),
                 try: fileURLToPath(new URL('./try/index.html', import.meta.url)),
+                tryWidget: fileURLToPath(new URL('./try/widget/index.html', import.meta.url)),
             },
         },
     },
