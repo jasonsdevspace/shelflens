@@ -1,6 +1,6 @@
 {
     "name": "@shelflens/storefront",
-    "version": "0.1.0",
+    "version": "1.2.0",
     "private": true,
     "description": "The demo storefront: the search popover and results over the store's API, served from a service worker.",
     "type": "module",
