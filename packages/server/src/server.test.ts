@@ -220,3 +220,92 @@ describe('rules over HTTP', () => {
         expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
     });
 });
+
+describe('a page on another origin', () => {
+    const open = createServer({
+        api,
+        events: createMemoryEventStore(),
+        origins: { allowed: ['https://host.example'] },
+    });
+    const wide = createServer({
+        api,
+        events: createMemoryEventStore(),
+        origins: { allowed: ['https://host.example'], paths: ['graphql', 'events'] },
+    });
+    let openBase = '';
+    let wideBase = '';
+    beforeAll(async () => {
+        await new Promise<void>((resolve) => open.listen(0, resolve));
+        openBase = `http://127.0.0.1:${(open.address() as AddressInfo).port}`;
+        await new Promise<void>((resolve) => wide.listen(0, resolve));
+        wideBase = `http://127.0.0.1:${(wide.address() as AddressInfo).port}`;
+    });
+    afterAll(async () => {
+        await new Promise<void>((resolve) => open.close(() => resolve()));
+        await new Promise<void>((resolve) => wide.close(() => resolve()));
+    });
+    const from = (origin: string) => ({ origin });
+
+    it('answers the preflight and the request for an origin the host named, with the group header allowed', async () => {
+        const preflight = await fetch(`${openBase}/graphql?op=${STORE}`, {
+            method: 'OPTIONS',
+            headers: {
+                ...from('https://host.example'),
+                'access-control-request-method': 'GET',
+                'access-control-request-headers': GROUP_HEADER,
+            },
+        });
+        expect(preflight.status).toBe(204);
+        expect(preflight.headers.get('access-control-allow-origin')).toBe('https://host.example');
+        expect(preflight.headers.get('access-control-allow-headers')).toContain(GROUP_HEADER);
+        expect(preflight.headers.get('vary')).toBe('origin');
+        const answer = await fetch(`${openBase}/graphql?op=${STORE}`, {
+            headers: { ...from('https://host.example'), [GROUP_HEADER]: 'member' },
+        });
+        expect(answer.status).toBe(200);
+        expect(answer.headers.get('access-control-allow-origin')).toBe('https://host.example');
+        expect(answer.headers.get('vary')).toContain('origin');
+    });
+
+    it('refuses an origin the host did not name, and says so rather than answering unreadably', async () => {
+        const refused = await fetch(`${openBase}/graphql?op=${STORE}`, {
+            headers: from('https://elsewhere.example'),
+        });
+        expect(refused.status).toBe(403);
+        expect(refused.headers.get('access-control-allow-origin')).toBeNull();
+        expect(await refused.json()).toEqual({
+            errors: [{ message: 'this origin may not use the store' }],
+        });
+        // A host that names no origins at all refuses every other origin.
+        expect(
+            (await fetch(`${base}/graphql?op=${STORE}`, { headers: from('https://host.example') }))
+                .status
+        ).toBe(403);
+    });
+
+    it('keeps the events and rules paths to the origins named for them', async () => {
+        const batch = JSON.stringify({ events: [] });
+        const refused = await fetch(`${openBase}/events`, {
+            method: 'POST',
+            headers: { ...from('https://host.example'), 'content-type': 'application/json' },
+            body: batch,
+        });
+        expect(refused.status).toBe(403);
+        const taken = await fetch(`${wideBase}/events`, {
+            method: 'POST',
+            headers: { ...from('https://host.example'), 'content-type': 'application/json' },
+            body: batch,
+        });
+        expect(taken.status).not.toBe(403);
+        expect(taken.headers.get('access-control-allow-origin')).toBe('https://host.example');
+        expect(
+            (await fetch(`${wideBase}/rules`, { headers: from('https://host.example') })).status
+        ).toBe(403);
+    });
+
+    it('treats a request that names the server\u2019s own origin as the store\u2019s own page', async () => {
+        const own = await fetch(`${openBase}/graphql?op=${STORE}`, { headers: from(openBase) });
+        expect(own.status).toBe(200);
+        expect(own.headers.get('access-control-allow-origin')).toBeNull();
+    });
+});

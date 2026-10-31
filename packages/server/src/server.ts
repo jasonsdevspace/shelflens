@@ -60,7 +60,107 @@ export interface ServerOptions {
      * with them. Without this, the rules path is refused.
      */
     readonly rules?: RulesSupport;
+    /**
+     * The pages on other origins that may use the API, as the widget does when
+     * it is mounted on a page the store does not serve. Without this, a
+     * request from another origin is refused.
+     */
+    readonly origins?: OriginsSupport;
 }
+
+/** The paths an outside origin may use. */
+export type OriginPath = 'graphql' | 'events' | 'rules';
+
+export interface OriginsSupport {
+    /** The origins allowed, each as a scheme and a host, never a wildcard. */
+    readonly allowed: readonly string[];
+    /** The paths those origins may use. The API alone unless the host says otherwise. */
+    readonly paths?: readonly OriginPath[];
+}
+
+/** The path a request is for, by the names an outside origin is allowed by. */
+const pathOf = (url: string, base: string): OriginPath | undefined => {
+    if (isEventsPath(url, base)) return 'events';
+    if (isRulesPath(url, base)) return 'rules';
+    if (isApiPath(url, base)) return 'graphql';
+    return undefined;
+};
+
+/** How long a browser may keep a preflight's answer, in seconds. */
+const PREFLIGHT_SECONDS = 600;
+
+/**
+ * Answers a request from another origin, or says that it may not be made.
+ *
+ * A request from the server's own origin carries that origin, or none, and
+ * is the store's own page. One from another origin is allowed only for the
+ * origins the host named and the paths it named for them, and the answer
+ * says so in the usual headers, with the customer group header among those
+ * a page may send. The events and rules paths are never open to an origin
+ * the host did not name for them, since a refused answer a browser cannot
+ * read is still a request the server acted on.
+ */
+interface Arrival {
+    readonly request: IncomingMessage;
+    readonly response: ServerResponse;
+    readonly url: string;
+    readonly base: string;
+    readonly origins: OriginsSupport | undefined;
+    readonly requestId: string;
+}
+
+const crossOrigin = ({
+    request,
+    response,
+    url,
+    base,
+    origins,
+    requestId,
+}: Arrival): 'own' | 'allowed' | 'answered' | 'refused' => {
+    const origin = request.headers.origin;
+    if (origin === undefined) return 'own';
+    const host = request.headers.host;
+    if (host !== undefined) {
+        try {
+            if (new URL(origin).host === host) return 'own';
+        } catch {
+            // An origin that is not a URL is refused below, like any other.
+        }
+    }
+    const path = pathOf(url, base);
+    const paths = origins?.paths ?? ['graphql'];
+    const allowed =
+        origins !== undefined &&
+        origins.allowed.includes(origin) &&
+        path !== undefined &&
+        paths.includes(path);
+    if (!allowed) {
+        refuse(response, 403, 'this origin may not use the store', requestId);
+        return 'refused';
+    }
+    response.setHeader('access-control-allow-origin', origin);
+    response.setHeader('vary', 'origin');
+    if (request.method !== 'OPTIONS') return 'allowed';
+    response.writeHead(204, {
+        'access-control-allow-methods': 'GET, POST, DELETE',
+        'access-control-allow-headers': `content-type, ${GROUP_HEADER}`,
+        'access-control-max-age': String(PREFLIGHT_SECONDS),
+        'x-request-id': requestId,
+    });
+    response.end();
+    return 'answered';
+};
+
+/** What is answered before the store is asked: the health line, and another origin's leave. */
+const answeredEarly = (arrival: Arrival): boolean => {
+    const { request, response, url, requestId } = arrival;
+    if (request.method === 'GET' && url === '/health') {
+        send(response, { status: 200, body: { status: 'ok' }, requestId });
+        return true;
+    }
+    const from = crossOrigin(arrival);
+    return from === 'answered' || from === 'refused';
+};
 
 export interface RulesSupport {
     readonly store: RuleStore;
@@ -121,7 +221,15 @@ const send = (
     response: ServerResponse,
     { status, body, requestId, headers = JSON_HEADERS }: Reply
 ) => {
-    response.writeHead(status, { ...headers, 'x-request-id': requestId });
+    // An answer to another origin already varies on it, and keeps varying on it.
+    const vary = [response.getHeader('vary'), headers.vary]
+        .filter((value): value is string => typeof value === 'string')
+        .join(', ');
+    response.writeHead(status, {
+        ...headers,
+        ...(vary && { vary }),
+        'x-request-id': requestId,
+    });
     response.end(JSON.stringify(body));
 };
 
@@ -146,6 +254,7 @@ export const createHandler = ({
     base = '/',
     events,
     rules,
+    origins,
 }: ServerOptions): RequestHandler => {
     // Replaced when a merchandiser saves rules, so every request after that
     // is answered by the store built with them.
@@ -243,10 +352,7 @@ export const createHandler = ({
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         const url = request.url ?? '/';
-        if (request.method === 'GET' && url === '/health') {
-            send(response, { status: 200, body: { status: 'ok' }, requestId });
-            return;
-        }
+        if (answeredEarly({ request, response, url, base, origins, requestId })) return;
         if (isEventsPath(url, base)) {
             await receive(request, response, requestId);
             return;

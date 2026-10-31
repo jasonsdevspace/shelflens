@@ -69,8 +69,11 @@ either passes a callback instead.
 - The demo's host page is served under the worker's scope and registers the worker the way the
   store's page does, so the widget's requests are answered in the browser. The widget itself
   knows nothing about workers, which keeps record 6's line: nothing in the widget knows which
-  host answers. A page on another origin is not controlled by this worker, and the Node server
-  answers no preflight, so a real embed on another site needs that server with CORS.
+  host answers. A page on another origin is not controlled by this worker, so a real embed on
+  another site runs the Node server with that origin named. The server answers the preflight for
+  the origins the host names and refuses every other, and keeps the events and rules paths to the
+  origins named for them, since a refused answer a browser cannot read is still a request the
+  server acted on. The browser test mounts the widget from a second origin against it.
 - The widget reads this browser's recent searches and never writes them, since a phrase joins on
   a landed result and the widget's default search opens the store before one lands. On the demo
   the store's page records it. On another origin the list stays empty.
@@ -91,3 +94,7 @@ either passes a callback instead.
   host's rules reach its own elements and not the widget's, the list opens over the host's banner
   and out of the box that clips it, which the element at its center proves, the page audits
   clean with the list open, and a search lands on the store's page.
+- From another origin: a page served from an origin of its own loads the widget's file from the
+  demo, the Node server answers its preflight and its requests, and a search lands on the store.
+  The server's own tests cover the preflight, an origin the host did not name, and the events and
+  rules paths kept closed.
