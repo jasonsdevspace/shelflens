@@ -307,5 +307,40 @@ describe('a page on another origin', () => {
         const own = await fetch(`${openBase}/graphql?op=${STORE}`, { headers: from(openBase) });
         expect(own.status).toBe(200);
         expect(own.headers.get('access-control-allow-origin')).toBeNull();
+        // The same host under another scheme is another origin.
+        const other = await fetch(`${openBase}/graphql?op=${STORE}`, {
+            headers: from(openBase.replace('http://', 'https://')),
+        });
+        expect(other.status).toBe(403);
+    });
+
+    it('takes the store\u2019s own origin from the host when a proxy rewrites the host', async () => {
+        const fronted = createServer({
+            api,
+            origins: { allowed: [], own: 'https://shop.example' },
+        });
+        await new Promise<void>((resolve) => fronted.listen(0, resolve));
+        const frontedBase = `http://127.0.0.1:${(fronted.address() as AddressInfo).port}`;
+        try {
+            const own = await fetch(`${frontedBase}/graphql?op=${STORE}`, {
+                headers: from('https://shop.example'),
+            });
+            expect(own.status).toBe(200);
+            expect(own.headers.get('access-control-allow-origin')).toBeNull();
+        } finally {
+            await new Promise<void>((resolve) => fronted.close(() => resolve()));
+        }
+    });
+
+    it('lets a page on another origin read the store version, and tells it the methods the path takes', async () => {
+        const answer = await fetch(`${openBase}/graphql?op=${STORE}`, {
+            headers: from('https://host.example'),
+        });
+        expect(answer.headers.get('access-control-expose-headers')).toContain(VERSION_HEADER);
+        const preflight = await fetch(`${wideBase}/events`, {
+            method: 'OPTIONS',
+            headers: { ...from('https://host.example'), 'access-control-request-method': 'POST' },
+        });
+        expect(preflight.headers.get('access-control-allow-methods')).toBe('POST');
     });
 });

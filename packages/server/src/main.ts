@@ -22,7 +22,8 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
  * `RULES=path` loads merchandising rules from a JSON file, validated here.
  * `ORIGINS=https://a.example,https://b.example` lets pages on those origins
  * use the API, as the widget does on a page the store does not serve, and
- * `ORIGIN_PATHS=graphql,events` says which paths they may use.
+ * `ORIGIN_PATHS=graphql,events` says which paths they may use. `OWN_ORIGIN`
+ * names the store's own page when a proxy in front rewrites the host.
  */
 const port = Number(process.env.PORT ?? 8080);
 const products = Number(process.env.PRODUCTS ?? 2000);
@@ -37,11 +38,27 @@ const listed = (name: string): readonly string[] =>
         .filter((item) => item.length > 0);
 const isOriginPath = (path: string): path is OriginPath =>
     path === 'graphql' || path === 'events' || path === 'rules';
-const allowedOrigins = listed('ORIGINS');
-const originPaths = listed('ORIGIN_PATHS').filter(isOriginPath);
+/** An origin as a browser sends it: scheme and host, no path, no trailing slash, lowercase. */
+const asOrigin = (entry: string): string => {
+    const origin = new URL(entry).origin;
+    if (origin === 'null')
+        throw new Error(`ORIGINS holds something that is not an origin: ${entry}`);
+    return origin;
+};
+const allowedOrigins = listed('ORIGINS').map(asOrigin);
+const originPaths = listed('ORIGIN_PATHS').map((path) => {
+    if (!isOriginPath(path))
+        throw new Error(`ORIGIN_PATHS holds a path the store has not got: ${path}`);
+    return path;
+});
+const own = process.env.OWN_ORIGIN === undefined ? undefined : asOrigin(process.env.OWN_ORIGIN);
 const origins: OriginsSupport | undefined =
     allowedOrigins.length > 0
-        ? { allowed: allowedOrigins, ...(originPaths.length > 0 && { paths: originPaths }) }
+        ? {
+              allowed: allowedOrigins,
+              ...(originPaths.length > 0 && { paths: originPaths }),
+              ...(own !== undefined && { own }),
+          }
         : undefined;
 
 const store = createStore({ catalog: generateCatalog({ products }), rules });

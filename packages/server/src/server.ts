@@ -9,14 +9,12 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     type EventStore,
     GROUP_HEADER,
-    isApiPath,
-    isEventsPath,
-    isRulesPath,
     PERSISTED_OPERATIONS,
     receiveEvents,
     receiveRules,
     resolveRequest,
     responseHeaders,
+    routeOf,
     type RuleStore,
     type StoreApi,
     VERSION_HEADER,
@@ -76,18 +74,55 @@ export interface OriginsSupport {
     readonly allowed: readonly string[];
     /** The paths those origins may use. The API alone unless the host says otherwise. */
     readonly paths?: readonly OriginPath[];
+    /** The origin the store's own page is served from, when a proxy rewrites the host. */
+    readonly own?: string;
 }
-
-/** The path a request is for, by the names an outside origin is allowed by. */
-const pathOf = (url: string, base: string): OriginPath | undefined => {
-    if (isEventsPath(url, base)) return 'events';
-    if (isRulesPath(url, base)) return 'rules';
-    if (isApiPath(url, base)) return 'graphql';
-    return undefined;
-};
 
 /** How long a browser may keep a preflight's answer, in seconds. */
 const PREFLIGHT_SECONDS = 600;
+
+/** The methods each path takes, which is what a preflight is told. */
+const METHODS: Readonly<Record<OriginPath, string>> = {
+    graphql: 'GET, POST',
+    events: 'POST',
+    rules: 'GET, POST, DELETE',
+};
+
+/** The headers of the store's a page on another origin may read. */
+const EXPOSED = `${VERSION_HEADER}, x-request-id`;
+
+/** A request as it arrives, with what the handler knows about where it is going. */
+interface Arrival {
+    readonly request: IncomingMessage;
+    readonly response: ServerResponse;
+    readonly route: OriginPath | undefined;
+    readonly origins: OriginsSupport | undefined;
+    readonly requestId: string;
+}
+
+/**
+ * The origin the store's own page is served from: the one the host named,
+ * or the one this request was made to, by its scheme and its host. A proxy
+ * that rewrites the host is why a host may name it.
+ */
+const ownOrigin = (request: IncomingMessage, named: string | undefined): string | undefined => {
+    if (named !== undefined) return named;
+    const host = request.headers.host;
+    if (host === undefined) return undefined;
+    const forwarded = request.headers['x-forwarded-proto']?.toString().split(',')[0]?.trim();
+    const secure = 'encrypted' in request.socket && request.socket.encrypted === true;
+    const scheme = forwarded ?? (secure ? 'https' : 'http');
+    return `${scheme}://${host}`;
+};
+
+/** The origin a browser sent, as an origin, or nothing when it is not one. */
+const originOf = (sent: string): string | undefined => {
+    try {
+        return new URL(sent).origin;
+    } catch {
+        return undefined;
+    }
+};
 
 /**
  * Answers a request from another origin, or says that it may not be made.
@@ -96,53 +131,39 @@ const PREFLIGHT_SECONDS = 600;
  * is the store's own page. One from another origin is allowed only for the
  * origins the host named and the paths it named for them, and the answer
  * says so in the usual headers, with the customer group header among those
- * a page may send. The events and rules paths are never open to an origin
- * the host did not name for them, since a refused answer a browser cannot
- * read is still a request the server acted on.
+ * a page may send and the store version among those it may read. The
+ * events and rules paths are never open to an origin the host did not name
+ * for them, since a refused answer a browser cannot read is still a request
+ * the server acted on.
  */
-interface Arrival {
-    readonly request: IncomingMessage;
-    readonly response: ServerResponse;
-    readonly url: string;
-    readonly base: string;
-    readonly origins: OriginsSupport | undefined;
-    readonly requestId: string;
-}
-
 const crossOrigin = ({
     request,
     response,
-    url,
-    base,
+    route,
     origins,
     requestId,
 }: Arrival): 'own' | 'allowed' | 'answered' | 'refused' => {
-    const origin = request.headers.origin;
-    if (origin === undefined) return 'own';
-    const host = request.headers.host;
-    if (host !== undefined) {
-        try {
-            if (new URL(origin).host === host) return 'own';
-        } catch {
-            // An origin that is not a URL is refused below, like any other.
-        }
-    }
-    const path = pathOf(url, base);
+    const sent = request.headers.origin;
+    if (sent === undefined) return 'own';
+    const origin = originOf(sent);
+    if (origin !== undefined && origin === ownOrigin(request, origins?.own)) return 'own';
     const paths = origins?.paths ?? ['graphql'];
     const allowed =
+        origin !== undefined &&
         origins !== undefined &&
         origins.allowed.includes(origin) &&
-        path !== undefined &&
-        paths.includes(path);
+        route !== undefined &&
+        paths.includes(route);
     if (!allowed) {
         refuse(response, 403, 'this origin may not use the store', requestId);
         return 'refused';
     }
     response.setHeader('access-control-allow-origin', origin);
+    response.setHeader('access-control-expose-headers', EXPOSED);
     response.setHeader('vary', 'origin');
     if (request.method !== 'OPTIONS') return 'allowed';
     response.writeHead(204, {
-        'access-control-allow-methods': 'GET, POST, DELETE',
+        'access-control-allow-methods': METHODS[route],
         'access-control-allow-headers': `content-type, ${GROUP_HEADER}`,
         'access-control-max-age': String(PREFLIGHT_SECONDS),
         'x-request-id': requestId,
@@ -152,8 +173,8 @@ const crossOrigin = ({
 };
 
 /** What is answered before the store is asked: the health line, and another origin's leave. */
-const answeredEarly = (arrival: Arrival): boolean => {
-    const { request, response, url, requestId } = arrival;
+const answeredEarly = (arrival: Arrival, url: string): boolean => {
+    const { request, response, requestId } = arrival;
     if (request.method === 'GET' && url === '/health') {
         send(response, { status: 200, body: { status: 'ok' }, requestId });
         return true;
@@ -352,16 +373,17 @@ export const createHandler = ({
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         const url = request.url ?? '/';
-        if (answeredEarly({ request, response, url, base, origins, requestId })) return;
-        if (isEventsPath(url, base)) {
+        const route = routeOf(url, base);
+        if (answeredEarly({ request, response, route, origins, requestId }, url)) return;
+        if (route === 'events') {
             await receive(request, response, requestId);
             return;
         }
-        if (isRulesPath(url, base)) {
+        if (route === 'rules') {
             await receiveRuleSet(request, response, requestId);
             return;
         }
-        if (!isApiPath(url, base)) {
+        if (route === undefined) {
             refuse(response, 404, 'not found', requestId);
             return;
         }
