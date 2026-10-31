@@ -2,6 +2,7 @@ import { chromium, type Page } from '@playwright/test';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
+import { SAMPLE_FILE, SAMPLE_PRODUCTS, sampleCsv } from '../try/sample.js';
 import { startPreview } from './preview.js';
 
 /**
@@ -30,19 +31,27 @@ const storeReady = (page: Page) =>
 const chooserReady = (page: Page) =>
     page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
 
-const SAMPLE = new URL('../../dist/try/sample-products.csv', import.meta.url).pathname;
-
-/** Loads the sample file through the page, as a visitor would. */
+/** Loads the sample file through the page, as a visitor would, made here rather than read from the build. */
 const loadSample = async (page: Page, origin: string) => {
     await page.goto(`${origin}/try/`);
-    await page.getByLabel('Choose a file').setInputFiles(SAMPLE);
-    await page.getByRole('button', { name: 'Search 200 products' }).click();
-    await page.getByText('your own catalog of 200 products').waitFor();
+    await page.getByLabel('Choose a file').setInputFiles({
+        name: SAMPLE_FILE,
+        mimeType: 'text/csv',
+        buffer: Buffer.from(sampleCsv()),
+    });
+    await page.getByRole('button', { name: `Search ${SAMPLE_PRODUCTS} products` }).click();
+    await page.getByText(`your own catalog of ${SAMPLE_PRODUCTS} products`).waitFor();
 };
+
+/** A search has answered once its results heading appears. */
+const resultsReady = (query: string) => (page: Page) =>
+    page.getByRole('heading', { level: 1, name: `results for "${query}"` }).waitFor();
 
 /**
  * Each page audited, what to do first when there is something, and what to
- * wait for before the audit.
+ * wait for before the audit. Storage is kept from one page to the next, so
+ * the empty page for a visitor's catalog comes before the one that loads a
+ * file into it.
  */
 const PAGES: readonly {
     readonly path: string;
@@ -56,7 +65,7 @@ const PAGES: readonly {
     { path: '/about/' },
     { path: '/widget/', ready: storeReady },
     { path: '/try/', ready: chooserReady },
-    { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: storeReady },
+    { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: resultsReady('bag') },
 ];
 
 const main = async () => {
