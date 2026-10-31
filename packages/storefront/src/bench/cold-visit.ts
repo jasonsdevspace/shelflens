@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -9,7 +9,7 @@ import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { sampleCsv } from '../try/sample.js';
 import type { StartedMessage } from '../worker/handle.js';
 import { startPreview } from './preview.js';
-import { gitCommit, today } from './record.js';
+import { gitCommit, megabytes, today } from './record.js';
 import { PHONE_SLOWDOWN } from './sizes.js';
 
 /**
@@ -95,43 +95,102 @@ interface CapRun {
 const workerShare = (header: string | undefined): number =>
     Number(/catalog;dur=([\d.]+)/.exec(header ?? '')?.[1] ?? Number.NaN);
 
+/** When each step of loading a file was seen, by the page itself, as performance.now(). */
+interface CapMarks {
+    picked?: number;
+    reviewed?: number;
+    pressed?: number;
+    ready?: number;
+    suggested?: number;
+}
+
+/**
+ * Marks each step from inside the page as it happens, so no interval holds the
+ * test harness's own round trips, which a slowed processor would slow as well.
+ */
+const markCapSteps = () => {
+    const marks: CapMarks = {};
+    (window as unknown as { capMarks: CapMarks }).capMarks = marks;
+    document.addEventListener('change', () => (marks.picked ??= performance.now()), true);
+    document.addEventListener(
+        'click',
+        (event) => {
+            const button = (event.target as Element | null)?.closest('button');
+            if (button && /^Search [\d,]+ products$/.test(button.textContent)) {
+                marks.pressed ??= performance.now();
+            }
+        },
+        true
+    );
+    new MutationObserver(() => {
+        const now = performance.now();
+        if (marks.picked !== undefined && marks.reviewed === undefined) {
+            const buttons = [...document.querySelectorAll('button')];
+            if (buttons.some((b) => /^Search [\d,]+ products$/.test(b.textContent)))
+                marks.reviewed = now;
+        }
+        if (marks.pressed !== undefined && marks.ready === undefined) {
+            if (
+                document.querySelector(
+                    '[role="combobox"][aria-label="Search the store"], input[placeholder="Search the store"]'
+                )
+            ) {
+                marks.ready = now;
+            }
+        }
+        if (
+            marks.ready !== undefined &&
+            marks.suggested === undefined &&
+            document.querySelector('[role="option"]')
+        ) {
+            marks.suggested = now;
+        }
+    }).observe(document, { childList: true, subtree: true, attributes: true });
+};
+
 /** A visitor's catalog at the cap, loaded and searched in a fresh browser. */
 const capVisit = async (origin: string, file: string, slowdown: number): Promise<CapRun> => {
     const browser = await chromium.launch();
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    if (slowdown > 1) {
-        const cdp = await context.newCDPSession(page);
-        await cdp.send('Emulation.setCPUThrottlingRate', { rate: slowdown });
+    try {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        if (slowdown > 1) {
+            const cdp = await context.newCDPSession(page);
+            await cdp.send('Emulation.setCPUThrottlingRate', { rate: slowdown });
+        }
+        await page.addInitScript(markCapSteps);
+        await page.goto(`${origin}/try/`);
+        await page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
+        await page.getByLabel('Choose a file').setInputFiles(file);
+        const search = page.getByRole('button', { name: /^Search [\d,]+ products$/ });
+        await search.waitFor({ timeout: 120_000 });
+        const loaded = page.waitForResponse(
+            (response) =>
+                response.url().endsWith('/try/catalog') && response.request().method() === 'PUT',
+            { timeout: 120_000 }
+        );
+        await search.click();
+        const workerMs = workerShare((await loaded).headers()['server-timing']);
+        const box = page.getByRole('combobox', { name: 'Search the store' });
+        await box.waitFor({ timeout: 120_000 });
+        await box.fill('bag');
+        await page.getByRole('option').first().waitFor({ timeout: 60_000 });
+        const marks = await page.evaluate(
+            () => (window as unknown as { capMarks: CapMarks }).capMarks
+        );
+        const { picked, reviewed, pressed, ready, suggested } = marks;
+        if ([picked, reviewed, pressed, ready, suggested].some((mark) => mark === undefined)) {
+            throw new Error(`the page did not mark every step: ${JSON.stringify(marks)}`);
+        }
+        return {
+            readMs: (reviewed ?? 0) - (picked ?? 0),
+            buildMs: (ready ?? 0) - (pressed ?? 0),
+            workerMs,
+            firstSuggestionMs: (suggested ?? 0) - (ready ?? 0),
+        };
+    } finally {
+        await browser.close();
     }
-    const now = () => page.evaluate(() => performance.now());
-    await page.goto(`${origin}/try/`);
-    await page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
-    const pickedAt = await now();
-    await page.getByLabel('Choose a file').setInputFiles(file);
-    const search = page.getByRole('button', { name: /^Search [\d,]+ products$/ });
-    await search.waitFor({ timeout: 120_000 });
-    const reviewedAt = await now();
-    const loaded = page.waitForResponse(
-        (response) =>
-            response.url().endsWith('/try/catalog') && response.request().method() === 'PUT',
-        { timeout: 120_000 }
-    );
-    await search.click();
-    const workerMs = workerShare((await loaded).headers()['server-timing']);
-    const box = page.getByRole('combobox', { name: 'Search the store' });
-    await box.waitFor({ timeout: 120_000 });
-    const readyAt = await now();
-    await box.fill('bag');
-    await page.getByRole('option').first().waitFor({ timeout: 60_000 });
-    const shownAt = await now();
-    await browser.close();
-    return {
-        readMs: reviewedAt - pickedAt,
-        buildMs: readyAt - reviewedAt,
-        workerMs,
-        firstSuggestionMs: shownAt - readyAt,
-    };
 };
 
 const median = (values: readonly number[]): number => {
@@ -182,18 +241,17 @@ pause for the typing to stop.
 const phoneWait = (run: CapRun): number => run.buildMs + run.workerMs * (PHONE_SLOWDOWN - 1);
 
 const capRows = (label: string, runs: readonly CapRun[], phone: boolean): string => {
-    const row = (name: string, run: CapRun & { readonly waitMs: number }) =>
-        `| ${name} | ${ms(run.readMs)} | ${ms(run.buildMs)} | ${ms(run.workerMs)} | ${phone ? ms(run.waitMs) : 'as measured'} | ${ms(run.firstSuggestionMs)} |`;
-    const middle = {
+    const row = (name: string, run: CapRun, wait: number | undefined) =>
+        `| ${name} | ${ms(run.readMs)} | ${ms(run.buildMs)} | ${ms(run.workerMs)} | ${wait === undefined ? 'as measured' : ms(wait)} | ${ms(run.firstSuggestionMs)} |`;
+    const middle: CapRun = {
         readMs: median(runs.map((r) => r.readMs)),
         buildMs: median(runs.map((r) => r.buildMs)),
         workerMs: median(runs.map((r) => r.workerMs)),
-        waitMs: median(runs.map(phoneWait)),
         firstSuggestionMs: median(runs.map((r) => r.firstSuggestionMs)),
     };
     return [
-        ...runs.map((run, i) => row(`${label} ${i + 1}`, { ...run, waitMs: phoneWait(run) })),
-        row(`${label}, median`, middle),
+        ...runs.map((run, i) => row(`${label} ${i + 1}`, run, phone ? phoneWait(run) : undefined)),
+        row(`${label}, median`, middle, phone ? median(runs.map(phoneWait)) : undefined),
     ].join('\n');
 };
 
@@ -205,10 +263,10 @@ const capReport = (
 ## A visitor's catalog at the cap
 
 The page at \`try/\` with a file of ${CATALOG_ROW_CAP.toLocaleString('en-US')} products, the cap,
-written as the sample is and ${(fileBytes / 1024 / 1024).toFixed(1)} MB as a CSV. Each run is a fresh
+written as the sample is and ${megabytes(fileBytes)} as a CSV. Each run is a fresh
 browser: the file is picked, read and mapped in the page, then search is pressed and the catalog
 goes to the page's own worker, which checks it and builds the store. "Laptop" is the machine as
-it is. "Phone" slows the processor four times, as Lighthouse slows it for mobile, but a browser
+it is. "Phone" slows the processor ${PHONE_SLOWDOWN} times, as Lighthouse slows it for mobile, but a browser
 can slow only the page and not its worker, so the worker times its own share and the wait on a
 phone scales that share too. The cap was chosen for a phone to start its store within two
 seconds, and that column is the wait.
@@ -221,8 +279,9 @@ ${capRows('Phone', phone, true)}
 "Reading the file" is from picking it to the review being ready, and includes guessing the
 mapping and making the whole catalog. "Pressing search to searching" includes sending the
 catalog to the worker, its check, the build and the store's first page, as measured, with the
-worker at full speed. The worker's share is reading the catalog it was sent, checking it and
-building the store. The first suggestion includes the popover's pause for the typing to stop,
+worker at full speed. The worker's share is its own work: reading the catalog it was sent, checking it, versioning it
+and building the store, without the transfer of the file or any wait behind another build. Every
+interval is marked by the page itself as it happens. The first suggestion includes the popover's pause for the typing to stop,
 and on a phone its answer from the worker is not slowed either.
 `;
 
@@ -234,13 +293,18 @@ const main = async () => {
         const runs: Run[] = [];
         for (let i = 0; i < RUNS; i += 1) runs.push(await visit(preview.origin));
         const dist = 'packages/storefront/dist';
-        // The store's own bundle, beside the explainer's and whatever the build shares.
-        const pageFile = readdirSync(`${dist}/assets`).find(
-            (name) => name.startsWith('main-') && name.endsWith('.js')
+        // The store's page is every script its HTML loads, entry and preloads, since the
+        // build splits what the pages share into chunks of their own.
+        const html = readFileSync(`${dist}/index.html`, 'utf8');
+        const scripts = [...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+\.js)"/g)].map(
+            (match) => match[1] ?? ''
         );
         const sizes = {
             catalog: gzipped(`${dist}/catalog.json`),
-            page: pageFile ? gzipped(`${dist}/assets/${pageFile}`) : 0,
+            page: [...new Set(scripts)].reduce(
+                (sum, script) => sum + gzipped(`${dist}/${script}`),
+                0
+            ),
             worker: gzipped(`${dist}/sw.js`),
         };
         const folder = mkdtempSync(join(tmpdir(), 'shelflens-cap-'));

@@ -22,8 +22,8 @@ export const canonical = (value: unknown): string => {
     return JSON.stringify(value);
 };
 
-export const fingerprint = (value: unknown): string => {
-    const text = canonical(value);
+/** A text folded into eight hex digits, for a version that only has to change when the text does. */
+export const hashText = (text: string): string => {
     let hash = 0x81_1c_9d_c5;
     for (let index = 0; index < text.length; index += 1) {
         hash ^= text.charCodeAt(index);
@@ -31,3 +31,5 @@ export const fingerprint = (value: unknown): string => {
     }
     return hash.toString(16).padStart(8, '0');
 };
+
+export const fingerprint = (value: unknown): string => hashText(canonical(value));

@@ -1,3 +1,4 @@
+import { hashText } from '@shelflens/api';
 import { type Catalog, CUSTOMER_GROUPS, type Product } from '@shelflens/catalog';
 
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -15,16 +16,6 @@ import { CATALOG_ROW_CAP } from './limits.js';
  * answered from what that one left in a cache.
  */
 
-/** The 32-bit FNV-1a hash of a text, as eight hex digits, the same hash the API's fingerprint uses. */
-const hashText = (text: string): string => {
-    let hash = 0x81_1c_9d_c5;
-    for (let index = 0; index < text.length; index += 1) {
-        hash ^= text.charCodeAt(index);
-        hash = Math.imul(hash, 0x01_00_01_93) >>> 0;
-    }
-    return hash.toString(16).padStart(8, '0');
-};
-
 /**
  * The version of a catalog's content: its products, brands, categories and
  * currency. The time each product was loaded is left out, so loading the
@@ -33,15 +24,18 @@ const hashText = (text: string): string => {
  * It hashes the browser's own JSON of the content rather than the API's
  * canonical form, which puts every object's keys in order in JavaScript and
  * took a third of the worker's time at the cap. The page writes every
- * catalog's keys in one order, so the same content is the same text, and a
- * catalog written in another order only misses a cache, never answers wrong.
+ * catalog's keys in one order, so the same content is the same text. The
+ * same content written in another order gets another version, which costs
+ * a cache miss and never a wrong answer.
  */
 export const contentVersion = (catalog: Omit<Catalog, 'version' | 'seed' | 'locale'>): string =>
     `try-${hashText(
-        JSON.stringify(
-            [catalog.currency, catalog.brands, catalog.categories, catalog.products],
-            (key, value: unknown) => (key === 'createdAt' ? undefined : value)
-        )
+        JSON.stringify([
+            catalog.currency,
+            catalog.brands,
+            catalog.categories,
+            catalog.products.map(({ createdAt: _loaded, ...product }) => product),
+        ])
     )}`;
 
 /** Whether any member pays a different price from a guest, which decides whether a group switch means anything. */
