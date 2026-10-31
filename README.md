@@ -178,10 +178,11 @@ npm run catalog -- --products 50 --out data/catalog.json
 npm run bench
 npm run bench:popover
 npm run bench:cold
+npm run bench:sizes
 npm run api
 ```
 
-The first writes a catalog to look at. The next three run the benchmarks and write their results
+The first writes a catalog to look at. The next four run the benchmarks and write their results
 to `docs/benchmarks/`. The last serves the API on port 8080, so a query can be sent by hand:
 
 ```bash
