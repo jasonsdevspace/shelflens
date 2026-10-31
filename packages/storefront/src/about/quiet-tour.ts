@@ -24,13 +24,14 @@ const FOLLOWED = ['click', 'auxclick', 'contextmenu'] as const;
 const storeBase = (here: Location): string => new URL('../', here.href).pathname;
 
 /**
- * Whether a link leads into the store, as opposed to off the site, to the
- * portfolio on the same origin, or back to the explainer itself.
+ * Whether a link leads into the store's own page, where the tour opens, as
+ * opposed to off the site, to the portfolio on the same origin, back to the
+ * explainer, or to a page of the demo with no tour, such as the page for a
+ * visitor's own products or a host page for the widget. Following one of those
+ * leaves the store's tour for the reader's first visit to the store.
  */
 export const intoStore = (link: HTMLAnchorElement, here: Location): boolean =>
-    link.origin === here.origin &&
-    link.pathname.startsWith(storeBase(here)) &&
-    !link.pathname.startsWith(here.pathname);
+    link.origin === here.origin && link.pathname === storeBase(here);
 
 export const quietTourOnStoreLinks = (root: ParentNode, here: Location): void => {
     for (const link of root.querySelectorAll<HTMLAnchorElement>('a[href]')) {

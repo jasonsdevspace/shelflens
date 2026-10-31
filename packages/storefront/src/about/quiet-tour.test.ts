@@ -62,4 +62,14 @@ describe('the explainer and the tour', () => {
         for (const link of links) fireEvent.click(link);
         expect(hasSeenTour()).toBe(false);
     });
+
+    it('leaves the tour for the store when a link goes to a page of the demo with none', () => {
+        const links = page([
+            'https://example.test/shelflens/try/',
+            'https://example.test/shelflens/try/widget/',
+            'https://example.test/shelflens/widget/',
+        ]);
+        for (const link of links) fireEvent.click(link);
+        expect(hasSeenTour()).toBe(false);
+    });
 });
