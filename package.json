@@ -11,7 +11,7 @@
         "packages/*"
     ],
     "scripts": {
-        "type-check": "npm run type-check --workspaces",
+        "type-check": "npm run type-check --workspaces && tsc -p scripts && tsc -p packages/engine/smoke",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",

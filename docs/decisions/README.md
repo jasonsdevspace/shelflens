@@ -36,3 +36,6 @@ so the evidence was still fresh.
 13. [A visitor's catalog stays in the browser, in a store of its own](0013-a-visitors-catalog-stays-in-the-browser.md):
     the same worker registered again under `try/`, a file mapped onto the products the store
     already has, read in the page and checked by the worker, capped at what a phone can search.
+14. [The engine is proven on the Node it declares, as a user installs it](0014-the-engine-is-proven-on-the-node-it-declares.md):
+    the packed tarball installed into an empty project and used on the lowest Node its engines
+    range admits, with its types compiled as Node and a bundler resolve them.

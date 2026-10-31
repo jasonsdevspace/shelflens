@@ -147,6 +147,7 @@ it. Each has been read again against the code as shipped.
 11. [Recent searches are page state, kept in local storage](docs/decisions/0011-recent-searches-are-page-state.md)
 12. [The widget keeps its own tree, and its popover takes the top layer](docs/decisions/0012-the-widget-keeps-its-own-tree.md)
 13. [A visitor's catalog stays in the browser, in a store of its own](docs/decisions/0013-a-visitors-catalog-stays-in-the-browser.md)
+14. [The engine is proven on the Node it declares, as a user installs it](docs/decisions/0014-the-engine-is-proven-on-the-node-it-declares.md)
 
 ## Dev setup
 

@@ -46,7 +46,18 @@ const sizeBudgets = {
 };
 
 export default tseslint.config(
-    { ignores: ['**/coverage', '**/node_modules', '**/dist', '**/generated'] },
+    {
+        ignores: [
+            '**/coverage',
+            '**/node_modules',
+            '**/dist',
+            '**/generated',
+            // Compiled in the floor job's empty project, against the installed
+            // package. Its import resolves to the engine's build, which does not
+            // exist yet when the checks that lint it run.
+            'packages/engine/smoke/types.ts',
+        ],
+    },
     {
         extends: [js.configs.recommended, ...tseslint.configs.recommended],
         files: ['**/*.{ts,tsx,mjs,js}'],
@@ -80,7 +91,7 @@ export default tseslint.config(
         extends: [...tseslint.configs.recommendedTypeChecked],
         languageOptions: {
             parserOptions: {
-                projectService: { allowDefaultProject: ['vitest.config.ts', 'scripts/*.test.ts'] },
+                projectService: { allowDefaultProject: ['vitest.config.ts'] },
                 tsconfigRootDir: import.meta.dirname,
             },
         },

@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": false,
+        "types": [],
+        "target": "ES2023",
+        "module": "esnext",
+        "moduleResolution": "bundler"
+    },
+    "files": ["types.ts"]
+}

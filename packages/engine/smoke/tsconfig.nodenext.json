@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": false,
+        "types": [],
+        "target": "ES2023",
+        "module": "nodenext",
+        "moduleResolution": "nodenext"
+    },
+    "files": ["types.ts"]
+}
