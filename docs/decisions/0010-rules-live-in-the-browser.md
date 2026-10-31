@@ -37,7 +37,9 @@ question nobody asks twice, and a kept one would only take the place of a real a
 their own, and answers a `rules` path beside `graphql` and `events`: a `GET` for the set in
 effect and whether it is edited, a `POST` to replace it, a `DELETE` to go back to the shipped
 file. The Node server answers the same path from a store the host supplies. Nothing leaves the
-visitor's browser, and a second visitor sees the shipped rules, which is the demo's contract.
+visitor's browser, and a second visitor sees the shipped rules, which is the demo's contract. The
+worker for a visitor's own catalog keeps its rules in a database of its own, so a rule naming one
+of their products can never reach the demo's store and fail its build.
 
 **A save builds the store again.** The worker builds a new store with the saved set, swaps it in
 once it is ready, and answers with the new version in the header the page already reads. The

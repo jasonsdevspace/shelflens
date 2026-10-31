@@ -23,6 +23,9 @@ import {
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
+import { checkCatalog } from '../try/check.js';
+import type { CatalogStore } from './catalog-db.js';
+
 /**
  * The API as a `fetch` handler, which is all a service worker needs.
  *
@@ -57,11 +60,20 @@ import type { Catalog } from '@shelflens/catalog';
  * A saved set stands in for the shipped file until it is reset, and the
  * store is built again, as a new version, before the save is answered,
  * so the next search cannot land on the old one.
+ *
+ * Given a catalog store in place of a catalog URL, as the page for a
+ * visitor's own catalog is, the worker builds from whatever catalog is kept
+ * there, and `catalog` beside the other paths takes a new one, checked
+ * first, or removes it. Until one is loaded the API answers that there is
+ * nothing to search. Each new catalog is a new version, so nothing the old
+ * one answered is served again.
  */
 
 export interface WorkerApiOptions {
-    /** Where the catalog JSON is served from. */
-    readonly catalogUrl: string;
+    /** Where the catalog JSON is served from, for a store built from a file the site ships. */
+    readonly catalogUrl?: string;
+    /** Where a visitor's own catalog is kept, for a store built from that instead. */
+    readonly catalogs?: CatalogStore;
     /** Where the merchandising rules JSON is served from, if the store has any. */
     readonly rulesUrl?: string;
     /** The path the site is served under, where `graphql` is answered. */
@@ -133,6 +145,20 @@ const fresh = (response: Response, now: Date): boolean => {
 const mayKeep = (response: Response): boolean =>
     (response.headers.get('cache-control') ?? '').startsWith('public');
 
+/** The path the page loads or removes a visitor's catalog on. */
+export const isCatalogPath = (url: string, base = '/'): boolean =>
+    new URL(url, 'http://local').pathname === `${base}catalog`;
+
+/** A store asked to build before it has a catalog to build from. */
+class NoCatalogError extends Error {
+    constructor() {
+        super('no catalog is loaded');
+    }
+}
+
+const noCatalog = () =>
+    json(404, { errors: [{ message: 'no catalog is loaded, so there is nothing to search yet' }] });
+
 const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
     const response = await fetchImpl(url);
     if (!response.ok) throw new Error(`the ${what} came back with status ${response.status}`);
@@ -141,6 +167,7 @@ const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string):
 
 export const createWorkerApi = ({
     catalogUrl,
+    catalogs,
     rulesUrl,
     base = '/',
     fetch: fetchImpl = fetch,
@@ -155,15 +182,28 @@ export const createWorkerApi = ({
     let built = '';
     /** The saved rules the store was built with, as text, so a build with the same is skipped. */
     let builtRules = '';
+    /** The version of the catalog the store was built from. */
+    let builtCatalog = '';
     /** The catalog and the shipped rules, downloaded once and kept for every build. */
     let shipped: Promise<{ catalog: Catalog; rules: readonly Rule[] }> | undefined;
 
     /** How often each product was clicked, from everything collected so far. */
     const clicks = async () => signalsOf(events ? await events.all() : []);
 
+    /** The catalog to build from: the visitor's, when there is a store of them, or the site's. */
+    const catalogNow = async (): Promise<Catalog> => {
+        if (catalogs) {
+            const kept = await catalogs.current();
+            if (!kept) throw new NoCatalogError();
+            return kept;
+        }
+        if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
+        return fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog');
+    };
+
     const download = () => {
         shipped ??= Promise.all([
-            fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog'),
+            catalogNow(),
             rulesUrl === undefined
                 ? Promise.resolve([])
                 : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
@@ -181,9 +221,10 @@ export const createWorkerApi = ({
         const [signals, saved] = await Promise.all([clicks(), rules?.current()]);
         return { signals, saved };
     };
-    const remember = (signals: Signals, saved: readonly Rule[] | undefined) => {
+    const remember = (signals: Signals, saved: readonly Rule[] | undefined, catalog: Catalog) => {
         built = fingerprint(signals);
         builtRules = JSON.stringify(saved ?? null);
+        builtCatalog = catalog.version;
     };
 
     /**
@@ -201,6 +242,7 @@ export const createWorkerApi = ({
             signals,
         });
         const api = withResponseCache(createStoreApi(model, { events }));
+        remember(signals, saved, catalog);
         startup = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
         return { api, model };
     };
@@ -211,11 +253,14 @@ export const createWorkerApi = ({
      */
     const buildAgain = async (): Promise<Built> => {
         const { signals, saved } = await inputs();
-        const same = fingerprint(signals) === built && JSON.stringify(saved ?? null) === builtRules;
+        const { catalog } = await download();
+        const same =
+            fingerprint(signals) === built &&
+            JSON.stringify(saved ?? null) === builtRules &&
+            catalog.version === builtCatalog;
         if (same && store) return store;
         const next = await build(signals, saved);
         store = Promise.resolve(next);
-        remember(signals, saved);
         await dropOthers(next.api);
         return next;
     };
@@ -279,10 +324,7 @@ export const createWorkerApi = ({
 
     const load = (): Promise<Built> => {
         store ??= inputs()
-            .then(({ signals, saved }) => {
-                remember(signals, saved);
-                return build(signals, saved);
-            })
+            .then(({ signals, saved }) => build(signals, saved))
             .catch((error: unknown) => {
                 // Let the next request try again rather than remembering the failure.
                 store = undefined;
@@ -291,15 +333,60 @@ export const createWorkerApi = ({
         return store;
     };
 
-    /** Drops every kept answer that is not for this store's version. */
-    const dropOthers = async (api: StoreApi) => {
+    /** Drops every kept answer that is not for this version, or every one without a version. */
+    const dropOthers = async (api: StoreApi | undefined) => {
         if (!answers) return;
         const kept = await answers();
         for (const request of await kept.keys()) {
-            if (new URL(request.url).searchParams.get('v') !== api.version) {
+            if (new URL(request.url).searchParams.get('v') !== api?.version) {
                 await kept.delete(request);
             }
         }
+    };
+
+    /** Forgets the store and the catalog it was built from, so the next build reads afresh. */
+    const forget = () => {
+        shipped = undefined;
+        store = undefined;
+        builtCatalog = '';
+    };
+
+    /** The catalog path: say what is loaded, load a new catalog, or remove it. */
+    const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
+        if (request.method === 'GET') {
+            const kept = await held.current();
+            return kept
+                ? json(200, { version: kept.version, products: kept.products.length })
+                : noCatalog();
+        }
+        if (request.method === 'DELETE') {
+            await building;
+            await held.clear();
+            forget();
+            await dropOthers(undefined);
+            return new Response(null, { status: 204 });
+        }
+        if (request.method !== 'PUT') {
+            return json(405, {
+                errors: [{ message: 'the catalog path takes GET, PUT and DELETE' }],
+            });
+        }
+        let catalog: Catalog;
+        try {
+            catalog = checkCatalog(JSON.parse(await request.text()));
+        } catch (error) {
+            return json(400, {
+                errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],
+            });
+        }
+        await building;
+        await held.replace(catalog);
+        shipped = undefined;
+        const served = await rebuild();
+        return new Response(null, {
+            status: 204,
+            headers: { [VERSION_HEADER]: served.api.version },
+        });
     };
 
     const answer = async (request: Request): Promise<Response> => {
@@ -318,7 +405,8 @@ export const createWorkerApi = ({
         let api: StoreApi;
         try {
             api = (await load()).api;
-        } catch {
+        } catch (error) {
+            if (error instanceof NoCatalogError) return noCatalog();
             return json(503, { errors: [{ message: 'the store is not ready' }] });
         }
         const now = new Date();
@@ -332,7 +420,12 @@ export const createWorkerApi = ({
 
     return {
         warm: async () => {
-            await dropOthers((await load()).api);
+            try {
+                await dropOthers((await load()).api);
+            } catch (error) {
+                // A visitor's page with nothing loaded yet has nothing to warm.
+                if (!(error instanceof NoCatalogError)) throw error;
+            }
             return startup;
         },
         refresh: async () => {
@@ -347,8 +440,15 @@ export const createWorkerApi = ({
             return true;
         },
         handle: async (request) => {
+            if (catalogs && isCatalogPath(request.url, base))
+                return receiveCatalog(catalogs, request);
             if (isEventsPath(request.url, base)) return receive(request);
-            if (isRulesPath(request.url, base)) return receiveRuleSet(request);
+            if (isRulesPath(request.url, base)) {
+                return receiveRuleSet(request).catch((error: unknown) => {
+                    if (error instanceof NoCatalogError) return noCatalog();
+                    throw error;
+                });
+            }
             if (!isApiRequest(request)) return undefined;
             const kept = request.method === 'GET' && answers ? await answers() : undefined;
             const held = await kept?.match(request);

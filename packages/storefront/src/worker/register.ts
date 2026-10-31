@@ -59,6 +59,16 @@ const browserHost = (): WorkerHost => ({
     reload: () => window.location.reload(),
 });
 
+/**
+ * Whether the worker controlling the page is the one this page registers.
+ * A page under `try/` is controlled by the demo's worker until its own takes
+ * over, and a request it made in that time would reach the wrong store.
+ */
+export const isOwnController = (controller: ServiceWorker | null, scriptUrl: string): boolean => {
+    if (!controller) return false;
+    return new URL(scriptUrl, controller.scriptURL).href === controller.scriptURL;
+};
+
 export const controlledByWorker = async (
     scriptUrl: string,
     scope: string,
@@ -68,7 +78,7 @@ export const controlledByWorker = async (
     if (!serviceWorker) {
         throw new Error('this browser cannot run the demo, which needs a service worker');
     }
-    let controlled = serviceWorker.controller !== null;
+    let controlled = isOwnController(serviceWorker.controller, scriptUrl);
     let reloaded = false;
     const claimed = new Promise<void>((resolve) => {
         serviceWorker.addEventListener('controllerchange', () => {
@@ -88,6 +98,7 @@ export const controlledByWorker = async (
         if (serviceWorker.controller) await announceVisit(serviceWorker.controller);
         return;
     }
+    // Controlled by another scope's worker, which will hand over when this one activates.
     // Already active and not in charge: nothing is going to claim this page unasked.
     registration.active?.postMessage(CLAIM_MESSAGE);
     await claimed;

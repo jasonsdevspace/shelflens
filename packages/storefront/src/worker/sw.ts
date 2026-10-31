@@ -2,10 +2,12 @@
 
 import { routeOf } from '@shelflens/api';
 
+import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
-import { createWorkerApi, type StartedMessage } from './handle.js';
+import { createWorkerApi, isCatalogPath, type StartedMessage } from './handle.js';
 import { CLAIM_MESSAGE, VISIT_MESSAGE, VISITED_MESSAGE } from './register.js';
 import { createIndexedDbRuleStore } from './rule-db.js';
+import { storageFor, storeKindOf } from './storage.js';
 
 /**
  * The service worker that is the demo's API.
@@ -15,17 +17,29 @@ import { createIndexedDbRuleStore } from './rule-db.js';
  * search does not wait for the index. Once it is in charge of a page it
  * tells the page how long starting the store took, which is how the cold
  * visit is measured. A page it is not in charge of can ask to be claimed.
+ *
+ * Registered with `?store=try` under the scope `try/`, it serves a visitor's
+ * own catalog instead, from storage of its own, so the demo's worker, caches
+ * and saved rules are never touched by what a visitor loads.
  */
 
 declare const self: ServiceWorkerGlobalScope;
 
+const kind = storeKindOf(self.location.href);
+const names = storageFor(kind);
+const base = new URL(self.registration.scope).pathname;
+
 const api = createWorkerApi({
-    catalogUrl: new URL('catalog.json', self.registration.scope).href,
-    rulesUrl: new URL('rules.json', self.registration.scope).href,
-    base: new URL(self.registration.scope).pathname,
-    answers: () => caches.open('shelflens-answers'),
-    events: createIndexedDbEventStore(),
-    rules: createIndexedDbRuleStore(),
+    ...(names.catalog
+        ? { catalogs: createIndexedDbCatalogStore(names.catalog) }
+        : {
+              catalogUrl: new URL('catalog.json', self.registration.scope).href,
+              rulesUrl: new URL('rules.json', self.registration.scope).href,
+          }),
+    base,
+    answers: () => caches.open(names.answers),
+    events: createIndexedDbEventStore({ name: names.events }),
+    rules: createIndexedDbRuleStore(names.rules),
 });
 
 /** Tells every page this worker is in charge of how the store started. */
@@ -66,6 +80,9 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    if (routeOf(request.url, new URL(self.registration.scope).pathname) === undefined) return;
+    const ours =
+        routeOf(request.url, base) !== undefined ||
+        (kind === 'try' && isCatalogPath(request.url, base));
+    if (!ours) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

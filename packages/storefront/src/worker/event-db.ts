@@ -11,7 +11,8 @@ import { EVENT_LIMIT, type EventStore, type StoreEvent } from '@shelflens/api';
  * limit the oldest go, by the time the page gave them.
  */
 
-const DB_NAME = 'shelflens-events';
+/** The demo's database. The page for a visitor's own catalog names its own. */
+export const DEFAULT_DB_NAME = 'shelflens-events';
 const STORE_NAME = 'events';
 const BY_TIME = 'at';
 
@@ -28,9 +29,8 @@ const done = (transaction: IDBTransaction): Promise<void> =>
         transaction.onabort = () => reject(transaction.error ?? new Error('the write aborted'));
     });
 
-const openAt = (version?: number): Promise<IDBDatabase> => {
-    const opening =
-        version === undefined ? indexedDB.open(DB_NAME) : indexedDB.open(DB_NAME, version);
+const openAt = (name: string, version?: number): Promise<IDBDatabase> => {
+    const opening = version === undefined ? indexedDB.open(name) : indexedDB.open(name, version);
     opening.onupgradeneeded = () => {
         const store = opening.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
         store.createIndex(BY_TIME, 'at');
@@ -44,12 +44,12 @@ const openAt = (version?: number): Promise<IDBDatabase> => {
  * it empty, and a store can only be added on a version change, so in that
  * case the database is opened again one version up.
  */
-const open = async (): Promise<IDBDatabase> => {
-    const db = await openAt();
+const open = async (name: string): Promise<IDBDatabase> => {
+    const db = await openAt(name);
     if (db.objectStoreNames.contains(STORE_NAME)) return db;
     const next = db.version + 1;
     db.close();
-    return openAt(next);
+    return openAt(name, next);
 };
 
 /** Removes the oldest events until the store is within its limit. */
@@ -75,14 +75,17 @@ const trim = async (store: IDBObjectStore, limit: number) => {
 
 export interface IndexedDbEventStoreOptions {
     readonly limit?: number;
+    /** The database to keep them in. */
+    readonly name?: string;
 }
 
 export const createIndexedDbEventStore = ({
     limit = EVENT_LIMIT,
+    name = DEFAULT_DB_NAME,
 }: IndexedDbEventStoreOptions = {}): EventStore => {
     let db: Promise<IDBDatabase> | undefined;
     const database = () => {
-        db ??= open().catch((error: unknown) => {
+        db ??= open(name).catch((error: unknown) => {
             db = undefined;
             throw error;
         });
