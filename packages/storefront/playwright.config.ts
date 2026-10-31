@@ -22,10 +22,30 @@ export default defineConfig({
         { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
         { name: 'phone', use: { ...devices['Pixel 7'] } },
     ],
-    webServer: {
-        command: 'npx vite preview --port 4173 --strictPort',
-        url: 'http://localhost:4173/',
-        reuseExistingServer: !process.env.CI,
-        timeout: 30_000,
-    },
+    webServer: [
+        {
+            command: 'npx vite preview --port 4173 --strictPort',
+            url: 'http://localhost:4173/',
+            reuseExistingServer: !process.env.CI,
+            timeout: 30_000,
+        },
+        {
+            // The Node server, as a host on another origin would run it, open to the
+            // page the embed test serves from an origin of its own.
+            command: 'node packages/server/dist/main.js',
+            cwd: '../..',
+            env: { PORT: '4174', PRODUCTS: '300', ORIGINS: 'http://127.0.0.1:4175' },
+            url: 'http://127.0.0.1:4174/health',
+            // Never one started by hand, which would be open to other origins or none.
+            reuseExistingServer: false,
+            timeout: 30_000,
+        },
+        {
+            // A page the store does not serve, on an origin of its own, for the embed test.
+            command: 'node e2e/host-server.mjs',
+            url: 'http://127.0.0.1:4175/',
+            reuseExistingServer: false,
+            timeout: 30_000,
+        },
+    ],
 });

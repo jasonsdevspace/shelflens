@@ -26,8 +26,10 @@ the page.
   says where the API and the store are, and can say what a search or a product does instead.
   The page at `widget/` is a host with unfriendly styles, a banner, a clipping box and a React of
   its own, to show the widget keeping its look and its place.
+  A page on another origin runs the Node server with that origin named, as the server's README
+  says, and the browser test does it from a second origin.
   [Decision record 12](../../docs/decisions/0012-the-widget-keeps-its-own-tree.md) has the
-  choices, and what a page on another origin would still need.
+  choices.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

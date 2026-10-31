@@ -61,7 +61,8 @@ Option B, with option A available at any time.
   send runs a query the storefront did not ship. Record 8 describes the caches built on that.
 - A host page for the widget under the worker's scope registers the worker as the store's page
   does, and the widget never does: it is handed the API's address and knows nothing about which
-  host answers. Record 12 has the widget, and what a page on another origin would need.
+  host answers. A page on another origin is answered by the Node server, which the host runs with
+  that origin named and nothing else allowed. Record 12 has the widget.
 
 ## How it is tested
 

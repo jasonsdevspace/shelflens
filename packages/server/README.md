@@ -25,3 +25,40 @@ that the worker runs in production. `createServer` wraps it in `node:http`.
 
 `PORT` and `PRODUCTS` set the port and the size of the generated catalog. `PERSISTED_ONLY=true`
 refuses full queries.
+
+## A page on another origin
+
+The widget can be mounted on a page the store does not serve, and that page's requests cross
+an origin. The server refuses a request from another origin unless the host names the origin,
+so a page the host did not name cannot read the catalog, send events or save rules through it.
+
+```bash
+ORIGINS=https://shop.example,https://www.shop.example npm run api
+```
+
+`ORIGINS` is a list of origins, each a scheme and a host, never a wildcard. The server answers
+the browser's preflight for them, with the customer group header among those the page may send,
+and every answer to them varies on the origin. By default those origins may use the API alone.
+`ORIGIN_PATHS=graphql,events` opens the events path to them too, and `rules` the rules path,
+which a host should open only to a page it would let a merchandiser use. A request that names
+the server's own origin is the store's own page and needs no leave. The server takes that origin
+from the request, its scheme and its host, so behind a proxy that rewrites the host, name it with
+`OWN_ORIGIN=https://shop.example`. A page on another origin may read the store version and the
+request id from each answer, so the widget there caches as the store's own page does.
+
+With the server running, the host page loads the widget's file from the demo or from a copy of
+it, and mounts the box with the server's address as the API and the store's page for searches:
+
+```html
+<div id="search"></div>
+<script type="module">
+    import { mountShelfLens } from 'https://jasonsdevspace.com/shelflens/widget.js';
+    mountShelfLens(document.getElementById('search'), {
+        apiUrl: 'https://api.shop.example/graphql',
+        storeUrl: 'https://shop.example/',
+    });
+</script>
+```
+
+The browser test in the storefront does exactly this: a page served from an origin of its own,
+the widget's file from the demo, and this server open to that one origin.

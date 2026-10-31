@@ -17,6 +17,9 @@ import { themeScript } from './src/dev/theme-plugin.js';
 export default defineConfig({
     base: process.env.BASE_PATH ?? '/',
     plugins: [react(), storeApi(), themeScript()],
+    // The preview serves the built files as GitHub Pages does, to any origin, so a page
+    // on another origin can load the widget's file from it in the browser test.
+    preview: { cors: true },
     build: {
         outDir: 'dist',
         emptyOutDir: true,
