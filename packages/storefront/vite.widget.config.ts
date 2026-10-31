@@ -16,13 +16,13 @@ export default defineConfig({
         outDir: 'dist',
         emptyOutDir: false,
         sourcemap: true,
-        rollupOptions: {
+        rolldownOptions: {
             input: 'src/widget/index.tsx',
             preserveEntrySignatures: 'exports-only',
             output: {
                 format: 'es',
                 entryFileNames: 'widget.js',
-                inlineDynamicImports: true,
+                codeSplitting: false,
             },
         },
     },

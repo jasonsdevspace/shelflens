@@ -29,7 +29,7 @@ export default defineConfig({
         // request on the store's first visit. Every browser that runs the worker
         // preloads modules on its own, so the polyfill is left out.
         modulePreload: { polyfill: false },
-        rollupOptions: {
+        rolldownOptions: {
             input: {
                 main: fileURLToPath(new URL('./index.html', import.meta.url)),
                 about: fileURLToPath(new URL('./about/index.html', import.meta.url)),
