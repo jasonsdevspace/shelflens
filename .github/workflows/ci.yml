@@ -51,6 +51,9 @@ jobs:
             - name: Prose check
               run: npm run prose
 
+            - name: Node version check
+              run: npm run node-check
+
             - name: Test
               run: npm run test:run
 

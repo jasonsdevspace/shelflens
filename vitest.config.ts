@@ -24,7 +24,7 @@ export default defineConfig({
                 test: {
                     name: 'packages',
                     environment: 'node',
-                    include: ['packages/*/src/**/*.test.ts'],
+                    include: ['packages/*/src/**/*.test.ts', 'scripts/*.test.ts'],
                     exclude: ['packages/storefront/**'],
                 },
             },
