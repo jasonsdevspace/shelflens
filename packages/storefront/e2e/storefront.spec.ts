@@ -105,6 +105,10 @@ test('whatever can be clicked shows the pointer, and a control that is off shows
     await expect(previous).toBeDisabled();
     expect(await cursor(previous)).toBe('default');
     expect(await cursor(page.getByRole('button', { name: 'Next' }))).toBe('pointer');
+    // The page the visitor is on is not a link to anywhere, so it keeps the arrow.
+    const pages = page.getByRole('navigation', { name: 'Pages' });
+    expect(await cursor(pages.locator('[aria-current="page"]'))).toBe('default');
+    expect(await cursor(pages.getByRole('button', { name: 'Page 2' }))).toBe('pointer');
 });
 
 test('a member sees the product guests cannot, and pays less, from the same page', async ({

@@ -45,32 +45,16 @@
 
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
- * shows the plain arrow, so no control has to remember its own. Each pointer
- * rule is followed by its rule for a control that is off. The minifier folds
- * neighboring rules with the same declarations into one :is(), which takes
- * the specificity of its strongest selector, so a plain button beside the
- * label rule would outrank button:disabled. A rule in between keeps them apart.
+ * keeps the plain arrow, so no control has to remember its own. The labels
+ * around a checkbox or a radio are named by class, since :has() is newer
+ * than some of the browsers the build supports.
  */
-button,
-select,
-summary {
-    cursor: pointer;
-}
-
-button:disabled,
-select:disabled {
-    cursor: default;
-}
-
-label:has(> input[type='checkbox'], > input[type='radio']) {
-    cursor: pointer;
-}
-
-label:has(> input:disabled) {
-    cursor: default;
-}
-
-::file-selector-button {
+button:not(:disabled),
+select:not(:disabled),
+summary,
+.facet-option,
+.rules-choice,
+.try-search-only label {
     cursor: pointer;
 }
 
@@ -676,6 +660,7 @@ body {
 }
 
 .page-number[aria-current='page'] {
+    cursor: default;
     background: var(--accent);
     border-color: var(--accent);
     color: var(--on-accent);

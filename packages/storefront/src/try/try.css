@@ -67,6 +67,10 @@
     cursor: pointer;
 }
 
+.try-pick input::file-selector-button {
+    cursor: pointer;
+}
+
 .try-pick:focus-within {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
