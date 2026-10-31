@@ -26,11 +26,12 @@ let failure: Failure | undefined;
 let sample: () => Promise<Response>;
 
 const page = () => {
+    const rules = createMemoryRuleStore();
     const worker = createWorkerApi({
         catalogs: createMemoryCatalogStore(),
         base: BASE,
         events: createMemoryEventStore(),
-        rules: createMemoryRuleStore(),
+        rules,
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(
@@ -43,6 +44,7 @@ const page = () => {
         return (await worker.handle(request)) ?? new Response('not found', { status: 404 });
     });
     render(<TryPage ready={Promise.resolve()} base={BASE} />);
+    return { rules };
 };
 
 const failWhen =
@@ -160,6 +162,34 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
         expect(window.location.search).toBe('');
+    });
+
+    it('asks before another file discards saved rules, and keeps them when the visitor says so', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace([]);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        const yes = await screen.findByRole('button', { name: 'Yes, choose another file' });
+        expect(yes).toHaveFocus();
+        expect(screen.getByText(/Your rules go with these products/)).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Keep my rules' }));
+        expect(screen.getByRole('button', { name: 'Choose another file' })).toBeInTheDocument();
+        expect(await rules.current()).toEqual([]);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await userEvent.click(
+            await screen.findByRole('button', { name: 'Yes, choose another file' })
+        );
+        expect(await chooser()).toBeInTheDocument();
+    });
+
+    it('asks before removing the products discards saved rules too', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace([]);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
+        expect(await chooser()).toBeInTheDocument();
+        expect(await rules.current()).toBeUndefined();
     });
 
     it('shows the file it read last, whichever finishes first', async () => {

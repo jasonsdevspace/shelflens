@@ -170,3 +170,99 @@ test('puts a wrong guess right before searching, and the store shows what was ch
     await search.press('Enter');
     await expect(page.getByRole('list', { name: 'Products' })).toContainText('$95');
 });
+
+/** Four products of a made-up file, which the demo's catalog does not have, so the store searched can only be the visitor's. */
+const BENCHES = {
+    name: 'benches.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+        'Title,Price\nCedar Bench,$95.00\nOak Bench,$80.00\nPine Bench,$60.00\nWalnut Bench,$120.00\n'
+    ),
+};
+
+const loadBenches = async (page: Page) => {
+    await page.goto('try/');
+    await page.getByLabel('Choose a file').setInputFiles(BENCHES);
+    await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+};
+
+test('a visitor pins their own product, sees why it ranked, keeps it across a visit, and is asked before a new file takes it', async ({
+    page,
+}) => {
+    await loadBenches(page);
+    await page.goto('try/?q=bench&explain=1');
+    const cards = page.getByRole('list', { name: 'Products' }).getByRole('link');
+    const layout = page.locator('.results-layout');
+    const order = () =>
+        cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-sku')));
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    const before = await order();
+    expect(before).toHaveLength(4);
+    const last = before[before.length - 1] ?? '';
+
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    const panel = page.getByRole('complementary', { name: 'Rules' });
+    await panel.getByRole('button', { name: 'Add a rule' }).click();
+    await panel.getByRole('textbox', { name: 'Name', exact: true }).fill('My bench first');
+    await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
+    await expect(page.getByText('Previewing a draft')).toBeVisible();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
+        'Pinned to the top by rule'
+    );
+    await audit(page);
+
+    await panel.getByRole('button', { name: 'Save rule' }).click();
+    await expect(panel.getByRole('status')).toContainText('Rule saved. The store is now version');
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect((await order())[0]).toBe(last);
+
+    // The visitor's rules are kept by the worker for try/, so they outlive the page
+    // and never reach the demo's store.
+    await page.reload();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect((await order())[0]).toBe(last);
+    await page.goto('./?q=jacket');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.rules-notice')).toBeHidden();
+
+    await page.goto('try/?q=bench');
+    await page.getByRole('button', { name: 'Choose another file' }).click();
+    await expect(page.getByText(/Your rules go with these products/)).toBeVisible();
+    await audit(page);
+    await page.getByRole('button', { name: 'Keep my rules' }).click();
+    await page.getByRole('button', { name: 'Choose another file' }).click();
+    await page.getByRole('button', { name: 'Yes, choose another file' }).click();
+    await page.getByLabel('Choose a file').setInputFiles(BENCHES);
+    await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await page.goto('try/?q=bench');
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect(await order()).toEqual(before);
+    await expect(page.locator('.rules-notice')).toBeHidden();
+});
+
+test('discarding a visitor’s rules gives back the order the engine chose', async ({ page }) => {
+    await loadBenches(page);
+    await page.goto('try/?q=bench');
+    const cards = page.getByRole('list', { name: 'Products' }).getByRole('link');
+    const layout = page.locator('.results-layout');
+    const order = () =>
+        cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-sku')));
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    const before = await order();
+    const last = before[before.length - 1] ?? '';
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    const panel = page.getByRole('complementary', { name: 'Rules' });
+    await panel.getByRole('button', { name: 'Add a rule' }).click();
+    await panel.getByRole('textbox', { name: 'Name', exact: true }).fill('My bench first');
+    await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
+    await panel.getByRole('button', { name: 'Save rule' }).click();
+    await expect(panel.getByRole('status')).toContainText('Rule saved');
+    const notice = page.locator('.rules-notice');
+    await notice.getByRole('button', { name: 'Discard your rules' }).click();
+    await notice.getByRole('button', { name: 'Yes, discard' }).click();
+    await expect(notice).toBeHidden();
+    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    expect(await order()).toEqual(before);
+});

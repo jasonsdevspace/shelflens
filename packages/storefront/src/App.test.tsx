@@ -596,7 +596,7 @@ describe('as a merchandiser', () => {
         await settled();
         expect(cards().slice(0, 2).map(sku)).toEqual([featured.sku, last]);
 
-        await user.click(screen.getByRole('button', { name: 'Use the store’s rules' }));
+        await user.click(screen.getByRole('button', { name: 'Discard your rules' }));
         await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
         await waitFor(() =>
             expect(screen.queryByText(/Your edited rules are in effect/)).toBeNull()
@@ -616,7 +616,7 @@ describe('as a merchandiser', () => {
         await within(panel).findByRole('status');
         const banner = screen.getByText(/Your edited rules are in effect/).closest('div');
         await user.click(
-            within(banner as HTMLElement).getByRole('button', { name: 'Use the store’s rules' })
+            within(banner as HTMLElement).getByRole('button', { name: 'Discard your rules' })
         );
         await user.click(
             within(banner as HTMLElement).getByRole('button', { name: 'Yes, discard' })
@@ -626,9 +626,7 @@ describe('as a merchandiser', () => {
         );
         await settled();
         await waitFor(() =>
-            expect(
-                within(panel).queryByRole('button', { name: 'Use the store’s rules' })
-            ).toBeNull()
+            expect(within(panel).queryByRole('button', { name: 'Discard your rules' })).toBeNull()
         );
         expect(within(panel).getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
             'featured-jacket'

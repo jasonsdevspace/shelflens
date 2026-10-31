@@ -250,7 +250,7 @@ describe('the rules panel', () => {
         // Whether it applies is the engine's word, which the next search brings. It is listed.
         await user.click(screen.getByRole('button', { name: 'Show every rule' }));
         expect(screen.getByRole('list', { name: 'Every rule' })).toHaveTextContent('Trail first');
-        expect(screen.getByRole('button', { name: 'Use the store’s rules' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeInTheDocument();
     });
 
     it('repeats the host’s refusal and keeps the form open', async () => {
@@ -402,30 +402,30 @@ describe('the rules panel', () => {
         expect((await store.current())?.map((rule) => rule.name)).toContain('Trail first');
     });
 
-    it('says when the store’s rules could not be brought back', async () => {
+    it('says when your rules could not be discarded', async () => {
         await store.replace([shipped[1] as (typeof shipped)[number]]);
         const { user, onStoreChanged } = open();
-        await user.click(await screen.findByRole('button', { name: 'Use the store’s rules' }));
+        await user.click(await screen.findByRole('button', { name: 'Discard your rules' }));
         vi.stubGlobal('fetch', () => Promise.resolve(new Response('down', { status: 503 })));
         await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
         expect(await screen.findByRole('alert')).toHaveTextContent(
-            'The store’s rules could not be brought back. Try again.'
+            'Your rules could not be discarded. Try again.'
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
-        expect(screen.getByRole('button', { name: 'Use the store’s rules' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeInTheDocument();
     });
 
     it('reads the rules again when the page, not the panel, built the store anew', async () => {
         await store.replace([shipped[1] as (typeof shipped)[number]]);
         const { storeBuiltAgain } = open();
         expect(
-            await screen.findByRole('button', { name: 'Use the store’s rules' })
+            await screen.findByRole('button', { name: 'Discard your rules' })
         ).toBeInTheDocument();
         // The banner above the page gave the store its own rules back.
         await store.reset();
         storeBuiltAgain(1);
         await waitFor(() =>
-            expect(screen.queryByRole('button', { name: 'Use the store’s rules' })).toBeNull()
+            expect(screen.queryByRole('button', { name: 'Discard your rules' })).toBeNull()
         );
         expect(screen.getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
             'Featured jackets'
@@ -497,13 +497,13 @@ describe('the rules panel', () => {
     it('gives the store’s own rules back only after a second press', async () => {
         await store.replace([shipped[1] as (typeof shipped)[number]]);
         const { user, onStoreChanged } = open();
-        await user.click(await screen.findByRole('button', { name: 'Use the store’s rules' }));
+        await user.click(await screen.findByRole('button', { name: 'Discard your rules' }));
         expect(screen.getByText(/Discard your rules\?/)).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Keep them' }));
         expect(await store.current()).toHaveLength(1);
         expect(onStoreChanged).not.toHaveBeenCalled();
 
-        await user.click(screen.getByRole('button', { name: 'Use the store’s rules' }));
+        await user.click(screen.getByRole('button', { name: 'Discard your rules' }));
         await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
         await waitFor(() => expect(onStoreChanged).toHaveBeenCalledTimes(1));
         expect(await store.current()).toBeUndefined();
@@ -511,6 +511,6 @@ describe('the rules panel', () => {
         expect(screen.getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
             'Featured jackets'
         );
-        expect(screen.queryByRole('button', { name: 'Use the store’s rules' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Discard your rules' })).toBeNull();
     });
 });
