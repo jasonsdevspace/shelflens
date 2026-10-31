@@ -114,11 +114,75 @@ jobs:
                       packages/storefront/test-results
                   retention-days: 7
 
+    # The engine is published with an engines range, and this proves it works
+    # on the lowest Node that range admits, as someone installing it from npm
+    # gets it: packed, installed into an empty project outside the repository,
+    # and used through its public exports and its types.
+    floor:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            # Packing runs the engine's build, on the Node the project builds on,
+            # which is how the published package is made.
+            - name: Pack the engine
+              run: npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
+
+            # Written as an exact version, because setup-node given a range
+            # installs the newest Node in it, the opposite of a floor. The file
+            # is not committed, and its name is not one the Node check reads.
+            - name: Work out the floor
+              run: |
+                  node -e "import('./packages/engine/smoke/floor.mjs').then(({ floorOf }) => {
+                      const floor = floorOf(require('./packages/engine/package.json').engines.node);
+                      if (floor === undefined) throw new Error('engines.node is not a range the floor job can read');
+                      console.log(floor);
+                  })" > engine-floor
+                  echo "FLOOR=$(cat engine-floor)" >> "$GITHUB_ENV"
+
+            - name: Setup the floor Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: engine-floor
+
+            # Outside the repository, so the import cannot resolve through the
+            # workspace's own link to the engine.
+            - name: Install the packed engine into an empty project
+              run: |
+                  mkdir "$RUNNER_TEMP/consumer"
+                  cd "$RUNNER_TEMP/consumer"
+                  npm init -y
+                  npm pkg set type=module
+                  npm install --engine-strict "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz
+                  cp "$GITHUB_WORKSPACE"/packages/engine/smoke/* .
+
+            - name: Use the engine on the floor
+              working-directory: ${{ runner.temp }}/consumer
+              run: node consumer.mjs
+
+            - name: Compile against its types, as Node and as a bundler resolve them
+              working-directory: ${{ runner.temp }}/consumer
+              run: |
+                  node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.nodenext.json
+                  node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.bundler.json
+
     # The demo, published to GitHub Pages at jasonsdevspace.com/shelflens/
     # once everything above has passed on main. A merge that fails a check
     # is never deployed.
     deploy:
-        needs: [verify, browser]
+        needs: [verify, browser, floor]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
         # A job's own permissions replace the workflow's, so the read the
