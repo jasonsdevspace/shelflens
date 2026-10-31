@@ -4,6 +4,10 @@ A product search engine in plain TypeScript. Typo tolerance, synonyms, search as
 filters, sorting, stable pagination, and an explanation for every result. No dependencies, no I/O,
 so it runs the same in Node, in a browser and in a test.
 
+To try it on your own products before you install it,
+[load a CSV or JSON file](https://jasonsdevspace.com/shelflens/try/) into the live storefront,
+which reads and searches it in your browser and uploads nothing.
+
 ```bash
 npm install @jasonsdevspace/shelflens
 ```

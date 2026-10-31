@@ -21,7 +21,7 @@
         "build": "tsc -b tsconfig.build.json"
     },
     "dependencies": {
-        "@jasonsdevspace/shelflens": "0.2.0",
+        "@jasonsdevspace/shelflens": "0.2.1",
         "@shelflens/catalog": "0.1.0",
         "@shelflens/search": "0.1.0",
         "graphql": "17.0.2"
