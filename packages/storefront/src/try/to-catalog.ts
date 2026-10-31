@@ -246,12 +246,12 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
     if (!mapping.name)
         return {
             ok: false,
-            error: 'No column here looks like a product name. Name one "name" or "title" and load the file again.',
+            error: 'Choose the column that holds each product’s name. A column named “name” or “title” is found on its own.',
         };
     if (!mapping.price)
         return {
             ok: false,
-            error: 'No column here looks like a price. Name one "price" and load the file again.',
+            error: 'Choose the column that holds each product’s price. A column named “price” is found on its own.',
         };
     if (table.rows.length > CATALOG_ROW_CAP)
         return { ok: false, error: limitError(table.rows.length) };

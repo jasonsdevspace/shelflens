@@ -41,7 +41,7 @@ const NAMES: Readonly<Record<MappedField, readonly string[]>> = {
         'summary',
         'long description',
     ],
-    brand: ['brand', 'manufacturer', 'vendor', 'make', 'brand name'],
+    brand: ['brand', 'manufacturer', 'vendor', 'make', 'maker', 'brand name'],
     category: [
         'category',
         'categories',

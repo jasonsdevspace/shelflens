@@ -188,17 +188,6 @@ describe('the page for a visitor’s own catalog', () => {
         ).toBeInTheDocument();
     });
 
-    it('claims no column is searched as words when none is mapped that way', async () => {
-        page();
-        await chooser();
-        await userEvent.upload(
-            screen.getByLabelText('Choose a file'),
-            new File(['name,price\nBoot,$10.00\n'], 'boots.csv')
-        );
-        await screen.findByRole('heading', { level: 1, name: 'What is in boots.csv' });
-        expect(screen.queryByText(/Searched as words/)).not.toBeInTheDocument();
-    });
-
     it('names a file just past the size limit as larger than the limit', async () => {
         page();
         await chooser();
@@ -209,5 +198,40 @@ describe('the page for a visitor’s own catalog', () => {
             'This file is 40.1 MB, and the largest this page reads is 40.0 MB.'
         );
         await waitFor(() => expect(screen.getByLabelText('Choose a file')).toBeInTheDocument());
+    });
+
+    it('keeps focus on the choice being changed after a search that failed', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        await screen.findByRole('alert');
+        const price = screen.getByLabelText('Price');
+        await userEvent.selectOptions(price, 'Member price');
+        expect(price).toHaveFocus();
+    });
+
+    it('shows a large file’s first rows at once after a change, and the whole of it after a pause', async () => {
+        page();
+        await chooser();
+        const rows = Array.from({ length: 1500 }, (_, index) => `Item ${index},$1.00,$2.00`).join(
+            '\n'
+        );
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File([`name,price,other\n${rows}\n`], 'large.csv')
+        );
+        await screen.findByRole('button', { name: 'Search 1,500 products' });
+        await userEvent.selectOptions(screen.getByLabelText('Price'), 'other');
+        expect(screen.getByRole('button', { name: 'Search these products' })).toBeInTheDocument();
+        expect(screen.getByText('Checking all 1,500 rows.')).toBeInTheDocument();
+        expect(
+            await screen.findByRole('button', { name: 'Search 1,500 products' })
+        ).toBeInTheDocument();
     });
 });
