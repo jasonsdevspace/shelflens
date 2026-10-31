@@ -48,7 +48,7 @@ export {
     type StoreRequest,
     type StoreResponse,
 } from './execute.js';
-export { canonical, fingerprint } from './fingerprint.js';
+export { canonical, fingerprint, hashText } from './fingerprint.js';
 export { PERSISTED_OPERATIONS } from './generated/persisted.js';
 export {
     type HttpOptions,
