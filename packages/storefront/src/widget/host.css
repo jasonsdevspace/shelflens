@@ -48,12 +48,3 @@
     align-items: center;
     margin-top: 1rem;
 }
-
-/* The snippet a store adds, scrolling within itself on a narrow screen. */
-.host pre {
-    overflow-x: auto;
-    padding: 1rem;
-    border: 1px solid var(--line);
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-}

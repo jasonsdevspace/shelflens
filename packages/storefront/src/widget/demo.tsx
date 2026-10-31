@@ -85,9 +85,11 @@ const ready = import.meta.env.DEV
         ? Promise.resolve()
         : Promise.reject(new Error('the page for your own catalog runs on the built site'))
     : controlledByWorker(config.scriptUrl, config.scope);
-Promise.all([ready, widget()])
-    .then(async ([, { mountShelfLens }]) => {
-        if (!(await hasCatalog())) {
+// The store is asked whether it has anything to search while the widget's file
+// arrives, so an empty store is said without waiting for a box it will not use.
+Promise.all([ready.then(hasCatalog), widget()])
+    .then(([loaded, { mountShelfLens }]) => {
+        if (!loaded) {
             say(
                 'The search box here searches a file of your own products, and none is loaded yet.',
                 {
@@ -100,13 +102,16 @@ Promise.all([ready, widget()])
         mountShelfLens(target, { apiUrl: config.apiUrl, storeUrl: config.storeUrl });
     })
     .catch((failure: unknown) => {
-        // A browser without a service worker, or a file that did not arrive: said in place,
-        // and the reason told apart, since one is the browser's and the other the page's.
-        const noWorker = failure instanceof Error && failure.message.includes('service worker');
+        // A browser without a service worker, the dev server, or a file that did not
+        // arrive: said in place, and the reason told apart, since only the last is
+        // helped by reloading.
+        const reason = failure instanceof Error ? failure.message : '';
         say(
-            noWorker
+            reason.includes('service worker')
                 ? 'The search box could not start in this browser. It needs a service worker.'
-                : 'The search box could not be loaded on this page. Reload the page and try again.'
+                : reason.includes('built site')
+                  ? 'The search box over your own products runs on the built site, not the dev server.'
+                  : 'The search box could not be loaded on this page. Reload the page and try again.'
         );
         console.error(failure);
     });

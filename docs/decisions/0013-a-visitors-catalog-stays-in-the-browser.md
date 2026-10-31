@@ -86,6 +86,8 @@ again keeps its answers.
   on another site without sending the file there, which this record rules out. A store embedding
   the package on its own site points the same snippet at its own API, over its own catalog, as
   record 12 says. With nothing loaded, the page says so and links to "Choose a file".
+- A visitor's store keeps its own list of recent searches, so a phrase searched on the demo is
+  never offered over a visitor's products, or the other way round.
 - The page for a visitor's catalog runs only on the built site, where its worker does. The dev
   server answers the demo's API and nothing else.
 

@@ -366,6 +366,7 @@ const CatalogBar = ({
     onConfirm,
     onKeep,
     onFocused,
+    widgetUrl,
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
@@ -376,6 +377,8 @@ const CatalogBar = ({
     readonly onConfirm: () => void;
     readonly onKeep: () => void;
     readonly onFocused: () => void;
+    /** The store's page that embeds the search box over these products. */
+    readonly widgetUrl: string;
 }) => {
     const remove = useRef<HTMLButtonElement>(null);
     // After a removal kept or failed, the visitor is put back on the button they
@@ -408,7 +411,7 @@ const CatalogBar = ({
                     <button ref={remove} type="button" className="try-link" onClick={onRemove}>
                         Remove your products
                     </button>{' '}
-                    <a className="try-link" href="widget/">
+                    <a className="try-link" href={widgetUrl}>
                         See your products on a store&rsquo;s page
                     </a>
                 </>
@@ -780,6 +783,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         onConfirm={() => void onRemove(true)}
                         onKeep={keepRules}
                         onFocused={focused}
+                        widgetUrl={`${base}widget/`}
                     />
                 }
             />

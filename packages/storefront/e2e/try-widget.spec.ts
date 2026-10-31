@@ -44,20 +44,23 @@ test('searches the visitor’s own products from a store’s page, over its bann
     page,
 }) => {
     await loadBenches(page);
-    await page.getByRole('link', { name: 'See your products on a store’s page' }).click();
-    await expect(page).toHaveTitle("ShelfLens on a store's page, with your products");
+    // From the moment the store's page is asked for, so its load, the worker,
+    // the widget's file and the catalog check are all counted.
     const requests: Request[] = [];
     page.on('request', (request) => requests.push(request));
-
+    await page.getByRole('link', { name: 'See your products on a store’s page' }).click();
+    await expect(page).toHaveTitle("ShelfLens on a store's page, with your products");
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await expect(search).toBeVisible();
     await page.getByRole('button', { name: 'Count' }).click();
     await expect(page.getByText(/own React has counted 1/)).toBeVisible();
 
     await page.mouse.move(0, 0);
-    await search.fill('cedar');
+    // Every bench in the file, and only those, since the demo's catalog has none.
+    await search.fill('bench');
     const listbox = page.getByRole('listbox', { name: 'Suggestions' });
-    await expect(listbox.getByRole('option').first()).toContainText('Cedar Bench');
+    await expect(listbox.getByRole('option')).toHaveCount(4);
+    await expect(listbox).toContainText('Cedar Bench');
 
     const box = await listbox.boundingBox();
     expect(box).not.toBeNull();
@@ -89,8 +92,8 @@ test('searches the visitor’s own products from a store’s page, over its bann
     expect(asked.every((request) => new URL(request.url()).pathname.includes('/try/'))).toBe(true);
 
     await search.press('Enter');
-    await expect(page).toHaveURL(/\/try\/\?q=cedar/);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "cedar"');
+    await expect(page).toHaveURL(/\/try\/\?q=bench/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "bench"');
 
     await page.goto('try/widget/');
     await search.fill('walnut');

@@ -5,6 +5,7 @@ import {
     clearRecentSearches,
     matchingRecent,
     RECENT_LIMIT,
+    recentKeyFor,
     recentSearches,
     rememberSearch,
     useRecentSearches,
@@ -94,5 +95,14 @@ describe('recent searches', () => {
         expect(recentSearches()[0]).toBe('phrase 0');
         localStorage.setItem('shelflens.recent', JSON.stringify(['boots', 'Boots', 'jacket']));
         expect(recentSearches()).toEqual(['boots', 'jacket']);
+    });
+});
+
+describe('where recent searches are kept', () => {
+    it('keeps a visitor’s own store apart from the demo’s', () => {
+        expect(recentKeyFor('/shelflens/', '/shelflens/')).toBe('shelflens.recent');
+        expect(recentKeyFor('/shelflens/widget/', '/shelflens/')).toBe('shelflens.recent');
+        expect(recentKeyFor('/shelflens/try/', '/shelflens/')).toBe('shelflens.try.recent');
+        expect(recentKeyFor('/shelflens/try/widget/', '/shelflens/')).toBe('shelflens.try.recent');
     });
 });
