@@ -241,7 +241,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await page.getByRole('button', { name: 'Choose another file' }).click();
     await page.getByLabel('Choose a file').setInputFiles(MORE_BENCHES);
     await page.getByRole('button', { name: 'Search 5 products' }).click();
-    await expect(page.getByText(/This file replaces the products you are searching/)).toBeVisible();
+    await expect(page.getByText(/Searching this file replaces your products/)).toBeVisible();
     await audit(page);
     await page.getByRole('button', { name: 'Keep my products' }).click();
     await expect(page.getByText('your own catalog of 4 products')).toBeVisible();

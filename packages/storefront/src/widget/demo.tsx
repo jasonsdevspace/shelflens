@@ -48,10 +48,17 @@ const target = document.getElementById('shelflens-search');
 if (!target) throw new Error('the page has no element for the search box');
 
 /** Said in place of the box, as a host page would say it. */
-const say = (text: string, link?: { readonly href: string; readonly label: string }) => {
+const say = (
+    text: string,
+    {
+        link,
+        role = 'alert',
+    }: { link?: { readonly href: string; readonly label: string }; role?: string } = {}
+) => {
     const notice = document.createElement('p');
     notice.className = 'notice';
-    notice.setAttribute('role', 'alert');
+    // A failure interrupts, and an empty store is only said.
+    notice.setAttribute('role', role);
     notice.textContent = text;
     if (link) {
         const anchor = document.createElement('a');
@@ -81,10 +88,13 @@ const ready = import.meta.env.DEV
 Promise.all([ready, widget()])
     .then(async ([, { mountShelfLens }]) => {
         if (!(await hasCatalog())) {
-            say('Load a file of your own products first, and the search box searches them here.', {
-                href: config.storeUrl,
-                label: 'Choose a file',
-            });
+            say(
+                'The search box here searches a file of your own products, and none is loaded yet.',
+                {
+                    link: { href: config.storeUrl, label: 'Choose a file' },
+                    role: 'status',
+                }
+            );
             return;
         }
         mountShelfLens(target, { apiUrl: config.apiUrl, storeUrl: config.storeUrl });

@@ -32,8 +32,8 @@ test('says to load a file first, with the way to do it, when nothing is loaded',
     page,
 }) => {
     await page.goto('try/widget/');
-    const notice = page.getByRole('alert');
-    await expect(notice).toContainText('Load a file of your own products first');
+    const notice = page.getByRole('status');
+    await expect(notice).toContainText('none is loaded yet');
     await expect(notice.getByRole('link', { name: 'Choose a file' })).toHaveAttribute(
         'href',
         /\/try\/$/
@@ -44,8 +44,8 @@ test('searches the visitor’s own products from a store’s page, over its bann
     page,
 }) => {
     await loadBenches(page);
-    await page.getByRole('link', { name: 'See them on a store’s page' }).click();
-    await expect(page).toHaveTitle("Your products on a store's page");
+    await page.getByRole('link', { name: 'See your products on a store’s page' }).click();
+    await expect(page).toHaveTitle("ShelfLens on a store's page, with your products");
     const requests: Request[] = [];
     page.on('request', (request) => requests.push(request));
 

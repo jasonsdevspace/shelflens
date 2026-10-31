@@ -288,7 +288,7 @@ const Review = ({
                     )}
                     {replacing === true ? (
                         <Ask
-                            question="This file replaces the products you are searching, and your rules go with them. Search it anyway?"
+                            question="Searching this file replaces your products and discards the rules you saved for them. Search it anyway?"
                             yes="Yes, search this file"
                             no="Keep my products"
                             onYes={onReplace}
@@ -394,9 +394,9 @@ const CatalogBar = ({
             </span>{' '}
             {confirm === true ? (
                 <Ask
-                    question="Your rules go with these products, so removing them discards your rules too. Remove them anyway?"
+                    question="Removing your products also discards the rules you saved for them. Remove them anyway?"
                     yes="Yes, remove them"
-                    no="Keep my rules"
+                    no="Keep my products"
                     onYes={onConfirm}
                     onNo={onKeep}
                 />
@@ -409,7 +409,7 @@ const CatalogBar = ({
                         Remove your products
                     </button>{' '}
                     <a className="try-link" href="widget/">
-                        See them on a store&rsquo;s page
+                        See your products on a store&rsquo;s page
                     </a>
                 </>
             )}

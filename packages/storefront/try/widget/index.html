@@ -9,9 +9,9 @@
         <!-- theme-script -->
         <meta
             name="description"
-            content="The ShelfLens search box on a made-up store's own page, embedded the way a store would embed it, searching a file of your own products in your browser."
+            content="The ShelfLens search box on a made-up store's page, embedded the way a real store would embed it. It searches a file of your own products, and the file stays in your browser."
         />
-        <title>Your products on a store's page</title>
+        <title>ShelfLens on a store's page, with your products</title>
         <link rel="stylesheet" href="/src/styles.css" />
         <link rel="stylesheet" href="/src/widget/host.css" />
     </head>
@@ -35,20 +35,23 @@
             <div class="about">
                 <h1>Maple Street Home</h1>
                 <p class="about-pitch">
-                    A made-up store's own page, with styles that reach every list item, button and
-                    input, a banner over everything, a box that clips what it holds, and a React of
-                    its own. The search box below is embedded the way a store would embed it, and it
-                    searches the file of products you loaded, in this browser.
+                    Maple Street Home is a made-up store, and this is its own page. Its styles reach
+                    every list item, button and input. A banner sits over everything, a box clips
+                    what it holds, and the page runs a React of its own. The ShelfLens search box is
+                    embedded here the way a real store would embed it, and it searches the file of
+                    products you loaded. Type a few letters from one of your products and watch the
+                    list. It keeps its own look and opens over the banner and out of the clipped
+                    box.
                 </p>
                 <div class="host-clip">
                     <div id="shelflens-search"></div>
                 </div>
                 <ul>
-                    <li>Free delivery on orders over $50, in this store's own list style.</li>
-                    <li>The search box's list does not look like this.</li>
+                    <li>Free delivery on orders over $50. This is the store's own list style.</li>
+                    <li>The suggestion list in the search box does not look like this.</li>
                 </ul>
                 <div id="host-app"></div>
-                <h2>All a store adds to its page</h2>
+                <h2>What a store adds to its page</h2>
                 <pre><code>&lt;div id="shelflens-search"&gt;&lt;/div&gt;
 &lt;script type="module"&gt;
     import { mountShelfLens } from 'https://your-store.example/widget.js';
@@ -58,9 +61,10 @@
     });
 &lt;/script&gt;</code></pre>
                 <p>
-                    A real store points the box at its own search API, over its own catalog. This
-                    page points it at the file you loaded instead, which never leaves your browser,
-                    so it can only run on this site, where that file is kept.
+                    A real store points the box at its own search API and its own catalog. This page
+                    points it at the file you loaded instead. That file never leaves your browser.
+                    It is kept in this site's storage, so only a page on this site can search it,
+                    and no other site can reach it.
                 </p>
                 <p>
                     <a href="../">Back to your products</a>, or read
