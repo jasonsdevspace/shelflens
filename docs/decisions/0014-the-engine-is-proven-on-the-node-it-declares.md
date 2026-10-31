@@ -28,9 +28,10 @@ a type check against it on the exact lowest version the range admits.
 
 ## Decision
 
-**The packed package, on the floor.** A `floor` job in CI packs the engine on the build's Node,
-as the release does. It works out the lowest version `engines.node` admits, down to the patch,
-and installs that Node from a file holding the exact version. Given the range itself, setup-node
+**The packed package, on the floor.** A `floor` job in CI first runs publint, the standard
+check that a package's exports, types and files point at what it ships. It then packs the engine
+on the build's Node, as the release does. It works out the lowest version `engines.node`
+admits, down to the patch, and installs that Node from a file holding the exact version. Given the range itself, setup-node
 would install the newest Node in it, the opposite of a floor, so the smoke script first checks
 that it runs on the version it was meant to. It then checks that the import resolves from the
 installed tarball rather than the workspace, and that the tarball holds the build and its types

@@ -18,14 +18,28 @@ const EDITION_BY_MAJOR: Readonly<Record<number, number>> = { 20: 2023, 22: 2024,
 /** The target and libraries the engine's build compiles against, as TypeScript resolves its config. */
 const compiledAgainst = (): string[] => {
     const path = fileURLToPath(new URL('../tsconfig.build.json', import.meta.url));
+    let unreadable = '';
     const parsed = ts.getParsedCommandLineOfConfigFile(
         path,
         {},
-        { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} }
+        {
+            ...ts.sys,
+            onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+                unreadable = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+            },
+        }
     );
-    if (parsed === undefined) throw new Error('the engine build config could not be read');
+    if (parsed === undefined || parsed.errors.length > 0) {
+        const errors = parsed?.errors.map((error) =>
+            ts.flattenDiagnosticMessageText(error.messageText, '\n')
+        );
+        throw new Error(
+            `the engine build config could not be read: ${unreadable || errors?.join(', ')}`
+        );
+    }
     const target = ts.ScriptTarget[parsed.options.target ?? ts.ScriptTarget.ESNext];
-    return [target, ...(parsed.options.lib ?? ['lib.esnext.d.ts'])];
+    // With no lib set, TypeScript compiles against the target's own default.
+    return [target, ...(parsed.options.lib ?? [ts.getDefaultLibFileName(parsed.options)])];
 };
 
 describe('the published engine', () => {
