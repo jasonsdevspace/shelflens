@@ -166,7 +166,8 @@ jobs:
                   npm init -y
                   npm pkg set type=module
                   npm install --engine-strict "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz
-                  cp "$GITHUB_WORKSPACE"/packages/engine/smoke/* .
+                  smoke="$GITHUB_WORKSPACE/packages/engine/smoke"
+                  cp "$smoke"/consumer.mjs "$smoke"/exports.mjs "$smoke"/types.ts "$smoke"/tsconfig.nodenext.json "$smoke"/tsconfig.bundler.json .
 
             - name: Use the engine on the floor
               working-directory: ${{ runner.temp }}/consumer

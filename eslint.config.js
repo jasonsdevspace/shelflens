@@ -52,8 +52,9 @@ export default tseslint.config(
             '**/node_modules',
             '**/dist',
             '**/generated',
-            // Compiled only inside the floor job's empty project, against the
-            // installed package, which is the one place its import resolves.
+            // Compiled in the floor job's empty project, against the installed
+            // package. Its import resolves to the engine's build, which does not
+            // exist yet when the checks that lint it run.
             'packages/engine/smoke/types.ts',
         ],
     },

@@ -1,13 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
+import pkg from '../package.json' with { type: 'json' };
 import * as engine from '../src/index.js';
 import { VALUE_EXPORTS } from './exports.mjs';
 import { floorOf } from './floor.mjs';
-
-const read = (path: string): unknown =>
-    JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
 /**
  * The newest edition of the language each Node release runs in full, so the
@@ -15,6 +14,19 @@ const read = (path: string): unknown =>
  * missing from this table fails until its row is added from node.green.
  */
 const EDITION_BY_MAJOR: Readonly<Record<number, number>> = { 20: 2023, 22: 2024, 24: 2025 };
+
+/** The target and libraries the engine's build compiles against, as TypeScript resolves its config. */
+const compiledAgainst = (): string[] => {
+    const path = fileURLToPath(new URL('../tsconfig.build.json', import.meta.url));
+    const parsed = ts.getParsedCommandLineOfConfigFile(
+        path,
+        {},
+        { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} }
+    );
+    if (parsed === undefined) throw new Error('the engine build config could not be read');
+    const target = ts.ScriptTarget[parsed.options.target ?? ts.ScriptTarget.ESNext];
+    return [target, ...(parsed.options.lib ?? ['lib.esnext.d.ts'])];
+};
 
 describe('the published engine', () => {
     it('lists every value it exports in the smoke test', () => {
@@ -30,23 +42,16 @@ describe('the published engine', () => {
     });
 
     it('declares a floor the smoke test can install', () => {
-        const pkg = read('../package.json') as { engines: { node: string } };
         expect(floorOf(pkg.engines.node)).toBeDefined();
     });
 
     it('compiles against no newer a language than its lowest supported Node runs', () => {
-        const pkg = read('../package.json') as { engines: { node: string } };
-        type Options = { compilerOptions: { target?: string; lib?: string[] } };
-        const base = read('../../../tsconfig.base.json') as Options;
-        const build = read('../tsconfig.build.json') as Options;
-        const target = build.compilerOptions.target ?? base.compilerOptions.target ?? 'ESNext';
-        const lib = build.compilerOptions.lib ?? base.compilerOptions.lib ?? ['ESNext'];
         const floor = Number(floorOf(pkg.engines.node)?.split('.')[0]);
         const edition = EDITION_BY_MAJOR[floor];
         expect(edition, `add Node ${floor} to the table`).toBeDefined();
-        const years = [target, ...lib].map((name) =>
-            Number(/^ES(\d{4})/i.exec(name)?.[1] ?? Number.POSITIVE_INFINITY)
-        );
-        for (const year of years) expect(year).toBeLessThanOrEqual(edition ?? 0);
+        for (const name of compiledAgainst()) {
+            const year = Number(/es(\d{4})/i.exec(name)?.[1] ?? Number.POSITIVE_INFINITY);
+            expect(year, name).toBeLessThanOrEqual(edition ?? 0);
+        }
     });
 });
