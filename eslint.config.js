@@ -80,7 +80,7 @@ export default tseslint.config(
         extends: [...tseslint.configs.recommendedTypeChecked],
         languageOptions: {
             parserOptions: {
-                projectService: { allowDefaultProject: ['vitest.config.ts'] },
+                projectService: { allowDefaultProject: ['vitest.config.ts', 'scripts/*.test.ts'] },
                 tsconfigRootDir: import.meta.dirname,
             },
         },

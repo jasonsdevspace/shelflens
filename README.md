@@ -159,10 +159,11 @@ npm ci
 npm run verify
 ```
 
-`npm run verify` runs what CI runs: type checking, linting, formatting, a prose check and the
-tests, golden queries included. Use `npm test` for watch mode while you work. CI also runs the
-storefront in a real browser with `npm run e2e` and audits it with `npm run lighthouse`, which
-need Chromium once: `npx playwright install chromium`.
+`npm run verify` runs what CI runs: type checking, linting, formatting, a prose check, a check
+that everything names the Node version in `.nvmrc`, and the tests, golden queries included. Use
+`npm test` for watch mode while you work. CI also runs the storefront in a real browser with
+`npm run e2e` and audits it with `npm run lighthouse`, which need Chromium once:
+`npx playwright install chromium`.
 
 To work on the storefront:
 
