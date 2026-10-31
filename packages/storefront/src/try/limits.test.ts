@@ -25,10 +25,10 @@ describe('the catalog limits', () => {
         expect(CATALOG_ROW_CAP).toBe(supportedCap(record.results));
     });
 
-    it('leave room in the byte cap for a catalog at the row cap', () => {
+    it('leave room in the byte cap for a catalog at the row cap, written loosely', () => {
         const atCap = record.results.find((result) => result.products === CATALOG_ROW_CAP);
         expect(atCap).toBeDefined();
-        expect(atCap?.catalogBytes).toBeLessThan(CATALOG_FILE_BYTES_CAP);
+        expect((atCap?.catalogBytes ?? Infinity) * 2).toBeLessThanOrEqual(CATALOG_FILE_BYTES_CAP);
     });
 
     it('refuse a size whose store takes longer than the start budget on a phone', () => {

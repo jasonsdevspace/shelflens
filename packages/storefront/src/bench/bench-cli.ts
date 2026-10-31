@@ -1,10 +1,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { cpus } from 'node:os';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { type PopoverBench, runPopoverBench } from './bench.js';
-import { gitCommit, today } from './record.js';
+import { gitCommit, machine, megabytes, today } from './record.js';
 
 /**
  * Measures what the popover waits for and writes the results.
@@ -20,11 +19,6 @@ const { values } = parseArgs({
         out: { type: 'string', default: 'docs/benchmarks/popover.json' },
     },
 });
-
-const machine = (): string => {
-    const [first] = cpus();
-    return `${first?.model ?? 'unknown'}, ${cpus().length} cores`;
-};
 
 const report = (
     bench: PopoverBench,
@@ -49,7 +43,7 @@ and the completions from it.
 
 | Products | Catalog (uncompressed) | Parse | Build |
 | -------- | ---------------------- | ----- | ----- |
-| ${bench.products} | ${(bench.catalogBytes / 1024 / 1024).toFixed(1)} MB | ${bench.parseMs} ms | ${bench.buildMs} ms |
+| ${bench.products} | ${megabytes(bench.catalogBytes)} | ${bench.parseMs} ms | ${bench.buildMs} ms |
 
 ## Answering
 

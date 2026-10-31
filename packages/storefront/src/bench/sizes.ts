@@ -1,4 +1,5 @@
 import { type PopoverBench, runPopoverBench } from './bench.js';
+import { round } from './record.js';
 
 /**
  * How large a catalog the popover can carry.
@@ -21,8 +22,7 @@ export const START_BUDGET_MS = 2000;
 export const PHONE_SLOWDOWN = 4;
 
 /** Reading the catalog and building the store, rounded as the record shows it. */
-export const startMs = (result: SizeResult): number =>
-    Math.round((result.parseMs + result.buildMs) * 100) / 100;
+export const startMs = (result: SizeResult): number => round(result.parseMs + result.buildMs);
 
 export type SizeResult = Pick<
     PopoverBench,
@@ -48,9 +48,15 @@ export const supportedCap = (results: readonly SizeResult[]): number => {
     return cap;
 };
 
+/**
+ * Measures each size in turn. With the collector exposed, as `bench:sizes`
+ * runs it, the heap left by one size is collected before the next is built,
+ * so a larger size's start does not pay for a smaller one's garbage.
+ */
 export const runSizes = async (iterations: number): Promise<SizeResult[]> => {
     const results: SizeResult[] = [];
     for (const products of SIZES) {
+        (globalThis as { gc?: () => void }).gc?.();
         results.push(await runPopoverBench({ products, iterations }));
     }
     return results;

@@ -2,6 +2,8 @@ import { createStore, createStoreApi, type StoreApi, viewerFromHeader } from '@s
 import { type Catalog, generateCatalog } from '@shelflens/catalog';
 import { GOLDEN_CASES } from '@shelflens/search';
 
+import { round } from './record.js';
+
 /**
  * What the popover waits for.
  *
@@ -75,8 +77,6 @@ const timing = (durations: number[]): Timing => {
         maxMs: round(sorted.at(-1) ?? 0),
     };
 };
-
-const round = (ms: number): number => Math.round(ms * 100) / 100;
 
 const timeEach = async (
     api: StoreApi,
