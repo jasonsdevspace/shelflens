@@ -412,6 +412,10 @@ export const createWorkerApi = ({
                 errors: [{ message: 'the catalog path takes GET, PUT and DELETE' }],
             });
         }
+        // Timed from the body arriving to the store answering, and said in a
+        // Server-Timing header, since a browser cannot slow a worker to measure
+        // the cold start on a phone, and the benchmark scales this share itself.
+        const began = performance.now();
         let catalog: Catalog;
         try {
             catalog = withContentVersion(checkCatalog(JSON.parse(await request.text())));
@@ -424,7 +428,10 @@ export const createWorkerApi = ({
         if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
         return new Response(null, {
             status: 204,
-            headers: { [VERSION_HEADER]: result.api.version },
+            headers: {
+                [VERSION_HEADER]: result.api.version,
+                'server-timing': `catalog;dur=${(performance.now() - began).toFixed(1)}`,
+            },
         });
     };
 

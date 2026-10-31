@@ -1,43 +1,85 @@
 {
     "recorded": {
-        "date": "2026-10-30",
-        "commit": "2e95fe6"
+        "date": "2026-10-31",
+        "commit": "42519c0"
     },
     "sizes": {
         "catalog": 341270,
-        "page": 88206,
-        "worker": 71192
+        "page": 340,
+        "worker": 73444
     },
     "runs": [
         {
-            "readyMs": 216.79999999701977,
-            "downloadMs": 39.29999999701977,
-            "buildMs": 56.70000000298023,
-            "firstSuggestionMs": 194.39999999850988
+            "readyMs": 215.20000000298023,
+            "downloadMs": 36.900000005960464,
+            "buildMs": 55,
+            "firstSuggestionMs": 194.59999999403954
         },
         {
-            "readyMs": 211.39999999850988,
-            "downloadMs": 39.69999999552965,
-            "buildMs": 56.600000001490116,
+            "readyMs": 211.40000000596046,
+            "downloadMs": 38.599999994039536,
+            "buildMs": 55.1000000089407,
+            "firstSuggestionMs": 192.79999999701977
+        },
+        {
+            "readyMs": 209.79999999701977,
+            "downloadMs": 36.3999999910593,
+            "buildMs": 55.30000001192093,
             "firstSuggestionMs": 190.20000000298023
         },
         {
-            "readyMs": 212,
-            "downloadMs": 37.69999999552965,
-            "buildMs": 56.100000001490116,
-            "firstSuggestionMs": 191.59999999403954
+            "readyMs": 212.40000000596046,
+            "downloadMs": 37.70000000298023,
+            "buildMs": 56.099999994039536,
+            "firstSuggestionMs": 190.1000000089407
         },
         {
-            "readyMs": 212.19999999552965,
-            "downloadMs": 38.20000000298023,
-            "buildMs": 59.5,
-            "firstSuggestionMs": 191.5
-        },
-        {
-            "readyMs": 211.89999999850988,
-            "downloadMs": 38.399999998509884,
-            "buildMs": 56.80000000447035,
-            "firstSuggestionMs": 190.5
+            "readyMs": 210.79999999701977,
+            "downloadMs": 37.900000005960464,
+            "buildMs": 55.599999994039536,
+            "firstSuggestionMs": 190.1000000089407
         }
-    ]
+    ],
+    "atCap": {
+        "laptop": [
+            {
+                "readMs": 169.29999999701977,
+                "buildMs": 481.8999999910593,
+                "workerMs": 314.9,
+                "firstSuggestionMs": 185.30000001192093
+            },
+            {
+                "readMs": 168.59999999403954,
+                "buildMs": 483.09999999403954,
+                "workerMs": 318.1,
+                "firstSuggestionMs": 183.90000000596046
+            },
+            {
+                "readMs": 168.90000000596046,
+                "buildMs": 485.59999999403954,
+                "workerMs": 319.3,
+                "firstSuggestionMs": 181.30000001192093
+            }
+        ],
+        "phone": [
+            {
+                "readMs": 608.2999999970198,
+                "buildMs": 1015.5,
+                "workerMs": 321.3,
+                "firstSuggestionMs": 242.20000000298023
+            },
+            {
+                "readMs": 590.2999999970198,
+                "buildMs": 1007.6000000089407,
+                "workerMs": 327.9,
+                "firstSuggestionMs": 218.09999999403954
+            },
+            {
+                "readMs": 591,
+                "buildMs": 1021.5,
+                "workerMs": 321,
+                "firstSuggestionMs": 249.59999999403954
+            }
+        ]
+    }
 }
