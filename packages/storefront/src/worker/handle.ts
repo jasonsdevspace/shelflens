@@ -23,7 +23,7 @@ import {
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
-import { checkCatalog, withContentVersion } from '../try/check.js';
+import { checkCatalog, hasMemberPrices, withContentVersion } from '../try/check.js';
 import type { CatalogStore } from './catalog-db.js';
 
 /**
@@ -397,14 +397,10 @@ export const createWorkerApi = ({
         if (request.method === 'GET') {
             const kept = await held.current();
             if (!kept) return noCatalog();
-            const memberPrices = kept.products.some(
-                (product) => product.price.member.min !== product.price.guest.min
-            );
             return json(200, {
                 version: kept.version,
                 products: kept.products.length,
-                currency: kept.currency,
-                memberPrices,
+                memberPrices: hasMemberPrices(kept.products),
             });
         }
         if (request.method === 'DELETE') {

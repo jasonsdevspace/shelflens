@@ -10,7 +10,9 @@ import { type Catalog, generateCatalog } from '@shelflens/catalog';
  * beside the catalog, so it always matches the generator.
  */
 export const SAMPLE_PRODUCTS = 200;
-export const SAMPLE_PATH = 'try/sample-products.csv';
+/** The sample's name, beside the page at try/. */
+export const SAMPLE_FILE = 'sample-products.csv';
+export const SAMPLE_PATH = `try/${SAMPLE_FILE}`;
 
 const HEADERS = [
     'SKU',

@@ -6,7 +6,7 @@ import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type MappedField, type Mapping } from './mapping.js';
 import { type FileLike, readFile } from './read-file.js';
-import { SAMPLE_PATH } from './sample.js';
+import { SAMPLE_FILE } from './sample.js';
 import { type LoadResult, type RowNote, toCatalog } from './to-catalog.js';
 
 /**
@@ -45,8 +45,9 @@ type Stage =
           readonly result: LoadResult;
           readonly problem?: string;
       }
+    | { readonly kind: 'reading'; readonly name: string }
     | { readonly kind: 'loading' }
-    | { readonly kind: 'searching'; readonly loaded: Loaded };
+    | { readonly kind: 'searching'; readonly loaded: Loaded; readonly problem?: string };
 
 const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
     name: 'Name',
@@ -77,13 +78,17 @@ const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
 
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {
-    const fallback = `The store could not load these products (error ${response.status}). Press "${retry}" to try again.`;
+    const again = `Press "${retry}" to try again.`;
+    let reason: string | undefined;
     try {
         const body = (await response.json()) as { errors?: { message?: string }[] };
-        return body.errors?.[0]?.message ?? fallback;
+        reason = body.errors?.[0]?.message;
     } catch {
-        return fallback;
+        reason = undefined;
     }
+    return reason
+        ? `The store could not use these products, since ${reason}. ${again}`
+        : `The store could not load these products (error ${response.status}). ${again}`;
 };
 
 /**
@@ -102,11 +107,14 @@ const useHeadingFocus = (key: string, announce: boolean) => {
 /** Where a file is chosen, dropped, or the sample is taken. */
 const Chooser = ({
     problem,
+    reading,
     announce,
     onFile,
     onSample,
 }: {
     readonly problem?: string | undefined;
+    /** The file being read, while it is. Another can still be chosen meanwhile. */
+    readonly reading?: string | undefined;
     readonly announce: boolean;
     readonly onFile: (file: FileLike) => void;
     readonly onSample: () => void;
@@ -143,6 +151,9 @@ const Chooser = ({
                     {problem}
                 </p>
             )}
+            <p className="notice" role="status">
+                {reading ? `Reading ${reading}.` : ''}
+            </p>
             <div
                 className={`try-drop${over ? ' is-over' : ''}`}
                 onDragOver={(event) => {
@@ -168,7 +179,7 @@ const Chooser = ({
                     Try it with a sample of 200 products
                 </button>
                 , or{' '}
-                <a href={SAMPLE_PATH.replace(/^try\//, '')} download>
+                <a href={SAMPLE_FILE} download>
                     download the sample
                 </a>{' '}
                 to see what a file looks like.
@@ -240,6 +251,9 @@ const Review = ({
                     </div>
                 ))}
             </dl>
+            {(mapping.searchOnly ?? []).length > 0 && (
+                <p className="notice">Searched as words: {mapping.searchOnly?.join(', ')}.</p>
+            )}
             {unused.length > 0 && <p className="notice">Not used: {unused.join(', ')}.</p>}
             {result.ok ? (
                 <>
@@ -284,10 +298,12 @@ const Review = ({
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 const CatalogBar = ({
     loaded,
+    problem,
     onAnother,
     onRemove,
 }: {
     readonly loaded: Loaded;
+    readonly problem?: string | undefined;
     readonly onAnother: () => void;
     readonly onRemove: () => void;
 }) => (
@@ -302,6 +318,11 @@ const CatalogBar = ({
         <button type="button" className="try-link" onClick={onRemove}>
             Remove your products
         </button>
+        {problem && (
+            <p className="try-problem" role="alert">
+                {problem}
+            </p>
+        )}
     </div>
 );
 
@@ -346,6 +367,14 @@ const BeforeStore = ({
                         regular, non-private window usually does.
                     </p>
                 )}
+                {stage.kind === 'reading' && (
+                    <Chooser
+                        announce={announce}
+                        reading={stage.name}
+                        onFile={onFile}
+                        onSample={onSample}
+                    />
+                )}
                 {stage.kind === 'choose' && (
                     <Chooser
                         announce={announce}
@@ -372,12 +401,17 @@ const BeforeStore = ({
     );
 };
 
-const SAMPLE_NAME = 'sample-products.csv';
+/** The way back to the store's first page, so a new catalog never opens on the last one's search. */
+const clearSearch = (base: string) => window.history.replaceState(null, '', base);
+
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export const TryPage = ({ ready, base }: TryPageProps) => {
     const [stage, setStage] = useState<Stage>({ kind: 'starting' });
     // Set once the visitor does something, so stages after that take focus.
     const [acted, setActed] = useState(false);
+    // Counts the files asked for, so one read slowly never replaces one picked after it.
+    const asked = useRef(0);
     const catalogUrl = `${base}catalog`;
 
     useEffect(() => {
@@ -389,8 +423,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     if (live) setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
                 },
                 (error: unknown) => {
-                    const message = error instanceof Error ? error.message : String(error);
-                    if (live) setStage({ kind: 'failed', message });
+                    if (live) setStage({ kind: 'failed', message: messageOf(error) });
                 }
             );
         return () => {
@@ -400,28 +433,38 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
 
     const onFile = useCallback(async (file: FileLike) => {
         setActed(true);
+        asked.current += 1;
+        const mine = asked.current;
+        setStage({ kind: 'reading', name: file.name });
         try {
             const table = await readFile(file);
             const mapping = guessMapping(table);
-            setStage({
-                kind: 'review',
-                name: file.name,
-                table,
-                mapping,
-                result: toCatalog(table, mapping),
-            });
+            const result = toCatalog(table, mapping);
+            if (mine === asked.current) {
+                setStage({ kind: 'review', name: file.name, table, mapping, result });
+            }
         } catch (error) {
-            setStage({
-                kind: 'choose',
-                problem: error instanceof Error ? error.message : String(error),
-            });
+            if (mine === asked.current) setStage({ kind: 'choose', problem: messageOf(error) });
         }
     }, []);
 
     const onSample = useCallback(async () => {
-        const response = await fetch(`${base}${SAMPLE_NAME}`);
-        const text = await response.text();
-        await onFile({ name: SAMPLE_NAME, size: text.length, text: () => Promise.resolve(text) });
+        setActed(true);
+        try {
+            const response = await fetch(`${base}${SAMPLE_FILE}`);
+            if (!response.ok) throw new Error(`error ${response.status}`);
+            const text = await response.text();
+            await onFile({
+                name: SAMPLE_FILE,
+                size: text.length,
+                text: () => Promise.resolve(text),
+            });
+        } catch (error) {
+            setStage({
+                kind: 'choose',
+                problem: `The sample could not be loaded (${messageOf(error)}). Try again, or download it below.`,
+            });
+        }
     }, [base, onFile]);
 
     const onSearch = useCallback(async () => {
@@ -430,33 +473,55 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         const { catalog } = stage.result;
         const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
         setStage({ kind: 'loading' });
-        const response = await fetch(catalogUrl, { method: 'PUT', body: JSON.stringify(catalog) });
-        if (!response.ok) {
-            setStage({ ...review, problem: await errorOf(response, retry) });
-            return;
+        try {
+            const response = await fetch(catalogUrl, {
+                method: 'PUT',
+                body: JSON.stringify(catalog),
+            });
+            if (!response.ok) {
+                setStage({ ...review, problem: await errorOf(response, retry) });
+                return;
+            }
+            const loaded = await fetchLoaded(catalogUrl);
+            clearSearch(base);
+            setStage(
+                loaded
+                    ? { kind: 'searching', loaded }
+                    : {
+                          ...review,
+                          problem: `The store did not keep your products. Press "${retry}" to try again.`,
+                      }
+            );
+        } catch (error) {
+            setStage({
+                ...review,
+                problem: `The store could not be reached (${messageOf(error)}). Press "${retry}" to try again.`,
+            });
         }
-        const loaded = await fetchLoaded(catalogUrl);
-        setStage(
-            loaded
-                ? { kind: 'searching', loaded }
-                : {
-                      ...review,
-                      problem: `The store did not keep your products. Press "${retry}" to try again.`,
-                  }
-        );
-    }, [stage, catalogUrl]);
+    }, [stage, catalogUrl, base]);
 
     const onRemove = useCallback(async () => {
+        if (stage.kind !== 'searching') return;
+        const searching = stage;
         setActed(true);
-        await fetch(catalogUrl, { method: 'DELETE' });
-        window.history.replaceState(null, '', base);
-        setStage({ kind: 'choose' });
-    }, [catalogUrl, base]);
+        try {
+            const response = await fetch(catalogUrl, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`error ${response.status}`);
+            clearSearch(base);
+            setStage({ kind: 'choose' });
+        } catch (error) {
+            setStage({
+                ...searching,
+                problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Try again.`,
+            });
+        }
+    }, [stage, catalogUrl, base]);
 
     const onAnother = useCallback(() => {
         setActed(true);
+        clearSearch(base);
         setStage({ kind: 'choose' });
-    }, []);
+    }, [base]);
 
     if (stage.kind === 'searching') {
         return (
@@ -471,6 +536,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 banner={
                     <CatalogBar
                         loaded={stage.loaded}
+                        problem={stage.problem}
                         onAnother={onAnother}
                         onRemove={() => void onRemove()}
                     />

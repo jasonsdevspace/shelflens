@@ -16,7 +16,12 @@ export interface FileLike {
     text(): Promise<string>;
 }
 
-const megabytes = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
+/**
+ * Megabytes to one place. A file's size rounds up and the limit is exact, so a
+ * file just past the limit never reads as the limit itself.
+ */
+const megabytes = (bytes: number, round: (n: number) => number = Math.round) =>
+    `${(round((bytes / 1024 / 1024) * 10) / 10).toFixed(1)} MB`;
 
 const isJson = (name: string, text: string): boolean => {
     if (/\.json$/i.test(name)) return true;
@@ -28,7 +33,7 @@ const isJson = (name: string, text: string): boolean => {
 export const readFile = async (file: FileLike): Promise<Table> => {
     if (file.size > CATALOG_FILE_BYTES_CAP) {
         throw new Error(
-            `This file is ${megabytes(file.size)}, and the largest this page reads is ${megabytes(CATALOG_FILE_BYTES_CAP)}.`
+            `This file is ${megabytes(file.size, Math.ceil)}, and the largest this page reads is ${megabytes(CATALOG_FILE_BYTES_CAP)}.`
         );
     }
     const text = await file.text();

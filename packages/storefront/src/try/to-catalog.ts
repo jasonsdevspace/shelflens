@@ -8,7 +8,7 @@ import {
     slugify,
 } from '@shelflens/catalog';
 
-import { contentVersion } from './check.js';
+import { contentVersion, hasMemberPrices } from './check.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
@@ -303,8 +303,6 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
         products,
     };
     const catalog: Catalog = { version: contentVersion(parts), seed: 0, locale: 'en-US', ...parts };
-    const memberPrices = products.some(
-        (product) => product.price.member.min !== product.price.guest.min
-    );
+    const memberPrices = hasMemberPrices(products);
     return { ok: true, catalog, skipped, notes, memberPrices };
 };
