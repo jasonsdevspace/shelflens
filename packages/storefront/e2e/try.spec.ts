@@ -145,3 +145,28 @@ test('takes the sample with one press', async ({ page }) => {
         page.getByRole('heading', { level: 1, name: 'What is in sample-products.csv' })
     ).toBeVisible();
 });
+
+test('puts a wrong guess right before searching, and the store shows what was chosen', async ({
+    page,
+}) => {
+    await page.goto('try/');
+    await page.getByLabel('Choose a file').setInputFiles({
+        name: 'costs.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+            'Title,Cost,Retail\nCedar Bench,$40.00,$95.00\nOak Stool,$25.00,$60.00\n'
+        ),
+    });
+    await expect(page.getByLabel('Price', { exact: true })).toHaveValue('Cost');
+    const preview = page.getByRole('list', { name: 'Preview' });
+    await expect(preview).toContainText('$40');
+    await page.getByLabel('Price', { exact: true }).selectOption('Retail');
+    await expect(preview).toContainText('$95');
+    await expect(preview).not.toContainText('$40');
+    await audit(page);
+    await page.getByRole('button', { name: 'Search 2 products' }).click();
+    const search = page.getByRole('combobox', { name: 'Search the store' });
+    await search.fill('bench');
+    await search.press('Enter');
+    await expect(page.getByRole('list', { name: 'Products' })).toContainText('$95');
+});

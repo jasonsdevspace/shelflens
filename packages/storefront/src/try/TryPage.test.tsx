@@ -188,17 +188,6 @@ describe('the page for a visitor’s own catalog', () => {
         ).toBeInTheDocument();
     });
 
-    it('claims no column is searched as words when none is mapped that way', async () => {
-        page();
-        await chooser();
-        await userEvent.upload(
-            screen.getByLabelText('Choose a file'),
-            new File(['name,price\nBoot,$10.00\n'], 'boots.csv')
-        );
-        await screen.findByRole('heading', { level: 1, name: 'What is in boots.csv' });
-        expect(screen.queryByText(/Searched as words/)).not.toBeInTheDocument();
-    });
-
     it('names a file just past the size limit as larger than the limit', async () => {
         page();
         await chooser();

@@ -4,7 +4,8 @@ import { App } from '../App.jsx';
 import { DemoFooter, PortfolioStrip } from '../app/Portfolio.jsx';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
-import { guessMapping, type MappedField, type Mapping } from './mapping.js';
+import { guessMapping, type Mapping } from './mapping.js';
+import { MappingEditor, Preview } from './MappingEditor.jsx';
 import { type FileLike, readFile } from './read-file.js';
 import { SAMPLE_FILE } from './sample.js';
 import { type LoadResult, type RowNote, toCatalog } from './to-catalog.js';
@@ -48,22 +49,6 @@ type Stage =
     | { readonly kind: 'reading'; readonly name: string }
     | { readonly kind: 'loading' }
     | { readonly kind: 'searching'; readonly loaded: Loaded; readonly problem?: string };
-
-const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
-    name: 'Name',
-    price: 'Price',
-    description: 'Description',
-    brand: 'Brand',
-    category: 'Category',
-    colors: 'Colors',
-    sizes: 'Sizes',
-    material: 'Material',
-    memberPrice: 'Member price',
-    rating: 'Rating',
-    ratingCount: 'Number of reviews',
-    inStock: 'In stock',
-    id: 'Product ID',
-};
 
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -219,6 +204,7 @@ const Review = ({
     problem,
     onSearch,
     onAnother,
+    onMapping,
 }: {
     readonly announce: boolean;
     readonly name: string;
@@ -228,11 +214,9 @@ const Review = ({
     readonly problem?: string | undefined;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
+    readonly onMapping: (mapping: Mapping) => void;
 }) => {
     const heading = useHeadingFocus(`${name}:${problem ?? ''}`, announce);
-    const used = new Set(Object.values(mapping).flat());
-    const unused = table.headers.filter((header) => !used.has(header));
-    const fields = (Object.keys(FIELD_LABELS) as MappedField[]).filter((field) => mapping[field]);
     return (
         <section className="try-stage" aria-labelledby="try-review">
             <h1 id="try-review" ref={heading} tabIndex={-1}>
@@ -242,21 +226,10 @@ const Review = ({
                 {count(table.rows.length, 'row', 'rows')} and{' '}
                 {count(table.headers.length, 'column', 'columns')}.
             </p>
-            <h2>Where each part of a product comes from</h2>
-            <dl className="try-mapping">
-                {fields.map((field) => (
-                    <div key={field}>
-                        <dt>{FIELD_LABELS[field]}</dt>
-                        <dd>{mapping[field]}</dd>
-                    </div>
-                ))}
-            </dl>
-            {(mapping.searchOnly ?? []).length > 0 && (
-                <p className="notice">Searched as words: {mapping.searchOnly?.join(', ')}.</p>
-            )}
-            {unused.length > 0 && <p className="notice">Not used: {unused.join(', ')}.</p>}
+            <MappingEditor table={table} mapping={mapping} onChange={onMapping} />
             {result.ok ? (
                 <>
+                    <Preview catalog={result.catalog} />
                     <RowNotes
                         notes={result.skipped}
                         summary={`${count(result.skipped.length, 'row is', 'rows are')} left out`}
@@ -334,6 +307,7 @@ const BeforeStore = ({
     onSample,
     onSearch,
     onAnother,
+    onMapping,
 }: {
     readonly stage: Exclude<Stage, { readonly kind: 'searching' }>;
     /** Whether the visitor's own action brought this stage, so its heading takes focus. */
@@ -342,6 +316,7 @@ const BeforeStore = ({
     readonly onSample: () => void;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
+    readonly onMapping: (mapping: Mapping) => void;
 }) => {
     return (
         <>
@@ -393,6 +368,7 @@ const BeforeStore = ({
                         problem={stage.problem}
                         onSearch={onSearch}
                         onAnother={onAnother}
+                        onMapping={onMapping}
                     />
                 )}
             </main>
@@ -517,6 +493,16 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, [stage, catalogUrl, base]);
 
+    // A changed mapping is a new catalog, made again from the rows already read.
+    const onMapping = useCallback((mapping: Mapping) => {
+        setStage((current) => {
+            if (current.kind !== 'review') return current;
+            // Any problem was about the last mapping, so it goes with it.
+            const { problem: _last, ...review } = current;
+            return { ...review, mapping, result: toCatalog(current.table, mapping) };
+        });
+    }, []);
+
     const onAnother = useCallback(() => {
         setActed(true);
         clearSearch(base);
@@ -553,6 +539,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             onSample={() => void onSample()}
             onSearch={() => void onSearch()}
             onAnother={onAnother}
+            onMapping={onMapping}
         />
     );
 };
