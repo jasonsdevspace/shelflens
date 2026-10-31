@@ -17,8 +17,8 @@ export default defineConfig({
             formats: ['es'],
             fileName: () => 'sw.js',
         },
-        rollupOptions: {
-            output: { inlineDynamicImports: true },
+        rolldownOptions: {
+            output: { codeSplitting: false },
         },
     },
 });
