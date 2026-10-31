@@ -11,6 +11,7 @@ import {
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
+import { StartFailure } from './app/StartFailure.jsx';
 import { storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
@@ -31,7 +32,7 @@ import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
-import { WorkerUnsupported } from './worker/register.js';
+import { startFailure } from './worker/register.js';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -50,10 +51,10 @@ export interface AppProps {
     readonly viewerSwitch?: boolean;
     /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
     readonly banner?: ReactNode;
-    /** Starts the store again after it did not start, which a fresh load of the page does. */
+    /** Starts the store again after it did not start. A fresh load of the page unless a test passes its own. */
     readonly retry?: (() => void) | undefined;
-    /** Whether the results heading takes focus once the first results land. */
-    readonly focusOnArrival?: boolean | undefined;
+    /** New each time the visitor brings this store, so the results heading takes focus as they land. */
+    readonly arrival?: number | undefined;
 }
 
 /**
@@ -71,32 +72,9 @@ const Standby = ({
     readonly retry: (() => void) | undefined;
 }) => {
     if (readiness === 'waiting') return <p className="notice">Preparing the store.</p>;
-    if (readiness === 'unsupported') {
-        return (
-            <div className="notice standby" role="alert">
-                <h1 className="results-heading">The store could not start in this browser</h1>
-                <p>
-                    It runs as a small program the page installs, and this browser did not allow it.
-                    Open this page in a regular, non-private window.
-                </p>
-            </div>
-        );
-    }
-    if (readiness === 'unavailable') {
-        return (
-            <div className="notice standby" role="alert">
-                <h1 className="results-heading">The store could not start</h1>
-                <p>Check your connection and try again.</p>
-                <button type="button" className="standby-retry" onClick={retry ?? reloadPage}>
-                    Try again
-                </button>
-            </div>
-        );
-    }
-    return null;
+    if (readiness === 'ready') return null;
+    return <StartFailure kind={readiness} retry={retry} />;
 };
-
-const reloadPage = () => globalThis.location.reload();
 
 /** Opens and closes the tour, and says which panel it controls. */
 const TourToggle = ({
@@ -313,7 +291,7 @@ export const App = ({
     viewerSwitch = true,
     banner,
     retry,
-    focusOnArrival,
+    arrival,
 }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
@@ -337,8 +315,7 @@ export const App = ({
     useEffect(() => {
         ready.then(
             () => setReadiness('ready'),
-            (error: unknown) =>
-                setReadiness(error instanceof WorkerUnsupported ? 'unsupported' : 'unavailable')
+            (error: unknown) => setReadiness(startFailure(error))
         );
     }, [ready]);
 
@@ -433,7 +410,7 @@ export const App = ({
                             onStoreChanged={storeChanged}
                             storeRevision={revision}
                             searched={searched}
-                            focusOnArrival={focusOnArrival}
+                            arrival={arrival}
                         />
                     )}
                 </main>

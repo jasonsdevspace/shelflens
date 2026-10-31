@@ -30,21 +30,22 @@ export const useReturnFocus = (
 };
 
 /**
- * Moves focus to the results heading once, when the first results land on a
- * store the visitor just asked for. Steps aside if the visitor has already
+ * Moves focus to the results heading when the results land on a store the
+ * visitor just asked for. Each arrival is a new number, so asking again for
+ * the same store moves focus again. Steps aside if the visitor has already
  * put focus somewhere, as the return to a closed product does.
  */
 export const useArrivalFocus = (
     container: RefObject<HTMLElement | null>,
-    wanted: boolean,
+    arrival: number | undefined,
     answered: boolean
 ): void => {
-    const done = useRef(false);
+    const handled = useRef<number>(undefined);
     useEffect(() => {
-        if (!wanted || !answered || done.current) return;
-        done.current = true;
+        if (arrival === undefined || !answered || handled.current === arrival) return;
+        handled.current = arrival;
         const active = document.activeElement;
         if (active !== null && active !== document.body) return;
         container.current?.querySelector<HTMLElement>('.results-heading')?.focus();
-    }, [container, wanted, answered]);
+    }, [container, arrival, answered]);
 };

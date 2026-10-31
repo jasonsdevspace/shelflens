@@ -2,6 +2,8 @@ import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useSt
 
 import { App } from '../App.jsx';
 import { DemoFooter, PortfolioStrip } from '../app/Portfolio.jsx';
+import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
+import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type Mapping } from './mapping.js';
@@ -36,7 +38,12 @@ interface Loaded {
 
 type Stage =
     | { readonly kind: 'starting' }
-    | { readonly kind: 'failed'; readonly message: string }
+    | {
+          readonly kind: 'failed';
+          readonly failure: StartFailureKind;
+          /** What went wrong, said only on the dev server, where the store does not run. */
+          readonly message: string;
+      }
     | { readonly kind: 'choose'; readonly problem?: string }
     | {
           readonly kind: 'review';
@@ -55,8 +62,8 @@ type Stage =
     | {
           readonly kind: 'searching';
           readonly loaded: Loaded;
-          /** Searched just now from the visitor's file, so the results take focus as they land. */
-          readonly arrived?: boolean;
+          /** New each time the visitor's file is searched, so the results take focus as they land. */
+          readonly arrival?: number;
           readonly problem?: string;
           /** Asked first, since removing the products discards the visitor's saved rules. */
           readonly confirm?: boolean;
@@ -145,11 +152,15 @@ const Building = ({
  */
 const nextPaint = () =>
     new Promise<void>((resolve) => {
-        if (typeof requestAnimationFrame !== 'function') {
-            setTimeout(resolve, 0);
-            return;
-        }
-        requestAnimationFrame(() => setTimeout(resolve, 0));
+        // A hidden tab paints no frames, so a timer goes on without one.
+        const fallback = setTimeout(resolve, 100);
+        if (typeof requestAnimationFrame !== 'function') return;
+        requestAnimationFrame(() =>
+            setTimeout(() => {
+                clearTimeout(fallback);
+                resolve();
+            }, 0)
+        );
     });
 
 /** Where a file is chosen, dropped, or the sample is taken. */
@@ -501,11 +512,10 @@ const BeforeStore = ({
                     <Building products={stage.products} announce={announce} />
                 )}
                 {stage.kind === 'failed' && (
-                    <p className="notice" role="alert">
-                        The store could not start in this browser ({stage.message}). It runs as a
-                        small program the page installs, and this browser did not allow it. A
-                        regular, non-private window usually does.
-                    </p>
+                    <>
+                        <StartFailure kind={stage.failure} />
+                        {import.meta.env.DEV && <p className="notice">{stage.message}</p>}
+                    </>
                 )}
                 {stage.kind === 'reading' && (
                     <Chooser
@@ -584,7 +594,13 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     if (live) setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
                 },
                 (error: unknown) => {
-                    if (live) setStage({ kind: 'failed', message: messageOf(error) });
+                    if (live) {
+                        setStage({
+                            kind: 'failed',
+                            failure: startFailure(error),
+                            message: messageOf(error),
+                        });
+                    }
                 }
             );
         return () => {
@@ -668,7 +684,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 clearSearch(base);
                 setStage(
                     loaded
-                        ? { kind: 'searching', loaded, arrived: true }
+                        ? { kind: 'searching', loaded, arrival: performance.now() }
                         : {
                               ...review,
                               problem: `The store did not keep your products. Press "${retry}" to try again.`,
@@ -809,7 +825,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 ready={Promise.resolve()}
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
-                focusOnArrival={stage.arrived === true}
+                arrival={stage.arrival}
                 banner={
                     <CatalogBar
                         loaded={stage.loaded}

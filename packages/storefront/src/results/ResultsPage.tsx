@@ -72,11 +72,11 @@ export interface ResultsPageProps {
     /** Counts the searches submitted, so a search run again is remembered again. */
     readonly searched: number;
     /**
-     * Whether the visitor's own action brought this store, as searching a
-     * file of their products does, so the heading takes focus once the first
-     * results land rather than focus being left at the top of the page.
+     * Set when the visitor's own action brought this store, as searching a
+     * file of their products does, and new each time, so the heading takes
+     * focus once the results land rather than focus being left at the top.
      */
-    readonly focusOnArrival?: boolean | undefined;
+    readonly arrival?: number | undefined;
 }
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
@@ -466,7 +466,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
     useRememberedSearch(state.phrase, result, own, props.searched);
     useReturnFocus(main, focusSku, !loading, onFocused);
-    useArrivalFocus(main, props.focusOnArrival === true, answered);
+    useArrivalFocus(main, props.arrival, answered);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
     // An error is the page, except with the panel open: the answer before it stays
