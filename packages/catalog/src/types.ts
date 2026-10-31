@@ -90,7 +90,12 @@ export interface Catalog {
      */
     readonly version: string;
     readonly seed: number;
-    readonly currency: 'USD';
+    /**
+     * An ISO 4217 code with two minor units, such as USD, EUR or GBP, since
+     * every price is a whole number of cents. The generated catalog is USD,
+     * and a visitor's own file can name another.
+     */
+    readonly currency: string;
     readonly locale: 'en-US';
     readonly brands: readonly Brand[];
     readonly categories: readonly Category[];
