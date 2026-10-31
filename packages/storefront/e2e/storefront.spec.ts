@@ -479,7 +479,7 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     expect(await order()).toEqual(previewed);
     await audit(page);
 
-    await notice.getByRole('button', { name: 'Use the store\u2019s rules' }).click();
+    await notice.getByRole('button', { name: 'Discard your rules' }).click();
     await notice.getByRole('button', { name: 'Yes, discard' }).click();
     await expect(notice).toBeHidden();
     await expect(layout).toHaveAttribute('aria-busy', 'false');

@@ -38,8 +38,8 @@ const SUGGEST = opNamed('Suggest');
 const get = (params: Record<string, string>) =>
     new Request(`${ORIGIN}${BASE}graphql?${new URLSearchParams(params)}`);
 
-const catalogRequest = (method: string, body?: unknown) =>
-    new Request(`${ORIGIN}${BASE}catalog`, {
+const catalogRequest = (method: string, body?: unknown, discardRules = false) =>
+    new Request(`${ORIGIN}${BASE}catalog${discardRules ? '?discard-rules=yes' : ''}`, {
         method,
         ...(body !== undefined && { body: typeof body === 'string' ? body : JSON.stringify(body) }),
     });
@@ -214,17 +214,54 @@ describe('the worker for a visitor’s own catalog', () => {
         });
     });
 
+    it('refuses to load or remove over saved rules until the visitor agrees, and keeps everything meanwhile', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace(pinFirst(LAMPS));
+        for (const refused of [
+            await api.handle(catalogRequest('PUT', MUGS)),
+            await api.handle(catalogRequest('DELETE')),
+        ]) {
+            expect(refused?.status).toBe(409);
+            expect(await refused?.json()).toMatchObject({ errors: [{ code: 'saved-rules' }] });
+        }
+        expect(await rules.current()).toEqual(pinFirst(LAMPS));
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toMatchObject({
+            version: LAMPS.version,
+        });
+        expect((await api.handle(catalogRequest('PUT', MUGS, true)))?.status).toBe(204);
+        expect(await rules.current()).toBeUndefined();
+    });
+
+    it('loads the same catalog again without asking, and keeps its rules, since they still name its products', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace(pinFirst(LAMPS));
+        expect((await api.handle(catalogRequest('PUT', LAMPS)))?.status).toBe(204);
+        expect(await rules.current()).toEqual(pinFirst(LAMPS));
+    });
+
+    it('loads over an empty saved set without asking, since there are no rules to lose', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace([]);
+        expect((await api.handle(catalogRequest('PUT', MUGS)))?.status).toBe(204);
+    });
+
     it('forgets the last catalog’s rules and clicks when a new one is loaded or it is removed', async () => {
         const rules = createMemoryRuleStore();
         const forgetEvents = vi.fn(() => Promise.resolve());
         const api = visitorApi(undefined, { rules, forgetEvents });
         await api.handle(catalogRequest('PUT', LAMPS));
         await rules.replace(pinFirst(LAMPS));
-        const mugs = await api.handle(catalogRequest('PUT', MUGS));
+        const mugs = await api.handle(catalogRequest('PUT', MUGS, true));
         expect(mugs?.status).toBe(204);
         expect(await rules.current()).toBeUndefined();
         expect(forgetEvents).toHaveBeenCalledTimes(2);
-        await api.handle(catalogRequest('DELETE'));
+        await api.handle(catalogRequest('DELETE', undefined, true));
         expect(forgetEvents).toHaveBeenCalledTimes(3);
     });
 
@@ -242,7 +279,7 @@ describe('the worker for a visitor’s own catalog', () => {
         const api = visitorApi(undefined, { rules: stubborn });
         await api.handle(catalogRequest('PUT', LAMPS));
         saved = UNBUILDABLE;
-        const refused = await api.handle(catalogRequest('PUT', MUGS));
+        const refused = await api.handle(catalogRequest('PUT', MUGS, true));
         expect(refused?.status).toBe(400);
         expect(await refused?.json()).toMatchObject({
             errors: [{ message: expect.stringContaining('could not be built from this catalog') }],

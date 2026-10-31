@@ -86,7 +86,7 @@ export interface RulesEditor {
 export { STEPS } from './rule-form.js';
 
 const NOT_SAVED = 'The rules could not be saved. Try again.';
-const NOT_RESTORED = 'The store’s rules could not be brought back. Try again.';
+const NOT_RESTORED = 'Your rules could not be discarded. Try again.';
 
 interface RulesBody {
     readonly rules: readonly Rule[];
@@ -258,7 +258,7 @@ export const DiscardRules = ({
             <>
                 {failure !== undefined && <span role="alert">{failure} </span>}
                 <button type="button" className="facets-clear" onClick={() => setAsking(true)}>
-                    Use the store&rsquo;s rules
+                    Discard your rules
                 </button>
             </>
         );

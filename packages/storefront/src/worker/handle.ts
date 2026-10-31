@@ -173,6 +173,9 @@ const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string):
     return response.json() as Promise<T>;
 };
 
+/** Said by a change the worker refused, since it would discard the visitor's saved rules. */
+const KEEPS_RULES = Symbol('keeps saved rules');
+
 export const createWorkerApi = ({
     catalogUrl,
     catalogs,
@@ -357,15 +360,28 @@ export const createWorkerApi = ({
         }
     };
 
+    /**
+     * Whether a change would discard rules the visitor saved. Asked inside the
+     * same turn as the change, so a rule saved in another tab a moment before
+     * is never discarded without the visitor having said so.
+     */
+    const discardsRules = async (discard: boolean) => {
+        if (discard) return false;
+        const saved = await rules?.current();
+        return saved !== undefined && saved.length > 0;
+    };
+
     /** Clears a visitor's catalog and everything made from it, rules, clicks and answers. */
-    const removeCatalog = (held: CatalogStore) =>
-        serially(async () => {
+    const removeCatalog = (held: CatalogStore, discard: boolean) =>
+        serially(async (): Promise<typeof KEEPS_RULES | undefined> => {
+            if (await discardsRules(discard)) return KEEPS_RULES;
             await held.clear();
             await rules?.reset();
             await forgetEvents?.();
             shipped = undefined;
             store = undefined;
             await dropOthers(undefined);
+            return undefined;
         });
 
     /**
@@ -374,16 +390,26 @@ export const createWorkerApi = ({
      * cannot be built from is not kept: the last one and its rules come back,
      * and the reason is the answer.
      */
-    const loadCatalog = (held: CatalogStore, catalog: Catalog, timing: { buildMs: number }) =>
-        serially(async (): Promise<Built | string> => {
+    const loadCatalog = (
+        held: CatalogStore,
+        catalog: Catalog,
+        options: { timing: { buildMs: number }; discard: boolean }
+    ) =>
+        serially(async (): Promise<Built | string | typeof KEEPS_RULES> => {
+            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
+            // The same file again names the same products, so its rules and clicks still hold.
+            const same = previous?.version === catalog.version;
+            if (!same && (await discardsRules(options.discard))) return KEEPS_RULES;
+            const { timing } = options;
             const began = performance.now();
             const done = () => {
                 timing.buildMs = performance.now() - began;
             };
-            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
             await held.replace(catalog);
-            await rules?.reset();
-            await forgetEvents?.();
+            if (!same) {
+                await rules?.reset();
+                await forgetEvents?.();
+            }
             shipped = undefined;
             try {
                 const built = await buildAgain();
@@ -398,6 +424,18 @@ export const createWorkerApi = ({
             }
         });
 
+    /** The answer to a change refused because it would discard the visitor's saved rules. */
+    const rulesKept = () =>
+        json(409, {
+            errors: [
+                {
+                    message:
+                        'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
+                    code: 'saved-rules',
+                },
+            ],
+        });
+
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
@@ -409,9 +447,12 @@ export const createWorkerApi = ({
                 memberPrices: hasMemberPrices(kept.products),
             });
         }
+        // A change that would discard the visitor's saved rules is refused
+        // unless the request says the visitor agreed, so the page asks then.
+        const discard = new URL(request.url).searchParams.get('discard-rules') === 'yes';
         if (request.method === 'DELETE') {
-            await removeCatalog(held);
-            return new Response(null, { status: 204 });
+            const removed = await removeCatalog(held, discard);
+            return removed === KEEPS_RULES ? rulesKept() : new Response(null, { status: 204 });
         }
         if (request.method !== 'PUT') {
             return json(405, {
@@ -434,7 +475,8 @@ export const createWorkerApi = ({
         }
         const readMs = performance.now() - began;
         const timing = { buildMs: 0 };
-        const result = await loadCatalog(held, catalog, timing);
+        const result = await loadCatalog(held, catalog, { timing, discard });
+        if (result === KEEPS_RULES) return rulesKept();
         if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
         return new Response(null, {
             status: 204,

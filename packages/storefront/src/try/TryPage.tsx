@@ -47,13 +47,37 @@ type Stage =
           /** Made from the first rows only, while the whole file is made again after a change. */
           readonly partial?: boolean;
           readonly problem?: string;
+          /** Asked first, since this file would replace a catalog the visitor saved rules for. */
+          readonly replacing?: boolean;
       }
     | { readonly kind: 'reading'; readonly name: string }
     | { readonly kind: 'loading' }
-    | { readonly kind: 'searching'; readonly loaded: Loaded; readonly problem?: string };
+    | {
+          readonly kind: 'searching';
+          readonly loaded: Loaded;
+          readonly problem?: string;
+          /** Asked first, since removing the products discards the visitor's saved rules. */
+          readonly confirm?: boolean;
+          /** Set when focus goes back to the remove button, after a kept or failed removal. */
+          readonly focusRemove?: boolean;
+      };
 
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+
+/**
+ * Sends a change to the visitor's catalog. The worker refuses one that would
+ * discard the visitor's saved rules unless the visitor agreed, and that
+ * refusal comes back as `refused` for the page to ask.
+ */
+const changeCatalog = async (
+    url: string,
+    init: RequestInit,
+    discardRules: boolean
+): Promise<Response | 'refused'> => {
+    const response = await fetch(discardRules ? `${url}?discard-rules=yes` : url, init);
+    return response.status === 409 ? 'refused' : response;
+};
 
 /** What the worker says is loaded, or nothing. */
 const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
@@ -205,9 +229,12 @@ const Review = ({
     result,
     partial,
     problem,
+    replacing,
     onSearch,
     onAnother,
     onMapping,
+    onReplace,
+    onKeepProducts,
 }: {
     readonly announce: boolean;
     readonly name: string;
@@ -216,11 +243,15 @@ const Review = ({
     readonly result: LoadResult;
     readonly partial: boolean;
     readonly problem?: string | undefined;
+    readonly replacing?: boolean | undefined;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
     readonly onMapping: (mapping: Mapping) => void;
+    readonly onReplace: () => void;
+    readonly onKeepProducts: () => void;
 }) => {
-    const heading = useHeadingFocus(name, announce);
+    // While the question is asked, it holds focus rather than the heading.
+    const heading = useHeadingFocus(name, announce && replacing !== true);
     return (
         <section className="try-stage" aria-labelledby="try-review">
             <h1 id="try-review" ref={heading} tabIndex={-1}>
@@ -255,16 +286,26 @@ const Review = ({
                             {problem}
                         </p>
                     )}
-                    <div className="try-actions">
-                        <button type="button" className="try-primary" onClick={onSearch}>
-                            {partial
-                                ? 'Search these products'
-                                : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
-                        </button>
-                        <button type="button" onClick={onAnother}>
-                            Choose another file
-                        </button>
-                    </div>
+                    {replacing === true ? (
+                        <Ask
+                            question="This file replaces the products you are searching, and your rules go with them. Search it anyway?"
+                            yes="Yes, search this file"
+                            no="Keep my products"
+                            onYes={onReplace}
+                            onNo={onKeepProducts}
+                        />
+                    ) : (
+                        <div className="try-actions">
+                            <button type="button" className="try-primary" onClick={onSearch}>
+                                {partial
+                                    ? 'Search these products'
+                                    : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
+                            </button>
+                            <button type="button" onClick={onAnother}>
+                                Choose another file
+                            </button>
+                        </div>
+                    )}
                 </>
             ) : (
                 <>
@@ -282,36 +323,101 @@ const Review = ({
     );
 };
 
+/**
+ * A question with its two answers. The answer that keeps things as they are
+ * takes focus, so a repeated key press never confirms a discard unread.
+ */
+const Ask = ({
+    question,
+    yes,
+    no,
+    onYes,
+    onNo,
+}: {
+    readonly question: string;
+    readonly yes: string;
+    readonly no: string;
+    readonly onYes: () => void;
+    readonly onNo: () => void;
+}) => {
+    const safe = useRef<HTMLButtonElement>(null);
+    useEffect(() => safe.current?.focus(), []);
+    return (
+        <p className="notice">
+            {question}{' '}
+            <button type="button" className="try-link" onClick={onYes}>
+                {yes}
+            </button>{' '}
+            <button ref={safe} type="button" className="try-link" onClick={onNo}>
+                {no}
+            </button>
+        </p>
+    );
+};
+
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 const CatalogBar = ({
     loaded,
     problem,
+    confirm,
+    focusRemove,
     onAnother,
     onRemove,
+    onConfirm,
+    onKeep,
+    onFocused,
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
+    readonly confirm?: boolean | undefined;
+    readonly focusRemove?: boolean | undefined;
     readonly onAnother: () => void;
     readonly onRemove: () => void;
-}) => (
-    <div className="results-aside try-bar">
-        <span>
-            You are searching your own catalog of {count(loaded.products, 'product', 'products')},
-            kept in this browser.
-        </span>{' '}
-        <button type="button" className="try-link" onClick={onAnother}>
-            Choose another file
-        </button>{' '}
-        <button type="button" className="try-link" onClick={onRemove}>
-            Remove your products
-        </button>
-        {problem && (
-            <p className="try-problem" role="alert">
-                {problem}
-            </p>
-        )}
-    </div>
-);
+    readonly onConfirm: () => void;
+    readonly onKeep: () => void;
+    readonly onFocused: () => void;
+}) => {
+    const remove = useRef<HTMLButtonElement>(null);
+    // After a removal kept or failed, the visitor is put back on the button they
+    // pressed, once, so a later render never takes focus from them again.
+    useEffect(() => {
+        if (focusRemove === true && confirm !== true) {
+            remove.current?.focus();
+            onFocused();
+        }
+    }, [focusRemove, confirm, onFocused]);
+    return (
+        <div className="results-aside try-bar">
+            <span>
+                You are searching your own catalog of{' '}
+                {count(loaded.products, 'product', 'products')}, kept in this browser.
+            </span>{' '}
+            {confirm === true ? (
+                <Ask
+                    question="Your rules go with these products, so removing them discards your rules too. Remove them anyway?"
+                    yes="Yes, remove them"
+                    no="Keep my rules"
+                    onYes={onConfirm}
+                    onNo={onKeep}
+                />
+            ) : (
+                <>
+                    <button type="button" className="try-link" onClick={onAnother}>
+                        Choose another file
+                    </button>{' '}
+                    <button ref={remove} type="button" className="try-link" onClick={onRemove}>
+                        Remove your products
+                    </button>
+                </>
+            )}
+            {problem && (
+                <p className="try-problem" role="alert">
+                    {problem}
+                </p>
+            )}
+        </div>
+    );
+};
 
 /** Everything before a store is built: starting, choosing, reviewing and loading. */
 const BeforeStore = ({
@@ -322,6 +428,8 @@ const BeforeStore = ({
     onSearch,
     onAnother,
     onMapping,
+    onReplace,
+    onKeepProducts,
 }: {
     readonly stage: Exclude<Stage, { readonly kind: 'searching' }>;
     /** Whether the visitor's own action brought this stage, so its heading takes focus. */
@@ -331,6 +439,8 @@ const BeforeStore = ({
     readonly onSearch: () => void;
     readonly onAnother: () => void;
     readonly onMapping: (mapping: Mapping) => void;
+    readonly onReplace: () => void;
+    readonly onKeepProducts: () => void;
 }) => {
     return (
         <>
@@ -381,9 +491,12 @@ const BeforeStore = ({
                         result={stage.result}
                         partial={stage.partial ?? false}
                         problem={stage.problem}
+                        replacing={stage.replacing}
                         onSearch={onSearch}
                         onAnother={onAnother}
                         onMapping={onMapping}
+                        onReplace={onReplace}
+                        onKeepProducts={onKeepProducts}
                     />
                 )}
             </main>
@@ -415,6 +528,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     const [acted, setActed] = useState(false);
     // Counts the files asked for, so one read slowly never replaces one picked after it.
     const asked = useRef(0);
+    // Set while a load or a removal is with the worker, so a second press waits.
+    const pending = useRef(false);
+    // The search the visitor left when they chose another file.
+    const lastSearch = useRef('');
     const catalogUrl = `${base}catalog`;
 
     useEffect(() => {
@@ -470,60 +587,117 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, [base, onFile]);
 
-    const onSearch = useCallback(async () => {
-        if (stage.kind !== 'review') return;
-        const whole = stage.partial ? toCatalog(stage.table, stage.mapping) : stage.result;
-        const review = { ...stage, result: whole, partial: false };
-        if (!whole.ok) {
-            setStage(review);
-            return;
-        }
-        const { catalog } = whole;
-        const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
-        setStage({ kind: 'loading' });
-        try {
-            const response = await fetch(catalogUrl, {
-                method: 'PUT',
-                body: JSON.stringify(catalog),
-            });
-            if (!response.ok) {
-                setStage({ ...review, problem: await errorOf(response, retry) });
+    // Loading a file replaces the products being searched, and the worker
+    // refuses to when that would discard the visitor's saved rules, so the
+    // page asks then and loads again once the visitor agrees.
+    const load = useCallback(
+        async (discardRules: boolean) => {
+            if (stage.kind !== 'review' || pending.current) return;
+            const { replacing: _asked, ...current } = stage;
+            const whole = current.partial
+                ? toCatalog(current.table, current.mapping)
+                : current.result;
+            const review = { ...current, result: whole, partial: false };
+            if (!whole.ok) {
+                setStage(review);
                 return;
             }
+            const { catalog } = whole;
+            const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
+            pending.current = true;
+            setStage({ kind: 'loading' });
+            try {
+                const response = await changeCatalog(
+                    catalogUrl,
+                    { method: 'PUT', body: JSON.stringify(catalog) },
+                    discardRules
+                );
+                if (response === 'refused') {
+                    const { problem: _last, ...asking } = review;
+                    setStage({ ...asking, replacing: true });
+                    return;
+                }
+                if (!response.ok) {
+                    setStage({ ...review, problem: await errorOf(response, retry) });
+                    return;
+                }
+                const loaded = await fetchLoaded(catalogUrl);
+                clearSearch(base);
+                setStage(
+                    loaded
+                        ? { kind: 'searching', loaded }
+                        : {
+                              ...review,
+                              problem: `The store did not keep your products. Press "${retry}" to try again.`,
+                          }
+                );
+            } catch (error) {
+                setStage({
+                    ...review,
+                    problem: `The store could not be reached (${messageOf(error)}). Press "${retry}" to try again.`,
+                });
+            } finally {
+                pending.current = false;
+            }
+        },
+        [stage, catalogUrl, base]
+    );
+
+    // Back to the products the visitor was searching, with their search.
+    const keepProducts = useCallback(async () => {
+        if (stage.kind !== 'review' || pending.current) return;
+        const review = stage;
+        pending.current = true;
+        try {
             const loaded = await fetchLoaded(catalogUrl);
-            clearSearch(base);
-            setStage(
-                loaded
-                    ? { kind: 'searching', loaded }
-                    : {
-                          ...review,
-                          problem: `The store did not keep your products. Press "${retry}" to try again.`,
-                      }
-            );
+            if (!loaded) throw new Error('nothing is loaded');
+            window.history.replaceState(null, '', `${base}${lastSearch.current}`);
+            setStage({ kind: 'searching', loaded });
         } catch (error) {
+            const { replacing: _asked, ...back } = review;
             setStage({
-                ...review,
-                problem: `The store could not be reached (${messageOf(error)}). Press "${retry}" to try again.`,
+                ...back,
+                problem: `Your products could not be read (${messageOf(error)}). Reload the page to get back to them.`,
             });
+        } finally {
+            pending.current = false;
         }
     }, [stage, catalogUrl, base]);
 
-    const onRemove = useCallback(async () => {
-        if (stage.kind !== 'searching') return;
-        const searching = stage;
-        setActed(true);
-        try {
-            const response = await fetch(catalogUrl, { method: 'DELETE' });
-            if (!response.ok) throw new Error(`error ${response.status}`);
-            clearSearch(base);
-            setStage({ kind: 'choose' });
-        } catch (error) {
-            setStage({
-                ...searching,
-                problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Try again.`,
-            });
-        }
-    }, [stage, catalogUrl, base]);
+    // Removing the products discards the visitor's saved rules, so the worker
+    // refuses to unless the visitor agreed, and the page asks then.
+    const onRemove = useCallback(
+        async (discardRules: boolean) => {
+            if (stage.kind !== 'searching' || pending.current) return;
+            const { loaded } = stage;
+            pending.current = true;
+            setActed(true);
+            try {
+                const response = await changeCatalog(
+                    catalogUrl,
+                    { method: 'DELETE' },
+                    discardRules
+                );
+                if (response === 'refused') {
+                    setStage({ kind: 'searching', loaded, confirm: true });
+                    return;
+                }
+                if (!response.ok) throw new Error(`error ${response.status}`);
+                clearSearch(base);
+                setStage({ kind: 'choose' });
+            } catch (error) {
+                setStage({
+                    kind: 'searching',
+                    loaded,
+                    focusRemove: true,
+                    problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Try again.`,
+                });
+            } finally {
+                pending.current = false;
+            }
+        },
+        [stage, catalogUrl, base]
+    );
 
     // A changed mapping is a new catalog, made again from the rows already read. A small
     // file is made again at once. A large one shows its first rows at once and is made
@@ -556,10 +730,31 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     }, [stage]);
 
     const onAnother = useCallback(() => {
+        // Nothing moves while a change is with the worker, so its answer lands where it was asked.
+        if (pending.current) return;
         setActed(true);
+        // Kept, so a visitor who keeps their products is taken back to their search.
+        if (stage.kind === 'searching') lastSearch.current = window.location.search;
         clearSearch(base);
         setStage({ kind: 'choose' });
-    }, [base]);
+    }, [base, stage]);
+
+    const focused = useCallback(() => {
+        setStage((current) => {
+            if (current.kind !== 'searching' || current.focusRemove !== true) return current;
+            const { focusRemove: _done, ...rest } = current;
+            return rest;
+        });
+    }, []);
+
+    const keepRules = useCallback(() => {
+        if (pending.current) return;
+        setStage((current) =>
+            current.kind === 'searching'
+                ? { kind: 'searching', loaded: current.loaded, focusRemove: true }
+                : current
+        );
+    }, []);
 
     if (stage.kind === 'searching') {
         return (
@@ -575,8 +770,13 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     <CatalogBar
                         loaded={stage.loaded}
                         problem={stage.problem}
+                        confirm={stage.confirm}
+                        focusRemove={stage.focusRemove}
                         onAnother={onAnother}
-                        onRemove={() => void onRemove()}
+                        onRemove={() => void onRemove(false)}
+                        onConfirm={() => void onRemove(true)}
+                        onKeep={keepRules}
+                        onFocused={focused}
                     />
                 }
             />
@@ -589,9 +789,11 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             announce={acted}
             onFile={(file) => void onFile(file)}
             onSample={() => void onSample()}
-            onSearch={() => void onSearch()}
+            onSearch={() => void load(false)}
             onAnother={onAnother}
             onMapping={onMapping}
+            onReplace={() => void load(true)}
+            onKeepProducts={() => void keepProducts()}
         />
     );
 };

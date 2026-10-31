@@ -1,3 +1,4 @@
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
@@ -26,11 +27,12 @@ let failure: Failure | undefined;
 let sample: () => Promise<Response>;
 
 const page = () => {
+    const rules = createMemoryRuleStore();
     const worker = createWorkerApi({
         catalogs: createMemoryCatalogStore(),
         base: BASE,
         events: createMemoryEventStore(),
-        rules: createMemoryRuleStore(),
+        rules,
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(
@@ -43,7 +45,11 @@ const page = () => {
         return (await worker.handle(request)) ?? new Response('not found', { status: 404 });
     });
     render(<TryPage ready={Promise.resolve()} base={BASE} />);
+    return { rules };
 };
+
+/** One saved rule, as the panel would save it. Only whether it exists matters here. */
+const SAVED: Rule[] = [{ id: 'pin', pin: ['SL-00001'] }];
 
 const failWhen =
     (method: string, path: string, answer: () => Promise<Response>): Failure =>
@@ -160,6 +166,87 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
         expect(window.location.search).toBe('');
+    });
+
+    it('asks before a new file replaces the products and their rules, and goes back to them when kept', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        // A different file, since the same one again keeps its rules.
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
+        expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
+        expect(
+            screen.getByText(/This file replaces the products you are searching/)
+        ).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Keep my products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+        expect(await rules.current()).toEqual(SAVED);
+    });
+
+    it('replaces the products and forgets their rules once the visitor says yes', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        // A different file, since the same one again keeps its rules.
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Yes, search this file' }));
+        await screen.findByText(/your own catalog of 150 products/);
+        expect(await rules.current()).toBeUndefined();
+    });
+
+    it('asks nothing when the saved set is empty, since there is nothing to lose', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace([]);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        expect(await chooser()).toBeInTheDocument();
+    });
+
+    it('asks before removing the products discards saved rules, and sends one removal for two presses', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        let removals = 0;
+        failure = (request) => {
+            if (request.method === 'DELETE' && request.url.includes('discard-rules=yes'))
+                removals += 1;
+            return undefined;
+        };
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        expect(await screen.findByRole('button', { name: 'Keep my rules' })).toHaveFocus();
+        await userEvent.dblClick(screen.getByRole('button', { name: 'Yes, remove them' }));
+        expect(await chooser()).toBeInTheDocument();
+        expect(removals).toBe(1);
+        expect(await rules.current()).toBeUndefined();
+    });
+
+    it('puts focus back on the remove button when the visitor keeps their rules, or the removal fails', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Keep my rules' }));
+        expect(screen.getByRole('button', { name: 'Remove your products' })).toHaveFocus();
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        const yes = await screen.findByRole('button', { name: 'Yes, remove them' });
+        failure = failWhen('DELETE', `${BASE}catalog`, () =>
+            Promise.resolve(new Response(null, { status: 500 }))
+        );
+        await userEvent.click(yes);
+        await screen.findByRole('alert');
+        expect(screen.getByRole('button', { name: 'Remove your products' })).toHaveFocus();
     });
 
     it('shows the file it read last, whichever finishes first', async () => {

@@ -119,7 +119,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'rules-editor',
         title: 'Write a rule and see it work before you save',
-        body: 'Press "Add a rule" and name a jacket from the page. The results beside the panel pin it while you type. "Save rule" builds the store again under a new version, so nothing remembered from the old one is served, and "Use the store\u2019s rules" brings the store\u2019s own back.',
+        body: 'Press "Add a rule" and name a jacket from the page. The results beside the panel pin it while you type. "Save rule" builds the store again under a new version, so nothing remembered from the old one is served, and "Discard your rules" brings the store\u2019s own back.',
         to: { ...EMPTY_STATE, phrase: 'jacket', explain: true, rules: true },
         tests: [
             'packages/storefront/src/results/RulesPanel.test.tsx',
