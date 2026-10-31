@@ -66,6 +66,7 @@ const PAGES: readonly {
     { path: '/widget/', ready: storeReady },
     { path: '/try/', ready: chooserReady },
     { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: resultsReady('bag') },
+    { path: '/try/widget/', ready: storeReady },
 ];
 
 const main = async () => {

@@ -407,7 +407,10 @@ const CatalogBar = ({
                     </button>{' '}
                     <button ref={remove} type="button" className="try-link" onClick={onRemove}>
                         Remove your products
-                    </button>
+                    </button>{' '}
+                    <a className="try-link" href="widget/">
+                        See them on a store&rsquo;s page
+                    </a>
                 </>
             )}
             {problem && (

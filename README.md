@@ -128,7 +128,7 @@ without its filters, each only if it finds something.
   accessibility audit of every page it reaches, and Lighthouse scores a hundred for accessibility
   on the home page, a results page in explain mode, a category, a product, the explainer, the
   widget's host page, and the page for a visitor's own catalog, both empty and with a file
-  loaded.
+  loaded, and the widget on a store's page over that file.
 
 ## Decisions
 
