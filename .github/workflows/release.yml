@@ -1,22 +1,27 @@
 name: Release
 
-# Publishes the engine to npm when a release tag is pushed, such as
-# engine-v0.2.0. The tag has to name a commit on main, match the version in
-# the engine's package.json, and have an entry in the changelog, or nothing
-# is published. Every check CI runs, runs first. The publish uses npm's
-# trusted publishing: the workflow proves who it is with an OpenID Connect
-# token, so no npm token is stored anywhere, and each version carries
-# provenance that links it to the commit and the run that built it.
+# Releases a package when its tag is pushed. An engine tag such as
+# engine-v0.2.0 publishes the engine to npm. A storefront tag such as
+# storefront-v1.2.0 marks a version of the demo, which is deployed from main
+# already, so it gets a release on GitHub and nothing else. Either way the
+# tag has to name a commit on main, match the version in that package's
+# package.json, and have an entry in its changelog, or nothing is released.
+# Every check CI runs, runs first.
 #
-# The version is staged, not released. npm holds it until Jason promotes
-# it on the package page, so a tag, a green run and a click are all needed
-# before anyone can install it, and nothing that happens in CI alone can
-# change what "latest" points at. A prerelease version, one with a hyphen,
-# is staged under the "next" tag and marked as a prerelease on GitHub.
+# For the engine, the publish uses npm's trusted publishing: the workflow
+# proves who it is with an OpenID Connect token, so no npm token is stored
+# anywhere, and each version carries provenance that links it to the commit
+# and the run that built it. The engine's version is staged, not released.
+# npm holds it until Jason promotes it on the package page, so a tag, a green
+# run and a click are all needed before anyone can install it, and nothing
+# that happens in CI alone can change what "latest" points at. A prerelease
+# version, one with a hyphen, is staged under the "next" tag and marked as a
+# prerelease on GitHub, for either package.
 on:
     push:
         tags:
             - 'engine-v*'
+            - 'storefront-v*'
 
 permissions:
     contents: read
@@ -28,6 +33,7 @@ jobs:
         outputs:
             version: ${{ steps.version.outputs.version }}
             prerelease: ${{ steps.version.outputs.prerelease }}
+            package: ${{ steps.version.outputs.package }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,16 +54,23 @@ jobs:
               env:
                   TAG: ${{ github.ref_name }}
               run: |
-                  version="${TAG#engine-v}"
-                  declared=$(node -p "require('./packages/engine/package.json').version")
+                  case "$TAG" in
+                      engine-v*) package=engine ;;
+                      storefront-v*) package=storefront ;;
+                      *) echo "$TAG names no package this workflow releases, only engine and storefront"; exit 1 ;;
+                  esac
+                  version="${TAG#"$package"-v}"
+                  dir="packages/$package"
+                  declared=$(node -p "require('./$dir/package.json').version")
                   if [ "$version" != "$declared" ]; then
-                      echo "the tag says $version but packages/engine/package.json says $declared"
+                      echo "the tag says $version but $dir/package.json says $declared"
                       exit 1
                   fi
-                  if ! grep -qxF -- "## $version" packages/engine/CHANGELOG.md; then
-                      echo "packages/engine/CHANGELOG.md has no entry for $version"
+                  if ! grep -qxF -- "## $version" "$dir/CHANGELOG.md"; then
+                      echo "$dir/CHANGELOG.md has no entry for $version"
                       exit 1
                   fi
+                  echo "package=$package" >> "$GITHUB_OUTPUT"
                   if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
                       echo "the tagged commit is not on main"
                       exit 1
@@ -81,6 +94,7 @@ jobs:
 
     publish:
         needs: [agree, checks]
+        if: needs.agree.outputs.package == 'engine'
         runs-on: ubuntu-latest
         # The environment is what npm's trusted publisher is registered
         # against, and where a required reviewer can be set.
@@ -126,24 +140,40 @@ jobs:
 
             # A release on GitHub with the changelog entry as its notes, so
             # the tag has a page a reader can land on. Left alone if it exists.
-            # The notes say the version is live once promoted on npm.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  if gh release view "$TAG" >/dev/null 2>&1; then
-                      echo "the release for $TAG exists"
-                      exit 0
-                  fi
-                  awk -v v="$VERSION" '
-                      $0 == "## " v { on = 1; next }
-                      on && /^## / { exit }
-                      on && (printed || NF) { print; printed = 1 }
-                  ' packages/engine/CHANGELOG.md > notes.md
-                  if ! grep -q . notes.md; then
-                      echo "the changelog entry for $VERSION is empty"
-                      exit 1
-                  fi
                   flags=""
                   [ "$PRERELEASE" = "true" ] && flags="--prerelease"
-                  gh release create "$TAG" --title "@jasonsdevspace/shelflens $VERSION" --notes-file notes.md $flags
+                  scripts/github-release.sh "$TAG" "$VERSION" packages/engine/CHANGELOG.md \
+                      "@jasonsdevspace/shelflens $VERSION" $flags
+
+    # The storefront is deployed from main by CI, so its release is a page
+    # that names the version and says what changed. It is not marked as the
+    # repository's latest release, which stays the engine's, since that is
+    # what someone installing the package is looking for.
+    storefront:
+        needs: [agree, checks]
+        if: needs.agree.outputs.package == 'storefront'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        env:
+            VERSION: ${{ needs.agree.outputs.version }}
+            PRERELEASE: ${{ needs.agree.outputs.prerelease }}
+            TAG: ${{ github.ref_name }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Create the GitHub release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  flags="--latest=false"
+                  [ "$PRERELEASE" = "true" ] && flags="$flags --prerelease"
+                  scripts/github-release.sh "$TAG" "$VERSION" packages/storefront/CHANGELOG.md \
+                      "ShelfLens storefront $VERSION" $flags
