@@ -126,7 +126,9 @@ without its filters, each only if it finds something.
   browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
   fails. The storefront runs in a real browser on a desktop and a phone profile with an
   accessibility audit of every page it reaches, and Lighthouse scores a hundred for accessibility
-  on the home page, a results page in explain mode, a category and a product.
+  on the home page, a results page in explain mode, a category, a product, the explainer, the
+  widget's host page, and the page for a visitor's own catalog, both empty and with a file
+  loaded.
 
 ## Decisions
 
