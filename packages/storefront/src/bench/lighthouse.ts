@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test';
+import { chromium, type Page } from '@playwright/test';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
@@ -15,20 +15,48 @@ import { startPreview } from './preview.js';
  * keep that storage, so each page Lighthouse loads is answered by a
  * worker already in charge and is the storefront, not its loading state.
  * Each page is checked to be ready before it is audited.
+ *
+ * The page for a visitor's own catalog is audited twice: empty, as a visitor
+ * first finds it, and with the sample file loaded through the page, as a
+ * visitor loads one, searching in explain mode.
  */
 
 const PORT = 4176;
 /** A store page is ready once the worker answers and the search box appears. */
-const STORE_READY = { name: 'Search the store' };
+const storeReady = (page: Page) =>
+    page.getByRole('combobox', { name: 'Search the store' }).waitFor();
 
-/** Each page audited, and what to wait for before the audit, when there is something. */
-const PAGES: readonly { readonly path: string; readonly ready?: typeof STORE_READY }[] = [
-    { path: '/', ready: STORE_READY },
-    { path: '/?q=jacket&explain=1', ready: STORE_READY },
-    { path: '/?category=shoes', ready: STORE_READY },
-    { path: '/?product=SL-00001', ready: STORE_READY },
+/** The page for a visitor's catalog is ready once it asks for a file. */
+const chooserReady = (page: Page) =>
+    page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
+
+const SAMPLE = new URL('../../dist/try/sample-products.csv', import.meta.url).pathname;
+
+/** Loads the sample file through the page, as a visitor would. */
+const loadSample = async (page: Page, origin: string) => {
+    await page.goto(`${origin}/try/`);
+    await page.getByLabel('Choose a file').setInputFiles(SAMPLE);
+    await page.getByRole('button', { name: 'Search 200 products' }).click();
+    await page.getByText('your own catalog of 200 products').waitFor();
+};
+
+/**
+ * Each page audited, what to do first when there is something, and what to
+ * wait for before the audit.
+ */
+const PAGES: readonly {
+    readonly path: string;
+    readonly prepare?: (page: Page, origin: string) => Promise<void>;
+    readonly ready?: (page: Page) => Promise<void>;
+}[] = [
+    { path: '/', ready: storeReady },
+    { path: '/?q=jacket&explain=1', ready: storeReady },
+    { path: '/?category=shoes', ready: storeReady },
+    { path: '/?product=SL-00001', ready: storeReady },
     { path: '/about/' },
-    { path: '/widget/', ready: STORE_READY },
+    { path: '/widget/', ready: storeReady },
+    { path: '/try/', ready: chooserReady },
+    { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: storeReady },
 ];
 
 const main = async () => {
@@ -41,9 +69,10 @@ const main = async () => {
     try {
         const browser = await chromium.connectOverCDP(`http://localhost:${chrome.port}`);
         const page = await browser.newPage();
-        for (const { path, ready } of PAGES) {
+        for (const { path, prepare, ready } of PAGES) {
+            if (prepare) await prepare(page, preview.origin);
             await page.goto(`${preview.origin}${path}`);
-            if (ready) await page.getByRole('combobox', ready).waitFor();
+            if (ready) await ready(page);
             const result = await lighthouse(`${preview.origin}${path}`, {
                 port: chrome.port,
                 onlyCategories: ['accessibility'],
