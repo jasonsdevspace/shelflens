@@ -120,8 +120,8 @@ without its filters, each only if it finds something.
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
   second served locally, with the worker spending 38 ms downloading the catalog and the rules and
-  57 ms building the store. The catalog ships at 333 KB compressed, the page at 86 KB, the worker
-  at 70 KB. [The record](docs/benchmarks/cold-visit.md).
+  55 ms building the store. The catalog ships at 333 KB compressed, the page at 90 KB, the worker
+  at 72 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** The catalog stays under 400 KB compressed, the API bundled for a
   browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
   fails. The storefront runs in a real browser on a desktop and a phone profile with an
@@ -143,10 +143,14 @@ it. Each has been read again against the code as shipped.
 7. [A GraphQL client of our own, rather than Apollo or urql](docs/decisions/0007-a-client-of-our-own.md)
 8. [One cache key, defined once, for three layers](docs/decisions/0008-one-cache-key.md)
 9. [Events land beside the API, and stay in the browser](docs/decisions/0009-events-stay-in-the-browser.md)
+10. [A rule is previewed by the engine, and saved as a new store version](docs/decisions/0010-rules-live-in-the-browser.md)
+11. [Recent searches are page state, kept in local storage](docs/decisions/0011-recent-searches-are-page-state.md)
+12. [The widget keeps its own tree, and its popover takes the top layer](docs/decisions/0012-the-widget-keeps-its-own-tree.md)
+13. [A visitor's catalog stays in the browser, in a store of its own](docs/decisions/0013-a-visitors-catalog-stays-in-the-browser.md)
 
 ## Dev setup
 
-You need [Node.js 24](https://nodejs.org/) and Git.
+You need [Node.js 24](https://nodejs.org/) and Git. The version is in `.nvmrc`, so `nvm use` picks it.
 
 ```bash
 git clone https://github.com/jasonsdevspace/shelflens.git
