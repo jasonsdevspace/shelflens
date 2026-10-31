@@ -1,84 +1,84 @@
 {
     "recorded": {
         "date": "2026-10-31",
-        "commit": "42519c0"
+        "commit": "8a446bf"
     },
     "sizes": {
         "catalog": 341270,
-        "page": 340,
-        "worker": 73444
+        "page": 92142,
+        "worker": 73439
     },
     "runs": [
         {
-            "readyMs": 215.20000000298023,
-            "downloadMs": 36.900000005960464,
-            "buildMs": 55,
-            "firstSuggestionMs": 194.59999999403954
+            "readyMs": 216,
+            "downloadMs": 38.20000000298023,
+            "buildMs": 56.5,
+            "firstSuggestionMs": 192.40000000596046
         },
         {
-            "readyMs": 211.40000000596046,
-            "downloadMs": 38.599999994039536,
-            "buildMs": 55.1000000089407,
-            "firstSuggestionMs": 192.79999999701977
+            "readyMs": 213.29999999701977,
+            "downloadMs": 39.099999994039536,
+            "buildMs": 57.5,
+            "firstSuggestionMs": 191.20000000298023
         },
         {
-            "readyMs": 209.79999999701977,
-            "downloadMs": 36.3999999910593,
-            "buildMs": 55.30000001192093,
-            "firstSuggestionMs": 190.20000000298023
+            "readyMs": 213.20000000298023,
+            "downloadMs": 37.5,
+            "buildMs": 58.70000000298023,
+            "firstSuggestionMs": 191.3999999910593
         },
         {
-            "readyMs": 212.40000000596046,
-            "downloadMs": 37.70000000298023,
-            "buildMs": 56.099999994039536,
-            "firstSuggestionMs": 190.1000000089407
+            "readyMs": 213,
+            "downloadMs": 37.599999994039536,
+            "buildMs": 57.6000000089407,
+            "firstSuggestionMs": 190
         },
         {
-            "readyMs": 210.79999999701977,
-            "downloadMs": 37.900000005960464,
-            "buildMs": 55.599999994039536,
-            "firstSuggestionMs": 190.1000000089407
+            "readyMs": 211.20000000298023,
+            "downloadMs": 39.400000005960464,
+            "buildMs": 58.5,
+            "firstSuggestionMs": 191.1000000089407
         }
     ],
     "atCap": {
         "laptop": [
             {
-                "readMs": 169.29999999701977,
-                "buildMs": 481.8999999910593,
-                "workerMs": 314.9,
-                "firstSuggestionMs": 185.30000001192093
+                "readMs": 130.70000000298023,
+                "buildMs": 406.1000000089407,
+                "workerMs": 300.8,
+                "firstSuggestionMs": 165.19999998807907
             },
             {
-                "readMs": 168.59999999403954,
-                "buildMs": 483.09999999403954,
-                "workerMs": 318.1,
-                "firstSuggestionMs": 183.90000000596046
+                "readMs": 131.8999999910593,
+                "buildMs": 413.29999999701977,
+                "workerMs": 304.6,
+                "firstSuggestionMs": 164.80000001192093
             },
             {
-                "readMs": 168.90000000596046,
-                "buildMs": 485.59999999403954,
-                "workerMs": 319.3,
-                "firstSuggestionMs": 181.30000001192093
+                "readMs": 133.29999999701977,
+                "buildMs": 411.20000000298023,
+                "workerMs": 302.8,
+                "firstSuggestionMs": 161.79999999701977
             }
         ],
         "phone": [
             {
-                "readMs": 608.2999999970198,
-                "buildMs": 1015.5,
-                "workerMs": 321.3,
-                "firstSuggestionMs": 242.20000000298023
+                "readMs": 519.7000000029802,
+                "buildMs": 963.6000000089407,
+                "workerMs": 303.6,
+                "firstSuggestionMs": 138.19999998807907
             },
             {
-                "readMs": 590.2999999970198,
-                "buildMs": 1007.6000000089407,
-                "workerMs": 327.9,
-                "firstSuggestionMs": 218.09999999403954
+                "readMs": 538,
+                "buildMs": 970.2000000029802,
+                "workerMs": 299.8,
+                "firstSuggestionMs": 135.59999999403954
             },
             {
-                "readMs": 591,
-                "buildMs": 1021.5,
-                "workerMs": 321,
-                "firstSuggestionMs": 249.59999999403954
+                "readMs": 527.6000000089407,
+                "buildMs": 969.5,
+                "workerMs": 313.9,
+                "firstSuggestionMs": 137.3999999910593
             }
         ]
     }
