@@ -199,4 +199,39 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await waitFor(() => expect(screen.getByLabelText('Choose a file')).toBeInTheDocument());
     });
+
+    it('keeps focus on the choice being changed after a search that failed', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        await screen.findByRole('alert');
+        const price = screen.getByLabelText('Price');
+        await userEvent.selectOptions(price, 'Member price');
+        expect(price).toHaveFocus();
+    });
+
+    it('shows a large file’s first rows at once after a change, and the whole of it after a pause', async () => {
+        page();
+        await chooser();
+        const rows = Array.from({ length: 1500 }, (_, index) => `Item ${index},$1.00,$2.00`).join(
+            '\n'
+        );
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File([`name,price,other\n${rows}\n`], 'large.csv')
+        );
+        await screen.findByRole('button', { name: 'Search 1,500 products' });
+        await userEvent.selectOptions(screen.getByLabelText('Price'), 'other');
+        expect(screen.getByRole('button', { name: 'Search these products' })).toBeInTheDocument();
+        expect(screen.getByText('Checking all 1,500 rows.')).toBeInTheDocument();
+        expect(
+            await screen.findByRole('button', { name: 'Search 1,500 products' })
+        ).toBeInTheDocument();
+    });
 });

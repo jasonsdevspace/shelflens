@@ -33,9 +33,18 @@ const REQUIRED = new Set<MappedField>(['name', 'price']);
 
 const FIELDS = Object.keys(FIELD_LABELS) as MappedField[];
 
-/** The mapping with one field changed, or left out when no column is chosen. */
+/**
+ * The mapping with one field changed, or left out when no column is chosen.
+ * A column feeds one part at most, as the guess keeps it, so giving it to this
+ * part takes it from any other, whose choice then shows Not used.
+ */
 export const withField = (mapping: Mapping, field: MappedField, header: string): Mapping => {
-    const { [field]: _old, ...rest } = mapping;
+    const { [field]: _old, ...others } = mapping;
+    const rest = Object.fromEntries(
+        Object.entries(others).filter(
+            ([key, value]) => key === 'searchOnly' || (value as unknown) !== header
+        )
+    ) as Mapping;
     const searchOnly = (mapping.searchOnly ?? []).filter((column) => column !== header);
     const next: Mapping = header === '' ? rest : { ...rest, [field]: header };
     return searchOnly.length > 0 ? { ...next, searchOnly } : withoutSearchOnly(next);
@@ -133,6 +142,7 @@ const PreviewCard = ({
     readonly categories: ReadonlyMap<string, string>;
 }) => {
     const [variant] = product.variants;
+    const path = product.categoryPath.map((id) => categories.get(id) ?? id).join(' › ');
     const details = [
         ...product.colors.slice(0, 3),
         ...product.sizes.slice(0, 3),
@@ -142,8 +152,7 @@ const PreviewCard = ({
         <li className="try-preview-card">
             <span className="try-preview-name">{product.name}</span>
             <span className="notice">
-                {product.brand} ·{' '}
-                {product.categoryPath.map((id) => categories.get(id) ?? id).join(' › ')}
+                {[product.brand, path].filter((part) => part !== '').join(' · ')}
             </span>
             <span>
                 {formatMoney({ amount: product.price.guest.min, currency: catalog.currency })}
@@ -156,14 +165,17 @@ const PreviewCard = ({
     );
 };
 
+const WORDS = ['', 'one', 'two', 'three'];
+
 /** The first three products, as the store will show them. */
 export const Preview = ({ catalog }: { readonly catalog: Catalog }) => {
     const categories = categoryNamesOf(catalog);
+    const shown = catalog.products.slice(0, 3);
     return (
         <>
-            <h2>The first three products, as the store will show them</h2>
+            <h2>{`${shown.length === 1 ? 'The first product' : `The first ${WORDS[shown.length] ?? shown.length} products`}, as the store will show them`}</h2>
             <ul className="try-preview" aria-label="Preview">
-                {catalog.products.slice(0, 3).map((product) => (
+                {shown.map((product) => (
                     <PreviewCard
                         key={product.sku}
                         product={product}

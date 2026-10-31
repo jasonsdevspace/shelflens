@@ -44,6 +44,8 @@ type Stage =
           readonly table: Table;
           readonly mapping: Mapping;
           readonly result: LoadResult;
+          /** Made from the first rows only, while the whole file is made again after a change. */
+          readonly partial?: boolean;
           readonly problem?: string;
       }
     | { readonly kind: 'reading'; readonly name: string }
@@ -201,6 +203,7 @@ const Review = ({
     table,
     mapping,
     result,
+    partial,
     problem,
     onSearch,
     onAnother,
@@ -211,12 +214,13 @@ const Review = ({
     readonly table: Table;
     readonly mapping: Mapping;
     readonly result: LoadResult;
+    readonly partial: boolean;
     readonly problem?: string | undefined;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
     readonly onMapping: (mapping: Mapping) => void;
 }) => {
-    const heading = useHeadingFocus(`${name}:${problem ?? ''}`, announce);
+    const heading = useHeadingFocus(name, announce);
     return (
         <section className="try-stage" aria-labelledby="try-review">
             <h1 id="try-review" ref={heading} tabIndex={-1}>
@@ -230,14 +234,22 @@ const Review = ({
             {result.ok ? (
                 <>
                     <Preview catalog={result.catalog} />
-                    <RowNotes
-                        notes={result.skipped}
-                        summary={`${count(result.skipped.length, 'row is', 'rows are')} left out`}
-                    />
-                    <RowNotes
-                        notes={result.notes}
-                        summary={`${count(result.notes.length, 'row needed', 'rows needed')} a default`}
-                    />
+                    {partial ? (
+                        <p className="notice" role="status">
+                            Checking all {count(table.rows.length, 'row', 'rows')}.
+                        </p>
+                    ) : (
+                        <>
+                            <RowNotes
+                                notes={result.skipped}
+                                summary={`${count(result.skipped.length, 'row is', 'rows are')} left out`}
+                            />
+                            <RowNotes
+                                notes={result.notes}
+                                summary={`${count(result.notes.length, 'row needed', 'rows needed')} a default`}
+                            />
+                        </>
+                    )}
                     {problem && (
                         <p className="try-problem" role="alert">
                             {problem}
@@ -245,7 +257,9 @@ const Review = ({
                     )}
                     <div className="try-actions">
                         <button type="button" className="try-primary" onClick={onSearch}>
-                            Search {count(result.catalog.products.length, 'product', 'products')}
+                            {partial
+                                ? 'Search these products'
+                                : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
                         </button>
                         <button type="button" onClick={onAnother}>
                             Choose another file
@@ -365,6 +379,7 @@ const BeforeStore = ({
                         table={stage.table}
                         mapping={stage.mapping}
                         result={stage.result}
+                        partial={stage.partial ?? false}
                         problem={stage.problem}
                         onSearch={onSearch}
                         onAnother={onAnother}
@@ -376,6 +391,18 @@ const BeforeStore = ({
         </>
     );
 };
+
+/** Files up to this many rows are made again on every change, which takes a moment. */
+const QUICK_ROWS = 1000;
+/** How long a pause in the changes before a larger file is made again whole. */
+const CATCH_UP_MS = 300;
+
+/** The first rows of a table, enough to show the preview while the whole is made again. */
+const firstRows = (table: Table): Table => ({
+    headers: table.headers,
+    rows: table.rows.slice(0, 200),
+    labels: table.labels.slice(0, 200),
+});
 
 /** The way back to the store's first page, so a new catalog never opens on the last one's search. */
 const clearSearch = (base: string) => window.history.replaceState(null, '', base);
@@ -444,9 +471,14 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     }, [base, onFile]);
 
     const onSearch = useCallback(async () => {
-        if (stage.kind !== 'review' || !stage.result.ok) return;
-        const review = stage;
-        const { catalog } = stage.result;
+        if (stage.kind !== 'review') return;
+        const whole = stage.partial ? toCatalog(stage.table, stage.mapping) : stage.result;
+        const review = { ...stage, result: whole, partial: false };
+        if (!whole.ok) {
+            setStage(review);
+            return;
+        }
+        const { catalog } = whole;
         const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
         setStage({ kind: 'loading' });
         try {
@@ -493,15 +525,35 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, [stage, catalogUrl, base]);
 
-    // A changed mapping is a new catalog, made again from the rows already read.
-    const onMapping = useCallback((mapping: Mapping) => {
-        setStage((current) => {
-            if (current.kind !== 'review') return current;
-            // Any problem was about the last mapping, so it goes with it.
-            const { problem: _last, ...review } = current;
-            return { ...review, mapping, result: toCatalog(current.table, mapping) };
-        });
-    }, []);
+    // A changed mapping is a new catalog, made again from the rows already read. A small
+    // file is made again at once. A large one shows its first rows at once and is made
+    // again whole once the visitor pauses, so each change stays quick on a phone.
+    const onMapping = useCallback(
+        (mapping: Mapping) => {
+            if (stage.kind !== 'review') return;
+            const { problem: _last, ...review } = stage;
+            const quick = stage.table.rows.length <= QUICK_ROWS;
+            const result = toCatalog(quick ? stage.table : firstRows(stage.table), mapping);
+            setStage({ ...review, mapping, result, partial: !quick });
+        },
+        [stage]
+    );
+
+    useEffect(() => {
+        if (stage.kind !== 'review' || !stage.partial) return undefined;
+        const timer = window.setTimeout(() => {
+            setStage((current) =>
+                current.kind === 'review' && current.mapping === stage.mapping
+                    ? {
+                          ...current,
+                          result: toCatalog(current.table, current.mapping),
+                          partial: false,
+                      }
+                    : current
+            );
+        }, CATCH_UP_MS);
+        return () => window.clearTimeout(timer);
+    }, [stage]);
 
     const onAnother = useCallback(() => {
         setActed(true);

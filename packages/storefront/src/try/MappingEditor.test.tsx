@@ -59,8 +59,26 @@ describe('changing the mapping', () => {
         expect(preview().getByText('Trail Boot')).toBeInTheDocument();
     });
 
-    it('offers the columns nothing uses to be searched as words', async () => {
+    it('names how many products it shows when there are fewer than three', () => {
+        const two = toCatalog(parseCsv('name,price\nBoot,$1.00\nHat,$2.00\n'), {
+            name: 'name',
+            price: 'price',
+        });
+        if (!two.ok) throw new Error(two.error);
+        render(<Preview catalog={two.catalog} />);
+        expect(
+            screen.getByRole('heading', {
+                name: 'The first two products, as the store will show them',
+            })
+        ).toBeInTheDocument();
+    });
+
+    it('offers the columns nothing uses to be searched as words, none of them ticked at first', async () => {
         render(<Harness />);
+        const all = within(
+            screen.getByRole('group', { name: 'Also search these columns' })
+        ).getAllByRole('checkbox');
+        expect(all.every((box) => !(box as HTMLInputElement).checked)).toBe(true);
         const words = screen.getByRole('group', { name: 'Also search these columns' });
         expect(within(words).getByLabelText('Notes')).not.toBeChecked();
         expect(within(words).queryByLabelText('Product')).not.toBeInTheDocument();
@@ -73,6 +91,10 @@ describe('the mapping helpers', () => {
     it('sets a field, and leaves it out when no column is chosen', () => {
         expect(withField({ name: 'a' }, 'price', 'b')).toEqual({ name: 'a', price: 'b' });
         expect(withField({ name: 'a', price: 'b' }, 'price', '')).toEqual({ name: 'a' });
+    });
+
+    it('gives a column to one part at most, taking it from the part that had it', () => {
+        expect(withField({ name: 'a', brand: 'b' }, 'brand', 'a')).toEqual({ brand: 'a' });
     });
 
     it('takes a column out of the words when it is given to a field', () => {
