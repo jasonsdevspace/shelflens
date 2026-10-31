@@ -17,10 +17,9 @@
  *
  * Run with `npm run node-check`.
  */
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { basename, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename } from 'node:path';
+
+import { isRunDirectly, repositoryFiles } from './repository.mjs';
 
 /**
  * A Dockerfile by any of the names Docker tooling uses for one.
@@ -115,6 +114,23 @@ const checkPackage = (path, pkg, major) => {
 };
 
 /**
+ * The Node major an image runs, if it is a Node image. `node` and `nodejs`
+ * take it from the tag, and a distroless or vendor image such as `nodejs24` or
+ * `nodejs-20` from its name. A Node image pinned by digest alone names none.
+ *
+ * @param {string} image
+ * @returns {{ major: number | undefined } | undefined}
+ */
+const nodeImage = (image) => {
+    const [name = '', tag] = (image.split('/').pop() ?? '').split('@')[0]?.split(':') ?? [];
+    const named = /^nodejs-?(\d+)/.exec(name);
+    if (named) return { major: Number(named[1]) };
+    if (name !== 'node' && name !== 'nodejs') return undefined;
+    const tagged = /^(\d+)/.exec(tag ?? '');
+    return { major: tagged ? Number(tagged[1]) : undefined };
+};
+
+/**
  * Lines of a workflow, a Dockerfile or the root README that name another Node.
  * A whole-line comment is skipped in a workflow or a Dockerfile, so a note
  * about a version is not taken for a use of one.
@@ -134,13 +150,13 @@ const checkText = (path, text, major) =>
                 : [];
         }
         if (isDockerfile(path)) {
-            const image = /^\s*FROM\s+(?:--\S+\s+)*(\S+)/i.exec(code)?.[1] ?? '';
-            const named = /(?:^|\/)(?:node:(\d+)|nodejs(\d+))/.exec(image);
-            if (/(?:^|\/)node(?:js)?(?::|\d|$)/.test(image) && named === null) {
+            const image = /^\s*FROM\s+(?:--\S+\s+)*(\S+)/i.exec(code)?.[1];
+            const node = image === undefined ? undefined : nodeImage(image);
+            if (node === undefined) return [];
+            if (node.major === undefined) {
                 return [`${at}: uses a Node image whose tag does not name a major (${image})`];
             }
-            const used = Number(named?.[1] ?? named?.[2] ?? major);
-            return used === major ? [] : [`${at}: uses Node ${used} (${image})`];
+            return node.major === major ? [] : [`${at}: uses Node ${node.major} (${image})`];
         }
         if (path !== 'README.md') return [];
         return [...line.matchAll(/\bNode(?:\.js)?\]?(?:\([^)]*\))?\s+(?:>=?\s*)?v?(\d+)\b/g)]
@@ -179,25 +195,7 @@ const watched = (path) =>
     /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path);
 
 const main = () => {
-    // From the top of this script's repository, wherever it is started, and
-    // over tracked files and new ones not yet added.
-    const here = dirname(fileURLToPath(import.meta.url));
-    process.chdir(
-        execFileSync('git', ['rev-parse', '--show-toplevel'], {
-            cwd: here,
-            encoding: 'utf8',
-        }).trim()
-    );
-    const listed = execFileSync(
-        'git',
-        ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-        {
-            encoding: 'utf8',
-            maxBuffer: 64 * 1024 * 1024,
-        }
-    ).split('\0');
-    const paths = [...new Set(listed)].filter((path) => watched(path) && existsSync(path));
-    const files = new Map(paths.map((path) => [path, readFileSync(path, 'utf8')]));
+    const files = repositoryFiles(import.meta.url, watched);
     const problems = nodeMismatches(files);
     if (problems.length > 0) {
         console.error(`Node version check failed.\n\n${problems.join('\n')}`);
@@ -206,9 +204,4 @@ const main = () => {
     console.log(`Node version check passed. Everything names Node ${files.get('.nvmrc')?.trim()}.`);
 };
 
-// Compared by real path, so a checkout reached through a symlink still runs.
-if (
-    process.argv[1] !== undefined &&
-    realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-)
-    main();
+if (isRunDirectly(import.meta.url)) main();

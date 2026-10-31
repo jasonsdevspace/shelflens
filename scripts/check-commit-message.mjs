@@ -9,8 +9,9 @@
  * hook with the path to the message file.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+
+import { isRunDirectly } from './repository.mjs';
 
 const TOOLS = [
     /\bclaude\b/i,
@@ -93,9 +94,4 @@ const main = () => {
     }
 };
 
-// Compared by real path, so a checkout reached through a symlink still runs.
-if (
-    process.argv[1] !== undefined &&
-    realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-)
-    main();
+if (isRunDirectly(import.meta.url)) main();
