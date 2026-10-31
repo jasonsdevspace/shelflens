@@ -1,0 +1,213 @@
+import {
+    createMemoryEventStore,
+    createMemoryRuleStore,
+    PERSISTED_OPERATIONS,
+} from '@shelflens/api';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createMemoryCatalogStore } from '../worker/catalog-db.js';
+import { createWorkerApi } from '../worker/handle.js';
+import { CATALOG_FILE_BYTES_CAP } from './limits.js';
+import { SAMPLE_FILE, sampleCsv } from './sample.js';
+import { TryPage } from './TryPage.jsx';
+
+/*
+ * The page for a visitor's own catalog, over the real worker for try/ in
+ * memory, with a way to make any one request fail, since a failure in a
+ * real browser is the one thing the browser test cannot make happen.
+ */
+
+const BASE = '/try/';
+
+type Failure = (request: Request) => Promise<Response> | undefined;
+let failure: Failure | undefined;
+let sample: () => Promise<Response>;
+
+const page = () => {
+    const worker = createWorkerApi({
+        catalogs: createMemoryCatalogStore(),
+        base: BASE,
+        events: createMemoryEventStore(),
+        rules: createMemoryRuleStore(),
+    });
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = new Request(
+            new URL(String(input instanceof Request ? input.url : input), window.location.href),
+            init
+        );
+        const failed = failure?.(request);
+        if (failed) return failed;
+        if (new URL(request.url).pathname.endsWith(SAMPLE_FILE)) return sample();
+        return (await worker.handle(request)) ?? new Response('not found', { status: 404 });
+    });
+    render(<TryPage ready={Promise.resolve()} base={BASE} />);
+};
+
+const failWhen =
+    (method: string, path: string, answer: () => Promise<Response>): Failure =>
+    (request) =>
+        request.method === method && new URL(request.url).pathname === path ? answer() : undefined;
+
+const chooser = () => screen.findByRole('heading', { level: 1, name: 'Search your own products' });
+
+const loadSample = async () => {
+    await chooser();
+    await userEvent.click(
+        screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+    await screen.findByText(/your own catalog of 200 products/);
+};
+
+beforeEach(() => {
+    failure = undefined;
+    sample = () => Promise.resolve(new Response(sampleCsv()));
+    window.history.replaceState(null, '', BASE);
+    localStorage.setItem('shelflens.tour', 'seen');
+    expect(Object.keys(PERSISTED_OPERATIONS).length).toBeGreaterThan(0);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
+
+describe('the page for a visitor’s own catalog', () => {
+    it('loads the sample and searches it, saying whose catalog it is', async () => {
+        page();
+        await loadSample();
+        expect(
+            await screen.findByRole('combobox', { name: 'Search the store' })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Tour' })).not.toBeInTheDocument();
+    });
+
+    it('says the sample could not be loaded rather than reading an error page as products', async () => {
+        sample = () => Promise.resolve(new Response('<html>not here</html>', { status: 404 }));
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The sample could not be loaded (error 404)'
+        );
+    });
+
+    it('goes back to the review with a way to try again when the store cannot be reached', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The store could not be reached (the worker stopped). Press "Search 200 products" to try again.'
+        );
+        failure = undefined;
+        await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+    });
+
+    it('says when the store refuses the products, in its own words', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.resolve(
+                Response.json(
+                    { errors: [{ message: 'the catalog has no products' }] },
+                    { status: 400 }
+                )
+            )
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The store could not use these products, since the catalog has no products.'
+        );
+    });
+
+    it('keeps the products, and says so, when removing them fails', async () => {
+        page();
+        await loadSample();
+        failure = failWhen('DELETE', `${BASE}catalog`, () =>
+            Promise.resolve(new Response(null, { status: 500 }))
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Your products could not be removed (error 500), so they are still here.'
+        );
+        expect(screen.getByText(/your own catalog of 200 products/)).toBeInTheDocument();
+    });
+
+    it('removes the products and is back where a file is chosen', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        expect(await chooser()).toBeInTheDocument();
+    });
+
+    it('leaves the last search behind when another file is chosen', async () => {
+        page();
+        await loadSample();
+        act(() => window.history.replaceState(null, '', `${BASE}?q=bag&page=2`));
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        expect(window.location.search).toBe('');
+    });
+
+    it('shows the file it read last, whichever finishes first', async () => {
+        page();
+        await chooser();
+        let finishSlow!: (text: string) => void;
+        const slow = new Promise<string>((resolve) => {
+            finishSlow = resolve;
+        });
+        const input = screen.getByLabelText('Choose a file');
+        const slowFile = new File(['x'], 'slow.csv', { type: 'text/csv' });
+        Object.defineProperty(slowFile, 'text', { value: () => slow });
+        await userEvent.upload(input, slowFile);
+        expect(await screen.findByRole('status')).toHaveTextContent('Reading slow.csv.');
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBoot,$10.00\n'], 'quick.csv', { type: 'text/csv' })
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in quick.csv' });
+        await act(async () => {
+            finishSlow('name,price\nHat,$5.00\n');
+            await slow;
+        });
+        expect(
+            screen.getByRole('heading', { level: 1, name: 'What is in quick.csv' })
+        ).toBeInTheDocument();
+    });
+
+    it('claims no column is searched as words when none is mapped that way', async () => {
+        page();
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBoot,$10.00\n'], 'boots.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in boots.csv' });
+        expect(screen.queryByText(/Searched as words/)).not.toBeInTheDocument();
+    });
+
+    it('names a file just past the size limit as larger than the limit', async () => {
+        page();
+        await chooser();
+        const big = new File(['x'], 'big.csv');
+        Object.defineProperty(big, 'size', { value: CATALOG_FILE_BYTES_CAP + 4096 });
+        await userEvent.upload(screen.getByLabelText('Choose a file'), big);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'This file is 40.1 MB, and the largest this page reads is 40.0 MB.'
+        );
+        await waitFor(() => expect(screen.getByLabelText('Choose a file')).toBeInTheDocument());
+    });
+});

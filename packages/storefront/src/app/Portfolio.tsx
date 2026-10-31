@@ -16,6 +16,8 @@ export const REPO_URL = 'https://github.com/jasonsdevspace/shelflens';
 export const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 /** The explainer, beside the demo wherever the demo is served from. */
 export const ABOUT_URL = `${import.meta.env.BASE_URL}about/`;
+/** The page where a visitor searches a file of their own products. */
+export const TRY_URL = `${import.meta.env.BASE_URL}try/`;
 
 export const PortfolioStrip = () => (
     <nav className="portfolio" aria-label="Portfolio">
@@ -31,7 +33,8 @@ export const DemoFooter = () => (
             ShelfLens is a portfolio project by <a href={PORTFOLIO_URL}>Jason Poteet</a>.{' '}
             <a href={ABOUT_URL}>How it works</a>, in plain words. The <a href={REPO_URL}>source</a>{' '}
             and <a href={GITHUB_PROFILE_URL}>more work</a> are on GitHub, under the{' '}
-            <a href={LICENSE_URL}>MIT license</a>.
+            <a href={LICENSE_URL}>MIT license</a>. You can also{' '}
+            <a href={TRY_URL}>search your own products</a> with it.
         </p>
     </footer>
 );

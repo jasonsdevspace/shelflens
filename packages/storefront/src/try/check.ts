@@ -29,6 +29,10 @@ export const contentVersion = (catalog: Omit<Catalog, 'version' | 'seed' | 'loca
         products: catalog.products.map(({ createdAt: _loaded, ...product }) => product),
     })}`;
 
+/** Whether any member pays a different price from a guest, which decides whether a group switch means anything. */
+export const hasMemberPrices = (products: readonly Product[]): boolean =>
+    products.some((product) => product.price.member.min !== product.price.guest.min);
+
 /** The catalog with its version taken from its content. */
 export const withContentVersion = (catalog: Catalog): Catalog => ({
     ...catalog,

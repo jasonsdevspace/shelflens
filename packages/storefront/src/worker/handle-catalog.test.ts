@@ -127,6 +127,7 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: LAMPS.version,
             products: 2,
+            memberPrices: false,
         });
     });
 
@@ -209,6 +210,7 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: MUGS.version,
             products: 2,
+            memberPrices: false,
         });
     });
 
@@ -248,6 +250,7 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: LAMPS.version,
             products: 2,
+            memberPrices: false,
         });
         expect(saved).toEqual(UNBUILDABLE);
     });

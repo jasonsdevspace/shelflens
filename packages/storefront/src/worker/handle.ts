@@ -23,7 +23,7 @@ import {
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
-import { checkCatalog, withContentVersion } from '../try/check.js';
+import { checkCatalog, hasMemberPrices, withContentVersion } from '../try/check.js';
 import type { CatalogStore } from './catalog-db.js';
 
 /**
@@ -396,9 +396,12 @@ export const createWorkerApi = ({
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
             const kept = await held.current();
-            return kept
-                ? json(200, { version: kept.version, products: kept.products.length })
-                : noCatalog();
+            if (!kept) return noCatalog();
+            return json(200, {
+                version: kept.version,
+                products: kept.products.length,
+                memberPrices: hasMemberPrices(kept.products),
+            });
         }
         if (request.method === 'DELETE') {
             await removeCatalog(held);

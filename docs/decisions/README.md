@@ -33,3 +33,6 @@ so the evidence was still fresh.
 12. [The widget keeps its own tree, and its popover takes the top layer](0012-the-widget-keeps-its-own-tree.md):
     a shadow root over scoped CSS, the top layer over a stacking context, a React of its own
     with the cost measured, and a demo that is honest about what a real embed still lacks.
+13. [A visitor's catalog stays in the browser, in a store of its own](0013-a-visitors-catalog-stays-in-the-browser.md):
+    the same worker registered again under `try/`, a file mapped onto the products the store
+    already has, read in the page and checked by the worker, capped at what a phone can search.

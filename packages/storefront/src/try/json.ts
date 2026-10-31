@@ -54,7 +54,7 @@ export const parseJsonTable = (text: string): Table => {
         );
     if (records.length === 0) {
         throw new Error(
-            'This JSON has no list of products: an array of objects, or one under "products".'
+            'This JSON file has no list of products. It should be a list, or hold one under "products" or "items".'
         );
     }
     const keys: string[] = [];
