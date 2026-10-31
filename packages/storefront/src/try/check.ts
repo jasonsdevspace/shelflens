@@ -1,4 +1,4 @@
-import { fingerprint } from '@shelflens/api';
+import { hashText } from '@shelflens/api';
 import { type Catalog, CUSTOMER_GROUPS, type Product } from '@shelflens/catalog';
 
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -20,14 +20,23 @@ import { CATALOG_ROW_CAP } from './limits.js';
  * The version of a catalog's content: its products, brands, categories and
  * currency. The time each product was loaded is left out, so loading the
  * same file again keeps its answers, and anything else changing moves it.
+ *
+ * It hashes the browser's own JSON of the content rather than the API's
+ * canonical form, which puts every object's keys in order in JavaScript and
+ * took a third of the worker's time at the cap. The page writes every
+ * catalog's keys in one order, so the same content is the same text. The
+ * same content written in another order gets another version, which costs
+ * a cache miss and never a wrong answer.
  */
 export const contentVersion = (catalog: Omit<Catalog, 'version' | 'seed' | 'locale'>): string =>
-    `try-${fingerprint({
-        currency: catalog.currency,
-        brands: catalog.brands,
-        categories: catalog.categories,
-        products: catalog.products.map(({ createdAt: _loaded, ...product }) => product),
-    })}`;
+    `try-${hashText(
+        JSON.stringify([
+            catalog.currency,
+            catalog.brands,
+            catalog.categories,
+            catalog.products.map(({ createdAt: _loaded, ...product }) => product),
+        ])
+    )}`;
 
 /** Whether any member pays a different price from a guest, which decides whether a group switch means anything. */
 export const hasMemberPrices = (products: readonly Product[]): boolean =>
