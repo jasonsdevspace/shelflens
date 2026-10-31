@@ -8,8 +8,9 @@ rather than in a public issue.
 
 ## Supported versions
 
-Fixes go into the latest published version of `@jasonsdevspace/shelflens`. Older versions are not
-patched, so upgrade to pick up a fix.
+The engine, `@jasonsdevspace/shelflens`, gets fixes in a new release on npm's `latest` tag. Older
+versions and prereleases are not patched, so upgrade to pick up a fix. The API, the server and the
+storefront are not published as packages. Their fixes land on main and in the live demo.
 
 ## What is in scope
 

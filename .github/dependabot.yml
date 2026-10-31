@@ -4,7 +4,8 @@
 # own, so without this they would quietly fall behind. Minor and patch updates
 # are grouped into one pull request per ecosystem to keep the noise down.
 # Security fixes arrive separately, as soon as an advisory is published.
-# Every update carries only the dependencies label, rather than one per ecosystem.
+# Each update carries the dependencies label alone, so issues sort by the kind
+# of work rather than by the package manager.
 version: 2
 updates:
     - package-ecosystem: npm
