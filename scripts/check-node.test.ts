@@ -118,6 +118,22 @@ describe('the Node version check', () => {
             )
         ).toEqual(['README.md:1: tells a reader Node 22']);
     });
+
+    it('reads the other ways a range, a Dockerfile and the Node types are written', () => {
+        for (const node of ['24.x', '>=24.0.0 <25.0.0']) {
+            expect(
+                nodeMismatches(repo({ 'package.json': pkg({ private: true, engines: { node } }) }))
+            ).toEqual([]);
+        }
+        expect(nodeMismatches(repo({ 'docker/Dockerfile.prod': 'FROM node:20-alpine\n' }))).toEqual(
+            ['docker/Dockerfile.prod:1: uses Node 20 (node:20-alpine)']
+        );
+        expect(
+            nodeMismatches(
+                repo({ 'demo/package.json': pkg({ overrides: { '@types/node': '26.0.0' } }) })
+            )
+        ).toHaveLength(1);
+    });
 });
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-node.mjs');

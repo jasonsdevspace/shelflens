@@ -18,7 +18,7 @@
  * Run with `npm run prose`.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -76,7 +76,8 @@ const BRITISH_SPELLINGS = new RegExp(
  */
 const commentsOf = (source) =>
     source.split('\n').flatMap((line, index) => {
-        const text = /^\s*(?:\/\/|#|--|\{?\/\*+|\*(?!\/))\s?(.*?)(?:\*\/\}?)?$/.exec(line)?.[1];
+        // A comment that closes on its line ends there, so code after it is left alone.
+        const text = /^\s*(?:\/\/|#|--|\{?\/\*+|\*(?!\/))\s?(.*?)(?:\*\/.*)?$/.exec(line)?.[1];
         return text === undefined ? [] : [{ index, text }];
     });
 
@@ -109,7 +110,10 @@ const proseOf = (source) => {
  */
 const pageTextOf = (source) =>
     source
-        .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, (block) => block.replace(/[^\n]/g, ' '))
+        // A block left open runs to the end of the page, as a browser reads it.
+        .replace(/<(script|style)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, (block) =>
+            block.replace(/[^\n]/g, ' ')
+        )
         .replace(/<!--|-->/g, '    ')
         .replace(/<[^>]*>/g, (tag) => tag.replace(/[^\n]/g, ' '))
         .split('\n')
@@ -130,6 +134,9 @@ export const problemsIn = (text, { issues }) =>
         BRITISH_SPELLINGS.test(text) && 'British spelling',
     ].filter((rule) => typeof rule === 'string');
 
+/** @param {string} path */
+const isScanned = (path) => SCANNED.has(extname(path)) || SCANNED_NAMES.has(basename(path));
+
 /**
  * Every problem in one file, as `path:line  rule` with the line beneath.
  *
@@ -137,9 +144,10 @@ export const problemsIn = (text, { issues }) =>
  * @param {string} source
  * @returns {string[]}
  */
+
 export const proseProblems = (path, source) => {
     const ext = extname(path);
-    if (!SCANNED.has(ext) && !SCANNED_NAMES.has(basename(path))) return [];
+    if (!isScanned(path)) return [];
     const isMarkdown = ext === '.md';
     const segments = isMarkdown
         ? proseOf(source)
@@ -180,7 +188,12 @@ const main = () => {
         }
     ).split('\0');
     const failures = [...new Set(listed)]
-        .filter((path) => path !== '' && existsSync(path))
+        // Only files of a kind it reads, so images and lockfiles are never
+        // opened, and a listed folder such as a submodule is passed over.
+        .filter(
+            (path) =>
+                isScanned(path) && statSync(path, { throwIfNoEntry: false })?.isFile() === true
+        )
         .flatMap((path) => proseProblems(path, readFileSync(path, 'utf8')));
     if (failures.length > 0) {
         console.error(`Prose check failed with ${failures.length} problem(s):\n`);
@@ -188,7 +201,7 @@ const main = () => {
         process.exit(1);
     }
     console.log(
-        'Prose check passed. No em dashes, prose semicolons, process artifacts or British spellings.'
+        'Prose check passed. No em dashes, prose semicolons, process artifacts, issue numbers or British spellings.'
     );
 };
 

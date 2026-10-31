@@ -17,6 +17,12 @@ describe('the prose check', () => {
         ]);
     });
 
+    it('stops a comment where it closes, so the code after it is left alone', () => {
+        expect(rules('a.mjs', '/** @type {string} */ const a = b;\n/* one; two */ x();\n')).toEqual(
+            ['a.mjs:2  semicolon in prose']
+        );
+    });
+
     it('reads every rule it lists', () => {
         expect(
             rules(
@@ -45,6 +51,7 @@ describe('the prose check', () => {
             'index.html:1  semicolon in prose',
             'index.html:4  British spelling',
         ]);
+        expect(rules('end.html', '<p>ok</p>\n<script src="x.js">\nconst a = b;\n')).toEqual([]);
     });
 
     it('reads workflow and Dockerfile comments, and skips what it does not scan', () => {

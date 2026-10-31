@@ -135,16 +135,17 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            # The standard check of a published package's manifest: that its
-            # exports, types and files point at what the tarball holds. It is
-            # quick and names the mistake, so it runs before the slower steps.
-            - name: Lint the engine's package
-              run: npx publint packages/engine
-
             # Packing runs the engine's build, on the Node the project builds on,
             # which is how the published package is made.
             - name: Pack the engine
               run: npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
+
+            # The standard check of a published package's manifest: that its
+            # exports, types and files point at what the tarball holds. Packing
+            # has just built the engine, and this names a mistake before the
+            # slower steps reach it.
+            - name: Lint the engine's package
+              run: npx publint packages/engine
 
             # Written as an exact version, because setup-node given a range
             # installs the newest Node in it, the opposite of a floor. The file
