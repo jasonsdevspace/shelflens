@@ -128,6 +128,7 @@ describe('the worker for a visitor’s own catalog', () => {
             version: LAMPS.version,
             products: 2,
             memberPrices: false,
+            rulesEdited: false,
         });
     });
 
@@ -211,6 +212,17 @@ describe('the worker for a visitor’s own catalog', () => {
             version: MUGS.version,
             products: 2,
             memberPrices: false,
+            rulesEdited: false,
+        });
+    });
+
+    it('says whether the visitor has saved rules, so the page can warn before they go', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace(pinFirst(LAMPS));
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toMatchObject({
+            rulesEdited: true,
         });
     });
 
@@ -251,6 +263,7 @@ describe('the worker for a visitor’s own catalog', () => {
             version: LAMPS.version,
             products: 2,
             memberPrices: false,
+            rulesEdited: true,
         });
         expect(saved).toEqual(UNBUILDABLE);
     });

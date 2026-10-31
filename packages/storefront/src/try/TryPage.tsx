@@ -32,7 +32,12 @@ interface Loaded {
     readonly version: string;
     readonly products: number;
     readonly memberPrices: boolean;
+    /** Whether the visitor has saved rules, which go when this catalog does. */
+    readonly rulesEdited?: boolean;
 }
+
+/** What the visitor asked to do that would discard their rules. */
+type Leaving = 'another' | 'remove';
 
 type Stage =
     | { readonly kind: 'starting' }
@@ -50,7 +55,13 @@ type Stage =
       }
     | { readonly kind: 'reading'; readonly name: string }
     | { readonly kind: 'loading' }
-    | { readonly kind: 'searching'; readonly loaded: Loaded; readonly problem?: string };
+    | {
+          readonly kind: 'searching';
+          readonly loaded: Loaded;
+          readonly problem?: string;
+          /** Asked first, since the visitor's saved rules go with this catalog. */
+          readonly confirm?: Leaving;
+      };
 
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -282,29 +293,68 @@ const Review = ({
     );
 };
 
+/** The question asked before a new file or a removal takes the visitor's rules with it. */
+const ConfirmLeaving = ({
+    leaving,
+    onConfirm,
+    onKeep,
+}: {
+    readonly leaving: Leaving;
+    readonly onConfirm: () => void;
+    readonly onKeep: () => void;
+}) => {
+    const first = useRef<HTMLButtonElement>(null);
+    useEffect(() => first.current?.focus(), []);
+    return (
+        <p className="notice">
+            {leaving === 'another'
+                ? 'Your rules go with these products, so choosing another file discards them. Choose another file anyway? '
+                : 'Your rules go with these products, so removing them discards your rules too. Remove them anyway? '}
+            <button ref={first} type="button" className="try-link" onClick={onConfirm}>
+                {leaving === 'another' ? 'Yes, choose another file' : 'Yes, remove them'}
+            </button>{' '}
+            <button type="button" className="try-link" onClick={onKeep}>
+                Keep my rules
+            </button>
+        </p>
+    );
+};
+
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 const CatalogBar = ({
     loaded,
     problem,
+    confirm,
     onAnother,
     onRemove,
+    onConfirm,
+    onKeep,
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
+    readonly confirm?: Leaving | undefined;
     readonly onAnother: () => void;
     readonly onRemove: () => void;
+    readonly onConfirm: () => void;
+    readonly onKeep: () => void;
 }) => (
     <div className="results-aside try-bar">
         <span>
             You are searching your own catalog of {count(loaded.products, 'product', 'products')},
             kept in this browser.
         </span>{' '}
-        <button type="button" className="try-link" onClick={onAnother}>
-            Choose another file
-        </button>{' '}
-        <button type="button" className="try-link" onClick={onRemove}>
-            Remove your products
-        </button>
+        {confirm === undefined ? (
+            <>
+                <button type="button" className="try-link" onClick={onAnother}>
+                    Choose another file
+                </button>{' '}
+                <button type="button" className="try-link" onClick={onRemove}>
+                    Remove your products
+                </button>
+            </>
+        ) : (
+            <ConfirmLeaving leaving={confirm} onConfirm={onConfirm} onKeep={onKeep} />
+        )}
         {problem && (
             <p className="try-problem" role="alert">
                 {problem}
@@ -510,7 +560,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
 
     const onRemove = useCallback(async () => {
         if (stage.kind !== 'searching') return;
-        const searching = stage;
+        const { confirm: _asked, ...searching } = stage;
         setActed(true);
         try {
             const response = await fetch(catalogUrl, { method: 'DELETE' });
@@ -561,6 +611,35 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         setStage({ kind: 'choose' });
     }, [base]);
 
+    // Saved rules go with the catalog, so a visitor who has some is asked first.
+    // The worker is asked at that moment, since rules are saved in the store below.
+    const leave = useCallback(
+        async (leaving: Leaving) => {
+            if (stage.kind !== 'searching') return;
+            const searching = stage;
+            const now = await fetchLoaded(catalogUrl).catch(() => undefined);
+            if (now?.rulesEdited === true) {
+                setStage({ ...searching, confirm: leaving });
+                return;
+            }
+            if (leaving === 'another') onAnother();
+            else await onRemove();
+        },
+        [stage, catalogUrl, onAnother, onRemove]
+    );
+
+    const confirmLeaving = useCallback(() => {
+        if (stage.kind !== 'searching' || stage.confirm === undefined) return;
+        if (stage.confirm === 'another') onAnother();
+        else void onRemove();
+    }, [stage, onAnother, onRemove]);
+
+    const keepRules = useCallback(() => {
+        if (stage.kind !== 'searching') return;
+        const { confirm: _asked, ...searching } = stage;
+        setStage(searching);
+    }, [stage]);
+
     if (stage.kind === 'searching') {
         return (
             <App
@@ -575,8 +654,11 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     <CatalogBar
                         loaded={stage.loaded}
                         problem={stage.problem}
-                        onAnother={onAnother}
-                        onRemove={() => void onRemove()}
+                        confirm={stage.confirm}
+                        onAnother={() => void leave('another')}
+                        onRemove={() => void leave('remove')}
+                        onConfirm={confirmLeaving}
+                        onKeep={keepRules}
                     />
                 }
             />
