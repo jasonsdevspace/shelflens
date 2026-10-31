@@ -6,16 +6,17 @@ name: Release
 # already, so it gets a release on GitHub and nothing else. Either way the
 # tag has to name a commit on main, match the version in that package's
 # package.json, and have an entry in its changelog, or nothing is released.
-# Every check CI runs, runs first. The publish uses npm's
-# trusted publishing: the workflow proves who it is with an OpenID Connect
-# token, so no npm token is stored anywhere, and each version carries
-# provenance that links it to the commit and the run that built it.
+# Every check CI runs, runs first.
 #
-# The version is staged, not released. npm holds it until Jason promotes
-# it on the package page, so a tag, a green run and a click are all needed
-# before anyone can install it, and nothing that happens in CI alone can
-# change what "latest" points at. A prerelease version, one with a hyphen,
-# is staged under the "next" tag and marked as a prerelease on GitHub.
+# For the engine, the publish uses npm's trusted publishing: the workflow
+# proves who it is with an OpenID Connect token, so no npm token is stored
+# anywhere, and each version carries provenance that links it to the commit
+# and the run that built it. The engine's version is staged, not released.
+# npm holds it until Jason promotes it on the package page, so a tag, a green
+# run and a click are all needed before anyone can install it, and nothing
+# that happens in CI alone can change what "latest" points at. A prerelease
+# version, one with a hyphen, is staged under the "next" tag and marked as a
+# prerelease on GitHub, for either package.
 on:
     push:
         tags:
@@ -53,7 +54,11 @@ jobs:
               env:
                   TAG: ${{ github.ref_name }}
               run: |
-                  package="${TAG%%-v*}"
+                  case "$TAG" in
+                      engine-v*) package=engine ;;
+                      storefront-v*) package=storefront ;;
+                      *) echo "$TAG names no package this workflow releases, only engine and storefront"; exit 1 ;;
+                  esac
                   version="${TAG#"$package"-v}"
                   dir="packages/$package"
                   declared=$(node -p "require('./$dir/package.json').version")
@@ -135,7 +140,6 @@ jobs:
 
             # A release on GitHub with the changelog entry as its notes, so
             # the tag has a page a reader can land on. Left alone if it exists.
-            # The notes say the version is live once promoted on npm.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}

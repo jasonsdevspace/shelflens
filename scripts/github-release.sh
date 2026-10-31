@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Creates the GitHub release for a tag, with the version's changelog entry as
 # its notes, for the release workflow. A release that already exists is left
-# alone, unless a canceled run left it as a draft, which is then published.
+# alone, so a run can be repeated after a later step failed.
 #
 #   scripts/github-release.sh <tag> <version> <changelog> <title> [gh release flags]
 #
@@ -15,12 +15,7 @@ title="$4"
 shift 4
 
 if gh release view "$tag" >/dev/null 2>&1; then
-    if [ "$(gh release view "$tag" --json isDraft -q .isDraft)" = "true" ]; then
-        gh release edit "$tag" --draft=false
-        echo "the release for $tag was a draft, and is published now"
-    else
-        echo "the release for $tag exists"
-    fi
+    echo "the release for $tag exists"
     exit 0
 fi
 

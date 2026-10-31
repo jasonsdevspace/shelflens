@@ -204,7 +204,8 @@ the `next` tag and marked as a prerelease.
 The storefront is released the same way with a tag such as `storefront-v1.2.0`, against
 `packages/storefront/package.json` and `packages/storefront/CHANGELOG.md`. It is deployed from main
 already, so its release is a page on GitHub naming the version and what changed, and nothing goes
-to npm. The engine's release stays the one marked latest.
+to npm. With nothing to promote, it needs only the tag from main and a green run, and the engine's
+release stays the one marked latest.
 
 The schema is `packages/api/schema.graphql` and the storefront's operations are in
 `packages/storefront/src/operations/`. Changing either means running `npm run codegen` and
