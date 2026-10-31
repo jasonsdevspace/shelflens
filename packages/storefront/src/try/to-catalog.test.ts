@@ -156,7 +156,7 @@ describe('rows to a catalog', () => {
         );
         expect(result).toEqual({
             ok: false,
-            error: 'The id "A" is on row 2 and row 4, and each product needs its own.',
+            error: 'The ID "A" is on row 2 and row 4, and each product needs its own.',
         });
     });
 
@@ -173,7 +173,7 @@ describe('rows to a catalog', () => {
         const result = toCatalog(table, MINIMAL, NOW);
         expect(result.ok).toBe(false);
         expect(!result.ok && result.error).toBe(
-            'This file has 10,001 products, and the limit is 10,000.'
+            'This file has 10,001 rows, and the page reads up to 10,000 products.'
         );
     });
 

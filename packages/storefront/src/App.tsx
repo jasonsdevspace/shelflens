@@ -1,4 +1,12 @@
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    type RefObject,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
@@ -32,6 +40,15 @@ export interface AppProps {
     readonly rulesUrl: string;
     /** Resolves once the API can answer, which on a first visit is after the worker claims the page. */
     readonly ready: Promise<void>;
+    /**
+     * Whether the guided tour is offered. Its stops name the demo's own
+     * products, so a store over a visitor's catalog leaves it out.
+     */
+    readonly tour?: boolean;
+    /** Whether the shopper can switch customer group, which changes nothing when every price is the same. */
+    readonly viewerSwitch?: boolean;
+    /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
+    readonly banner?: ReactNode;
 }
 
 type Readiness = 'waiting' | 'ready' | 'failed';
@@ -88,6 +105,29 @@ const EditedRulesNotice = ({
     </div>
 );
 
+/** What is said above the results: the store starting, a page's banner, and edited rules. */
+const Notices = ({
+    readiness,
+    banner,
+    rulesEdited,
+    rulesUrl,
+    onReset,
+}: {
+    readonly readiness: Readiness;
+    readonly banner: ReactNode;
+    readonly rulesEdited: boolean;
+    readonly rulesUrl: string;
+    readonly onReset: () => void;
+}) => (
+    <>
+        <Standby readiness={readiness} />
+        {readiness === 'ready' && banner}
+        {readiness === 'ready' && rulesEdited && (
+            <EditedRulesNotice rulesUrl={rulesUrl} onReset={onReset} />
+        )}
+    </>
+);
+
 /** Who the reviewer is shopping as. A real store would take this from the session. */
 const ViewerSwitch = ({
     group,
@@ -123,6 +163,8 @@ interface MastheadProps {
     readonly tourButton: RefObject<HTMLButtonElement | null>;
     /** The shopper submitted a search, whether or not it changed the page. */
     readonly onSearched: () => void;
+    readonly tour: boolean;
+    readonly viewerSwitch: boolean;
 }
 
 const Masthead = ({
@@ -137,6 +179,8 @@ const Masthead = ({
     touring,
     onTour,
     tourButton,
+    tour,
+    viewerSwitch,
 }: MastheadProps) => (
     <>
         <SearchBox
@@ -148,8 +192,8 @@ const Masthead = ({
             }}
             onPick={(sku) => navigate({ ...state, product: sku })}
         />
-        <ViewerSwitch group={group} onChange={onGroup} />
-        <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />
+        {viewerSwitch && <ViewerSwitch group={group} onChange={onGroup} />}
+        {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
         <CategoryNav categories={categories} state={state} navigate={navigate} />
     </>
 );
@@ -168,8 +212,8 @@ const useClosedProduct = (product: string | undefined) => {
     return { closedSku, focused };
 };
 
-const useTour = () => {
-    const [touring, setTouring] = useState(() => !hasSeenTour());
+const useTour = (offered: boolean) => {
+    const [touring, setTouring] = useState(() => offered && !hasSeenTour());
     const [tourStop, setTourStop] = useState(0);
     // Whether the panel was asked for, as opposed to opening itself on a first visit.
     const [tourAsked, setTourAsked] = useState(false);
@@ -227,7 +271,15 @@ const useStoreShape = (client: GraphQLClient, isReady: boolean) => {
     return { tree, store };
 };
 
-export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
+export const App = ({
+    apiUrl,
+    eventsUrl,
+    rulesUrl,
+    ready,
+    tour = true,
+    viewerSwitch = true,
+    banner,
+}: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     const { closedSku, focused } = useClosedProduct(state.product);
@@ -239,7 +291,7 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
         setSwitchedOn(searchKey(state));
     };
     const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
-        useTour();
+        useTour(tour);
     const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
     // Counts the searches submitted, so one run again is remembered again though the page is the same.
     const [searched, setSearched] = useState(0);
@@ -299,6 +351,8 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
                                 touring={touring}
                                 onTour={touring ? closeTour : openTour}
                                 tourButton={tourButton}
+                                tour={tour}
+                                viewerSwitch={viewerSwitch}
                             />
                         )}
                     </div>
@@ -313,10 +367,13 @@ export const App = ({ apiUrl, eventsUrl, rulesUrl, ready }: AppProps) => {
                     />
                 )}
                 <main className={`content${touring ? ' has-tour' : ''}`}>
-                    <Standby readiness={readiness} />
-                    {isReady && store.data?.store.rulesEdited && (
-                        <EditedRulesNotice rulesUrl={rulesUrl} onReset={storeChanged} />
-                    )}
+                    <Notices
+                        readiness={readiness}
+                        banner={banner}
+                        rulesEdited={store.data?.store.rulesEdited ?? false}
+                        rulesUrl={rulesUrl}
+                        onReset={storeChanged}
+                    />
                     {isReady && state.product !== undefined && (
                         <ProductPage
                             client={client}

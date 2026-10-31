@@ -1,0 +1,142 @@
+/* The page for a visitor's own catalog, before its store is built. */
+
+.try-stage {
+    max-width: 44rem;
+}
+
+.try-stage h1 {
+    font-size: 1.5rem;
+    margin-block: 0.5rem 1rem;
+}
+
+.try-stage h1:focus {
+    outline: none;
+}
+
+.try-stage h2 {
+    font-size: 1.05rem;
+    margin-block: 1.5rem 0.5rem;
+}
+
+.try-private {
+    color: var(--muted);
+}
+
+.try-problem {
+    color: var(--warn);
+    font-weight: 600;
+}
+
+.try-drop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    margin-block: 1rem;
+    border: 2px dashed var(--control);
+    border-radius: 0.5rem;
+}
+
+.try-drop.is-over {
+    border-color: var(--accent);
+    background: var(--highlight);
+}
+
+.try-drop p {
+    margin: 0;
+}
+
+/* The file input stays in the page for its label, keyboard and screen reader, out of sight. */
+.try-pick {
+    position: relative;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 0.25rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.try-pick input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.try-pick:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.try-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.try-mapping {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1.5rem;
+    margin: 0;
+}
+
+.try-mapping div {
+    display: contents;
+}
+
+.try-mapping dt {
+    color: var(--muted);
+}
+
+.try-mapping dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.try-skipped {
+    margin-block: 1rem;
+}
+
+.try-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-block: 1.5rem;
+}
+
+.try-actions button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--control);
+    border-radius: 0.25rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+}
+
+.try-actions .try-primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+}
+
+.try-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+}
+
+.try-stage a {
+    color: var(--accent);
+}

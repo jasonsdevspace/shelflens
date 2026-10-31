@@ -396,9 +396,16 @@ export const createWorkerApi = ({
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
             const kept = await held.current();
-            return kept
-                ? json(200, { version: kept.version, products: kept.products.length })
-                : noCatalog();
+            if (!kept) return noCatalog();
+            const memberPrices = kept.products.some(
+                (product) => product.price.member.min !== product.price.guest.min
+            );
+            return json(200, {
+                version: kept.version,
+                products: kept.products.length,
+                currency: kept.currency,
+                memberPrices,
+            });
         }
         if (request.method === 'DELETE') {
             await removeCatalog(held);

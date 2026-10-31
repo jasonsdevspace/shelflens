@@ -212,7 +212,7 @@ const repeatedId = (table: Table, ids: readonly string[]): string | undefined =>
         if (id === '') continue;
         const earlier = first.get(id);
         if (earlier !== undefined) {
-            return `The id "${id}" is on ${table.labels[earlier] ?? ''} and ${table.labels[index] ?? ''}, and each product needs its own.`;
+            return `The ID "${id}" is on ${table.labels[earlier] ?? ''} and ${table.labels[index] ?? ''}, and each product needs its own.`;
         }
         first.set(id, index);
     }
@@ -239,14 +239,20 @@ const skuMaker = (used: ReadonlySet<string>) => {
 };
 
 const limitError = (rows: number): string =>
-    `This file has ${rows.toLocaleString('en-US')} products, and the limit is ${CATALOG_ROW_CAP.toLocaleString('en-US')}.`;
+    `This file has ${rows.toLocaleString('en-US')} rows, and the page reads up to ${CATALOG_ROW_CAP.toLocaleString('en-US')} products.`;
 
 /** Rows and a mapping as a catalog, or the reason they cannot be one. */
 export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): LoadResult => {
     if (!mapping.name)
-        return { ok: false, error: 'Choose the column that holds each product’s name.' };
+        return {
+            ok: false,
+            error: 'No column here looks like a product name. Name one "name" or "title" and load the file again.',
+        };
     if (!mapping.price)
-        return { ok: false, error: 'Choose the column that holds each product’s price.' };
+        return {
+            ok: false,
+            error: 'No column here looks like a price. Name one "price" and load the file again.',
+        };
     if (table.rows.length > CATALOG_ROW_CAP)
         return { ok: false, error: limitError(table.rows.length) };
 

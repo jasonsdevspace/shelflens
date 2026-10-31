@@ -24,6 +24,13 @@ const BUDGET_BYTES = 100 * 1024;
  */
 const WIDGET_BUDGET_BYTES = 85 * 1024;
 
+/**
+ * The page for a visitor's own catalog: the store's page, with the file
+ * readers, the guessed mapping and the converter beside it, which no other
+ * page loads. Measured at 99 KB compressed when the budget was set.
+ */
+const TRY_BUDGET_BYTES = 115 * 1024;
+
 /** A stylesheet imported as text, the way Vite answers a `?inline` import. */
 const inlineCss: Plugin = {
     name: 'inline-css',
@@ -78,6 +85,13 @@ describe('the page in a browser', () => {
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
         expect(compressed).toBeLessThan(BUDGET_BYTES);
+    }, 60_000);
+
+    it('keeps the page for a visitor’s catalog within its own budget, with nothing from GraphQL', async () => {
+        const { code, compressed } = await bundled('./try/main.tsx');
+        expect(code).not.toContain('GraphQLError');
+        expect(code).not.toContain('buildSchema');
+        expect(compressed).toBeLessThan(TRY_BUDGET_BYTES);
     }, 60_000);
 });
 
