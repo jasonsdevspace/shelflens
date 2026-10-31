@@ -11,6 +11,7 @@ import {
     REPO_URL,
 } from '../app/Portfolio.jsx';
 import { STOPS } from '../tour/stops.js';
+import { CATALOG_ROW_CAP } from '../try/limits.js';
 
 /*
  * The explainer, the README's two minutes and the tour tell one story.
@@ -23,6 +24,31 @@ const root = new URL('../../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
 const DEMO = 'https://jasonsdevspace.com/shelflens/';
+
+/** Numbers as the prose writes them, for holding the words to the values. */
+const NUMBER_WORDS: readonly string[] = [
+    '',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'nine',
+    'ten',
+    'eleven',
+    'twelve',
+    'thirteen',
+    'fourteen',
+    'fifteen',
+    'sixteen',
+    'seventeen',
+    'eighteen',
+    'nineteen',
+    'twenty',
+];
 
 describe('the explainer', () => {
     const page = read('packages/storefront/about/index.html');
@@ -48,34 +74,24 @@ describe('the explainer', () => {
     });
 
     it('counts the tour’s stops in words', () => {
-        const words = [
-            '',
-            'one',
-            'two',
-            'three',
-            'four',
-            'five',
-            'six',
-            'seven',
-            'eight',
-            'nine',
-            'ten',
-            'eleven',
-            'twelve',
-            'thirteen',
-            'fourteen',
-            'fifteen',
-            'sixteen',
-            'seventeen',
-            'eighteen',
-            'nineteen',
-            'twenty',
-        ];
-        const count = words[STOPS.length] ?? String(STOPS.length);
+        const count = NUMBER_WORDS[STOPS.length] ?? String(STOPS.length);
         // Both are wrapped by their formatters, so the words are read across line breaks.
         const flat = (text: string) => text.replace(/\s+/g, ' ');
         expect(flat(page)).toContain(`walks through ${count} of these`);
         expect(flat(readme)).toContain(`walks all ${count}`);
+    });
+
+    it('names the sample’s button and the cap on a file as the page for your own products does', () => {
+        const tryPage = read('packages/storefront/src/try/TryPage.tsx');
+        const label = /Try it with a sample of \d+ products/.exec(tryPage)?.[0];
+        expect(label).toBeDefined();
+        const flat = (text: string) => text.replace(/\s+/g, ' ');
+        expect(flat(page)).toContain(`Press "${label ?? ''}"`);
+        // Only a cap in whole thousands is written in words, and this one is.
+        expect(CATALOG_ROW_CAP % 1000).toBe(0);
+        const cap = `${NUMBER_WORDS[CATALOG_ROW_CAP / 1000] ?? ''} thousand products`;
+        expect(flat(page)).toContain(cap);
+        expect(flat(readme)).toContain(cap);
     });
 
     it('carries the same strip and footer links as the store', () => {
