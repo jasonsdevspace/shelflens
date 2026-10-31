@@ -32,8 +32,6 @@ interface Loaded {
     readonly version: string;
     readonly products: number;
     readonly memberPrices: boolean;
-    /** Whether the visitor has saved rules, which go when this catalog does. */
-    readonly rulesEdited?: boolean;
 }
 
 /** What the visitor asked to do that would discard their rules. */
@@ -61,10 +59,25 @@ type Stage =
           readonly problem?: string;
           /** Asked first, since the visitor's saved rules go with this catalog. */
           readonly confirm?: Leaving;
+          /** Where focus goes back to once the visitor keeps their rules. */
+          readonly returnTo?: Leaving;
+          /** Set while the page asks whether rules are saved, so a second press waits. */
+          readonly checking?: boolean;
       };
 
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+
+/**
+ * Whether the visitor has saved rules of their own, from the worker's rules
+ * path. A set saved empty is no rules to lose.
+ */
+const hasSavedRules = async (url: string): Promise<boolean> => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`the store answered ${response.status}`);
+    const body = (await response.json()) as { rules: readonly unknown[]; edited: boolean };
+    return body.edited && body.rules.length > 0;
+};
 
 /** What the worker says is loaded, or nothing. */
 const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
@@ -325,6 +338,8 @@ const CatalogBar = ({
     loaded,
     problem,
     confirm,
+    returnTo,
+    checking,
     onAnother,
     onRemove,
     onConfirm,
@@ -333,35 +348,59 @@ const CatalogBar = ({
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
     readonly confirm?: Leaving | undefined;
+    readonly returnTo?: Leaving | undefined;
+    readonly checking?: boolean | undefined;
     readonly onAnother: () => void;
     readonly onRemove: () => void;
     readonly onConfirm: () => void;
     readonly onKeep: () => void;
-}) => (
-    <div className="results-aside try-bar">
-        <span>
-            You are searching your own catalog of {count(loaded.products, 'product', 'products')},
-            kept in this browser.
-        </span>{' '}
-        {confirm === undefined ? (
-            <>
-                <button type="button" className="try-link" onClick={onAnother}>
-                    Choose another file
-                </button>{' '}
-                <button type="button" className="try-link" onClick={onRemove}>
-                    Remove your products
-                </button>
-            </>
-        ) : (
-            <ConfirmLeaving leaving={confirm} onConfirm={onConfirm} onKeep={onKeep} />
-        )}
-        {problem && (
-            <p className="try-problem" role="alert">
-                {problem}
-            </p>
-        )}
-    </div>
-);
+}) => {
+    const another = useRef<HTMLButtonElement>(null);
+    const remove = useRef<HTMLButtonElement>(null);
+    // A visitor who keeps their rules is put back on the button they pressed.
+    useEffect(() => {
+        if (confirm === undefined && returnTo !== undefined) {
+            (returnTo === 'another' ? another : remove).current?.focus();
+        }
+    }, [confirm, returnTo]);
+    return (
+        <div className="results-aside try-bar">
+            <span>
+                You are searching your own catalog of{' '}
+                {count(loaded.products, 'product', 'products')}, kept in this browser.
+            </span>{' '}
+            {confirm === undefined ? (
+                <>
+                    <button
+                        ref={another}
+                        type="button"
+                        className="try-link"
+                        disabled={checking}
+                        onClick={onAnother}
+                    >
+                        Choose another file
+                    </button>{' '}
+                    <button
+                        ref={remove}
+                        type="button"
+                        className="try-link"
+                        disabled={checking}
+                        onClick={onRemove}
+                    >
+                        Remove your products
+                    </button>
+                </>
+            ) : (
+                <ConfirmLeaving leaving={confirm} onConfirm={onConfirm} onKeep={onKeep} />
+            )}
+            {problem && (
+                <p className="try-problem" role="alert">
+                    {problem}
+                </p>
+            )}
+        </div>
+    );
+};
 
 /** Everything before a store is built: starting, choosing, reviewing and loading. */
 const BeforeStore = ({
@@ -560,7 +599,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
 
     const onRemove = useCallback(async () => {
         if (stage.kind !== 'searching') return;
-        const { confirm: _asked, ...searching } = stage;
+        const { confirm: _asked, checking: _checking, ...searching } = stage;
         setActed(true);
         try {
             const response = await fetch(catalogUrl, { method: 'DELETE' });
@@ -612,32 +651,43 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     }, [base]);
 
     // Saved rules go with the catalog, so a visitor who has some is asked first.
-    // The worker is asked at that moment, since rules are saved in the store below.
+    // The worker is asked at that moment, since rules are saved in the store
+    // below. If it cannot say, the visitor is asked anyway, since a question
+    // costs less than rules lost without one.
     const leave = useCallback(
         async (leaving: Leaving) => {
-            if (stage.kind !== 'searching') return;
-            const searching = stage;
-            const now = await fetchLoaded(catalogUrl).catch(() => undefined);
-            if (now?.rulesEdited === true) {
+            if (stage.kind !== 'searching' || stage.checking === true) return;
+            const { returnTo: _back, ...searching } = stage;
+            setStage({ ...searching, checking: true });
+            const saved = await hasSavedRules(`${base}rules`).catch(() => true);
+            if (saved) {
                 setStage({ ...searching, confirm: leaving });
-                return;
+            } else if (leaving === 'another') {
+                onAnother();
+            } else {
+                await onRemove();
             }
-            if (leaving === 'another') onAnother();
-            else await onRemove();
         },
-        [stage, catalogUrl, onAnother, onRemove]
+        [stage, base, onAnother, onRemove]
     );
 
     const confirmLeaving = useCallback(() => {
         if (stage.kind !== 'searching' || stage.confirm === undefined) return;
-        if (stage.confirm === 'another') onAnother();
-        else void onRemove();
+        if (stage.confirm === 'another') {
+            onAnother();
+            return;
+        }
+        // The question gives way to the bar with its buttons held, so a second
+        // press cannot send a second removal.
+        const { confirm: _asked, ...searching } = stage;
+        setStage({ ...searching, checking: true });
+        void onRemove();
     }, [stage, onAnother, onRemove]);
 
     const keepRules = useCallback(() => {
-        if (stage.kind !== 'searching') return;
-        const { confirm: _asked, ...searching } = stage;
-        setStage(searching);
+        if (stage.kind !== 'searching' || stage.confirm === undefined) return;
+        const { confirm: asked, ...searching } = stage;
+        setStage({ ...searching, returnTo: asked });
     }, [stage]);
 
     if (stage.kind === 'searching') {
@@ -655,6 +705,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         loaded={stage.loaded}
                         problem={stage.problem}
                         confirm={stage.confirm}
+                        returnTo={stage.returnTo}
+                        checking={stage.checking}
                         onAnother={() => void leave('another')}
                         onRemove={() => void leave('remove')}
                         onConfirm={confirmLeaving}

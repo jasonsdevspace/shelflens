@@ -100,8 +100,7 @@ const EditedRulesNotice = ({
     readonly onReset: () => void;
 }) => (
     <div className="results-aside rules-notice">
-        Your edited rules are in effect, not the store&rsquo;s own.{' '}
-        <DiscardRules rulesUrl={rulesUrl} onReset={onReset} />
+        Your edited rules are in effect. <DiscardRules rulesUrl={rulesUrl} onReset={onReset} />
     </div>
 );
 

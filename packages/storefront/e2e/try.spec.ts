@@ -236,6 +236,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await page.getByRole('button', { name: 'Yes, choose another file' }).click();
     await page.getByLabel('Choose a file').setInputFiles(BENCHES);
     await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
     await page.goto('try/?q=bench');
     await expect(layout).toHaveAttribute('aria-busy', 'false');
     expect(await order()).toEqual(before);

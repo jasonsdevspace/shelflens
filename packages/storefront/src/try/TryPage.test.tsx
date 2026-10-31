@@ -1,3 +1,4 @@
+import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
@@ -46,6 +47,9 @@ const page = () => {
     render(<TryPage ready={Promise.resolve()} base={BASE} />);
     return { rules };
 };
+
+/** One saved rule, as the panel would save it. Only whether it exists matters here. */
+const SAVED: Rule[] = [{ id: 'pin', pin: ['SL-00001'] }];
 
 const failWhen =
     (method: string, path: string, answer: () => Promise<Response>): Failure =>
@@ -167,14 +171,14 @@ describe('the page for a visitor’s own catalog', () => {
     it('asks before another file discards saved rules, and keeps them when the visitor says so', async () => {
         const { rules } = page();
         await loadSample();
-        await rules.replace([]);
+        await rules.replace(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         const yes = await screen.findByRole('button', { name: 'Yes, choose another file' });
         expect(yes).toHaveFocus();
         expect(screen.getByText(/Your rules go with these products/)).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Keep my rules' }));
-        expect(screen.getByRole('button', { name: 'Choose another file' })).toBeInTheDocument();
-        expect(await rules.current()).toEqual([]);
+        expect(screen.getByRole('button', { name: 'Choose another file' })).toHaveFocus();
+        expect(await rules.current()).toEqual(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await userEvent.click(
             await screen.findByRole('button', { name: 'Yes, choose another file' })
@@ -185,11 +189,29 @@ describe('the page for a visitor’s own catalog', () => {
     it('asks before removing the products discards saved rules too', async () => {
         const { rules } = page();
         await loadSample();
-        await rules.replace([]);
+        await rules.replace(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
         expect(await chooser()).toBeInTheDocument();
         expect(await rules.current()).toBeUndefined();
+    });
+
+    it('asks nothing when the saved set is empty, since there is nothing to lose', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace([]);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        expect(await chooser()).toBeInTheDocument();
+    });
+
+    it('asks anyway when the store cannot say whether rules are saved', async () => {
+        page();
+        await loadSample();
+        failure = failWhen('GET', `${BASE}rules`, () =>
+            Promise.resolve(new Response(null, { status: 500 }))
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        expect(await screen.findByRole('button', { name: 'Yes, remove them' })).toHaveFocus();
     });
 
     it('shows the file it read last, whichever finishes first', async () => {

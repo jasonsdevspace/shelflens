@@ -403,13 +403,10 @@ export const createWorkerApi = ({
         if (request.method === 'GET') {
             const kept = await held.current();
             if (!kept) return noCatalog();
-            // Whether the visitor has saved rules, so the page can say before a
-            // new catalog takes them with it.
             return json(200, {
                 version: kept.version,
                 products: kept.products.length,
                 memberPrices: hasMemberPrices(kept.products),
-                rulesEdited: (await rules?.current()) !== undefined,
             });
         }
         if (request.method === 'DELETE') {
