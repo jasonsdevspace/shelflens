@@ -5,10 +5,11 @@ import { canonical, fingerprint, hashText } from './fingerprint.js';
 import { signalsOf } from './signals.js';
 
 /*
- * The canonical form is written by the native serializer now, about twice as
- * fast as the hand written form it replaced. Every version in every cache is
- * a fingerprint of it, so the two have to write the same text for what the
- * store fingerprints. The form it replaced is kept here as the reference.
+ * The canonical form is written by the native serializer now, faster than
+ * the hand written form it replaced. Every version in every cache is a
+ * fingerprint of it, so the two have to write the same text for what the
+ * store fingerprints, and where they differ the difference is stated here.
+ * The form it replaced is kept as the reference.
  */
 
 const reference = (value: unknown): string => {
@@ -86,5 +87,30 @@ describe('the fingerprint', () => {
         const value = { b: 1, a: [1, 2] };
         expect(fingerprint(value)).toBe(hashText(canonical(value)));
         expect(hashText('')).toBe('811c9dc5');
+    });
+});
+
+describe('where the native form differs, and still means one thing', () => {
+    it('writes keys that read as whole numbers first, in numeric order, whatever order they came in', () => {
+        expect(canonical({ '10': 1, '2': 1, b: 1, a: 1 })).toBe('{"2":1,"10":1,"a":1,"b":1}');
+        expect(canonical({ a: 1, '2': 1, b: 1, '10': 1 })).toBe(
+            canonical({ '10': 1, b: 1, '2': 1, a: 1 })
+        );
+    });
+
+    it('keeps a key named __proto__, so a product with that sku still moves the clicks fingerprint', () => {
+        const signals = signalsOf([
+            { id: 'a', kind: 'click', sku: '__proto__', at: 1, session: 's' },
+        ] as Parameters<typeof signalsOf>[0]);
+        expect(canonical(signals)).toContain('"__proto__"');
+        expect(fingerprint(signals)).not.toBe(fingerprint(signalsOf([])));
+        const parsed: unknown = JSON.parse('{"__proto__":{"x":1},"a":1}');
+        expect(canonical(parsed)).toBe('{"__proto__":{"x":1},"a":1}');
+    });
+
+    it('leaves out a function, as JSON does', () => {
+        expect(canonical({ f: () => 1, a: 1 })).toBe('{"a":1}');
+        expect(canonical([() => 1])).toBe('[null]');
+        expect(canonical(() => 1)).toBe('null');
     });
 });
