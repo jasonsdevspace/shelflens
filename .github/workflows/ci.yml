@@ -140,6 +140,13 @@ jobs:
             - name: Pack the engine
               run: npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
 
+            # The standard check of a published package's manifest: that its
+            # exports, types and files point at what the tarball holds. Packing
+            # has just built the engine, and this names a mistake before the
+            # slower steps reach it.
+            - name: Lint the engine's package
+              run: npx publint packages/engine
+
             # Written as an exact version, because setup-node given a range
             # installs the newest Node in it, the opposite of a floor. The file
             # is not committed, and its name is not one the Node check reads.

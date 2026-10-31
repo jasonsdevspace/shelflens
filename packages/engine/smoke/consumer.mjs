@@ -3,7 +3,8 @@
  * lowest Node its engines field admits.
  *
  * CI packs the engine, installs the tarball into an empty project outside the
- * repository, copies this folder in beside it, and runs it on that Node. Only
+ * repository, copies the smoke files it lists in beside it, and runs it on that
+ * Node. Only
  * plain Node is used, with no test runner, so it runs on any Node the package
  * could declare. Each assertion names what a user would lose if it failed.
  *

@@ -68,6 +68,7 @@
         "lighthouse": "^13.6.0",
         "lint-staged": "^17.6.0",
         "prettier": "3.9.10",
+        "publint": "0.3.25",
         "tsx": "4.23.15",
         "typescript": "6.0.3",
         "typescript-eslint": "8.72.1",
