@@ -2,7 +2,7 @@
     "name": "shelflens",
     "version": "0.1.0",
     "private": true,
-    "description": "A product search experience for a fictional store, and the search engine behind it.",
+    "description": "A product search engine that forgives typos and explains why each result ranks where it does, with a demo store that runs entirely in your browser.",
     "type": "module",
     "engines": {
         "node": ">=24"
