@@ -67,8 +67,9 @@ again keeps its answers.
 - Every change to the visitor's store runs one at a time, and a catalog the store cannot be
   built from is not kept. Loading a new catalog forgets the last one's saved rules and clicks,
   since they name its products. A file with no id column numbers its products by their place,
-  so a kept rule would pin whatever row moved into that place. The page asks before another
-  file or a removal discards a visitor's saved rules, and keeps them if the visitor says so.
+  so a kept rule would pin whatever row moved into that place. The page asks where saved rules
+  would go, when a new file would replace the products or a removal would discard them, and a
+  visitor who keeps them is taken back to the products they were searching.
 - The rules editor works on a visitor's store as it does on the demo's. The store over a
   visitor's catalog ships no rules, so discarding them leaves none. A save builds the store
   again, which at the cap costs about what a cold start's build does, a third of a second on a
@@ -88,6 +89,6 @@ again keeps its answers.
   a second page, explain mode and a product, with every request on the page's own origin and
   the file's contents reaching only this page's worker, and the demo beside it unchanged.
 - In a real browser, a made-up file the demo does not have: a product pinned and shown pinned
-  in explain mode, saved, kept across a reload and absent from the demo, the question before
-  another file, and the rules gone once a new file is loaded. Discarding gives back the
-  engine's order.
+  in explain mode, saved, kept across a reload and absent from the demo, the question when a
+  new file would replace them, kept and then answered yes, and the rules gone once it is loaded.
+  Discarding gives back the engine's order.

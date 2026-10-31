@@ -197,8 +197,8 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     const order = () =>
         cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-sku')));
     await expect(layout).toHaveAttribute('aria-busy', 'false');
+    await expect.poll(order).toHaveLength(4);
     const before = await order();
-    expect(before).toHaveLength(4);
     const last = before[before.length - 1] ?? '';
 
     await page.getByRole('button', { name: 'Rules', exact: true }).click();
@@ -207,7 +207,6 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await panel.getByRole('textbox', { name: 'Name', exact: true }).fill('My bench first');
     await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
     await expect(page.getByText('Previewing a draft')).toBeVisible();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
         'Pinned to the top by rule'
     );
@@ -215,31 +214,40 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
 
     await panel.getByRole('button', { name: 'Save rule' }).click();
     await expect(panel.getByRole('status')).toContainText('Rule saved. The store is now version');
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect((await order())[0]).toBe(last);
+    await expect.poll(async () => (await order())[0]).toBe(last);
 
-    // The visitor's rules are kept by the worker for try/, so they outlive the page
-    // and never reach the demo's store.
+    // The visitor's rules are kept by the worker for try/, so they outlive the
+    // page, and the demo's store, asked directly, has none of its own edited.
     await page.reload();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect((await order())[0]).toBe(last);
-    await page.goto('./?q=jacket');
-    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.locator('.rules-notice')).toBeHidden();
+    await expect.poll(async () => (await order())[0]).toBe(last);
+    await page.goto('./');
+    await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
+    const demoRules = await page.evaluate(async () => {
+        const response = await fetch('rules');
+        return ((await response.json()) as { edited: boolean }).edited;
+    });
+    expect(demoRules).toBe(false);
 
+    // Another file replaces these products and their rules, so the page asks
+    // when it would load one, and keeping them goes back to them.
     await page.goto('try/?q=bench');
     await page.getByRole('button', { name: 'Choose another file' }).click();
-    await expect(page.getByText(/Your rules go with these products/)).toBeVisible();
-    await audit(page);
-    await page.getByRole('button', { name: 'Keep my rules' }).click();
-    await page.getByRole('button', { name: 'Choose another file' }).click();
-    await page.getByRole('button', { name: 'Yes, choose another file' }).click();
     await page.getByLabel('Choose a file').setInputFiles(BENCHES);
     await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await expect(page.getByText(/This file replaces the products you are searching/)).toBeVisible();
+    await audit(page);
+    await page.getByRole('button', { name: 'Keep my products' }).click();
     await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
     await page.goto('try/?q=bench');
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect(await order()).toEqual(before);
+    await expect.poll(async () => (await order())[0]).toBe(last);
+
+    await page.getByRole('button', { name: 'Choose another file' }).click();
+    await page.getByLabel('Choose a file').setInputFiles(BENCHES);
+    await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await page.getByRole('button', { name: 'Yes, search this file' }).click();
+    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+    await page.goto('try/?q=bench');
+    await expect.poll(order).toEqual(before);
     await expect(page.locator('.rules-notice')).toBeHidden();
 });
 

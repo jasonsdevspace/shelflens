@@ -2,6 +2,7 @@ import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useSt
 
 import { App } from '../App.jsx';
 import { DemoFooter, PortfolioStrip } from '../app/Portfolio.jsx';
+import { readRules } from '../results/RulesPanel.jsx';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type Mapping } from './mapping.js';
@@ -34,9 +35,6 @@ interface Loaded {
     readonly memberPrices: boolean;
 }
 
-/** What the visitor asked to do that would discard their rules. */
-type Leaving = 'another' | 'remove';
-
 type Stage =
     | { readonly kind: 'starting' }
     | { readonly kind: 'failed'; readonly message: string }
@@ -50,6 +48,8 @@ type Stage =
           /** Made from the first rows only, while the whole file is made again after a change. */
           readonly partial?: boolean;
           readonly problem?: string;
+          /** Asked first, since this file would replace a catalog the visitor saved rules for. */
+          readonly replacing?: boolean;
       }
     | { readonly kind: 'reading'; readonly name: string }
     | { readonly kind: 'loading' }
@@ -57,12 +57,10 @@ type Stage =
           readonly kind: 'searching';
           readonly loaded: Loaded;
           readonly problem?: string;
-          /** Asked first, since the visitor's saved rules go with this catalog. */
-          readonly confirm?: Leaving;
-          /** Where focus goes back to once the visitor keeps their rules. */
-          readonly returnTo?: Leaving;
-          /** Set while the page asks whether rules are saved, so a second press waits. */
-          readonly checking?: boolean;
+          /** Asked first, since removing the products discards the visitor's saved rules. */
+          readonly confirm?: boolean;
+          /** Set when focus goes back to the remove button, after a kept or failed removal. */
+          readonly focusRemove?: boolean;
       };
 
 const count = (n: number, one: string, many: string) =>
@@ -70,13 +68,13 @@ const count = (n: number, one: string, many: string) =>
 
 /**
  * Whether the visitor has saved rules of their own, from the worker's rules
- * path. A set saved empty is no rules to lose.
+ * path, read as the rules panel reads it. A set saved empty is no rules to
+ * lose, and a store that cannot say is taken to have some, since a question
+ * costs less than rules lost without one.
  */
 const hasSavedRules = async (url: string): Promise<boolean> => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`the store answered ${response.status}`);
-    const body = (await response.json()) as { rules: readonly unknown[]; edited: boolean };
-    return body.edited && body.rules.length > 0;
+    const body = await readRules(url);
+    return body === undefined || (body.edited && body.rules.length > 0);
 };
 
 /** What the worker says is loaded, or nothing. */
@@ -229,9 +227,12 @@ const Review = ({
     result,
     partial,
     problem,
+    replacing,
     onSearch,
     onAnother,
     onMapping,
+    onReplace,
+    onKeepProducts,
 }: {
     readonly announce: boolean;
     readonly name: string;
@@ -240,9 +241,12 @@ const Review = ({
     readonly result: LoadResult;
     readonly partial: boolean;
     readonly problem?: string | undefined;
+    readonly replacing?: boolean | undefined;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
     readonly onMapping: (mapping: Mapping) => void;
+    readonly onReplace: () => void;
+    readonly onKeepProducts: () => void;
 }) => {
     const heading = useHeadingFocus(name, announce);
     return (
@@ -279,16 +283,26 @@ const Review = ({
                             {problem}
                         </p>
                     )}
-                    <div className="try-actions">
-                        <button type="button" className="try-primary" onClick={onSearch}>
-                            {partial
-                                ? 'Search these products'
-                                : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
-                        </button>
-                        <button type="button" onClick={onAnother}>
-                            Choose another file
-                        </button>
-                    </div>
+                    {replacing === true ? (
+                        <Ask
+                            question="This file replaces the products you are searching, and your rules go with them. Search it anyway?"
+                            yes="Yes, search this file"
+                            no="Keep my products"
+                            onYes={onReplace}
+                            onNo={onKeepProducts}
+                        />
+                    ) : (
+                        <div className="try-actions">
+                            <button type="button" className="try-primary" onClick={onSearch}>
+                                {partial
+                                    ? 'Search these products'
+                                    : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
+                            </button>
+                            <button type="button" onClick={onAnother}>
+                                Choose another file
+                            </button>
+                        </div>
+                    )}
                 </>
             ) : (
                 <>
@@ -306,28 +320,30 @@ const Review = ({
     );
 };
 
-/** The question asked before a new file or a removal takes the visitor's rules with it. */
-const ConfirmLeaving = ({
-    leaving,
-    onConfirm,
-    onKeep,
+/** A question with its two answers, the first of which takes focus. */
+const Ask = ({
+    question,
+    yes,
+    no,
+    onYes,
+    onNo,
 }: {
-    readonly leaving: Leaving;
-    readonly onConfirm: () => void;
-    readonly onKeep: () => void;
+    readonly question: string;
+    readonly yes: string;
+    readonly no: string;
+    readonly onYes: () => void;
+    readonly onNo: () => void;
 }) => {
     const first = useRef<HTMLButtonElement>(null);
     useEffect(() => first.current?.focus(), []);
     return (
         <p className="notice">
-            {leaving === 'another'
-                ? 'Your rules go with these products, so choosing another file discards them. Choose another file anyway? '
-                : 'Your rules go with these products, so removing them discards your rules too. Remove them anyway? '}
-            <button ref={first} type="button" className="try-link" onClick={onConfirm}>
-                {leaving === 'another' ? 'Yes, choose another file' : 'Yes, remove them'}
+            {question}{' '}
+            <button ref={first} type="button" className="try-link" onClick={onYes}>
+                {yes}
             </button>{' '}
-            <button type="button" className="try-link" onClick={onKeep}>
-                Keep my rules
+            <button type="button" className="try-link" onClick={onNo}>
+                {no}
             </button>
         </p>
     );
@@ -338,8 +354,7 @@ const CatalogBar = ({
     loaded,
     problem,
     confirm,
-    returnTo,
-    checking,
+    focusRemove,
     onAnother,
     onRemove,
     onConfirm,
@@ -347,51 +362,41 @@ const CatalogBar = ({
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
-    readonly confirm?: Leaving | undefined;
-    readonly returnTo?: Leaving | undefined;
-    readonly checking?: boolean | undefined;
+    readonly confirm?: boolean | undefined;
+    readonly focusRemove?: boolean | undefined;
     readonly onAnother: () => void;
     readonly onRemove: () => void;
     readonly onConfirm: () => void;
     readonly onKeep: () => void;
 }) => {
-    const another = useRef<HTMLButtonElement>(null);
     const remove = useRef<HTMLButtonElement>(null);
-    // A visitor who keeps their rules is put back on the button they pressed.
+    // After a removal kept or failed, the visitor is put back on the button they pressed.
     useEffect(() => {
-        if (confirm === undefined && returnTo !== undefined) {
-            (returnTo === 'another' ? another : remove).current?.focus();
-        }
-    }, [confirm, returnTo]);
+        if (focusRemove === true && confirm !== true) remove.current?.focus();
+    }, [focusRemove, confirm]);
     return (
         <div className="results-aside try-bar">
             <span>
                 You are searching your own catalog of{' '}
                 {count(loaded.products, 'product', 'products')}, kept in this browser.
             </span>{' '}
-            {confirm === undefined ? (
+            {confirm === true ? (
+                <Ask
+                    question="Your rules go with these products, so removing them discards your rules too. Remove them anyway?"
+                    yes="Yes, remove them"
+                    no="Keep my rules"
+                    onYes={onConfirm}
+                    onNo={onKeep}
+                />
+            ) : (
                 <>
-                    <button
-                        ref={another}
-                        type="button"
-                        className="try-link"
-                        disabled={checking}
-                        onClick={onAnother}
-                    >
+                    <button type="button" className="try-link" onClick={onAnother}>
                         Choose another file
                     </button>{' '}
-                    <button
-                        ref={remove}
-                        type="button"
-                        className="try-link"
-                        disabled={checking}
-                        onClick={onRemove}
-                    >
+                    <button ref={remove} type="button" className="try-link" onClick={onRemove}>
                         Remove your products
                     </button>
                 </>
-            ) : (
-                <ConfirmLeaving leaving={confirm} onConfirm={onConfirm} onKeep={onKeep} />
             )}
             {problem && (
                 <p className="try-problem" role="alert">
@@ -411,6 +416,8 @@ const BeforeStore = ({
     onSearch,
     onAnother,
     onMapping,
+    onReplace,
+    onKeepProducts,
 }: {
     readonly stage: Exclude<Stage, { readonly kind: 'searching' }>;
     /** Whether the visitor's own action brought this stage, so its heading takes focus. */
@@ -420,6 +427,8 @@ const BeforeStore = ({
     readonly onSearch: () => void;
     readonly onAnother: () => void;
     readonly onMapping: (mapping: Mapping) => void;
+    readonly onReplace: () => void;
+    readonly onKeepProducts: () => void;
 }) => {
     return (
         <>
@@ -470,9 +479,12 @@ const BeforeStore = ({
                         result={stage.result}
                         partial={stage.partial ?? false}
                         problem={stage.problem}
+                        replacing={stage.replacing}
                         onSearch={onSearch}
                         onAnother={onAnother}
                         onMapping={onMapping}
+                        onReplace={onReplace}
+                        onKeepProducts={onKeepProducts}
                     />
                 )}
             </main>
@@ -504,6 +516,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     const [acted, setActed] = useState(false);
     // Counts the files asked for, so one read slowly never replaces one picked after it.
     const asked = useRef(0);
+    // Set while the page asks the worker or removes the products, so a second press waits.
+    const pending = useRef(false);
     const catalogUrl = `${base}catalog`;
 
     useEffect(() => {
@@ -559,10 +573,11 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, [base, onFile]);
 
-    const onSearch = useCallback(async () => {
+    const load = useCallback(async () => {
         if (stage.kind !== 'review') return;
+        const { replacing: _asked, ...asked } = stage;
         const whole = stage.partial ? toCatalog(stage.table, stage.mapping) : stage.result;
-        const review = { ...stage, result: whole, partial: false };
+        const review = { ...asked, result: whole, partial: false };
         if (!whole.ok) {
             setStage(review);
             return;
@@ -597,9 +612,31 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, [stage, catalogUrl, base]);
 
+    // Loading a file replaces the products being searched, and the visitor's
+    // saved rules go with them, so a visitor who has some is asked here, where
+    // they would be lost. The worker is asked at that moment.
+    const onSearch = useCallback(async () => {
+        if (stage.kind !== 'review' || pending.current) return;
+        pending.current = true;
+        const saved = await hasSavedRules(`${base}rules`);
+        pending.current = false;
+        if (saved && (await fetchLoaded(catalogUrl).catch(() => undefined)) !== undefined) {
+            setStage((current) =>
+                current.kind === 'review' ? { ...current, replacing: true } : current
+            );
+            return;
+        }
+        await load();
+    }, [stage, base, catalogUrl, load]);
+
+    const keepProducts = useCallback(async () => {
+        const loaded = await fetchLoaded(catalogUrl).catch(() => undefined);
+        setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
+    }, [catalogUrl]);
+
     const onRemove = useCallback(async () => {
         if (stage.kind !== 'searching') return;
-        const { confirm: _asked, checking: _checking, ...searching } = stage;
+        const { confirm: _asked, focusRemove: _focus, problem: _last, ...searching } = stage;
         setActed(true);
         try {
             const response = await fetch(catalogUrl, { method: 'DELETE' });
@@ -609,6 +646,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         } catch (error) {
             setStage({
                 ...searching,
+                focusRemove: true,
                 problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Try again.`,
             });
         }
@@ -650,45 +688,40 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         setStage({ kind: 'choose' });
     }, [base]);
 
-    // Saved rules go with the catalog, so a visitor who has some is asked first.
-    // The worker is asked at that moment, since rules are saved in the store
-    // below. If it cannot say, the visitor is asked anyway, since a question
-    // costs less than rules lost without one.
-    const leave = useCallback(
-        async (leaving: Leaving) => {
-            if (stage.kind !== 'searching' || stage.checking === true) return;
-            const { returnTo: _back, ...searching } = stage;
-            setStage({ ...searching, checking: true });
-            const saved = await hasSavedRules(`${base}rules`).catch(() => true);
-            if (saved) {
-                setStage({ ...searching, confirm: leaving });
-            } else if (leaving === 'another') {
-                onAnother();
-            } else {
-                await onRemove();
-            }
-        },
-        [stage, base, onAnother, onRemove]
-    );
-
-    const confirmLeaving = useCallback(() => {
-        if (stage.kind !== 'searching' || stage.confirm === undefined) return;
-        if (stage.confirm === 'another') {
-            onAnother();
+    // Removing the products discards the visitor's saved rules at once, so a
+    // visitor who has some is asked first. A second press while the page asks,
+    // or after it has sent the removal, does nothing.
+    const leaveRemove = useCallback(async () => {
+        if (stage.kind !== 'searching' || pending.current) return;
+        pending.current = true;
+        const saved = await hasSavedRules(`${base}rules`);
+        if (saved) {
+            pending.current = false;
+            setStage((current) =>
+                current.kind === 'searching'
+                    ? { kind: 'searching', loaded: current.loaded, confirm: true }
+                    : current
+            );
             return;
         }
-        // The question gives way to the bar with its buttons held, so a second
-        // press cannot send a second removal.
-        const { confirm: _asked, ...searching } = stage;
-        setStage({ ...searching, checking: true });
-        void onRemove();
-    }, [stage, onAnother, onRemove]);
+        await onRemove();
+        pending.current = false;
+    }, [stage, base, onRemove]);
+
+    const confirmRemove = useCallback(async () => {
+        if (pending.current) return;
+        pending.current = true;
+        await onRemove();
+        pending.current = false;
+    }, [onRemove]);
 
     const keepRules = useCallback(() => {
-        if (stage.kind !== 'searching' || stage.confirm === undefined) return;
-        const { confirm: asked, ...searching } = stage;
-        setStage({ ...searching, returnTo: asked });
-    }, [stage]);
+        setStage((current) =>
+            current.kind === 'searching'
+                ? { kind: 'searching', loaded: current.loaded, focusRemove: true }
+                : current
+        );
+    }, []);
 
     if (stage.kind === 'searching') {
         return (
@@ -705,11 +738,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         loaded={stage.loaded}
                         problem={stage.problem}
                         confirm={stage.confirm}
-                        returnTo={stage.returnTo}
-                        checking={stage.checking}
-                        onAnother={() => void leave('another')}
-                        onRemove={() => void leave('remove')}
-                        onConfirm={confirmLeaving}
+                        focusRemove={stage.focusRemove}
+                        onAnother={onAnother}
+                        onRemove={() => void leaveRemove()}
+                        onConfirm={() => void confirmRemove()}
                         onKeep={keepRules}
                     />
                 }
@@ -726,6 +758,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             onSearch={() => void onSearch()}
             onAnother={onAnother}
             onMapping={onMapping}
+            onReplace={() => void load()}
+            onKeepProducts={() => void keepProducts()}
         />
     );
 };

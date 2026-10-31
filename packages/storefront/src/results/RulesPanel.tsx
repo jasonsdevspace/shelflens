@@ -128,6 +128,9 @@ const read = async (rulesUrl: string): Promise<RulesBody | undefined> => {
     }
 };
 
+/** The rules a store holds, as its rules path says, or nothing if it cannot say. */
+export const readRules = read;
+
 const NOT_READ = 'The rules could not be read. Reload the page and try again.';
 const NOT_YET = 'The rules are being read again. Try again in a moment.';
 
