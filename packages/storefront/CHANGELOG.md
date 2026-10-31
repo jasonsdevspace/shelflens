@@ -1,6 +1,17 @@
 # Changelog
 
-The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0 and Release 1.1 is 1.1.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes.
+The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0, Release 1.1 is 1.1.0, and Release 2 is 1.2.0 and 2.0.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes.
+
+## 2.0.0
+
+Release 2, complete: your own products in the same store, after the recommendations, rules editor and embeddable search box of 1.2.0.
+
+- **Search your own products.** Choose or drop a CSV or JSON file of up to ten thousand products on [the page for your own products](https://jasonsdevspace.com/shelflens/try/), or press "Try it with a sample of 200 products". The file is read in your browser and never uploaded.
+- **Guesses you can correct.** The page guesses which column is the name, the price and each filter. It shows the first products as the store will show them, so you can catch a wrong guess and correct it before you search.
+- **The same store, over your products.** Your products get suggestions, filter counts, "Explain ranking" and rules of your own. If you saved rules, the page asks before a new file replaces them, and before "Remove your products" discards them.
+- **Your products on a store's page.** Open "See your products on a store's page" to search them from the search box on a made-up store's page, the way a real store would add it.
+- **Clearer to use.** Buttons, dropdowns and options show the pointing hand, and a control that is turned off keeps the plain arrow.
+- **The story on "How it works".** The page has a new section, "Try it on your own products".
 
 ## 1.2.0
 
