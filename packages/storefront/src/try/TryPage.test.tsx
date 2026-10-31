@@ -178,7 +178,7 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
-        expect(await screen.findByRole('button', { name: 'Yes, search this file' })).toHaveFocus();
+        expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
         expect(
             screen.getByText(/This file replaces the products you are searching/)
         ).toBeInTheDocument();
@@ -216,13 +216,13 @@ describe('the page for a visitor’s own catalog', () => {
         await rules.replace(SAVED);
         let removals = 0;
         failure = (request) => {
-            if (request.method === 'DELETE') removals += 1;
+            if (request.method === 'DELETE' && request.url.includes('discard-rules=yes'))
+                removals += 1;
             return undefined;
         };
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        const yes = await screen.findByRole('button', { name: 'Yes, remove them' });
-        expect(yes).toHaveFocus();
-        await userEvent.dblClick(yes);
+        expect(await screen.findByRole('button', { name: 'Keep my rules' })).toHaveFocus();
+        await userEvent.dblClick(screen.getByRole('button', { name: 'Yes, remove them' }));
         expect(await chooser()).toBeInTheDocument();
         expect(removals).toBe(1);
         expect(await rules.current()).toBeUndefined();
@@ -235,23 +235,14 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Keep my rules' }));
         expect(screen.getByRole('button', { name: 'Remove your products' })).toHaveFocus();
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        const yes = await screen.findByRole('button', { name: 'Yes, remove them' });
         failure = failWhen('DELETE', `${BASE}catalog`, () =>
             Promise.resolve(new Response(null, { status: 500 }))
         );
-        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
+        await userEvent.click(yes);
         await screen.findByRole('alert');
         expect(screen.getByRole('button', { name: 'Remove your products' })).toHaveFocus();
-    });
-
-    it('asks anyway when the store cannot say whether rules are saved', async () => {
-        page();
-        await loadSample();
-        failure = failWhen('GET', `${BASE}rules`, () =>
-            Promise.resolve(new Response(null, { status: 500 }))
-        );
-        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        expect(await screen.findByRole('button', { name: 'Yes, remove them' })).toHaveFocus();
     });
 
     it('shows the file it read last, whichever finishes first', async () => {

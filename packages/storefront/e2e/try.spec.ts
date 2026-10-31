@@ -238,7 +238,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await audit(page);
     await page.getByRole('button', { name: 'Keep my products' }).click();
     await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
-    await page.goto('try/?q=bench');
+    await expect(page).toHaveURL(/try\/\?q=bench$/);
     await expect.poll(async () => (await order())[0]).toBe(last);
 
     await page.getByRole('button', { name: 'Choose another file' }).click();
