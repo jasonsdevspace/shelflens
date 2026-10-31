@@ -39,8 +39,9 @@ const dollars = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 const categoryNames = (catalog: Catalog): ReadonlyMap<string, string> =>
     new Map(catalog.categories.map((category) => [category.id, category.name]));
 
-export const sampleCsv = (): string => {
-    const catalog = generateCatalog({ products: SAMPLE_PRODUCTS });
+/** The sample, or a file like it of another size, such as one at the cap for the cold start benchmark. */
+export const sampleCsv = (products = SAMPLE_PRODUCTS): string => {
+    const catalog = generateCatalog({ products });
     const names = categoryNames(catalog);
     const rows = catalog.products.map((product) => [
         product.sku,

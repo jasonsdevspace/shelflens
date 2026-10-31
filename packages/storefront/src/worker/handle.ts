@@ -374,15 +374,21 @@ export const createWorkerApi = ({
      * cannot be built from is not kept: the last one and its rules come back,
      * and the reason is the answer.
      */
-    const loadCatalog = (held: CatalogStore, catalog: Catalog) =>
+    const loadCatalog = (held: CatalogStore, catalog: Catalog, timing: { buildMs: number }) =>
         serially(async (): Promise<Built | string> => {
+            const began = performance.now();
+            const done = () => {
+                timing.buildMs = performance.now() - began;
+            };
             const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
             await held.replace(catalog);
             await rules?.reset();
             await forgetEvents?.();
             shipped = undefined;
             try {
-                return await buildAgain();
+                const built = await buildAgain();
+                done();
+                return built;
             } catch (error) {
                 await (previous ? held.replace(previous) : held.clear());
                 if (previousRules) await rules?.replace(previousRules);
@@ -412,19 +418,30 @@ export const createWorkerApi = ({
                 errors: [{ message: 'the catalog path takes GET, PUT and DELETE' }],
             });
         }
+        // The worker's own work is timed, reading, checking and versioning the
+        // catalog and building the store, without the transfer of the body or a
+        // wait behind another build, and said in a Server-Timing header. A browser
+        // cannot slow a worker, so the benchmark scales this share itself.
+        const body = await request.text();
+        const began = performance.now();
         let catalog: Catalog;
         try {
-            catalog = withContentVersion(checkCatalog(JSON.parse(await request.text())));
+            catalog = withContentVersion(checkCatalog(JSON.parse(body)));
         } catch (error) {
             return json(400, {
                 errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],
             });
         }
-        const result = await loadCatalog(held, catalog);
+        const readMs = performance.now() - began;
+        const timing = { buildMs: 0 };
+        const result = await loadCatalog(held, catalog, timing);
         if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
         return new Response(null, {
             status: 204,
-            headers: { [VERSION_HEADER]: result.api.version },
+            headers: {
+                [VERSION_HEADER]: result.api.version,
+                'server-timing': `catalog;dur=${(readMs + timing.buildMs).toFixed(1)}`,
+            },
         });
     };
 
