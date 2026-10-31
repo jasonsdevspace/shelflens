@@ -234,6 +234,15 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await rules.current()).toBeUndefined();
     });
 
+    it('loads the same catalog again without asking, and keeps its rules, since they still name its products', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace(pinFirst(LAMPS));
+        expect((await api.handle(catalogRequest('PUT', LAMPS)))?.status).toBe(204);
+        expect(await rules.current()).toEqual(pinFirst(LAMPS));
+    });
+
     it('loads over an empty saved set without asking, since there are no rules to lose', async () => {
         const rules = createMemoryRuleStore();
         const api = visitorApi(undefined, { rules });

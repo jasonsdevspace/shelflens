@@ -65,6 +65,20 @@ type Stage =
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
+/**
+ * Sends a change to the visitor's catalog. The worker refuses one that would
+ * discard the visitor's saved rules unless the visitor agreed, and that
+ * refusal comes back as `refused` for the page to ask.
+ */
+const changeCatalog = async (
+    url: string,
+    init: RequestInit,
+    discardRules: boolean
+): Promise<Response | 'refused'> => {
+    const response = await fetch(discardRules ? `${url}?discard-rules=yes` : url, init);
+    return response.status === 409 ? 'refused' : response;
+};
+
 /** What the worker says is loaded, or nothing. */
 const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
     const response = await fetch(url);
@@ -351,6 +365,7 @@ const CatalogBar = ({
     onRemove,
     onConfirm,
     onKeep,
+    onFocused,
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
@@ -360,12 +375,17 @@ const CatalogBar = ({
     readonly onRemove: () => void;
     readonly onConfirm: () => void;
     readonly onKeep: () => void;
+    readonly onFocused: () => void;
 }) => {
     const remove = useRef<HTMLButtonElement>(null);
-    // After a removal kept or failed, the visitor is put back on the button they pressed.
+    // After a removal kept or failed, the visitor is put back on the button they
+    // pressed, once, so a later render never takes focus from them again.
     useEffect(() => {
-        if (focusRemove === true && confirm !== true) remove.current?.focus();
-    }, [focusRemove, confirm]);
+        if (focusRemove === true && confirm !== true) {
+            remove.current?.focus();
+            onFocused();
+        }
+    }, [focusRemove, confirm, onFocused]);
     return (
         <div className="results-aside try-bar">
             <span>
@@ -587,12 +607,14 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             pending.current = true;
             setStage({ kind: 'loading' });
             try {
-                const response = await fetch(
-                    discardRules ? `${catalogUrl}?discard-rules=yes` : catalogUrl,
-                    { method: 'PUT', body: JSON.stringify(catalog) }
+                const response = await changeCatalog(
+                    catalogUrl,
+                    { method: 'PUT', body: JSON.stringify(catalog) },
+                    discardRules
                 );
-                if (response.status === 409) {
-                    setStage({ ...review, replacing: true });
+                if (response === 'refused') {
+                    const { problem: _last, ...asking } = review;
+                    setStage({ ...asking, replacing: true });
                     return;
                 }
                 if (!response.ok) {
@@ -623,8 +645,9 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
 
     // Back to the products the visitor was searching, with their search.
     const keepProducts = useCallback(async () => {
-        if (stage.kind !== 'review') return;
+        if (stage.kind !== 'review' || pending.current) return;
         const review = stage;
+        pending.current = true;
         try {
             const loaded = await fetchLoaded(catalogUrl);
             if (!loaded) throw new Error('nothing is loaded');
@@ -636,6 +659,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 ...back,
                 problem: `Your products could not be read (${messageOf(error)}). Reload the page to get back to them.`,
             });
+        } finally {
+            pending.current = false;
         }
     }, [stage, catalogUrl, base]);
 
@@ -648,11 +673,12 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             pending.current = true;
             setActed(true);
             try {
-                const response = await fetch(
-                    discardRules ? `${catalogUrl}?discard-rules=yes` : catalogUrl,
-                    { method: 'DELETE' }
+                const response = await changeCatalog(
+                    catalogUrl,
+                    { method: 'DELETE' },
+                    discardRules
                 );
-                if (response.status === 409) {
+                if (response === 'refused') {
                     setStage({ kind: 'searching', loaded, confirm: true });
                     return;
                 }
@@ -673,6 +699,9 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         [stage, catalogUrl, base]
     );
 
+    // A changed mapping is a new catalog, made again from the rows already read. A small
+    // file is made again at once. A large one shows its first rows at once and is made
+    // again whole once the visitor pauses, so each change stays quick on a phone.
     const onMapping = useCallback(
         (mapping: Mapping) => {
             if (stage.kind !== 'review') return;
@@ -701,6 +730,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     }, [stage]);
 
     const onAnother = useCallback(() => {
+        // Nothing moves while a change is with the worker, so its answer lands where it was asked.
+        if (pending.current) return;
         setActed(true);
         // Kept, so a visitor who keeps their products is taken back to their search.
         if (stage.kind === 'searching') lastSearch.current = window.location.search;
@@ -708,7 +739,16 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         setStage({ kind: 'choose' });
     }, [base, stage]);
 
+    const focused = useCallback(() => {
+        setStage((current) => {
+            if (current.kind !== 'searching' || current.focusRemove !== true) return current;
+            const { focusRemove: _done, ...rest } = current;
+            return rest;
+        });
+    }, []);
+
     const keepRules = useCallback(() => {
+        if (pending.current) return;
         setStage((current) =>
             current.kind === 'searching'
                 ? { kind: 'searching', loaded: current.loaded, focusRemove: true }
@@ -736,6 +776,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         onRemove={() => void onRemove(false)}
                         onConfirm={() => void onRemove(true)}
                         onKeep={keepRules}
+                        onFocused={focused}
                     />
                 }
             />

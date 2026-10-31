@@ -70,8 +70,9 @@ again keeps its answers.
   so a kept rule would pin whatever row moved into that place. The worker refuses a new file or
   a removal that would discard a visitor's saved rules unless the request says the visitor
   agreed, deciding in the same turn as the change, so a rule saved in another tab a moment
-  before is never lost unasked. The page asks then, and a visitor who keeps them is taken back
-  to the products and the search they left.
+  before is never lost unasked. The same file loaded again names the same products, so its
+  rules and clicks are kept and nothing is asked. The page asks then, and a visitor who keeps
+  them is taken back to the products and the search they left.
 - The rules editor works on a visitor's store as it does on the demo's. The store over a
   visitor's catalog ships no rules, so discarding them leaves none. A save builds the store
   again, which at the cap costs about what a cold start's build does, a third of a second on a

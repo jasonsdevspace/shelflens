@@ -180,6 +180,13 @@ const BENCHES = {
     ),
 };
 
+/** The same benches with one more, a different file, so loading it replaces the products. */
+const MORE_BENCHES = {
+    ...BENCHES,
+    name: 'more-benches.csv',
+    buffer: Buffer.from(`${BENCHES.buffer.toString()}Birch Bench,$70.00\n`),
+};
+
 const loadBenches = async (page: Page) => {
     await page.goto('try/');
     await page.getByLabel('Choose a file').setInputFiles(BENCHES);
@@ -232,8 +239,8 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     // when it would load one, and keeping them goes back to them.
     await page.goto('try/?q=bench');
     await page.getByRole('button', { name: 'Choose another file' }).click();
-    await page.getByLabel('Choose a file').setInputFiles(BENCHES);
-    await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await page.getByLabel('Choose a file').setInputFiles(MORE_BENCHES);
+    await page.getByRole('button', { name: 'Search 5 products' }).click();
     await expect(page.getByText(/This file replaces the products you are searching/)).toBeVisible();
     await audit(page);
     await page.getByRole('button', { name: 'Keep my products' }).click();
@@ -242,12 +249,13 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await expect.poll(async () => (await order())[0]).toBe(last);
 
     await page.getByRole('button', { name: 'Choose another file' }).click();
-    await page.getByLabel('Choose a file').setInputFiles(BENCHES);
-    await page.getByRole('button', { name: 'Search 4 products' }).click();
+    await page.getByLabel('Choose a file').setInputFiles(MORE_BENCHES);
+    await page.getByRole('button', { name: 'Search 5 products' }).click();
     await page.getByRole('button', { name: 'Yes, search this file' }).click();
-    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+    await expect(page.getByText('your own catalog of 5 products')).toBeVisible();
     await page.goto('try/?q=bench');
-    await expect.poll(order).toEqual(before);
+    await expect.poll(order).toHaveLength(5);
+    expect((await order())[0]).not.toBe(last);
     await expect(page.locator('.rules-notice')).toBeHidden();
 });
 

@@ -174,10 +174,12 @@ describe('the page for a visitor’s own catalog', () => {
         await rules.replace(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
+        // A different file, since the same one again keeps its rules.
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
         await userEvent.click(
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
-        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
         expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
         expect(
             screen.getByText(/This file replaces the products you are searching/)
@@ -193,12 +195,14 @@ describe('the page for a visitor’s own catalog', () => {
         await rules.replace(SAVED);
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
+        // A different file, since the same one again keeps its rules.
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
         await userEvent.click(
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
-        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Yes, search this file' }));
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/your own catalog of 150 products/);
         expect(await rules.current()).toBeUndefined();
     });
 

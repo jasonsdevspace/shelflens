@@ -360,7 +360,6 @@ export const createWorkerApi = ({
         }
     };
 
-    /** Clears a visitor's catalog and everything made from it, rules, clicks and answers. */
     /**
      * Whether a change would discard rules the visitor saved. Asked inside the
      * same turn as the change, so a rule saved in another tab a moment before
@@ -372,6 +371,7 @@ export const createWorkerApi = ({
         return saved !== undefined && saved.length > 0;
     };
 
+    /** Clears a visitor's catalog and everything made from it, rules, clicks and answers. */
     const removeCatalog = (held: CatalogStore, discard: boolean) =>
         serially(async (): Promise<typeof KEEPS_RULES | undefined> => {
             if (await discardsRules(discard)) return KEEPS_RULES;
@@ -396,16 +396,20 @@ export const createWorkerApi = ({
         options: { timing: { buildMs: number }; discard: boolean }
     ) =>
         serially(async (): Promise<Built | string | typeof KEEPS_RULES> => {
-            if (await discardsRules(options.discard)) return KEEPS_RULES;
+            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
+            // The same file again names the same products, so its rules and clicks still hold.
+            const same = previous?.version === catalog.version;
+            if (!same && (await discardsRules(options.discard))) return KEEPS_RULES;
             const { timing } = options;
             const began = performance.now();
             const done = () => {
                 timing.buildMs = performance.now() - began;
             };
-            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
             await held.replace(catalog);
-            await rules?.reset();
-            await forgetEvents?.();
+            if (!same) {
+                await rules?.reset();
+                await forgetEvents?.();
+            }
             shipped = undefined;
             try {
                 const built = await buildAgain();
@@ -426,7 +430,7 @@ export const createWorkerApi = ({
             errors: [
                 {
                     message:
-                        'this would discard the rules you saved, so it was not done. Ask again with discard-rules=yes to go ahead',
+                        'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
                     code: 'saved-rules',
                 },
             ],
