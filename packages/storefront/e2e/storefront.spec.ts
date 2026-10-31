@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /*
  * A cold first visit, through the service worker.
@@ -91,6 +91,21 @@ interface ShippedCatalog {
 
 const amount = (text: string | null) =>
     Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
+
+test('whatever can be clicked shows the pointer, and a control that is off shows the arrow', async ({
+    page,
+}) => {
+    await page.goto('/?category=shoes');
+    const cursor = (locator: Locator) => locator.evaluate((el) => getComputedStyle(el).cursor);
+    expect(await cursor(page.getByRole('combobox', { name: 'Sort by' }))).toBe('pointer');
+    expect(await cursor(page.getByRole('combobox', { name: 'Shopping as' }))).toBe('pointer');
+    const brand = page.getByRole('group', { name: 'Brand' });
+    expect(await cursor(brand.locator('label').first())).toBe('pointer');
+    const previous = page.getByRole('button', { name: 'Previous' });
+    await expect(previous).toBeDisabled();
+    expect(await cursor(previous)).toBe('default');
+    expect(await cursor(page.getByRole('button', { name: 'Next' }))).toBe('pointer');
+});
 
 test('a member sees the product guests cannot, and pays less, from the same page', async ({
     page,

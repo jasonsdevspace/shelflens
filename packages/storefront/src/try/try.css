@@ -79,7 +79,6 @@
     color: var(--accent);
     font: inherit;
     text-decoration: underline;
-    cursor: pointer;
 }
 
 .try-mapping {
@@ -160,7 +159,6 @@
     background: var(--bg);
     color: var(--fg);
     font: inherit;
-    cursor: pointer;
 }
 
 .try-actions .try-primary {
