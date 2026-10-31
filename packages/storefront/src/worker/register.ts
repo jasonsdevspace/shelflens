@@ -62,12 +62,14 @@ const browserHost = (): WorkerHost => ({
 /**
  * Whether the worker controlling the page is the one this page registers.
  * A page under `try/` is controlled by the demo's worker until its own takes
- * over, and a request it made in that time would reach the wrong store.
+ * over, and a request it made in that time would reach the wrong store. The
+ * script's address is read against the page's, as registering it is.
  */
-export const isOwnController = (controller: ServiceWorker | null, scriptUrl: string): boolean => {
-    if (!controller) return false;
-    return new URL(scriptUrl, controller.scriptURL).href === controller.scriptURL;
-};
+export const isOwnController = (
+    controller: ServiceWorker | null,
+    scriptUrl: string,
+    pageUrl: string = globalThis.location.href
+): boolean => controller !== null && new URL(scriptUrl, pageUrl).href === controller.scriptURL;
 
 export const controlledByWorker = async (
     scriptUrl: string,

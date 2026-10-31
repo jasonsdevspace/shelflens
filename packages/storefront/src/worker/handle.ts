@@ -23,7 +23,7 @@ import {
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
-import { checkCatalog } from '../try/check.js';
+import { checkCatalog, withContentVersion } from '../try/check.js';
 import type { CatalogStore } from './catalog-db.js';
 
 /**
@@ -87,6 +87,12 @@ export interface WorkerApiOptions {
     readonly events?: EventStore;
     /** Where to keep the rules a visitor saves. Without one, the rules path is refused. */
     readonly rules?: RuleStore;
+    /**
+     * Forgets the events collected so far. A visitor's store calls it when a
+     * different catalog is loaded, since clicks on one catalog's products
+     * would otherwise lift whatever shares their ids in the next.
+     */
+    readonly forgetEvents?: () => Promise<void>;
 }
 
 /** The part of the Cache API the worker uses. */
@@ -114,6 +120,8 @@ export interface StartedMessage extends Startup {
 interface Built {
     readonly api: StoreApi;
     readonly model: Store;
+    /** What it was built from, so a build from the same is skipped. */
+    readonly from: { readonly clicks: string; readonly rules: string; readonly catalog: string };
 }
 
 export interface WorkerApi {
@@ -175,15 +183,10 @@ export const createWorkerApi = ({
     answers,
     events,
     rules,
+    forgetEvents,
 }: WorkerApiOptions): WorkerApi => {
     let store: Promise<Built> | undefined;
     let startup: Startup = { downloadMs: 0, buildMs: 0 };
-    /** The clicks the store being served was built with, as a fingerprint. */
-    let built = '';
-    /** The saved rules the store was built with, as text, so a build with the same is skipped. */
-    let builtRules = '';
-    /** The version of the catalog the store was built from. */
-    let builtCatalog = '';
     /** The catalog and the shipped rules, downloaded once and kept for every build. */
     let shipped: Promise<{ catalog: Catalog; rules: readonly Rule[] }> | undefined;
 
@@ -221,11 +224,6 @@ export const createWorkerApi = ({
         const [signals, saved] = await Promise.all([clicks(), rules?.current()]);
         return { signals, saved };
     };
-    const remember = (signals: Signals, saved: readonly Rule[] | undefined, catalog: Catalog) => {
-        built = fingerprint(signals);
-        builtRules = JSON.stringify(saved ?? null);
-        builtCatalog = catalog.version;
-    };
 
     /**
      * A store from the catalog, the rules in effect, saved or shipped, and
@@ -242,40 +240,51 @@ export const createWorkerApi = ({
             signals,
         });
         const api = withResponseCache(createStoreApi(model, { events }));
-        remember(signals, saved, catalog);
         startup = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
-        return { api, model };
+        const from = {
+            clicks: fingerprint(signals),
+            rules: JSON.stringify(saved ?? null),
+            catalog: catalog.version,
+        };
+        return { api, model, from };
     };
 
+    /** The store being served, or nothing when there is none or it could not be built. */
+    const served = async (): Promise<Built | undefined> =>
+        store ? store.catch(() => undefined) : undefined;
+
     /**
-     * Builds, unless the build ahead in the queue was made from the same clicks
-     * and the same rules, as when a visit's refresh and a save arrive together.
+     * Builds, unless the store being served was made from the same clicks,
+     * rules and catalog, as when a visit's refresh and a save arrive together.
      */
     const buildAgain = async (): Promise<Built> => {
         const { signals, saved } = await inputs();
         const { catalog } = await download();
+        const current = await served();
         const same =
-            fingerprint(signals) === built &&
-            JSON.stringify(saved ?? null) === builtRules &&
-            catalog.version === builtCatalog;
-        if (same && store) return store;
+            current?.from.clicks === fingerprint(signals) &&
+            current.from.rules === JSON.stringify(saved ?? null) &&
+            current.from.catalog === catalog.version;
+        if (same) return current;
         const next = await build(signals, saved);
         store = Promise.resolve(next);
         await dropOthers(next.api);
         return next;
     };
-    // One build at a time, in the order asked, so a visit's refresh racing a save
-    // cannot finish last with a store built from the rules before the save.
-    let building: Promise<void> = Promise.resolve();
-    /** Builds the store again, as a new version, and serves it from here on. */
-    const rebuild = (): Promise<Built> => {
-        const next = building.then(buildAgain, buildAgain);
-        building = next.then(
-            () => undefined,
-            () => undefined
-        );
+
+    // One change to the store at a time, in the order asked: the first build,
+    // each rebuild, and each load or removal of a visitor's catalog. So a
+    // visit's refresh racing a save, or a load racing a removal, cannot finish
+    // out of order or undo the other.
+    let building: Promise<unknown> = Promise.resolve();
+    const serially = <T>(task: () => Promise<T>): Promise<T> => {
+        const next = building.then(task, task);
+        building = next.catch(() => undefined);
         return next;
     };
+
+    /** Builds the store again, as a new version, and serves it from here on. */
+    const rebuild = (): Promise<Built> => serially(buildAgain);
 
     const isApiRequest = (request: Request): boolean =>
         (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
@@ -323,14 +332,18 @@ export const createWorkerApi = ({
     };
 
     const load = (): Promise<Built> => {
-        store ??= inputs()
-            .then(({ signals, saved }) => build(signals, saved))
-            .catch((error: unknown) => {
-                // Let the next request try again rather than remembering the failure.
-                store = undefined;
-                throw error;
-            });
-        return store;
+        if (store) return store;
+        const first = serially(async () => {
+            const { signals, saved } = await inputs();
+            return build(signals, saved);
+        });
+        store = first;
+        // Let the next request try again rather than remembering the failure,
+        // unless something already put another store in its place.
+        first.catch(() => {
+            if (store === first) store = undefined;
+        });
+        return first;
     };
 
     /** Drops every kept answer that is not for this version, or every one without a version. */
@@ -344,12 +357,40 @@ export const createWorkerApi = ({
         }
     };
 
-    /** Forgets the store and the catalog it was built from, so the next build reads afresh. */
-    const forget = () => {
-        shipped = undefined;
-        store = undefined;
-        builtCatalog = '';
-    };
+    /** Clears a visitor's catalog and everything made from it, rules, clicks and answers. */
+    const removeCatalog = (held: CatalogStore) =>
+        serially(async () => {
+            await held.clear();
+            await rules?.reset();
+            await forgetEvents?.();
+            shipped = undefined;
+            store = undefined;
+            await dropOthers(undefined);
+        });
+
+    /**
+     * Keeps a new catalog and builds from it, with the rules and clicks of the
+     * last one forgotten, since they name its products. A catalog the store
+     * cannot be built from is not kept: the last one and its rules come back,
+     * and the reason is the answer.
+     */
+    const loadCatalog = (held: CatalogStore, catalog: Catalog) =>
+        serially(async (): Promise<Built | string> => {
+            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
+            await held.replace(catalog);
+            await rules?.reset();
+            await forgetEvents?.();
+            shipped = undefined;
+            try {
+                return await buildAgain();
+            } catch (error) {
+                await (previous ? held.replace(previous) : held.clear());
+                if (previousRules) await rules?.replace(previousRules);
+                shipped = undefined;
+                const reason = error instanceof Error ? error.message : 'it could not be read';
+                return `the store could not be built from this catalog: ${reason}`;
+            }
+        });
 
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
@@ -360,10 +401,7 @@ export const createWorkerApi = ({
                 : noCatalog();
         }
         if (request.method === 'DELETE') {
-            await building;
-            await held.clear();
-            forget();
-            await dropOthers(undefined);
+            await removeCatalog(held);
             return new Response(null, { status: 204 });
         }
         if (request.method !== 'PUT') {
@@ -373,19 +411,17 @@ export const createWorkerApi = ({
         }
         let catalog: Catalog;
         try {
-            catalog = checkCatalog(JSON.parse(await request.text()));
+            catalog = withContentVersion(checkCatalog(JSON.parse(await request.text())));
         } catch (error) {
             return json(400, {
                 errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],
             });
         }
-        await building;
-        await held.replace(catalog);
-        shipped = undefined;
-        const served = await rebuild();
+        const result = await loadCatalog(held, catalog);
+        if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
         return new Response(null, {
             status: 204,
-            headers: { [VERSION_HEADER]: served.api.version },
+            headers: { [VERSION_HEADER]: result.api.version },
         });
     };
 
@@ -432,8 +468,8 @@ export const createWorkerApi = ({
             // A store still being built was built from the clicks as they were a
             // moment ago, which is as fresh as a visit needs.
             if (store === undefined) return false;
-            await store;
-            if (fingerprint(await clicks()) === built) return false;
+            const current = await served();
+            if (fingerprint(await clicks()) === current?.from.clicks) return false;
             // The old store keeps answering until the new one is ready, and stays
             // if the new one cannot be built.
             await rebuild();
@@ -454,7 +490,11 @@ export const createWorkerApi = ({
             const held = await kept?.match(request);
             if (held && fresh(held, new Date())) return held;
             const response = await answer(request);
-            if (kept && mayKeep(response)) await kept.put(request, response.clone());
+            // Kept only while the store that made it is still the one served, so
+            // an answer that finishes after its catalog was replaced or removed
+            // is not put back among the kept ones.
+            const still = (await served())?.api.version === response.headers.get(VERSION_HEADER);
+            if (kept && mayKeep(response) && still) await kept.put(request, response.clone());
             return response;
         },
     };

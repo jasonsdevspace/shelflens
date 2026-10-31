@@ -29,6 +29,8 @@ const kind = storeKindOf(self.location.href);
 const names = storageFor(kind);
 const base = new URL(self.registration.scope).pathname;
 
+const events = createIndexedDbEventStore({ name: names.events });
+
 const api = createWorkerApi({
     ...(names.catalog
         ? { catalogs: createIndexedDbCatalogStore(names.catalog) }
@@ -38,7 +40,8 @@ const api = createWorkerApi({
           }),
     base,
     answers: () => caches.open(names.answers),
-    events: createIndexedDbEventStore({ name: names.events }),
+    events,
+    ...(names.catalog && { forgetEvents: () => events.clear() }),
     rules: createIndexedDbRuleStore(names.rules),
 });
 

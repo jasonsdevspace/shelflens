@@ -82,7 +82,7 @@ export interface IndexedDbEventStoreOptions {
 export const createIndexedDbEventStore = ({
     limit = EVENT_LIMIT,
     name = DEFAULT_DB_NAME,
-}: IndexedDbEventStoreOptions = {}): EventStore => {
+}: IndexedDbEventStoreOptions = {}): EventStore & { clear(): Promise<void> } => {
     let db: Promise<IDBDatabase> | undefined;
     const database = () => {
         db ??= open(name).catch((error: unknown) => {
@@ -97,6 +97,11 @@ export const createIndexedDbEventStore = ({
             const store = transaction.objectStore(STORE_NAME);
             for (const event of events) store.put(event);
             await trim(store, limit);
+            await done(transaction);
+        },
+        clear: async () => {
+            const transaction = (await database()).transaction(STORE_NAME, 'readwrite');
+            transaction.objectStore(STORE_NAME).clear();
             await done(transaction);
         },
         all: async () => {

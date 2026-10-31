@@ -18,7 +18,7 @@ import {
 const fakeContainer = ({
     controlled,
     active,
-    scriptURL = 'https://example.test/sw.js',
+    scriptURL = new URL('/sw.js', globalThis.location.href).href,
 }: {
     controlled: boolean;
     active: boolean;
@@ -147,18 +147,15 @@ describe('announcing a visit', () => {
         expect(reload).not.toHaveBeenCalled();
     });
 
-    it('counts only the worker the page registers as its own', () => {
+    it('counts only the worker the page registers as its own, read against the page', () => {
         const worker = (scriptURL: string) => ({ scriptURL }) as ServiceWorker;
-        expect(isOwnController(worker('https://example.test/sw.js'), '/sw.js')).toBe(true);
-        expect(
-            isOwnController(
-                worker('https://example.test/try/sw.js?store=try'),
-                '/try/sw.js?store=try'
-            )
-        ).toBe(true);
-        expect(isOwnController(worker('https://example.test/sw.js'), '/try/sw.js?store=try')).toBe(
-            false
-        );
-        expect(isOwnController(null, '/sw.js')).toBe(false);
+        const demo = worker('https://example.test/shelflens/sw.js');
+        const visitor = worker('https://example.test/shelflens/sw.js?store=try');
+        const page = 'https://example.test/shelflens/try/';
+        expect(isOwnController(visitor, '../sw.js?store=try', page)).toBe(true);
+        expect(isOwnController(visitor, '/shelflens/sw.js?store=try', page)).toBe(true);
+        expect(isOwnController(demo, '../sw.js?store=try', page)).toBe(false);
+        expect(isOwnController(demo, 'sw.js', 'https://example.test/shelflens/')).toBe(true);
+        expect(isOwnController(null, 'sw.js', page)).toBe(false);
     });
 });

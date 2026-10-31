@@ -1,7 +1,14 @@
 // @vitest-environment node
-import { createStore, PERSISTED_OPERATIONS, VERSION_HEADER } from '@shelflens/api';
+import type { Rule } from '@jasonsdevspace/shelflens';
+import {
+    createMemoryRuleStore,
+    createStore,
+    PERSISTED_OPERATIONS,
+    type RuleStore,
+    VERSION_HEADER,
+} from '@shelflens/api';
 import { type Catalog, generateCatalog } from '@shelflens/catalog';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { parseCsv } from '../try/csv.js';
 import { guessMapping } from '../try/mapping.js';
@@ -64,12 +71,25 @@ const memoryAnswers = () => {
     return { answers, kept };
 };
 
-const visitorApi = (answers?: AnswerStore) =>
+const visitorApi = (
+    answers?: AnswerStore,
+    extra: { rules?: RuleStore; forgetEvents?: () => Promise<void> } = {}
+) =>
     createWorkerApi({
         catalogs: createMemoryCatalogStore(),
         base: BASE,
         ...(answers && { answers: () => Promise.resolve(answers) }),
+        ...extra,
     });
+
+const pinFirst = (catalog: Catalog): Rule[] => [
+    { id: 'pin', pin: [catalog.products[0]?.sku ?? ''] },
+];
+
+/** A rule no store can be built with, since no store has the attribute it names. */
+const UNBUILDABLE: Rule[] = [
+    { id: 'odd', boost: [{ attribute: { name: 'no-such-attribute', value: 'x' }, weight: 2 }] },
+];
 
 const versionOf = async (response: Response | undefined) =>
     ((await response?.json()) as { data: { store: { catalogVersion: string } } }).data.store
@@ -177,5 +197,83 @@ describe('the worker for a visitor’s own catalog', () => {
                 Promise.resolve(new Response(JSON.stringify(generateCatalog({ products: 20 })))),
         });
         expect(await demo.handle(catalogRequest('PUT', LAMPS))).toBeUndefined();
+    });
+
+    it('sets the version from the content, whatever version the catalog claims', async () => {
+        const api = visitorApi();
+        const lamps = (await api.handle(catalogRequest('PUT', LAMPS)))?.headers.get(VERSION_HEADER);
+        const claimed = await api.handle(
+            catalogRequest('PUT', { ...MUGS, version: LAMPS.version })
+        );
+        expect(claimed?.headers.get(VERSION_HEADER)).not.toBe(lamps);
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: MUGS.version,
+            products: 2,
+        });
+    });
+
+    it('forgets the last catalog’s rules and clicks when a new one is loaded or it is removed', async () => {
+        const rules = createMemoryRuleStore();
+        const forgetEvents = vi.fn(() => Promise.resolve());
+        const api = visitorApi(undefined, { rules, forgetEvents });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        await rules.replace(pinFirst(LAMPS));
+        const mugs = await api.handle(catalogRequest('PUT', MUGS));
+        expect(mugs?.status).toBe(204);
+        expect(await rules.current()).toBeUndefined();
+        expect(forgetEvents).toHaveBeenCalledTimes(2);
+        await api.handle(catalogRequest('DELETE'));
+        expect(forgetEvents).toHaveBeenCalledTimes(3);
+    });
+
+    it('keeps the last catalog and its rules when a new one cannot be built', async () => {
+        // Rules that cannot be cleared, and that no store can be built with.
+        let saved: readonly Rule[] | undefined;
+        const stubborn: RuleStore = {
+            current: () => Promise.resolve(saved),
+            replace: (next) => {
+                saved = next;
+                return Promise.resolve();
+            },
+            reset: () => Promise.resolve(),
+        };
+        const api = visitorApi(undefined, { rules: stubborn });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        saved = UNBUILDABLE;
+        const refused = await api.handle(catalogRequest('PUT', MUGS));
+        expect(refused?.status).toBe(400);
+        expect(await refused?.json()).toMatchObject({
+            errors: [{ message: expect.stringContaining('could not be built from this catalog') }],
+        });
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: LAMPS.version,
+            products: 2,
+        });
+        expect(saved).toEqual(UNBUILDABLE);
+    });
+
+    it('answers a load and a removal that arrive together, and ends in agreement', async () => {
+        const api = visitorApi();
+        const [loaded, removed] = await Promise.all([
+            api.handle(catalogRequest('PUT', LAMPS)),
+            api.handle(catalogRequest('DELETE')),
+        ]);
+        expect(loaded?.status).toBe(204);
+        expect(removed?.status).toBe(204);
+        // Whichever ran last, what the catalog path says and what is searched agree.
+        const listed = (await api.handle(catalogRequest('GET')))?.status;
+        const searched = (await api.handle(get({ op: STORE })))?.status;
+        expect([listed, searched]).toEqual(listed === 404 ? [404, 404] : [200, 200]);
+    });
+
+    it('does not keep an answer that finishes after its catalog was removed', async () => {
+        const { answers, kept } = memoryAnswers();
+        const api = visitorApi(answers);
+        const version =
+            (await api.handle(catalogRequest('PUT', LAMPS)))?.headers.get(VERSION_HEADER) ?? '';
+        const late = api.handle(get({ op: STORE, v: version }));
+        await api.handle(catalogRequest('DELETE'));
+        await late;
+        expect(kept.size).toBe(0);
     });
 });
