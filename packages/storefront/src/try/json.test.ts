@@ -12,6 +12,7 @@ describe('reading a JSON file', () => {
                 ['Boot', '10', ''],
                 ['Hat', '', 'Acme'],
             ],
+            labels: ['item 1', 'item 2'],
         });
     });
 
@@ -23,6 +24,13 @@ describe('reading a JSON file', () => {
     it('joins a list of values and leaves a nested object empty', () => {
         const table = parseJsonTable('[{"colors":["Black","Navy"],"meta":{"a":1},"inStock":true}]');
         expect(table.rows).toEqual([['Black, Navy', '', 'true']]);
+    });
+
+    it('labels each item by its place in the list, counting entries that are not objects', () => {
+        expect(parseJsonTable('[{"name":"Boot"},3,{"name":"Hat"}]').labels).toEqual([
+            'item 1',
+            'item 3',
+        ]);
     });
 
     it('says why a file is not a product list', () => {

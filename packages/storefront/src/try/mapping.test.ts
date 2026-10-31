@@ -29,7 +29,7 @@ describe('guessing the mapping', () => {
         ['Manufacturer', 'brand'],
         ['Colour', 'colors'],
         ['Product Type', 'category'],
-        ['Sale Price', 'memberPrice'],
+        ['Member Price', 'memberPrice'],
         ['qty', 'inStock'],
     ])('reads the header %s as %s', (header, field) => {
         const table = parseCsv(`${header},Price\n3,1.00\n`);
@@ -41,6 +41,21 @@ describe('guessing the mapping', () => {
             'col1,col2,col3\n' +
                 'Trail Boot,"A waterproof boot with a grippy sole for long muddy walks in the hills",$120.00\n' +
                 'Wool Hat,"A warm knitted hat in soft merino that keeps its shape through a whole winter",$25.00\n'
+        );
+        expect(guessMapping(table)).toEqual({ name: 'col1', description: 'col2', price: 'col3' });
+    });
+
+    it('leaves a sale price for everyone out of the member price', () => {
+        expect(
+            guessMapping(parseCsv('name,Price,Sale Price\nBoot,$10.00,$8.00\n')).memberPrice
+        ).toBeUndefined();
+    });
+
+    it('does not take a text column for the price, or refuse names with numbers in them', () => {
+        const table = parseCsv(
+            'col1,col2,col3\n' +
+                'iPhone 15,"Soft case, 100% recycled, fits the 15 and 15 Pro",$29.00\n' +
+                'Boot size 10,"Waxed leather, 2 colors, resoled up to 3 times",$120.00\n'
         );
         expect(guessMapping(table)).toEqual({ name: 'col1', description: 'col2', price: 'col3' });
     });

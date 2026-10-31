@@ -1,5 +1,5 @@
 import type { Table } from './csv.js';
-import { parseMoney, parseRating, parseYesNo } from './values.js';
+import { decimalMarkOf, parseMoney, parseRating, parseYesNo } from './values.js';
 
 /**
  * Which column of a visitor's file feeds which part of a product.
@@ -55,7 +55,9 @@ const NAMES: Readonly<Record<MappedField, readonly string[]>> = {
     sizes: ['size', 'sizes'],
     material: ['material', 'materials', 'fabric'],
     price: ['price', 'retail price', 'list price', 'regular price', 'msrp', 'amount', 'price usd'],
-    memberPrice: ['member price', 'sale price', 'discount price', 'special price', 'offer price'],
+    // Only headers that say members, since a sale price that applies to
+    // everyone would otherwise be shown to members alone.
+    memberPrice: ['member price', 'members price', 'loyalty price', 'club price'],
     rating: ['rating', 'stars', 'average rating', 'review score', 'score'],
     ratingCount: ['reviews', 'review count', 'rating count', 'ratings', 'number of reviews'],
     inStock: ['in stock', 'stock', 'available', 'availability', 'inventory', 'quantity', 'qty'],
@@ -81,14 +83,30 @@ const shareReadBy = (cells: readonly string[], read: (value: string) => unknown)
     return filled.filter((cell) => read(cell) !== undefined).length / filled.length;
 };
 
-const averageLength = (cells: readonly string[]): number =>
-    cells.reduce((sum, cell) => sum + cell.length, 0) / Math.max(1, cells.length);
-
-const uniqueShare = (cells: readonly string[]): number =>
-    new Set(cells.filter((cell) => cell !== '')).size / Math.max(1, cells.length);
-
 /** How many rows a guess looks at, which is plenty to tell a price from a name. */
-const SAMPLE_ROWS = 200;
+export const SAMPLE_ROWS = 200;
+
+/** What a guess needs to know about one column, worked out once. */
+interface ColumnStats {
+    readonly header: string;
+    readonly averageLength: number;
+    readonly uniqueShare: number;
+    readonly priceShare: number;
+    readonly marked: boolean;
+}
+
+const statsOf = (table: Table, header: string): ColumnStats => {
+    const cells = columnOf(table, header);
+    const decimal = decimalMarkOf(cells);
+    return {
+        header,
+        averageLength:
+            cells.reduce((sum, cell) => sum + cell.length, 0) / Math.max(1, cells.length),
+        uniqueShare: new Set(cells.filter((cell) => cell !== '')).size / Math.max(1, cells.length),
+        priceShare: shareReadBy(cells, (cell) => parseMoney(cell, decimal)),
+        marked: cells.some((cell) => /[.,$€£]/.test(cell)),
+    };
+};
 
 /**
  * The columns a reader is most likely to have meant, from the headers first
@@ -96,7 +114,7 @@ const SAMPLE_ROWS = 200;
  * when no header says so. Each column feeds one field at most.
  */
 export const guessMapping = (table: Table): Mapping => {
-    const sample: Table = { headers: table.headers, rows: table.rows.slice(0, SAMPLE_ROWS) };
+    const sample: Table = { ...table, rows: table.rows.slice(0, SAMPLE_ROWS) };
     const taken = new Set<string>();
     const guess: { -readonly [Field in MappedField]?: string } = {};
     for (const field of Object.keys(NAMES) as MappedField[]) {
@@ -108,40 +126,29 @@ export const guessMapping = (table: Table): Mapping => {
             taken.add(header);
         }
     }
-    const free = () => table.headers.filter((header) => !taken.has(header));
-    const take = (field: MappedField, header: string | undefined) => {
-        if (header && !guess[field]) {
-            guess[field] = header;
-            taken.add(header);
+    const stats = table.headers.map((header) => statsOf(sample, header));
+    const free = () => stats.filter((column) => !taken.has(column.header));
+    const take = (field: MappedField, column: ColumnStats | undefined) => {
+        if (column && !guess[field]) {
+            guess[field] = column.header;
+            taken.add(column.header);
         }
     };
     take(
         'price',
-        free().find((header) => {
-            const cells = columnOf(sample, header);
-            return (
-                shareReadBy(cells, parseMoney) > 0.9 && cells.some((cell) => /[.,$€£]/.test(cell))
-            );
-        })
+        free().find((column) => column.priceShare > 0.9 && column.marked)
     );
     take(
         'name',
         free()
-            .filter((header) => {
-                const cells = columnOf(sample, header);
-                return uniqueShare(cells) > 0.8 && shareReadBy(cells, parseMoney) < 0.5;
-            })
-            .sort(
-                (a, b) => averageLength(columnOf(sample, a)) - averageLength(columnOf(sample, b))
-            )[0]
+            .filter((column) => column.uniqueShare > 0.8 && column.priceShare < 0.5)
+            .sort((a, b) => a.averageLength - b.averageLength)[0]
     );
     take(
         'description',
         free()
-            .filter((header) => averageLength(columnOf(sample, header)) > 40)
-            .sort(
-                (a, b) => averageLength(columnOf(sample, b)) - averageLength(columnOf(sample, a))
-            )[0]
+            .filter((column) => column.averageLength > 40)
+            .sort((a, b) => b.averageLength - a.averageLength)[0]
     );
     if (guess.rating && shareReadBy(columnOf(sample, guess.rating), parseRating) < 0.9)
         delete guess.rating;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseCsv, separatorOf } from './csv.js';
+import { distinctHeaders, parseCsv, separatorOf } from './csv.js';
 
 describe('reading a CSV file', () => {
     it('reads a header and its rows', () => {
@@ -10,6 +10,7 @@ describe('reading a CSV file', () => {
                 ['Boot', '$10'],
                 ['Hat', '$5'],
             ],
+            labels: ['row 2', 'row 3'],
         });
     });
 
@@ -51,5 +52,19 @@ describe('reading a CSV file', () => {
 
     it('trims the spaces around a value', () => {
         expect(parseCsv(' name , price \n Boot , 10 ').rows).toEqual([['Boot', '10']]);
+    });
+
+    it('labels each row as a spreadsheet numbers it, blank lines included', () => {
+        expect(parseCsv('a,b\n1,2\n\n,\n3,4\n').labels).toEqual(['row 2', 'row 5']);
+    });
+
+    it('names a blank header for its place and counts a repeated one', () => {
+        expect(distinctHeaders(['Price', '', 'Price', ' Price '])).toEqual([
+            'Price',
+            'Column 2',
+            'Price (2)',
+            'Price (3)',
+        ]);
+        expect(parseCsv('Price,Price\n1,2\n').headers).toEqual(['Price', 'Price (2)']);
     });
 });

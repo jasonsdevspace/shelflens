@@ -1,4 +1,4 @@
-import type { Table } from './csv.js';
+import { distinctHeaders, type Table } from './csv.js';
 
 /**
  * A table read from a JSON file.
@@ -46,21 +46,30 @@ export const parseJsonTable = (text: string): Table => {
     } catch {
         throw new Error('This file is not valid JSON.');
     }
-    const records = recordsOf(data)?.filter(isObject);
-    if (!records || records.length === 0) {
+    const listed = recordsOf(data) ?? [];
+    const records = listed
+        .map((record, index) => ({ record, label: `item ${index + 1}` }))
+        .filter((entry): entry is { record: Record<string, unknown>; label: string } =>
+            isObject(entry.record)
+        );
+    if (records.length === 0) {
         throw new Error(
             'This JSON has no list of products: an array of objects, or one under "products".'
         );
     }
-    const headers: string[] = [];
+    const keys: string[] = [];
     const seen = new Set<string>();
-    for (const record of records) {
+    for (const { record } of records) {
         for (const key of Object.keys(record)) {
             if (!seen.has(key)) {
                 seen.add(key);
-                headers.push(key);
+                keys.push(key);
             }
         }
     }
-    return { headers, rows: records.map((record) => headers.map((key) => asText(record[key]))) };
+    return {
+        headers: distinctHeaders(keys),
+        rows: records.map(({ record }) => keys.map((key) => asText(record[key]))),
+        labels: records.map(({ label }) => label),
+    };
 };

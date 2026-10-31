@@ -18,27 +18,58 @@ export const currencyOf = (value: string): string | undefined => {
     return code && CODES.has(code) ? code : undefined;
 };
 
+/** The marks a number can use for its decimals. */
+export type DecimalMark = '.' | ',';
+
+/**
+ * Which mark a column of prices uses for its decimals.
+ *
+ * One cell alone cannot say: "1,299" is a thousand and more in one country
+ * and one and a bit in another. A column can, since some of its prices end
+ * in a mark and one or two digits, and that mark is the decimal one. A cell
+ * with both marks says so too, by which comes last. A column that never
+ * says is read with a point, as most exports write.
+ */
+export const decimalMarkOf = (cells: readonly string[]): DecimalMark => {
+    let points = 0;
+    let commas = 0;
+    for (const cell of cells) {
+        const digits = cell.replace(/[^\d.,]/g, '');
+        const last = /[.,](?=\d{1,2}$)/.exec(digits)?.[0];
+        const both = digits.includes('.') && digits.includes(',');
+        const mark =
+            last ??
+            (both
+                ? digits.at(Math.max(digits.lastIndexOf('.'), digits.lastIndexOf(',')))
+                : undefined);
+        if (mark === '.') points += 1;
+        if (mark === ',') commas += 1;
+    }
+    return commas > points ? ',' : '.';
+};
+
+/** A price with nothing but a currency symbol or code beside the number. */
+const PRICE = /^(?:[A-Z]{3}\s*)?[$€£]?\s*(\d[\d.,\s]*)\s*(?:[$€£]|[A-Z]{3})?$/;
+
 /**
  * A price as whole cents, or undefined when it is not one.
  *
- * Either mark can be the decimal one, so "1,299.00", "1.299,00", "12,5" and
- * "$12" all read. A mark followed by exactly three digits with no other mark
- * is taken as thousands, which is how "1,299" is usually meant.
+ * Only a number with an optional currency symbol or code reads, so "2 for
+ * $10" or "call for price" is refused rather than turned into digits. The
+ * column's decimal mark says which mark ends the whole part. The other mark
+ * may group thousands, and more than two decimals is refused, since a
+ * price has cents and nothing finer.
  */
-export const parseMoney = (value: string): number | undefined => {
-    const digits = value.replace(/[^\d.,-]/g, '');
-    if (!/\d/.test(digits) || digits.startsWith('-')) return undefined;
-    const lastDot = digits.lastIndexOf('.');
-    const lastComma = digits.lastIndexOf(',');
-    const decimalAt = Math.max(lastDot, lastComma);
-    const fraction = decimalAt === -1 ? '' : digits.slice(decimalAt + 1);
-    const thousandsOnly = (lastDot === -1 || lastComma === -1) && fraction.length === 3;
-    const whole = thousandsOnly || decimalAt === -1 ? digits : digits.slice(0, decimalAt);
-    const units = Number(whole.replace(/[.,]/g, ''));
-    const cents =
-        thousandsOnly || decimalAt === -1 ? 0 : Number(fraction.padEnd(2, '0').slice(0, 2));
-    if (!Number.isFinite(units) || (fraction.length > 2 && !thousandsOnly)) return undefined;
-    return units * 100 + cents;
+export const parseMoney = (value: string, decimal: DecimalMark = '.'): number | undefined => {
+    const number = PRICE.exec(value.trim())?.[1]?.replace(/\s/g, '');
+    if (!number) return undefined;
+    const grouping = decimal === '.' ? ',' : '.';
+    const [whole = '', fraction = '', extra] = number.split(decimal);
+    if (extra !== undefined || fraction.length > 2 || !/^\d*$/.test(fraction)) return undefined;
+    const grouped = new RegExp(`^\\d{1,3}(?:\\${grouping}\\d{3})*$`);
+    if (!/^\d+$/.test(whole) && !grouped.test(whole)) return undefined;
+    const units = Number(whole.split(grouping).join(''));
+    return units * 100 + Number(fraction.padEnd(2, '0'));
 };
 
 const YES = new Set(['yes', 'y', 'true', '1', 'in stock', 'available', 'instock']);

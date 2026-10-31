@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     currencyOf,
+    decimalMarkOf,
     parseCount,
     parseMoney,
     parseRating,
@@ -12,25 +13,42 @@ import {
 
 describe('reading money', () => {
     it.each([
-        ['$12.50', 1250],
-        ['12', 1200],
-        ['12.5', 1250],
-        ['1,299.00', 129_900],
-        ['1.299,00', 129_900],
-        ['12,50', 1250],
-        ['1,299', 129_900],
-        ['€ 9,99', 999],
-        ['GBP 45.00', 4500],
-    ])('reads %s as %d cents', (value, cents) => {
-        expect(parseMoney(value)).toBe(cents);
+        ['$12.50', '.', 1250],
+        ['12', '.', 1200],
+        ['12.5', '.', 1250],
+        ['1,299.00', '.', 129_900],
+        ['1,299', '.', 129_900],
+        ['1.299,00', ',', 129_900],
+        ['1.299', ',', 129_900],
+        ['12,50', ',', 1250],
+        ['12 345,67', ',', 1_234_567],
+        ['€ 9,99', ',', 999],
+        ['GBP 45.00', '.', 4500],
+        ['45.00 GBP', '.', 4500],
+    ] as const)('reads %s with a %s for decimals as %d cents', (value, decimal, cents) => {
+        expect(parseMoney(value, decimal)).toBe(cents);
     });
 
-    it.each(['', 'free', '-5', '12.5055', '1.2.3,4567'])(
-        'refuses %j rather than guessing',
-        (value) => {
-            expect(parseMoney(value)).toBeUndefined();
-        }
-    );
+    it.each([
+        '',
+        'free',
+        '-5',
+        '2 for $10',
+        'Call, 5 left',
+        '9.995',
+        '$12.999',
+        '1.299.00',
+        '1,29',
+    ])('refuses %j rather than making up a price', (value) => {
+        expect(parseMoney(value, '.')).toBeUndefined();
+    });
+
+    it('takes the decimal mark a column of prices uses, from the prices that show it', () => {
+        expect(decimalMarkOf(['12,50', '1.299,00', '3'])).toBe(',');
+        expect(decimalMarkOf(['1,299', '12.50'])).toBe('.');
+        expect(decimalMarkOf(['1,299', '2,499'])).toBe('.');
+        expect(decimalMarkOf(['10', '20'])).toBe('.');
+    });
 
     it('names the currency a price is written in, when the store can show it', () => {
         expect(currencyOf('$12')).toBe('USD');

@@ -22,9 +22,10 @@ const one = (csv: string, mapping: Mapping = MINIMAL) =>
 describe('rows to a catalog', () => {
     it('turns the sample file into a catalog with every product', () => {
         const table = parseCsv(sampleCsv());
-        const { catalog, skipped } = loaded(toCatalog(table, guessMapping(table), NOW));
+        const { catalog, skipped, notes } = loaded(toCatalog(table, guessMapping(table), NOW));
         expect(catalog.products).toHaveLength(SAMPLE_PRODUCTS);
         expect(skipped).toEqual([]);
+        expect(notes).toEqual([]);
         expect(catalog.currency).toBe('USD');
         expect(catalog.products[0]).toMatchObject({
             sku: 'SL-00001',
@@ -101,15 +102,15 @@ describe('rows to a catalog', () => {
         expect(catalog.categories).toEqual([
             { id: 'shoes', name: 'Shoes', path: ['shoes'] },
             {
-                id: 'shoes-running',
+                id: 'shoes--running',
                 name: 'Running',
-                path: ['shoes', 'shoes-running'],
+                path: ['shoes', 'shoes--running'],
                 parentId: 'shoes',
             },
         ]);
         expect(catalog.products.map((product) => [product.categoryId, product.position])).toEqual([
-            ['shoes-running', 1],
-            ['shoes-running', 2],
+            ['shoes--running', 1],
+            ['shoes--running', 2],
             ['shoes', 1],
         ]);
     });
@@ -138,8 +139,8 @@ describe('rows to a catalog', () => {
         const result = one('name,price\nBoot,1\n,2\nHat,free\n');
         expect(result.catalog.products.map((product) => product.name)).toEqual(['Boot']);
         expect(result.skipped).toEqual([
-            { row: 3, reason: 'it has no name' },
-            { row: 4, reason: 'its price, "free", is not a price' },
+            { label: 'row 3', reason: 'it has no name' },
+            { label: 'row 4', reason: 'its price, "free", is not a price' },
         ]);
     });
 
@@ -155,14 +156,19 @@ describe('rows to a catalog', () => {
         );
         expect(result).toEqual({
             ok: false,
-            error: 'The id "A" is on rows 2 and 4, and each product needs its own.',
+            error: 'The id "A" is on row 2 and row 4, and each product needs its own.',
         });
     });
 
     it('refuses a file past the row cap, saying how many rows it has', () => {
+        const rows = Array.from({ length: CATALOG_ROW_CAP + 1 }, (_, index) => [
+            `Item ${index}`,
+            '1',
+        ]);
         const table: Table = {
             headers: ['name', 'price'],
-            rows: Array.from({ length: CATALOG_ROW_CAP + 1 }, (_, index) => [`Item ${index}`, '1']),
+            rows,
+            labels: rows.map((_, index) => `row ${index + 2}`),
         };
         const result = toCatalog(table, MINIMAL, NOW);
         expect(result.ok).toBe(false);
@@ -189,5 +195,80 @@ describe('rows to a catalog', () => {
         expect(again).toBe(first);
         expect(one('name,price\nBoot,2\n').catalog.version).not.toBe(first);
         expect(first).toMatch(/^try-[0-9a-f]{8}$/);
+    });
+
+    it('keeps a top level category apart from a path whose words slug the same', () => {
+        const { catalog } = one('name,price,cat\nBoot,1,Home Garden\nHat,1,Home > Garden\n', {
+            ...MINIMAL,
+            category: 'cat',
+        });
+        expect(catalog.products.map((product) => product.categoryId)).toEqual([
+            'home-garden',
+            'home--garden',
+        ]);
+        expect(new Set(catalog.categories.map((category) => category.id)).size).toBe(
+            catalog.categories.length
+        );
+    });
+
+    it('gives brands with no letters a slug keeps their own ids, and one name per id', () => {
+        const { catalog } = one(
+            'name,price,brand\nA,1,ソニー\nB,1,パナソニック\nC,1,Acme\nD,1,ACME\n',
+            {
+                ...MINIMAL,
+                brand: 'brand',
+            }
+        );
+        expect(catalog.brands).toHaveLength(3);
+        expect(catalog.products.map((product) => product.brand)).toEqual([
+            'ソニー',
+            'パナソニック',
+            'Acme',
+            'Acme',
+        ]);
+        expect(new Set(catalog.products.slice(0, 2).map((product) => product.brandId)).size).toBe(
+            2
+        );
+    });
+
+    it('never makes up an id the file already uses', () => {
+        const { catalog } = one('id,name,price\n,Boot,1\nROW-000001,Hat,1\n', {
+            ...MINIMAL,
+            id: 'id',
+        });
+        expect(catalog.products.map((product) => product.sku)).toEqual([
+            'ROW-000002',
+            'ROW-000001',
+        ]);
+    });
+
+    it('names rows by their place in the file when a blank line comes before them', () => {
+        const result = one('name,price\nBoot,1\n\nHat,free\n');
+        expect(result.skipped).toEqual([
+            { label: 'row 4', reason: 'its price, "free", is not a price' },
+        ]);
+    });
+
+    it('keeps a row whose member price does not read, saying members pay the guest price', () => {
+        const result = one('name,price,member\nBoot,$10.00,see site\n', {
+            ...MINIMAL,
+            memberPrice: 'member',
+        });
+        expect(result.catalog.products[0]?.price.member.min).toBe(1000);
+        expect(result.notes).toEqual([
+            {
+                label: 'row 2',
+                reason: 'its member price, "see site", is not a price, so members pay the guest price',
+            },
+        ]);
+    });
+
+    it('reads a column of prices by the decimal mark the column uses', () => {
+        const comma = one('name,price\nBoot,"1.299,00"\nHat,"12,50"\n').catalog.products;
+        expect(comma.map((product) => product.price.guest.min)).toEqual([129_900, 1250]);
+        const result = one('name,price\nBoot,9.995\nHat,12.50\n');
+        expect(result.skipped).toEqual([
+            { label: 'row 2', reason: 'its price, "9.995", is not a price' },
+        ]);
     });
 });

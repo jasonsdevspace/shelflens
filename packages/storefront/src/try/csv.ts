@@ -11,10 +11,31 @@
  */
 
 export interface Table {
+    /** Each one different, so a column is named by its header alone. */
     readonly headers: readonly string[];
     /** Every row as long as the headers, padded or cut to fit. */
     readonly rows: readonly (readonly string[])[];
+    /**
+     * Where each row is in the file, in the words a visitor would use to find
+     * it: "row 9" as a spreadsheet numbers it, header included, or "item 3"
+     * in a JSON list.
+     */
+    readonly labels: readonly string[];
 }
+
+/**
+ * Headers made distinct: a blank one is named for its position, and a repeat
+ * gets its count, so "Price" twice is "Price" and "Price (2)".
+ */
+export const distinctHeaders = (headers: readonly string[]): string[] => {
+    const seen = new Map<string, number>();
+    return headers.map((raw, index) => {
+        const base = raw.trim() || `Column ${index + 1}`;
+        const count = (seen.get(base) ?? 0) + 1;
+        seen.set(base, count);
+        return count === 1 ? base : `${base} (${count})`;
+    });
+};
 
 const SEPARATORS = [',', ';', '\t'] as const;
 
@@ -97,11 +118,15 @@ const isBlank = (record: readonly string[]): boolean =>
 
 /** A CSV file as a table: its first record is the header, and blank records are dropped. */
 export const parseCsv = (input: string): Table => {
-    const text = input.startsWith('﻿') ? input.slice(1) : input;
+    const text = input.startsWith('\uFEFF') ? input.slice(1) : input;
     const [header = [], ...records] = readRecords(text, separatorOf(text));
-    const headers = header.map((name) => name.trim());
-    const rows = records
-        .filter((record) => !isBlank(record))
-        .map((record) => headers.map((_, index) => (record[index] ?? '').trim()));
-    return { headers, rows };
+    const headers = distinctHeaders(header);
+    const kept = records
+        .map((record, index) => ({ record, label: `row ${index + 2}` }))
+        .filter(({ record }) => !isBlank(record));
+    return {
+        headers,
+        rows: kept.map(({ record }) => headers.map((_, index) => (record[index] ?? '').trim())),
+        labels: kept.map(({ label }) => label),
+    };
 };
