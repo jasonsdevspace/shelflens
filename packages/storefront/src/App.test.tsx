@@ -297,7 +297,8 @@ describe('what did not load', () => {
     it('goes back to the results from a product that did not load', async () => {
         failOnce(ProductDocument);
         await openProduct();
-        await userEvent.setup().click(screen.getByRole('button', { name: 'Back to results' }));
+        // The visit began on the product, so the way out is named for the store.
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Browse all products' }));
         expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('All products');
     });
 });
@@ -595,6 +596,47 @@ describe('keeping its place', () => {
         expect(document.querySelector('.searchbox-status')?.textContent).toBe('');
     });
 
+    it('says a product is on its way, with the way back beside it, while it loads', async () => {
+        const op = `op=${String(ProductDocument.__meta__?.['hash'])}`;
+        const served = globalThis.fetch;
+        let release = () => undefined as void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            if (new Request(input, init).url.includes(op)) await held;
+            return served(input, init);
+        });
+        const user = await open();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        await user.click(first);
+        expect(await screen.findByText('Loading the product.')).toHaveAttribute('role', 'status');
+        expect(screen.getByRole('button', { name: 'Back to results' })).toBeVisible();
+        await waitFor(() =>
+            expect(screen.getByText('Loading the product.').closest('.product')).toHaveFocus()
+        );
+        release();
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+    });
+
+    it('names the browser tab for the product, and gives the name back on close', async () => {
+        document.title = 'ShelfLens';
+        const user = await open();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        const name = first.querySelector('.card-name')?.textContent ?? '';
+        await user.click(first);
+        await screen.findByRole('heading', { level: 1, name });
+        expect(document.title).toBe(`${name}, ShelfLens`);
+        // The browser leaves the scroll to the page while a product is open.
+        expect(window.history.scrollRestoration).toBe('manual');
+        await user.click(screen.getByRole('button', { name: 'Back to results' }));
+        await settled();
+        expect(document.title).toBe('ShelfLens');
+        expect(window.history.scrollRestoration).not.toBe('manual');
+    });
+
     it('moves focus to the product heading on open, and back to its card on close', async () => {
         const user = await open();
         const [first] = cards();
@@ -813,10 +855,15 @@ describe('as a member', () => {
             />
         );
         const user = userEvent.setup();
-        expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');
+        // Focus moves to the notice, which reads it once, so it is not an alert as well.
+        const notice = await screen.findByText(/There is no product/);
+        await waitFor(() => expect(notice.closest('.product')).toHaveFocus());
+        expect(screen.queryByRole('alert')).toBeNull();
         await shopAs(user, 'member');
         await screen.findByRole('heading', { level: 1, name: membersOnly.name });
         expect(screen.getByText('Members only')).toBeInTheDocument();
+        // The switch keeps focus, since the visitor is still using it.
+        expect(screen.getByRole('combobox', { name: 'Shopping as' })).toHaveFocus();
     });
 });
 
@@ -1086,6 +1133,26 @@ describe('beside a product', () => {
             .getAllByRole('link')
             .map((link) => link.getAttribute('data-sku'));
 
+    it('puts focus back on the card first opened, after a walk along the rail', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        const sku = first.getAttribute('data-sku');
+        await user.click(first);
+        for (let step = 0; step < 2; step += 1) {
+            await waitFor(() => expect(rail()).not.toBeNull());
+            const next = within(rail() ?? document.body).getAllByRole('link')[0];
+            if (!next) throw new Error('expected a product beside this one');
+            const name = next.querySelector('.card-name')?.textContent ?? '';
+            await user.click(next);
+            await screen.findByRole('heading', { level: 1, name });
+        }
+        await user.click(screen.getByRole('button', { name: 'Back to results' }));
+        await settled();
+        await waitFor(() => expect(document.activeElement).toHaveAttribute('data-sku', sku));
+    });
+
     it('shows the category’s most rated with no history, and never the product itself', async () => {
         await open(`?product=${subject.sku}`);
         await screen.findByRole('heading', { level: 1, name: subject.name });
@@ -1248,7 +1315,7 @@ describe('the tour', () => {
         expect(tour).toHaveTextContent('The cache that forgets who is asking');
         await user.click(within(tour).getByRole('link', { name: 'Try it' }));
         expect(window.location.search).toBe('?product=SL-00008');
-        expect(await screen.findByRole('alert')).toHaveTextContent('There is no product');
+        expect(await screen.findByText(/There is no product/)).toBeInTheDocument();
         expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
     });
 });

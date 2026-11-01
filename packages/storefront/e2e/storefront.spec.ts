@@ -123,7 +123,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
 
     await page.goto(`/?product=${membersOnly.sku}`);
-    await expect(page.getByRole('alert')).toContainText('There is no product');
+    await expect(page.getByText(/There is no product/)).toBeVisible();
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(membersOnly.name);
     await expect(page.getByText('Members only')).toBeVisible();
@@ -264,6 +264,46 @@ test('keeps its place: a search is announced, a product takes focus, and back la
     await audit(page);
 });
 
+test('browser Back along the rail shows each product from its heading', async ({ page }) => {
+    // Where the focused heading sits once the page has settled, after anything the browser restores.
+    const settledTop = async () => {
+        await page.waitForTimeout(800);
+        return page.evaluate(() => document.activeElement?.getBoundingClientRect().top ?? NaN);
+    };
+    await page.goto('/?q=jacket&page=2');
+    await page.getByRole('list', { name: 'Products' }).getByRole('link').nth(4).click();
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    const rail = page.getByRole('region', { name: /Viewed with|Top rated in/ });
+    for (let step = 0; step < 2; step += 1) {
+        // The shopper reads down to the rail before choosing from it.
+        const next = rail.getByRole('link').nth(1);
+        const name = (await next.locator('.card-name').textContent()) ?? '';
+        await next.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(300);
+        await next.click();
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+        await page.waitForTimeout(500);
+    }
+    const height = page.viewportSize()?.height ?? 0;
+    for (let step = 0; step < 2; step += 1) {
+        await page.goBack();
+        await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+        const top = await settledTop();
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(top).toBeLessThan(height);
+    }
+    await expect(page).toHaveTitle(/^.+, ShelfLens$/);
+});
+
+test('a visit that begins on a product offers the store as the way out', async ({ page }) => {
+    await page.goto('/?product=SL-00001');
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+    await page.getByRole('button', { name: 'Browse all products' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        /^All products, \d+ products$/
+    );
+});
+
 test('what the shopper did reaches the worker, through a beacon, and outlives the page', async ({
     page,
 }) => {
@@ -372,7 +412,7 @@ test('the explainer reads without the store, audits clean, and sends a reader in
         await fresh.goto('/about/');
         await fresh.getByRole('link', { name: /Open the product a guest cannot see/ }).click();
         await expect(fresh).toHaveURL(/\?product=SL-00008$/);
-        await expect(fresh.getByRole('alert')).toContainText('There is no product');
+        await expect(fresh.getByText(/There is no product/)).toBeVisible();
         await expect(fresh.getByRole('button', { name: 'Tour' })).toHaveAttribute(
             'aria-expanded',
             'false'

@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import type { SearchState } from '../app/url.js';
+import { hasFilters, type SearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
@@ -10,7 +10,13 @@ import { useRecord } from '../events/EventsContext.jsx';
 import { sessionId } from '../events/session.js';
 import { count } from '../format/count.js';
 import { formatMoney, formatPriceRange } from '../format/money.js';
-import { ProductDocument, RecommendationsDocument } from '../generated/operations.js';
+import {
+    ProductDocument,
+    type ProductQuery,
+    RecommendationsDocument,
+    type RecommendationsQuery,
+} from '../generated/operations.js';
+import { focusIsFree } from '../results/useReturnFocus.js';
 import { Swatch } from '../search/Swatch.jsx';
 import { Rail } from './Rail.jsx';
 
@@ -34,65 +40,125 @@ export interface ProductPageProps {
     readonly sku: string;
     readonly state: SearchState;
     readonly navigate: Navigate;
+    /** Whether the visit began on this product, rather than opening it from the results. */
+    readonly direct?: boolean;
 }
 
-export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) => {
-    const { data, loading, error, retry } = useQuery(client, ProductDocument, { sku });
-    const { locale } = useStoreInfo();
-    // A new view: focus lands on its heading, or on the notice when there is no
-    // product, so a keyboard or screen reader user starts where the page starts
-    // rather than on the body. Again after every load, since loading unmounts both.
-    const heading = useRef<HTMLHeadingElement>(null);
-    const missing = useRef<HTMLElement>(null);
-    useEffect(() => {
-        if (!loading) (heading.current ?? missing.current)?.focus();
-    }, [loading, data]);
-    // A view, once the product has answered, so a missing product is not one.
-    const record = useRecord();
-    const viewed = data?.product?.sku;
-    useEffect(() => {
-        if (viewed !== undefined) record({ kind: 'view', sku: viewed });
-    }, [record, viewed]);
-    const rail = useQuery(
-        client,
-        RecommendationsDocument,
-        viewed === undefined ? undefined : { sku: viewed, limit: RAIL_SIZE, session: sessionId() }
-    );
-    const back = () => {
-        const { product: _dropped, ...rest } = state;
-        navigate(rest);
-    };
+/**
+ * The way out, named for where it goes. A visitor who arrived on the
+ * product, with nothing in the address beneath it, has seen no results to
+ * go back to, so the button offers the store instead.
+ */
+const backLabel = (state: SearchState, direct: boolean): string =>
+    direct &&
+    state.phrase === undefined &&
+    state.category === undefined &&
+    !hasFilters(state) &&
+    state.page === 1
+        ? 'Browse all products'
+        : 'Back to results';
 
-    if (error) {
-        return (
-            <section className="product" ref={missing} tabIndex={-1}>
-                <LoadFailure what="This product" reason={error} onRetry={retry} announce={false}>
-                    <button type="button" className="back" onClick={back}>
-                        Back to results
-                    </button>
-                </LoadFailure>
-            </section>
-        );
-    }
-    if (loading || !data) return <p className="notice">Loading the product.</p>;
-    const { product } = data;
-    if (!product) {
-        return (
-            <section className="product" ref={missing} tabIndex={-1}>
-                <p className="notice" role="alert">
-                    There is no product {sku} in this store.
-                </p>
-                <button type="button" className="back" onClick={back}>
-                    Back to results
-                </button>
-            </section>
-        );
-    }
+/** A view with no product in it: loading, missing or failed, with the way out beside it. */
+const Bare = ({
+    view,
+    busy = false,
+    children,
+}: {
+    readonly view: RefObject<HTMLElement | null>;
+    readonly busy?: boolean;
+    readonly children: ReactNode;
+}) => (
+    <section className="product" ref={view} tabIndex={-1} aria-busy={busy}>
+        {children}
+    </section>
+);
+
+/**
+ * Where focus goes, and when. A new product puts it on the page at once,
+ * on the loading line while the product is on its way and on its heading
+ * or notice once it lands, so a keyboard or screen reader user starts
+ * where the page starts rather than on the body. The same product asked
+ * again, as a switch of viewer does, leaves focus where the visitor put
+ * it, unless what held it has gone, as Try again goes once pressed.
+ */
+const useProductFocus = ({
+    sku,
+    loading,
+    answer,
+    heading,
+    view,
+}: {
+    readonly sku: string;
+    readonly loading: boolean;
+    /** The answer in hand, so each one that lands is a moment to check focus. */
+    readonly answer: unknown;
+    readonly heading: RefObject<HTMLHeadingElement | null>;
+    readonly view: RefObject<HTMLElement | null>;
+}) => {
+    const landed = useRef<string>(undefined);
+    useEffect(() => {
+        const target = heading.current ?? view.current;
+        if (landed.current !== sku) {
+            target?.focus();
+            if (!loading) landed.current = sku;
+        } else if (!loading && focusIsFree()) {
+            target?.focus();
+        }
+    }, [sku, loading, answer, heading, view]);
+};
+
+/** The browser tab names the product, and gives back its own name once the product closes. */
+const useTitle = (name: string | undefined) => {
+    useEffect(() => {
+        if (name === undefined) return;
+        const before = document.title;
+        document.title = before === '' ? name : `${name}, ${before}`;
+        return () => {
+            document.title = before;
+        };
+    }, [name]);
+};
+
+/**
+ * The browser puts back the scroll of a page it remembers, which over a
+ * product still loading is a place on a shorter page. Focus already puts
+ * the heading on screen, so while a product is open the browser leaves
+ * the scroll alone.
+ */
+const useOwnScroll = () => {
+    useEffect(() => {
+        const before = window.history.scrollRestoration;
+        window.history.scrollRestoration = 'manual';
+        return () => {
+            window.history.scrollRestoration = before;
+        };
+    }, []);
+};
+
+type Product = NonNullable<ProductQuery['product']>;
+type Recommended = NonNullable<RecommendationsQuery['recommendations']>;
+
+/** The product itself: its heading and lines, its sizes and colors, and the rail beneath. */
+const Details = ({
+    product,
+    heading,
+    busy,
+    back,
+    rail,
+    state,
+    navigate,
+}: Pick<ProductPageProps, 'state' | 'navigate'> & {
+    readonly product: Product;
+    readonly heading: RefObject<HTMLHeadingElement | null>;
+    /** Whether the product is being asked for again, for another viewer. */
+    readonly busy: boolean;
+    readonly back: ReactNode;
+    readonly rail: Recommended | undefined;
+}) => {
+    const { locale } = useStoreInfo();
     return (
-        <article className="product" aria-labelledby="product-heading">
-            <button type="button" className="back" onClick={back}>
-                Back to results
-            </button>
+        <article className="product" aria-labelledby="product-heading" aria-busy={busy}>
+            {back}
             <div className="product-head">
                 <Swatch color={product.colors[0]} brand={product.brand.name} size={96} />
                 <div>
@@ -139,9 +205,97 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                     ))}
                 </tbody>
             </table>
-            {!rail.loading && rail.data?.recommendations && (
-                <Rail rail={rail.data.recommendations} state={state} navigate={navigate} />
-            )}
+            {rail && <Rail rail={rail} state={state} navigate={navigate} />}
         </article>
+    );
+};
+
+/**
+ * The product asked for, and the answer to show for it. The answer in hand
+ * stays shown while the same product is asked again, for another viewer,
+ * and is never shown for another product.
+ */
+const useProduct = (client: GraphQLClient, sku: string) => {
+    const { data, loading, error, retry } = useQuery(client, ProductDocument, { sku });
+    const [answeredFor, setAnsweredFor] = useState<string>();
+    if (!loading && data && answeredFor !== sku) setAnsweredFor(sku);
+    const current = data !== undefined && (!loading || answeredFor === sku) ? data : undefined;
+    return { data, loading, error, retry, current };
+};
+
+/**
+ * A view, once the product has answered, so a missing product is not one,
+ * and the rail beside it, once it has answered too.
+ */
+const useViewed = (client: GraphQLClient, viewed: string | undefined) => {
+    const record = useRecord();
+    useEffect(() => {
+        if (viewed !== undefined) record({ kind: 'view', sku: viewed });
+    }, [record, viewed]);
+    const rail = useQuery(
+        client,
+        RecommendationsDocument,
+        viewed === undefined ? undefined : { sku: viewed, limit: RAIL_SIZE, session: sessionId() }
+    );
+    return rail.loading ? undefined : (rail.data?.recommendations ?? undefined);
+};
+
+export const ProductPage = ({ client, sku, state, navigate, direct = false }: ProductPageProps) => {
+    const { data, loading, error, retry, current } = useProduct(client, sku);
+    const heading = useRef<HTMLHeadingElement>(null);
+    const view = useRef<HTMLElement>(null);
+    useProductFocus({ sku, loading, answer: data, heading, view });
+    useTitle(current?.product?.name);
+    useOwnScroll();
+    const rail = useViewed(client, data?.product?.sku);
+    const back = () => {
+        const { product: _dropped, ...rest } = state;
+        navigate(rest);
+    };
+    const backButton = (
+        <button type="button" className="back" onClick={back}>
+            {backLabel(state, direct)}
+        </button>
+    );
+
+    if (error) {
+        return (
+            <Bare view={view}>
+                <LoadFailure what="This product" reason={error} onRetry={retry} announce={false}>
+                    {backButton}
+                </LoadFailure>
+            </Bare>
+        );
+    }
+    if (current === undefined) {
+        return (
+            <Bare view={view} busy>
+                <p className="notice" role="status">
+                    Loading the product.
+                </p>
+                {backButton}
+            </Bare>
+        );
+    }
+    const { product } = current;
+    if (!product) {
+        // Focus moves here, which reads it, so it is not an alert said a second time.
+        return (
+            <Bare view={view} busy={loading}>
+                <p className="notice">There is no product {sku} in this store.</p>
+                {backButton}
+            </Bare>
+        );
+    }
+    return (
+        <Details
+            product={product}
+            heading={heading}
+            busy={loading}
+            back={backButton}
+            rail={rail}
+            state={state}
+            navigate={navigate}
+        />
     );
 };

@@ -214,18 +214,28 @@ const Masthead = ({
     </>
 );
 
-/** The product that just closed, by any route, so the results can put focus back on its card. */
+/**
+ * The product opened from the results, once every product since has
+ * closed, by any route, so the results can put focus back on its card.
+ * After a walk along the rail that is still the card the shopper left
+ * from, and the results heading takes focus when it is not on the page.
+ */
 const useClosedProduct = (product: string | undefined) => {
     const [closedSku, setClosedSku] = useState<string>();
+    const opened = useRef(product);
     const lastProduct = useRef(product);
     useEffect(() => {
+        if (lastProduct.current === undefined && product !== undefined) opened.current = product;
         if (lastProduct.current !== undefined && product === undefined) {
-            setClosedSku(lastProduct.current);
+            setClosedSku(opened.current ?? lastProduct.current);
         }
         lastProduct.current = product;
     }, [product]);
     const focused = useCallback(() => setClosedSku(undefined), []);
-    return { closedSku, focused };
+    // Whether the visit began on a product, until it first closes, so its way out is named for the store.
+    const [direct, setDirect] = useState(() => product !== undefined);
+    if (direct && product === undefined) setDirect(false);
+    return { closedSku, focused, direct };
 };
 
 const useTour = (offered: boolean) => {
@@ -333,7 +343,7 @@ export const App = ({
     arrival,
 }: AppProps) => {
     const [state, navigate] = useUrlState();
-    const { closedSku, focused } = useClosedProduct(state.product);
+    const { closedSku, focused, direct } = useClosedProduct(state.product);
     const [group, setGroup] = useState<CustomerGroup>('guest');
     // The search the viewer was last switched on, so its results can say what changed.
     const [switchedOn, setSwitchedOn] = useState<string>();
@@ -422,6 +432,7 @@ export const App = ({
                             sku={state.product}
                             state={state}
                             navigate={navigate}
+                            direct={direct}
                         />
                     )}
                     {isReady && state.product === undefined && (
