@@ -237,7 +237,7 @@ const Chooser = ({
             <p>
                 No file of your own?{' '}
                 <button type="button" className="try-link" onClick={onSample}>
-                    Try it with a sample of 200 products
+                    {SAMPLE_BUTTON}
                 </button>
                 , or{' '}
                 <a href={SAMPLE_FILE} download>
@@ -347,9 +347,7 @@ const Review = ({
                     ) : (
                         <div className="try-actions">
                             <button type="button" className="try-primary" onClick={onSearch}>
-                                {partial
-                                    ? 'Search these products'
-                                    : `Search ${count(result.catalog.products.length, 'product', 'products')}`}
+                                {searchLabel(result, partial)}
                             </button>
                             <button type="button" onClick={onAnother}>
                                 Choose another file
@@ -551,6 +549,15 @@ const BeforeStore = ({
     );
 };
 
+/** The button that loads the sample, named again by a message that offers it and by the explainer. */
+const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
+
+/** The button that searches a file, named again by the messages that point to it. */
+const searchLabel = (result: LoadResult, partial: boolean) =>
+    partial || !result.ok
+        ? 'Search these products'
+        : `Search ${count(result.catalog.products.length, 'product', 'products')}`;
+
 /** Files up to this many rows are made again on every change, which takes a moment. */
 const QUICK_ROWS = 1000;
 /** How long a pause in the changes before a larger file is made again whole. */
@@ -634,7 +641,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         } catch (error) {
             setStage({
                 kind: 'choose',
-                problem: `The sample could not be loaded (${messageOf(error)}). Try again, or download it below.`,
+                problem: `The sample could not be loaded (${messageOf(error)}). Press "${SAMPLE_BUTTON}" again, or download the sample and choose it as a file.`,
             });
         }
     }, [base, onFile]);
@@ -655,7 +662,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 return;
             }
             const { catalog } = whole;
-            const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
+            const retry = searchLabel(whole, false);
             pending.current = true;
             setStage({ kind: 'loading', products: catalog.products.length });
             try {
@@ -704,7 +711,14 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         pending.current = true;
         try {
             const loaded = await fetchLoaded(catalogUrl);
-            if (!loaded) throw new Error('nothing is loaded');
+            if (!loaded) {
+                const { replacing: _asked, ...back } = review;
+                setStage({
+                    ...back,
+                    problem: `Your products are no longer in this browser. Press "${searchLabel(review.result, review.partial ?? false)}" to search this file instead.`,
+                });
+                return;
+            }
             window.history.replaceState(null, '', `${base}${lastSearch.current}`);
             setStage({ kind: 'searching', loaded });
         } catch (error) {

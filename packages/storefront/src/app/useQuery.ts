@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { GraphQLClient } from '../client/graphql.js';
 import { createLatest } from '../client/latest.js';
@@ -20,6 +20,8 @@ export interface QueryState<Result> {
     /** Whether the answer for the current variables is still on its way. */
     readonly loading: boolean;
     readonly error: string | undefined;
+    /** Asks again after a failure. */
+    readonly retry: () => void;
 }
 
 export const useQuery = <Result, Variables>(
@@ -36,6 +38,12 @@ export const useQuery = <Result, Variables>(
     }>();
     const [failed, setFailed] = useState<{ client: GraphQLClient; key: string; message: string }>();
     const latest = useRef(createLatest());
+    // Counts the times asked again, so the same question is sent once more.
+    const [attempt, setAttempt] = useState(0);
+    const retry = useCallback(() => {
+        setFailed(undefined);
+        setAttempt((n) => n + 1);
+    }, []);
     const current = (asked: { client: GraphQLClient; key: string } | undefined) =>
         asked?.client === client && asked.key === key;
 
@@ -56,11 +64,12 @@ export const useQuery = <Result, Variables>(
                     message: error instanceof Error ? error.message : 'the request failed',
                 });
             });
-    }, [client, document, key]);
+    }, [client, document, key, attempt]);
 
     return {
         data: key === undefined ? undefined : answered?.data,
         loading: key !== undefined && !current(answered) && !current(failed),
         error: current(failed) ? failed?.message : undefined,
+        retry,
     };
 };

@@ -2,6 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
+import { LoadFailure } from '../app/LoadFailure.jsx';
 import { StateLink } from '../app/StateLink.jsx';
 import {
     activeFilterCount,
@@ -173,13 +174,13 @@ const useResults = (
     // all the hook needs, and more than the generated types say in one breath.
     const document = (previewing ? PreviewDocument : SearchDocument) as Asked;
     const variables = previewing ? { ...input, rules: draft } : input;
-    const { data, loading, error } = useQuery(client, document, variables);
+    const { data, loading, error, retry } = useQuery(client, document, variables);
     const result = data && ('preview' in data ? data.preview : data.search);
     // Whether the result is the answer to this request, rather than one before it.
     const answered = !loading && error === undefined;
     // Whether the result is the store's own answer to this search, not a preview.
     const own = answered && !previewing;
-    return { result, loading, error, previewing, answered, own };
+    return { result, loading, error, retry, previewing, answered, own };
 };
 
 type Result = NonNullable<ReturnType<typeof useResults>['result']>;
@@ -461,7 +462,11 @@ export const ResultsPage = (props: ResultsPageProps) => {
         enabled: state.rules === true,
     });
     const draft = editor.draft;
-    const { result, loading, error, previewing, answered, own } = useResults(client, state, draft);
+    const { result, loading, error, retry, previewing, answered, own } = useResults(
+        client,
+        state,
+        draft
+    );
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
     useRememberedSearch(state.phrase, result, own, props.searched);
@@ -473,9 +478,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
     // shown, the error takes the place of the cards, and the panel stays with whatever
     // is typed in it. A new search closes the panel, so what stays is for this search.
     const alert = error ? (
-        <p className="notice" role="alert">
-            {error}
-        </p>
+        <LoadFailure what="The products" reason={error} onRetry={retry} />
     ) : undefined;
     if (!result || (alert && !state.rules)) {
         return (

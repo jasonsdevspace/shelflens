@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient, type GraphQLClient } from '../client/graphql.js';
 import type { SuggestQuery } from '../generated/operations.js';
 import { clearRecentSearches, rememberSearch } from './recent.js';
-import { SearchBox } from './SearchBox.jsx';
+import { SearchBox, SUGGESTIONS_FAILED } from './SearchBox.jsx';
 import { DEBOUNCE_MS } from './useSuggestions.js';
 
 /*
@@ -384,7 +384,9 @@ describe('what this browser searched before', () => {
         await user.type(box.input, 'bo');
         await waitFor(() => expect(network.pending).toHaveLength(1));
         network.pending[0]?.fail('the network is down');
-        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('down'));
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(SUGGESTIONS_FAILED)
+        );
         expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
             'boots',
         ]);

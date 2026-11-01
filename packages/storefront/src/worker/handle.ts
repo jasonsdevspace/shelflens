@@ -420,7 +420,7 @@ export const createWorkerApi = ({
                 if (previousRules) await rules?.replace(previousRules);
                 shipped = undefined;
                 const reason = error instanceof Error ? error.message : 'it could not be read';
-                return `the store could not be built from this catalog: ${reason}`;
+                return reason;
             }
         });
 

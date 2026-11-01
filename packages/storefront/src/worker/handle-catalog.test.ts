@@ -282,7 +282,9 @@ describe('the worker for a visitor’s own catalog', () => {
         const refused = await api.handle(catalogRequest('PUT', MUGS, true));
         expect(refused?.status).toBe(400);
         expect(await refused?.json()).toMatchObject({
-            errors: [{ message: expect.stringContaining('could not be built from this catalog') }],
+            errors: [
+                { message: expect.stringContaining('names an attribute the engine does not have') },
+            ],
         });
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: LAMPS.version,
