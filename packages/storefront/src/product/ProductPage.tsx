@@ -1,8 +1,8 @@
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import { hasFilters, type SearchState } from '../app/url.js';
+import { type SearchState, serializeSearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
@@ -49,29 +49,46 @@ export interface ProductPageProps {
  * product, with nothing in the address beneath it, has seen no results to
  * go back to, so the button offers the store instead.
  */
-const backLabel = (state: SearchState, direct: boolean): string =>
-    direct &&
-    state.phrase === undefined &&
-    state.category === undefined &&
-    !hasFilters(state) &&
-    state.page === 1
+const backLabel = (state: SearchState, direct: boolean): string => {
+    const { product: _shown, ...behind } = state;
+    return direct && serializeSearchState(behind) === ''
         ? 'Browse all products'
         : 'Back to results';
+};
 
-/** A view with no product in it: loading, missing or failed, with the way out beside it. */
+/**
+ * A view with no product in it: loading, missing or failed, with the way
+ * out beside it. Focus lands on the view, which is named by its line, so
+ * the line is heard once, as focus arrives, rather than also as an alert
+ * or a status.
+ */
 const Bare = ({
     view,
-    busy = false,
+    line,
     children,
 }: {
     readonly view: RefObject<HTMLElement | null>;
-    readonly busy?: boolean;
+    /** What the view says, when it is one line. */
+    readonly line?: string;
     readonly children: ReactNode;
-}) => (
-    <section className="product" ref={view} tabIndex={-1} aria-busy={busy}>
-        {children}
-    </section>
-);
+}) => {
+    const id = useId();
+    return (
+        <section
+            className="product"
+            ref={view}
+            tabIndex={-1}
+            aria-labelledby={line === undefined ? undefined : id}
+        >
+            {line !== undefined && (
+                <p className="notice" id={id}>
+                    {line}
+                </p>
+            )}
+            {children}
+        </section>
+    );
+};
 
 /**
  * Where focus goes, and when. A new product puts it on the page at once,
@@ -101,7 +118,8 @@ const useProductFocus = ({
         if (landed.current !== sku) {
             target?.focus();
             if (!loading) landed.current = sku;
-        } else if (!loading && focusIsFree()) {
+        } else if (focusIsFree()) {
+            // What held focus has gone, as Try again goes once pressed.
             target?.focus();
         }
     }, [sku, loading, answer, heading, view]);
@@ -237,7 +255,12 @@ const useViewed = (client: GraphQLClient, viewed: string | undefined) => {
         RecommendationsDocument,
         viewed === undefined ? undefined : { sku: viewed, limit: RAIL_SIZE, session: sessionId() }
     );
-    return rail.loading ? undefined : (rail.data?.recommendations ?? undefined);
+    // The rail in hand stays while the same product's is asked again, for another
+    // viewer, and is never shown under another product, which it could hold.
+    const [answeredFor, setAnsweredFor] = useState<string>();
+    if (!rail.loading && rail.data && answeredFor !== viewed) setAnsweredFor(viewed);
+    const current = !rail.loading || answeredFor === viewed;
+    return current ? (rail.data?.recommendations ?? undefined) : undefined;
 };
 
 export const ProductPage = ({ client, sku, state, navigate, direct = false }: ProductPageProps) => {
@@ -269,20 +292,15 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
     }
     if (current === undefined) {
         return (
-            <Bare view={view} busy>
-                <p className="notice" role="status">
-                    Loading the product.
-                </p>
+            <Bare view={view} line="Loading the product.">
                 {backButton}
             </Bare>
         );
     }
     const { product } = current;
     if (!product) {
-        // Focus moves here, which reads it, so it is not an alert said a second time.
         return (
-            <Bare view={view} busy={loading}>
-                <p className="notice">There is no product {sku} in this store.</p>
+            <Bare view={view} line={`There is no product ${sku} in this store.`}>
                 {backButton}
             </Bare>
         );

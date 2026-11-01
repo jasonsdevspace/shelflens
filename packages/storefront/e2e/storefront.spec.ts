@@ -265,7 +265,9 @@ test('keeps its place: a search is announced, a product takes focus, and back la
 });
 
 test('browser Back along the rail shows each product from its heading', async ({ page }) => {
-    // Where the focused heading sits once the page has settled, after anything the browser restores.
+    // Where the focused heading sits once the page has settled. The browser's own restore
+    // comes after focus and the product's answer, with no event of its own to wait for, so
+    // the check waits out a moment first rather than passing on the first frame.
     const settledTop = async () => {
         await page.waitForTimeout(800);
         return page.evaluate(() => document.activeElement?.getBoundingClientRect().top ?? NaN);
@@ -279,10 +281,8 @@ test('browser Back along the rail shows each product from its heading', async ({
         const next = rail.getByRole('link').nth(1);
         const name = (await next.locator('.card-name').textContent()) ?? '';
         await next.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(300);
         await next.click();
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
-        await page.waitForTimeout(500);
     }
     const height = page.viewportSize()?.height ?? 0;
     for (let step = 0; step < 2; step += 1) {
