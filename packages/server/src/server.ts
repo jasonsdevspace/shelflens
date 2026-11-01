@@ -64,6 +64,13 @@ export interface ServerOptions {
      * request from another origin is refused.
      */
     readonly origins?: OriginsSupport;
+    /**
+     * Whether a proxy in front of the server sets `x-forwarded-for` and
+     * `x-forwarded-proto`. Without it both are ignored, since any client can
+     * send them: the rate limit counts the address the connection came from,
+     * and the server's own origin is read from the connection.
+     */
+    readonly trustProxy?: boolean;
 }
 
 /** The paths an outside origin may use. */
@@ -98,20 +105,39 @@ interface Arrival {
     readonly route: OriginPath | undefined;
     readonly origins: OriginsSupport | undefined;
     readonly requestId: string;
+    readonly trustProxy: boolean;
 }
+
+/** The first value of a header a trusted proxy sets, or nothing when no proxy is trusted. */
+const forwarded = (
+    request: IncomingMessage,
+    name: string,
+    trusted: boolean
+): string | undefined => {
+    const first = trusted ? request.headers[name]?.toString().split(',')[0]?.trim() : undefined;
+    return first === '' ? undefined : first;
+};
+
+/** Who is asking, for the rate limit: the client a trusted proxy names, or the connection. */
+const addressOf = (request: IncomingMessage, trusted: boolean): string =>
+    forwarded(request, 'x-forwarded-for', trusted) ?? request.socket.remoteAddress ?? 'unknown';
 
 /**
  * The origin the store's own page is served from: the one the host named,
  * or the one this request was made to, by its scheme and its host. A proxy
  * that rewrites the host is why a host may name it.
  */
-const ownOrigin = (request: IncomingMessage, named: string | undefined): string | undefined => {
+const ownOrigin = (
+    request: IncomingMessage,
+    named: string | undefined,
+    trusted: boolean
+): string | undefined => {
     if (named !== undefined) return named;
     const host = request.headers.host;
     if (host === undefined) return undefined;
-    const forwarded = request.headers['x-forwarded-proto']?.toString().split(',')[0]?.trim();
+    const proto = forwarded(request, 'x-forwarded-proto', trusted);
     const secure = 'encrypted' in request.socket && request.socket.encrypted === true;
-    const scheme = forwarded ?? (secure ? 'https' : 'http');
+    const scheme = proto ?? (secure ? 'https' : 'http');
     return `${scheme}://${host}`;
 };
 
@@ -142,11 +168,13 @@ const crossOrigin = ({
     route,
     origins,
     requestId,
+    trustProxy,
 }: Arrival): 'own' | 'allowed' | 'answered' | 'refused' => {
     const sent = request.headers.origin;
     if (sent === undefined) return 'own';
     const origin = originOf(sent);
-    if (origin !== undefined && origin === ownOrigin(request, origins?.own)) return 'own';
+    if (origin !== undefined && origin === ownOrigin(request, origins?.own, trustProxy))
+        return 'own';
     const paths = origins?.paths ?? ['graphql'];
     const allowed =
         origin !== undefined &&
@@ -200,10 +228,17 @@ export interface RulesSupport {
  * right trade for a demo and the wrong one for a fleet, which would count
  * at the edge.
  */
-const createRateLimit = (perMinute: number, now: () => Date) => {
+export const createRateLimit = (perMinute: number, now: () => Date) => {
     const windows = new Map<string, { until: number; count: number }>();
-    return (key: string): boolean => {
+    let swept = 0;
+    const allow = (key: string): boolean => {
         const at = now().getTime();
+        // Windows that have ended are forgotten once a minute, so the count of
+        // clients kept is the count seen in the last minute, not since start.
+        if (at - swept >= 60_000) {
+            for (const [seen, { until }] of windows) if (until <= at) windows.delete(seen);
+            swept = at;
+        }
         const window = windows.get(key);
         if (!window || window.until <= at) {
             windows.set(key, { until: at + 60_000, count: 1 });
@@ -212,21 +247,28 @@ const createRateLimit = (perMinute: number, now: () => Date) => {
         window.count += 1;
         return window.count <= perMinute;
     };
+    /** How many clients it is keeping a window for, so a test can see they are forgotten. */
+    allow.tracked = () => windows.size;
+    return allow;
 };
 
 const readBody = (request: IncomingMessage): Promise<string | undefined> =>
     new Promise((resolve) => {
         let size = 0;
         const chunks: Buffer[] = [];
-        request.on('data', (chunk: Buffer) => {
+        const take = (chunk: Buffer) => {
             size += chunk.length;
             if (size > BODY_LIMIT_BYTES) {
+                // Reading stops here, and the connection closes once the refusal is
+                // written, so the client reads a 413 rather than a reset.
+                request.off('data', take);
+                request.pause();
                 resolve(undefined);
-                request.destroy();
                 return;
             }
             chunks.push(chunk);
-        });
+        };
+        request.on('data', take);
         request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
         request.on('error', () => resolve(undefined));
     });
@@ -247,6 +289,7 @@ const send = (
         .filter((value): value is string => typeof value === 'string')
         .join(', ');
     response.writeHead(status, {
+        ...SECURITY_HEADERS,
         ...headers,
         ...(vary && { vary }),
         'x-request-id': requestId,
@@ -254,7 +297,20 @@ const send = (
     response.end(JSON.stringify(body));
 };
 
-const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+/**
+ * On every answer: a JSON body is never read as anything else, and a page
+ * that frames or loads one gets nothing from it.
+ */
+const SECURITY_HEADERS = {
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+};
+
+/** An answer no cache may keep: a refusal, a failure, or one the store did not version. */
+const JSON_HEADERS = {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+};
 
 const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
     send(response, { status, body: { errors: [{ message }] }, requestId });
@@ -276,6 +332,7 @@ export const createHandler = ({
     events,
     rules,
     origins,
+    trustProxy = false,
 }: ServerOptions): RequestHandler => {
     // Replaced when a merchandiser saves rules, so every request after that
     // is answered by the store built with them.
@@ -292,7 +349,7 @@ export const createHandler = ({
             return;
         }
         // A save builds the whole store again, so the path has the usual allowance.
-        if (!allow(`rules:${request.socket.remoteAddress ?? 'unknown'}`)) {
+        if (!allow(`rules:${addressOf(request, trustProxy)}`)) {
             tooMany(response, requestId);
             return;
         }
@@ -335,7 +392,11 @@ export const createHandler = ({
     ): Promise<{ body: string | undefined; refused: boolean }> => {
         if (request.method !== 'POST') return { body: undefined, refused: false };
         const body = await readBody(request);
-        if (body === undefined) refuse(response, 413, 'the request body is too large', requestId);
+        if (body === undefined) {
+            response.setHeader('connection', 'close');
+            response.once('finish', () => request.destroy());
+            refuse(response, 413, 'the request body is too large', requestId);
+        }
         return { body, refused: body === undefined };
     };
 
@@ -348,7 +409,7 @@ export const createHandler = ({
             refuse(response, 404, 'this store keeps no events', requestId);
             return;
         }
-        if (!allowEvents(request.socket.remoteAddress ?? 'unknown')) {
+        if (!allowEvents(addressOf(request, trustProxy))) {
             tooMany(response, requestId);
             return;
         }
@@ -374,7 +435,9 @@ export const createHandler = ({
         const requestId = randomUUID();
         const url = request.url ?? '/';
         const route = routeOf(url, base);
-        if (answeredEarly({ request, response, route, origins, requestId }, url)) return;
+        if (answeredEarly({ request, response, route, origins, requestId, trustProxy }, url)) {
+            return;
+        }
         if (route === 'events') {
             await receive(request, response, requestId);
             return;
@@ -389,7 +452,7 @@ export const createHandler = ({
         }
 
         const viewer = viewerFromHeader(request.headers[GROUP_HEADER]?.toString());
-        const client = `${viewer.group}:${request.socket.remoteAddress ?? 'unknown'}`;
+        const client = `${viewer.group}:${addressOf(request, trustProxy)}`;
         if (!allow(client)) {
             tooMany(response, requestId);
             return;

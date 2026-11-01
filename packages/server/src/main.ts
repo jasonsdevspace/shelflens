@@ -66,6 +66,8 @@ const events = createMemoryEventStore();
 const server = createServer({
     api: withResponseCache(createStoreApi(store, { events })),
     persistedOnly: process.env.PERSISTED_ONLY === 'true',
+    // Only behind a proxy that sets the forwarded headers, which a client could otherwise forge.
+    trustProxy: process.env.TRUST_PROXY === 'true',
     events,
     ...(origins && { origins }),
 });

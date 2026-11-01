@@ -13,7 +13,7 @@ import {
 import { generateCatalog } from '@shelflens/catalog';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createServer } from './server.js';
+import { createRateLimit, createServer } from './server.js';
 
 const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
 const server = createServer({ api, rateLimitPerMinute: 5 });
@@ -342,5 +342,108 @@ describe('a page on another origin', () => {
             headers: { ...from('https://host.example'), 'access-control-request-method': 'POST' },
         });
         expect(preflight.headers.get('access-control-allow-methods')).toBe('POST');
+    });
+});
+
+describe('what every answer carries', () => {
+    it('says a JSON body is only JSON, loads nothing, and keeps no refusal', async () => {
+        const answered = await fetch(`${demoBase}/graphql?op=${STORE}`);
+        expect(answered.headers.get('x-content-type-options')).toBe('nosniff');
+        expect(answered.headers.get('content-security-policy')).toBe(
+            "default-src 'none'; frame-ancestors 'none'"
+        );
+        const missing = await fetch(`${demoBase}/elsewhere`);
+        expect(missing.status).toBe(404);
+        expect(missing.headers.get('cache-control')).toBe('no-store');
+        expect(missing.headers.get('x-content-type-options')).toBe('nosniff');
+    });
+
+    it('answers a body past the limit with a 413 the client can read', async () => {
+        const response = await fetch(`${demoBase}/graphql`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ query: `{ store { name } } # ${'x'.repeat(64 * 1024)}` }),
+        });
+        expect(response.status).toBe(413);
+        expect(await response.json()).toEqual({
+            errors: [{ message: 'the request body is too large' }],
+        });
+    });
+});
+
+describe('behind a proxy', () => {
+    const listen = async (trustProxy: boolean) => {
+        const server = createServer({
+            api,
+            rateLimitPerMinute: 1,
+            trustProxy,
+            origins: { allowed: [] },
+        });
+        await new Promise<void>((resolve) => server.listen(0, resolve));
+        return {
+            base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+            close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+        };
+    };
+    const asking = (base: string, client: string, headers: Record<string, string> = {}) =>
+        fetch(`${base}/graphql?op=${STORE}`, {
+            headers: { 'x-forwarded-for': client, ...headers },
+        });
+
+    it('counts the connection, not a forwarded address anyone could send, unless told a proxy sets it', async () => {
+        const open = await listen(false);
+        try {
+            expect((await asking(open.base, '10.0.0.1')).status).toBe(200);
+            // Another forwarded address is the same connection, so it is the same client.
+            expect((await asking(open.base, '10.0.0.2')).status).toBe(429);
+        } finally {
+            await open.close();
+        }
+        const proxied = await listen(true);
+        try {
+            expect((await asking(proxied.base, '10.0.0.1')).status).toBe(200);
+            expect((await asking(proxied.base, '10.0.0.2')).status).toBe(200);
+            expect((await asking(proxied.base, '10.0.0.1')).status).toBe(429);
+        } finally {
+            await proxied.close();
+        }
+    });
+
+    it('reads its own scheme from a proxy only when told one sets it', async () => {
+        const open = await listen(false);
+        const host = new URL(open.base).host;
+        try {
+            // Claiming https over a plain connection does not make the page its own.
+            const claimed = await asking(open.base, '10.0.0.3', {
+                origin: `https://${host}`,
+                'x-forwarded-proto': 'https',
+            });
+            expect(claimed.status).toBe(403);
+        } finally {
+            await open.close();
+        }
+        const proxied = await listen(true);
+        const proxiedHost = new URL(proxied.base).host;
+        try {
+            const own = await asking(proxied.base, '10.0.0.4', {
+                origin: `https://${proxiedHost}`,
+                'x-forwarded-proto': 'https',
+            });
+            expect(own.status).toBe(200);
+        } finally {
+            await proxied.close();
+        }
+    });
+});
+
+describe('the rate limit', () => {
+    it('forgets a client once its window has ended, so it keeps only the last minute', () => {
+        let at = 0;
+        const allow = createRateLimit(5, () => new Date(at));
+        for (let client = 0; client < 100; client += 1) allow(`client-${String(client)}`);
+        expect(allow.tracked()).toBe(100);
+        at = 61_000;
+        allow('later');
+        expect(allow.tracked()).toBe(1);
     });
 });

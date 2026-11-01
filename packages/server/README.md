@@ -24,7 +24,12 @@ storefront's dev server uses it to answer `/graphql` in development, so the same
 that the worker runs in production. `createServer` wraps it in `node:http`.
 
 `PORT` and `PRODUCTS` set the port and the size of the generated catalog. `PERSISTED_ONLY=true`
-refuses full queries.
+refuses full queries. Behind a proxy that sets `x-forwarded-for` and `x-forwarded-proto`,
+`TRUST_PROXY=true` lets the rate limit count the client the proxy names and the server read its
+own scheme from the proxy. Without it both headers are ignored, since any client can send them.
+
+Every answer says its JSON is only JSON and loads nothing, and a refusal or a failure is never
+kept by a cache. A body past 16 KB is answered with a 413, and the connection closes after it.
 
 ## A page on another origin
 
