@@ -6,13 +6,17 @@
 # TypeScript and its lint plugin in a group of their own.
 # Security fixes arrive separately, as soon as an advisory is published.
 # Each update carries the dependencies label alone, so pull requests sort by
-# the kind of work rather than by the package manager.
+# the kind of work rather than by the package manager. A new version waits a
+# week before it is offered, so a release pulled for being compromised is
+# usually gone before it is proposed. Security updates do not wait.
 version: 2
 updates:
     - package-ecosystem: npm
       directory: /
       schedule:
           interval: weekly
+      cooldown:
+          default-days: 7
       labels: ['dependencies']
       groups:
           # TypeScript and its lint plugin move together. typescript-eslint
@@ -31,11 +35,18 @@ updates:
           # The Node types follow the Node major in .nvmrc.
           - dependency-name: '@types/node'
             update-types: ['version-update:semver-major']
+          # Lighthouse 13.6 brought in a source-available license and a
+          # moderate advisory through its error reporting, so it stays on 13.5
+          # until a later version drops them, checked by hand.
+          - dependency-name: lighthouse
+            versions: ['>=13.6.0']
 
     - package-ecosystem: github-actions
       directory: /
       schedule:
           interval: weekly
+      cooldown:
+          default-days: 7
       labels: ['dependencies']
       groups:
           actions:
