@@ -472,13 +472,23 @@ export const ResultsPage = (props: ResultsPageProps) => {
     useRememberedSearch(state.phrase, result, own, props.searched);
     useReturnFocus(main, focusSku, !loading, onFocused);
     useArrivalFocus(main, props.arrival, answered);
+    // Try again takes its own button away, so the results heading takes focus once they land.
+    const [retried, setRetried] = useState<number>();
+    useArrivalFocus(main, retried, answered);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
     // An error is the page, except with the panel open: the answer before it stays
     // shown, the error takes the place of the cards, and the panel stays with whatever
     // is typed in it. A new search closes the panel, so what stays is for this search.
     const alert = error ? (
-        <LoadFailure what="The products" reason={error} onRetry={retry} />
+        <LoadFailure
+            what="The products"
+            reason={error}
+            onRetry={() => {
+                setRetried(performance.now());
+                retry();
+            }}
+        />
     ) : undefined;
     if (!result || (alert && !state.rules)) {
         return (

@@ -205,9 +205,11 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Keep my products' }));
         expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Your products are no longer in this browser. Press "Search 150 products" to search this file instead.'
+            'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.'
         );
-        expect(screen.getByRole('button', { name: 'Search 150 products' })).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Yes, search this file' }));
+        failure = undefined;
+        await screen.findByText(/your own catalog of 150 products/);
     });
 
     it('replaces the products and forgets their rules once the visitor says yes', async () => {

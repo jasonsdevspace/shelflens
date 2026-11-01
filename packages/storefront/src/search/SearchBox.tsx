@@ -295,7 +295,7 @@ interface Said {
 }
 
 /** Said when the suggestions fail, with the way on that still works. */
-export const SUGGESTIONS_FAILED = 'Suggestions could not be loaded. Press Enter to search anyway.';
+export const SUGGESTIONS_FAILED = 'Suggestions could not be loaded. You can still search.';
 
 /**
  * What the status line says. Only while the popover is open, so a landed search

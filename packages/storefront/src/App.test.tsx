@@ -197,8 +197,10 @@ describe('what did not load', () => {
         expect(alert).toHaveTextContent(
             'The products could not be loaded. Try again, and if it keeps happening, reload the page.'
         );
-        await userEvent.setup().click(within(alert).getByRole('button', { name: 'Try again' }));
-        expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('All products');
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
+        // The button went with the message, so the results heading takes focus.
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('All products');
     });
 
     const openProduct = () => {
@@ -211,24 +213,24 @@ describe('what did not load', () => {
                 ready={Promise.resolve()}
             />
         );
-        return screen.findByRole('alert');
+        return screen.findByText(/This product could not be loaded\./);
     };
 
     it('says a product could not be loaded, and loads it on Try again', async () => {
         failOnce(ProductDocument);
-        const alert = await openProduct();
-        expect(alert).toHaveTextContent('This product could not be loaded.');
-        await userEvent.setup().click(within(alert).getByRole('button', { name: 'Try again' }));
+        const message = await openProduct();
+        // Focus moves to the message, which reads it, so it is not announced as well.
+        expect(message).not.toHaveAttribute('role', 'alert');
+        expect(message.closest('section')).toHaveFocus();
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
         expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(featured.name);
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
     });
 
     it('goes back to the results from a product that did not load', async () => {
         failOnce(ProductDocument);
-        const alert = await openProduct();
-        await userEvent
-            .setup()
-            .click(within(alert).getByRole('button', { name: 'Back to results' }));
+        await openProduct();
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Back to results' }));
         expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('All products');
     });
 });

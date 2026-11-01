@@ -347,7 +347,9 @@ const Review = ({
                     ) : (
                         <div className="try-actions">
                             <button type="button" className="try-primary" onClick={onSearch}>
-                                {searchLabel(result, partial)}
+                                {partial
+                                    ? 'Search these products'
+                                    : searchLabel(result.catalog.products.length)}
                             </button>
                             <button type="button" onClick={onAnother}>
                                 Choose another file
@@ -552,11 +554,8 @@ const BeforeStore = ({
 /** The button that loads the sample, named again by a message that offers it and by the explainer. */
 const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
 
-/** The button that searches a file, named again by the messages that point to it. */
-const searchLabel = (result: LoadResult, partial: boolean) =>
-    partial || !result.ok
-        ? 'Search these products'
-        : `Search ${count(result.catalog.products.length, 'product', 'products')}`;
+/** The button that searches a whole file, named again by the messages that point to it. */
+const searchLabel = (products: number) => `Search ${count(products, 'product', 'products')}`;
 
 /** Files up to this many rows are made again on every change, which takes a moment. */
 const QUICK_ROWS = 1000;
@@ -662,7 +661,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 return;
             }
             const { catalog } = whole;
-            const retry = searchLabel(whole, false);
+            const retry = searchLabel(catalog.products.length);
             pending.current = true;
             setStage({ kind: 'loading', products: catalog.products.length });
             try {
@@ -712,10 +711,12 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         try {
             const loaded = await fetchLoaded(catalogUrl);
             if (!loaded) {
-                const { replacing: _asked, ...back } = review;
+                // Only the saved rules are left, and searching this file still discards them,
+                // so the question stays.
                 setStage({
-                    ...back,
-                    problem: `Your products are no longer in this browser. Press "${searchLabel(review.result, review.partial ?? false)}" to search this file instead.`,
+                    ...review,
+                    problem:
+                        'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.',
                 });
                 return;
             }

@@ -65,7 +65,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
     if (error) {
         return (
             <section className="product" ref={missing} tabIndex={-1}>
-                <LoadFailure what="This product" reason={error} onRetry={retry}>
+                <LoadFailure what="This product" reason={error} onRetry={retry} announce={false}>
                     <button type="button" className="back" onClick={back}>
                         Back to results
                     </button>
