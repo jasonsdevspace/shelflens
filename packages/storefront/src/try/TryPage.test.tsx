@@ -4,12 +4,13 @@ import {
     createMemoryRuleStore,
     PERSISTED_OPERATIONS,
 } from '@shelflens/api';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMemoryCatalogStore } from '../worker/catalog-db.js';
 import { createWorkerApi } from '../worker/handle.js';
+import { StoreDidNotStart, WorkerUnsupported } from '../worker/register.js';
 import { CATALOG_FILE_BYTES_CAP } from './limits.js';
 import { SAMPLE_FILE, sampleCsv } from './sample.js';
 import { TryPage } from './TryPage.jsx';
@@ -318,5 +319,66 @@ describe('the page for a visitor’s own catalog', () => {
         expect(
             await screen.findByRole('button', { name: 'Search 1,500 products' })
         ).toBeInTheDocument();
+    });
+});
+
+describe('while the store is built', () => {
+    it('keeps focus on a heading that says so, then hands it to the results', async () => {
+        let release: () => void = () => undefined;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        // The worker's answer waits, so the page can be read while the store is built.
+        failure = (request) => {
+            if (request.method !== 'PUT' || !new URL(request.url).pathname.endsWith('catalog')) {
+                return undefined;
+            }
+            failure = undefined;
+            return held.then(async () =>
+                fetch(request.url, {
+                    method: request.method,
+                    headers: request.headers,
+                    body: await request.text(),
+                })
+            );
+        };
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        const building = await screen.findByRole('heading', {
+            level: 1,
+            name: 'Building the store from your 200 products',
+        });
+        await waitFor(() => expect(building).toHaveFocus());
+        release();
+        await screen.findByText(/your own catalog of 200 products/);
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+    });
+});
+
+describe('a store that does not start', () => {
+    it('offers to try again when it did not start this time', async () => {
+        render(
+            <TryPage
+                ready={Promise.reject(new StoreDidNotStart('the store took too long'))}
+                base={BASE}
+            />
+        );
+        const alert = await screen.findByRole('alert');
+        expect(
+            within(alert).getByRole('heading', { level: 1, name: 'The store could not start' })
+        ).toBeInTheDocument();
+        expect(within(alert).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+        expect(alert).not.toHaveTextContent(/non-private/);
+    });
+
+    it('says to open a regular window in a browser that cannot run it', async () => {
+        render(<TryPage ready={Promise.reject(new WorkerUnsupported('refused'))} base={BASE} />);
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Open this page in a regular, non-private window.');
+        expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
     });
 });

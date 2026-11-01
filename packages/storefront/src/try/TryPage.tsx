@@ -2,6 +2,8 @@ import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useSt
 
 import { App } from '../App.jsx';
 import { DemoFooter, PortfolioStrip } from '../app/Portfolio.jsx';
+import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
+import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type Mapping } from './mapping.js';
@@ -36,7 +38,12 @@ interface Loaded {
 
 type Stage =
     | { readonly kind: 'starting' }
-    | { readonly kind: 'failed'; readonly message: string }
+    | {
+          readonly kind: 'failed';
+          readonly failure: StartFailureKind;
+          /** What went wrong, said only on the dev server, where the store does not run. */
+          readonly message: string;
+      }
     | { readonly kind: 'choose'; readonly problem?: string }
     | {
           readonly kind: 'review';
@@ -51,10 +58,12 @@ type Stage =
           readonly replacing?: boolean;
       }
     | { readonly kind: 'reading'; readonly name: string }
-    | { readonly kind: 'loading' }
+    | { readonly kind: 'loading'; readonly products: number }
     | {
           readonly kind: 'searching';
           readonly loaded: Loaded;
+          /** New each time the visitor's file is searched, so the results take focus as they land. */
+          readonly arrival?: number;
           readonly problem?: string;
           /** Asked first, since removing the products discards the visitor's saved rules. */
           readonly confirm?: boolean;
@@ -114,6 +123,45 @@ const useHeadingFocus = (key: string, announce: boolean) => {
     }, [key, announce]);
     return heading;
 };
+
+/**
+ * While the store is built from the visitor's file. Its heading takes the
+ * focus the pressed button had, so a keyboard or screen reader user is told
+ * what is happening rather than being left at the top of the page.
+ */
+const Building = ({
+    products,
+    announce,
+}: {
+    readonly products: number;
+    readonly announce: boolean;
+}) => {
+    const heading = useHeadingFocus('loading', announce);
+    return (
+        <section className="try-stage" aria-labelledby="try-building">
+            <h1 id="try-building" ref={heading} tabIndex={-1}>
+                Building the store from your {count(products, 'product', 'products')}
+            </h1>
+        </section>
+    );
+};
+
+/**
+ * Waits until the browser has painted, so a stage set just before slow work
+ * shows before that work holds the page.
+ */
+const nextPaint = () =>
+    new Promise<void>((resolve) => {
+        // A hidden tab paints no frames, so a timer goes on without one.
+        const fallback = setTimeout(resolve, 100);
+        if (typeof requestAnimationFrame !== 'function') return;
+        requestAnimationFrame(() =>
+            setTimeout(() => {
+                clearTimeout(fallback);
+                resolve();
+            }, 0)
+        );
+    });
 
 /** Where a file is chosen, dropped, or the sample is taken. */
 const Chooser = ({
@@ -461,16 +509,13 @@ const BeforeStore = ({
             <main className="content try">
                 {stage.kind === 'starting' && <p className="notice">Preparing the store.</p>}
                 {stage.kind === 'loading' && (
-                    <p className="notice" role="status">
-                        Building the store from your products.
-                    </p>
+                    <Building products={stage.products} announce={announce} />
                 )}
                 {stage.kind === 'failed' && (
-                    <p className="notice" role="alert">
-                        The store could not start in this browser ({stage.message}). It runs as a
-                        small program the page installs, and this browser did not allow it. A
-                        regular, non-private window usually does.
-                    </p>
+                    <>
+                        <StartFailure kind={stage.failure} />
+                        {import.meta.env.DEV && <p className="notice">{stage.message}</p>}
+                    </>
                 )}
                 {stage.kind === 'reading' && (
                     <Chooser
@@ -549,7 +594,13 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     if (live) setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
                 },
                 (error: unknown) => {
-                    if (live) setStage({ kind: 'failed', message: messageOf(error) });
+                    if (live) {
+                        setStage({
+                            kind: 'failed',
+                            failure: startFailure(error),
+                            message: messageOf(error),
+                        });
+                    }
                 }
             );
         return () => {
@@ -611,8 +662,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { catalog } = whole;
             const retry = `Search ${count(catalog.products.length, 'product', 'products')}`;
             pending.current = true;
-            setStage({ kind: 'loading' });
+            setStage({ kind: 'loading', products: catalog.products.length });
             try {
+                // Preparing a large file for the worker holds the page, so the stage shows first.
+                await nextPaint();
                 const response = await changeCatalog(
                     catalogUrl,
                     { method: 'PUT', body: JSON.stringify(catalog) },
@@ -631,7 +684,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 clearSearch(base);
                 setStage(
                     loaded
-                        ? { kind: 'searching', loaded }
+                        ? { kind: 'searching', loaded, arrival: performance.now() }
                         : {
                               ...review,
                               problem: `The store did not keep your products. Press "${retry}" to try again.`,
@@ -772,6 +825,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 ready={Promise.resolve()}
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
+                arrival={stage.arrival}
                 banner={
                     <CatalogBar
                         loaded={stage.loaded}

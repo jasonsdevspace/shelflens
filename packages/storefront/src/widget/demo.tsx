@@ -1,7 +1,7 @@
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { controlledByWorker } from '../worker/register.js';
+import { controlledByWorker, startFailure } from '../worker/register.js';
 import { hostConfig, storeOf } from './host-config.js';
 import type { mountShelfLens } from './index.jsx';
 
@@ -102,16 +102,16 @@ Promise.all([ready.then(hasCatalog), widget()])
         mountShelfLens(target, { apiUrl: config.apiUrl, storeUrl: config.storeUrl });
     })
     .catch((failure: unknown) => {
-        // A browser without a service worker, the dev server, or a file that did not
-        // arrive: said in place, and the reason told apart, since only the last is
-        // helped by reloading.
+        // The dev server, a browser that cannot run the store, or a start that failed
+        // this time: said in place, and told apart, since only the last is helped by
+        // reloading.
         const reason = failure instanceof Error ? failure.message : '';
         say(
-            reason.includes('service worker')
-                ? 'The search box could not start in this browser. It needs a service worker.'
-                : reason.includes('built site')
-                  ? 'The search box over your own products runs on the built site, not the dev server.'
-                  : 'The search box could not be loaded on this page. Reload the page and try again.'
+            reason.includes('built site')
+                ? 'The search box over your own products runs on the built site, not the dev server.'
+                : startFailure(failure) === 'unsupported'
+                  ? 'The search box could not start in this browser. It runs as a small program the page installs, and this browser did not allow it. Open this page in a regular, non-private window.'
+                  : 'The search box could not start. Check your connection and reload the page.'
         );
         console.error(failure);
     });

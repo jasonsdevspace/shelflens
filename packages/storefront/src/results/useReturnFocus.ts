@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 
 /**
  * Puts focus back where the visitor was when a product closes: on the card
@@ -27,4 +27,25 @@ export const useReturnFocus = (
         }
         onDone();
     }, [container, sku, settled, onDone]);
+};
+
+/**
+ * Moves focus to the results heading when the results land on a store the
+ * visitor just asked for. Each arrival is a new number, so asking again for
+ * the same store moves focus again. Steps aside if the visitor has already
+ * put focus somewhere, as the return to a closed product does.
+ */
+export const useArrivalFocus = (
+    container: RefObject<HTMLElement | null>,
+    arrival: number | undefined,
+    answered: boolean
+): void => {
+    const handled = useRef<number>(undefined);
+    useEffect(() => {
+        if (arrival === undefined || !answered || handled.current === arrival) return;
+        handled.current = arrival;
+        const active = document.activeElement;
+        if (active !== null && active !== document.body) return;
+        container.current?.querySelector<HTMLElement>('.results-heading')?.focus();
+    }, [container, arrival, answered]);
 };

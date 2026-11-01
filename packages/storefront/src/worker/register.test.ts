@@ -5,9 +5,11 @@ import {
     CLAIM_MESSAGE,
     controlledByWorker,
     isOwnController,
+    StoreDidNotStart,
     VISIT_MESSAGE,
     VISITED_MESSAGE,
     type WorkerHost,
+    WorkerUnsupported,
 } from './register.js';
 
 /*
@@ -36,9 +38,14 @@ const fakeContainer = ({
     };
     const container = {
         controller: controlled ? (worker as unknown as ServiceWorker) : null,
+        // A registration with no active worker has one installing, as a first visit does.
         register: vi.fn(() =>
             Promise.resolve({
                 active: active ? worker : null,
+                installing: active
+                    ? null
+                    : Object.assign(new EventTarget(), { state: 'installing' }),
+                waiting: null,
             } as unknown as ServiceWorkerRegistration)
         ),
         addEventListener: target.addEventListener.bind(target),
@@ -109,9 +116,94 @@ describe('registering the worker', () => {
     });
 
     it('refuses a browser with no service worker', async () => {
-        await expect(
-            controlledByWorker('/sw.js', '/', { serviceWorker: undefined, reload: vi.fn() })
-        ).rejects.toThrow('needs a service worker');
+        const refused = controlledByWorker('/sw.js', '/', {
+            serviceWorker: undefined,
+            reload: vi.fn(),
+        });
+        await expect(refused).rejects.toThrow('needs a service worker');
+        await expect(refused).rejects.toBeInstanceOf(WorkerUnsupported);
+    });
+
+    it('refuses a browser that will not register the worker, as some private windows do', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        container.register.mockImplementation(() =>
+            Promise.reject(new DOMException('The operation is insecure.', 'SecurityError'))
+        );
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host)).rejects.toBeInstanceOf(
+            WorkerUnsupported
+        );
+    });
+
+    it('gives up as soon as the worker being installed is discarded, as a failed download leaves it', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const installing = Object.assign(new EventTarget(), { state: 'installing' });
+        container.register.mockImplementation(() =>
+            Promise.resolve({
+                active: null,
+                installing,
+                waiting: null,
+            } as unknown as ServiceWorkerRegistration)
+        );
+        const { host } = hostWith(container);
+        const start = controlledByWorker('/sw.js', '/', host);
+        await vi.waitFor(() => expect(container.register).toHaveBeenCalled());
+        installing.state = 'redundant';
+        installing.dispatchEvent(new Event('statechange'));
+        await expect(start).rejects.toBeInstanceOf(StoreDidNotStart);
+    });
+
+    it('counts a worker script that did not arrive as a start to try again', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        container.register.mockImplementation(() =>
+            Promise.reject(new TypeError('Failed to fetch the script'))
+        );
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
+    });
+
+    it('gives up at once on an install that was discarded before the page looked', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        container.register.mockImplementation(() =>
+            Promise.resolve({
+                active: null,
+                installing: null,
+                waiting: null,
+            } as unknown as ServiceWorkerRegistration)
+        );
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host, 60_000)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
+    });
+
+    it('gives up on a script that never arrives', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        container.register.mockImplementation(() => new Promise(() => undefined));
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host, 20)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
+    });
+
+    it('loads the page again when the store is claimed after the page gave up on it', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const { host, reload } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host, 20)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
+        container.takeOver();
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
+    it('gives up on a start that stalls with nothing failing', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const { host } = hostWith(container);
+        await expect(controlledByWorker('/sw.js', '/', host, 20)).rejects.toBeInstanceOf(
+            StoreDidNotStart
+        );
     });
 });
 

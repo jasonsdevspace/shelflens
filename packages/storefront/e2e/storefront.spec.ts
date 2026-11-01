@@ -535,3 +535,24 @@ test('what this browser searched before is offered on the next visit, filtered a
     await search.click();
     await expect(search).toHaveAttribute('aria-expanded', 'false');
 });
+
+test('a catalog that does not download ends the wait, and the store starts on a second try', async ({
+    page,
+    context,
+}) => {
+    // The worker fetches the catalog while it installs. Refusing it fails the install.
+    await context.route('**/catalog.json', (route) => route.abort());
+    await page.goto('/');
+    const alert = page.getByRole('alert');
+    await expect(
+        alert.getByRole('heading', { level: 1, name: 'The store could not start' })
+    ).toBeVisible();
+    await expect(alert).toContainText('Check your connection and try again.');
+    await expect(page.getByText('Preparing the store.')).toBeHidden();
+    await audit(page);
+
+    await context.unroute('**/catalog.json');
+    await alert.getByRole('button', { name: 'Try again' }).click();
+    await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+});

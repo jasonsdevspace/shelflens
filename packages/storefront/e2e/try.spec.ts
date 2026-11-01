@@ -61,6 +61,8 @@ test('searches a visitor’s file with everything the demo has, without it leavi
     await audit(page);
     await page.getByRole('button', { name: 'Search 200 products' }).click();
     await expect(page.getByText('your own catalog of 200 products')).toBeVisible();
+    // Focus follows the press to the results, rather than dropping to the top of the page.
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await search.fill('bag');

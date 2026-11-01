@@ -11,6 +11,7 @@ import {
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
+import { StartFailure } from './app/StartFailure.jsx';
 import { storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
@@ -31,6 +32,7 @@ import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, markTourSeen } from './tour/seen.js';
 import { Tour, TOUR_ID } from './tour/Tour.jsx';
+import { startFailure } from './worker/register.js';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -49,21 +51,29 @@ export interface AppProps {
     readonly viewerSwitch?: boolean;
     /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
     readonly banner?: ReactNode;
+    /** Starts the store again after it did not start. A fresh load of the page unless a test passes its own. */
+    readonly retry?: (() => void) | undefined;
+    /** New each time the visitor brings this store, so the results heading takes focus as they land. */
+    readonly arrival?: number | undefined;
 }
 
-type Readiness = 'waiting' | 'ready' | 'failed';
+/**
+ * Whether the store answers yet. A browser that cannot run it is told what
+ * to do instead, and a store that did not start this time can be tried again.
+ */
+type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
 
 /** What the page says while the store is not answering yet, or cannot. */
-const Standby = ({ readiness }: { readonly readiness: Readiness }) => {
+const Standby = ({
+    readiness,
+    retry,
+}: {
+    readonly readiness: Readiness;
+    readonly retry: (() => void) | undefined;
+}) => {
     if (readiness === 'waiting') return <p className="notice">Preparing the store.</p>;
-    if (readiness === 'failed') {
-        return (
-            <p className="notice" role="alert">
-                The store could not start in this browser. It needs a service worker.
-            </p>
-        );
-    }
-    return null;
+    if (readiness === 'ready') return null;
+    return <StartFailure kind={readiness} retry={retry} />;
 };
 
 /** Opens and closes the tour, and says which panel it controls. */
@@ -107,19 +117,21 @@ const EditedRulesNotice = ({
 /** What is said above the results: the store starting, a page's banner, and edited rules. */
 const Notices = ({
     readiness,
+    retry,
     banner,
     rulesEdited,
     rulesUrl,
     onReset,
 }: {
     readonly readiness: Readiness;
+    readonly retry: (() => void) | undefined;
     readonly banner: ReactNode;
     readonly rulesEdited: boolean;
     readonly rulesUrl: string;
     readonly onReset: () => void;
 }) => (
     <>
-        <Standby readiness={readiness} />
+        <Standby readiness={readiness} retry={retry} />
         {readiness === 'ready' && banner}
         {readiness === 'ready' && rulesEdited && (
             <EditedRulesNotice rulesUrl={rulesUrl} onReset={onReset} />
@@ -278,6 +290,8 @@ export const App = ({
     tour = true,
     viewerSwitch = true,
     banner,
+    retry,
+    arrival,
 }: AppProps) => {
     const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
@@ -301,7 +315,7 @@ export const App = ({
     useEffect(() => {
         ready.then(
             () => setReadiness('ready'),
-            () => setReadiness('failed')
+            (error: unknown) => setReadiness(startFailure(error))
         );
     }, [ready]);
 
@@ -368,6 +382,7 @@ export const App = ({
                 <main className={`content${touring ? ' has-tour' : ''}`}>
                     <Notices
                         readiness={readiness}
+                        retry={retry}
                         banner={banner}
                         rulesEdited={store.data?.store.rulesEdited ?? false}
                         rulesUrl={rulesUrl}
@@ -395,6 +410,7 @@ export const App = ({
                             onStoreChanged={storeChanged}
                             storeRevision={revision}
                             searched={searched}
+                            arrival={arrival}
                         />
                     )}
                 </main>
