@@ -159,8 +159,22 @@ export type Popularity = {
     readonly weight: Scalars['Float']['output'];
 };
 
+/** The least and the most a product costs. */
+export type PriceBounds = {
+    readonly __typename?: 'PriceBounds';
+    readonly max: Money;
+    readonly min: Money;
+};
+
 export type PriceRange = {
     readonly __typename?: 'PriceRange';
+    /**
+     * What a guest pays, when the viewer pays less, so a member can see what
+     * the member price saves. Null for a guest, and whenever the price is the
+     * same for everyone. A guest's price is the list price, which every
+     * viewer may see.
+     */
+    readonly listPrice: Maybe<PriceBounds>;
     readonly max: Money;
     /**
      * True when the viewer's group pays below the list price. A guest pays list,
@@ -341,6 +355,12 @@ export type Recommendations = {
     readonly category: Category;
     readonly items: ReadonlyArray<Product>;
     readonly source: RecommendationSource;
+    /**
+     * How many of the items, from the first, were viewed with this product.
+     * The rest are the category's most rated, so a rail can say where each
+     * part of it came from. Zero when the source is the category alone.
+     */
+    readonly viewedTogether: Scalars['Int']['output'];
 };
 
 export type RelaxedSearch = {
@@ -675,6 +695,7 @@ export type ResolversTypes = {
     Money: ResolverTypeWrapper<Money>;
     NoResults: ResolverTypeWrapper<NoResultsModel>;
     Popularity: ResolverTypeWrapper<Popularity>;
+    PriceBounds: ResolverTypeWrapper<PriceBounds>;
     PriceRange: ResolverTypeWrapper<PriceRange>;
     Product: ResolverTypeWrapper<ProductModel>;
     Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -729,6 +750,7 @@ export type ResolversParentTypes = {
     Money: Money;
     NoResults: NoResultsModel;
     Popularity: Popularity;
+    PriceBounds: PriceBounds;
     PriceRange: PriceRange;
     Product: ProductModel;
     Query: Record<PropertyKey, never>;
@@ -835,10 +857,19 @@ export type PopularityResolvers<
     weight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 };
 
+export type PriceBoundsResolvers<
+    ContextType = Context,
+    ParentType extends ResolversParentTypes['PriceBounds'] = ResolversParentTypes['PriceBounds'],
+> = {
+    max?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+    min?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+};
+
 export type PriceRangeResolvers<
     ContextType = Context,
     ParentType extends ResolversParentTypes['PriceRange'] = ResolversParentTypes['PriceRange'],
 > = {
+    listPrice?: Resolver<Maybe<ResolversTypes['PriceBounds']>, ParentType, ContextType>;
     max?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
     memberPrice?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     min?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
@@ -938,6 +969,7 @@ export type RecommendationsResolvers<
     category?: Resolver<ResolversTypes['Category'], ParentType, ContextType>;
     items?: Resolver<ReadonlyArray<ResolversTypes['Product']>, ParentType, ContextType>;
     source?: Resolver<ResolversTypes['RecommendationSource'], ParentType, ContextType>;
+    viewedTogether?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type RelaxedSearchResolvers<
@@ -1080,6 +1112,7 @@ export type Resolvers<ContextType = Context> = {
     Money?: MoneyResolvers<ContextType>;
     NoResults?: NoResultsResolvers<ContextType>;
     Popularity?: PopularityResolvers<ContextType>;
+    PriceBounds?: PriceBoundsResolvers<ContextType>;
     PriceRange?: PriceRangeResolvers<ContextType>;
     Product?: ProductResolvers<ContextType>;
     Query?: QueryResolvers<ContextType>;

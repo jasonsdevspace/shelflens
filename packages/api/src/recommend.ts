@@ -26,6 +26,8 @@ export interface RecommendationsModel {
     readonly source: RecommendationSource;
     readonly category: Category;
     readonly items: readonly Product[];
+    /** How many of the items, from the first, were viewed with this product. */
+    readonly viewedTogether: number;
 }
 
 export interface RecommendationRequest {
@@ -123,5 +125,6 @@ export const recommend = (
         source: together > 0 ? 'VIEWED_TOGETHER' : 'CATEGORY_BESTSELLERS',
         category,
         items,
+        viewedTogether: together,
     };
 };

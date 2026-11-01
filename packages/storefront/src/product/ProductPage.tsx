@@ -5,10 +5,9 @@ import { useStoreInfo } from '../app/StoreContext.jsx';
 import { type SearchState, serializeSearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
-import type { GraphQLClient } from '../client/graphql.js';
+import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
 import { useRecord } from '../events/EventsContext.jsx';
 import { sessionId } from '../events/session.js';
-import { count } from '../format/count.js';
 import { formatMoney, formatPriceRange } from '../format/money.js';
 import {
     ProductDocument,
@@ -18,6 +17,7 @@ import {
 } from '../generated/operations.js';
 import { focusIsFree } from '../results/useReturnFocus.js';
 import { Swatch } from '../search/Swatch.jsx';
+import { memberLine, metaLine } from './lines.js';
 import { Rail } from './Rail.jsx';
 import { variantRows } from './variants.js';
 
@@ -33,6 +33,18 @@ import { variantRows } from './variants.js';
  * product's rail would be the wrong one, and could hold this product.
  */
 
+/** What a guest is told under a missing product, in the switch's own words. */
+const FOR_MEMBERS =
+    'Some products are for members only. Choose "Member" under "Shopping as" to see them.';
+
+/** Said only where it can be true: to a guest, with a switch to name and products it would show. */
+const forMembers = ({
+    group,
+    switchable,
+    membersOnly,
+}: Pick<ProductPageProps, 'group' | 'switchable' | 'membersOnly'>): string | undefined =>
+    group === 'guest' && switchable === true && membersOnly !== false ? FOR_MEMBERS : undefined;
+
 /** How many products stand beside one. */
 export const RAIL_SIZE = 6;
 
@@ -43,6 +55,15 @@ export interface ProductPageProps {
     readonly navigate: Navigate;
     /** Whether the visit began on this product, rather than opening it from the results. */
     readonly direct?: boolean;
+    /** Who is shopping, so a missing product can say how a member would see more. */
+    readonly group?: CustomerGroup;
+    /** Whether the viewer switch is beside the page, so the way to it can be named. */
+    readonly switchable?: boolean;
+    /**
+     * Whether the store has products for members only, so a missing one may
+     * be one of them. Unless told otherwise, a store has.
+     */
+    readonly membersOnly?: boolean | undefined;
 }
 
 /**
@@ -68,12 +89,15 @@ const Bare = ({
     view,
     title,
     line,
+    note,
     children,
 }: {
     readonly view: RefObject<HTMLElement | null>;
     readonly title?: string;
     /** What the view says, when it is one line. */
     readonly line?: string;
+    /** A line after it, said with it as focus arrives. */
+    readonly note?: string | undefined;
     readonly children: ReactNode;
 }) => {
     const id = useId();
@@ -83,11 +107,17 @@ const Bare = ({
             ref={view}
             tabIndex={-1}
             aria-labelledby={line === undefined ? undefined : id}
+            aria-describedby={note === undefined ? undefined : `${id}-note`}
         >
             {title !== undefined && <h1 className="product-name">{title}</h1>}
             {line !== undefined && (
                 <p className={title === undefined ? 'notice' : 'notice is-answer'} id={id}>
                     {line}
+                </p>
+            )}
+            {note !== undefined && (
+                <p className="notice" id={`${id}-note`}>
+                    {note}
                 </p>
             )}
             {children}
@@ -191,24 +221,22 @@ const Details = ({
                     <h1 id="product-heading" className="product-name" ref={heading} tabIndex={-1}>
                         {product.name}
                     </h1>
-                    <p className="product-meta">
-                        {product.brand.name}
-                        {' · '}
-                        {product.material}
-                        {product.rating &&
-                            ` · ${product.rating.average.toFixed(1)} out of 5, from ${count(product.rating.count, 'rating', 'ratings')}`}
-                    </p>
+                    <p className="product-meta">{metaLine(product)}</p>
                     <p className="product-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </p>
-                    {product.price.memberPrice && <p className="product-member">Member price</p>}
+                    {product.price.memberPrice && (
+                        <p className="product-member">{memberLine(product.price, locale)}</p>
+                    )}
                     {product.membersOnly && <p className="product-member">Members only</p>}
                     {!product.inStock && <p className="product-stock">Out of stock</p>}
                 </div>
             </div>
             <p className="product-description">{product.description}</p>
-            <h2 className="product-subheading">Variants</h2>
-            <table className="variants">
+            <h2 id="product-variants" className="product-subheading">
+                Sizes and colors
+            </h2>
+            <table className="variants" aria-labelledby="product-variants">
                 <thead>
                     <tr>
                         <th scope="col">Color</th>
@@ -268,7 +296,14 @@ const useViewed = (client: GraphQLClient, viewed: string | undefined) => {
     return current ? (rail.data?.recommendations ?? undefined) : undefined;
 };
 
-export const ProductPage = ({ client, sku, state, navigate, direct = false }: ProductPageProps) => {
+export const ProductPage = ({
+    client,
+    sku,
+    state,
+    navigate,
+    direct = false,
+    ...viewer
+}: ProductPageProps) => {
     const { data, loading, error, retry, current } = useProduct(client, sku);
     const heading = useRef<HTMLHeadingElement>(null);
     const view = useRef<HTMLElement>(null);
@@ -311,6 +346,8 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
                 view={view}
                 title="No such product"
                 line={`There is no product ${sku} in this store.`}
+                // Said for every missing product, so it tells a guest nothing about which exist.
+                note={forMembers(viewer)}
             >
                 {backButton}
             </Bare>

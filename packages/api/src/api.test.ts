@@ -378,6 +378,34 @@ describe('the viewer', () => {
         expect(asMember.variants[0].price.amount).toBeLessThan(asGuest.variants[0].price.amount);
     });
 
+    it('tells a member what a guest pays beside a member price, and a guest nothing more', async () => {
+        if (!discounted) throw new Error('expected a discounted product');
+        const listed = catalog.products.find(
+            (p) =>
+                p.visibleTo.length === 2 &&
+                p.price.member.min === p.price.guest.min &&
+                p.price.member.max === p.price.guest.max
+        );
+        if (!listed) throw new Error('expected a product at list price for members too');
+        const query = (sku: string) =>
+            `{ product(sku: "${sku}") { price { memberPrice listPrice { min { amount } max { amount } } } } }`;
+        expect(data(await run(query(discounted.sku), undefined, member)).product.price).toEqual({
+            memberPrice: true,
+            listPrice: {
+                min: { amount: discounted.price.guest.min },
+                max: { amount: discounted.price.guest.max },
+            },
+        });
+        expect(data(await run(query(discounted.sku), undefined, guest)).product.price).toEqual({
+            memberPrice: false,
+            listPrice: null,
+        });
+        expect(data(await run(query(listed.sku), undefined, member)).product.price).toEqual({
+            memberPrice: false,
+            listPrice: null,
+        });
+    });
+
     it('does not show a guest a product only members may see, by search or by sku', async () => {
         if (!membersOnly) throw new Error('expected a members-only product');
         const query = `{ product(sku: "${membersOnly.sku}") { sku } store { viewer { group } } }`;
@@ -410,7 +438,7 @@ describe('recommendations', () => {
                 {
                     query: `query ($sku: ID!, $session: String) {
                         recommendations(sku: $sku, limit: 3, session: $session) {
-                            source category { id } items { sku }
+                            source viewedTogether category { id } items { sku }
                         }
                     }`,
                     variables: { sku: b.sku, ...(session && { session }) },
@@ -421,6 +449,7 @@ describe('recommendations', () => {
         expect(cold.extensions).toEqual({ volatile: true });
         expect(data(cold).recommendations).toMatchObject({
             source: 'CATEGORY_BESTSELLERS',
+            viewedTogether: 0,
             category: { id: b.categoryId },
         });
         expect(data(cold).recommendations.items).toHaveLength(3);
@@ -429,6 +458,9 @@ describe('recommendations', () => {
         const warm = await ask('t1');
         expect(data(warm).recommendations.source).toBe('VIEWED_TOGETHER');
         expect(data(warm).recommendations.items[0].sku).toBe(a.sku);
+        // One was viewed with it, and the category's most rated fill the rest.
+        expect(data(warm).recommendations.viewedTogether).toBe(1);
+        expect(data(warm).recommendations.items).toHaveLength(3);
     });
 
     it('is nothing for a product the viewer may not see', async () => {
