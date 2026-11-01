@@ -24,6 +24,7 @@ concurrency:
 jobs:
     verify:
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -78,6 +79,7 @@ jobs:
     # phone, since the facets and the popover lay out differently on each.
     browser:
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -120,6 +122,7 @@ jobs:
     # and used through its public exports and its types.
     floor:
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -186,22 +189,29 @@ jobs:
                   node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.nodenext.json
                   node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.bundler.json
 
+            # The release publishes this tarball, now that it is proven, so the
+            # job that holds the publish token never installs or builds anything.
+            # Kept on every run, so the hand-off is exercised before a release
+            # needs it, and long enough to repeat a release's publish.
+            - name: Keep the packed engine for a release
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: engine-package
+                  path: ${{ runner.temp }}/jasonsdevspace-shelflens-*.tgz
+                  if-no-files-found: error
+                  retention-days: 7
+                  overwrite: true
+
     # The demo, published to GitHub Pages at jasonsdevspace.com/shelflens/
     # once everything above has passed on main. A merge that fails a check
-    # is never deployed.
-    deploy:
+    # is never deployed. The site is built in a job with no more than read
+    # access, so nothing the build installs or runs can deploy, and the
+    # deploy job runs only GitHub's own Pages actions.
+    site:
         needs: [verify, browser, floor]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
-        # A job's own permissions replace the workflow's, so the read the
-        # checkout needs has to be named here beside the two Pages needs.
-        permissions:
-            contents: read
-            pages: write
-            id-token: write
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
+        timeout-minutes: 15
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -224,13 +234,24 @@ jobs:
               env:
                   BASE_PATH: /shelflens/
 
-            - name: Configure Pages
-              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
             - name: Upload the site
               uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
               with:
                   path: packages/storefront/dist
+
+    deploy:
+        needs: site
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Configure Pages
+              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
             - name: Deploy to GitHub Pages
               id: deployment
