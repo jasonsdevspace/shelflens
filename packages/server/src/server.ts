@@ -38,6 +38,10 @@ import {
 
 const BODY_LIMIT_BYTES = 16 * 1024;
 
+/** How much of a body past the limit is read and dropped after the 413, and for how long. */
+const DRAIN_LIMIT_BYTES = 1024 * 1024;
+const DRAIN_MS = 5_000;
+
 export interface ServerOptions {
     readonly api: StoreApi;
     /** Requests each client may make per minute. */
@@ -108,14 +112,22 @@ interface Arrival {
     readonly trustProxy: boolean;
 }
 
-/** The first value of a header a trusted proxy sets, or nothing when no proxy is trusted. */
+/**
+ * The value the trusted proxy wrote into a forwarded header, or nothing
+ * when no proxy is trusted. A proxy adds its own entry at the end of
+ * whatever the client sent, so the last entry is the one it vouches for,
+ * and anything before it may be the client's invention. An IPv4 address
+ * carries no port, so one connection is one client.
+ */
 const forwarded = (
     request: IncomingMessage,
     name: string,
     trusted: boolean
 ): string | undefined => {
-    const first = trusted ? request.headers[name]?.toString().split(',')[0]?.trim() : undefined;
-    return first === '' ? undefined : first;
+    if (!trusted) return undefined;
+    const last = request.headers[name]?.toString().split(',').at(-1)?.trim();
+    if (last === undefined || last === '') return undefined;
+    return /^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(last) ? last.replace(/:\d+$/, '') : last;
 };
 
 /** Who is asking, for the rate limit: the client a trusted proxy names, or the connection. */
@@ -191,6 +203,7 @@ const crossOrigin = ({
     response.setHeader('vary', 'origin');
     if (request.method !== 'OPTIONS') return 'allowed';
     response.writeHead(204, {
+        ...SECURITY_HEADERS,
         'access-control-allow-methods': METHODS[route],
         'access-control-allow-headers': `content-type, ${GROUP_HEADER}`,
         'access-control-max-age': String(PREFLIGHT_SECONDS),
@@ -233,8 +246,8 @@ export const createRateLimit = (perMinute: number, now: () => Date) => {
     let swept = 0;
     const allow = (key: string): boolean => {
         const at = now().getTime();
-        // Windows that have ended are forgotten once a minute, so the count of
-        // clients kept is the count seen in the last minute, not since start.
+        // Windows that have ended are forgotten once a minute, so the clients
+        // kept are those seen in the last two minutes at most, not since start.
         if (at - swept >= 60_000) {
             for (const [seen, { until }] of windows) if (until <= at) windows.delete(seen);
             swept = at;
@@ -247,9 +260,11 @@ export const createRateLimit = (perMinute: number, now: () => Date) => {
         window.count += 1;
         return window.count <= perMinute;
     };
-    /** How many clients it is keeping a window for, so a test can see they are forgotten. */
-    allow.tracked = () => windows.size;
-    return allow;
+    return {
+        allow,
+        /** How many clients it is keeping a window for. */
+        tracked: () => windows.size,
+    };
 };
 
 const readBody = (request: IncomingMessage): Promise<string | undefined> =>
@@ -306,7 +321,7 @@ const SECURITY_HEADERS = {
     'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
-/** An answer no cache may keep: a refusal, a failure, or one the store did not version. */
+/** The headers of an answer the server writes itself, a refusal or a failure, which no cache may keep. */
 const JSON_HEADERS = {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
@@ -337,7 +352,7 @@ export const createHandler = ({
     // Replaced when a merchandiser saves rules, so every request after that
     // is answered by the store built with them.
     let api = initial;
-    const allow = createRateLimit(rateLimitPerMinute, now);
+    const { allow } = createRateLimit(rateLimitPerMinute, now);
 
     const receiveRuleSet = async (
         request: IncomingMessage,
@@ -372,12 +387,16 @@ export const createHandler = ({
             const saved = await rules.store.current();
             api = saved === undefined ? initial : rules.build(saved);
         }
-        response.writeHead(204, { 'x-request-id': requestId, [VERSION_HEADER]: api.version });
+        response.writeHead(204, {
+            ...SECURITY_HEADERS,
+            'x-request-id': requestId,
+            [VERSION_HEADER]: api.version,
+        });
         response.end();
     };
     // Beacons have a budget of their own, per address, since they carry no group and
     // must not bring a shopper's searches closer to the limit.
-    const allowEvents = createRateLimit(rateLimitPerMinute, now);
+    const { allow: allowEvents } = createRateLimit(rateLimitPerMinute, now);
 
     const tooMany = (response: ServerResponse, requestId: string) => {
         response.setHeader('retry-after', '60');
@@ -394,7 +413,18 @@ export const createHandler = ({
         const body = await readBody(request);
         if (body === undefined) {
             response.setHeader('connection', 'close');
-            response.once('finish', () => request.destroy());
+            // The rest of the body is read and dropped, so closing does not reset the
+            // connection before the client has read the 413. Not without end, though.
+            response.once('finish', () => {
+                let dropped = 0;
+                const stop = setTimeout(() => request.destroy(), DRAIN_MS);
+                request.on('data', (chunk: Buffer) => {
+                    dropped += chunk.length;
+                    if (dropped > DRAIN_LIMIT_BYTES) request.destroy();
+                });
+                request.once('close', () => clearTimeout(stop));
+                request.resume();
+            });
             refuse(response, 413, 'the request body is too large', requestId);
         }
         return { body, refused: body === undefined };
@@ -424,7 +454,7 @@ export const createHandler = ({
             events
         );
         if (receipt.status === 204) {
-            response.writeHead(204, { 'x-request-id': requestId });
+            response.writeHead(204, { ...SECURITY_HEADERS, 'x-request-id': requestId });
             response.end();
             return;
         }

@@ -64,3 +64,29 @@ test('the store, the explainer, the widget and the try page run within their pol
 
     expect(refused).toEqual([]);
 });
+
+test('the widget styles its box within the policy where a browser cannot share a stylesheet', async ({
+    page,
+}) => {
+    const refused = await watch(page);
+    // As an older browser: no constructed stylesheets, so the widget writes a style element.
+    await page.addInitScript(() => {
+        Reflect.deleteProperty(CSSStyleSheet.prototype, 'replaceSync');
+    });
+    await page.goto('widget/');
+    const box = page.getByRole('combobox', { name: 'Search the store' });
+    await box.fill('jack');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    const styled = await page.locator('#shelflens-search').evaluate((host) => {
+        const shadow = host.shadowRoot;
+        const input = shadow?.querySelector('input');
+        return {
+            elements: shadow?.querySelectorAll('style').length ?? 0,
+            width: input ? getComputedStyle(input).width : '',
+        };
+    });
+    expect(styled.elements).toBeGreaterThan(0);
+    // The stylesheet applied: the input takes the width of its box, not the browser's default.
+    expect(Number.parseFloat(styled.width)).toBeGreaterThan(200);
+    expect(refused).toEqual([]);
+});

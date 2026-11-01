@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import type { Plugin } from 'vite';
 
+import { WIDGET } from './shell-plugin.js';
+
 /**
  * The pre-paint theme script, written once in theme.js and put into every
  * page's head where the page says so. Inline, so it runs before the first
@@ -58,7 +60,8 @@ export const themeScript = (): Plugin => {
                 if (!page.includes(CHARSET)) {
                     throw new Error(`a page has no ${CHARSET} to put its policy after`);
                 }
-                const widget = page.includes('id="shelflens-search"');
+                // The theme runs first, so the page still has the mount the shell fills.
+                const widget = page.includes(WIDGET);
                 const meta = `<meta http-equiv="Content-Security-Policy" content="${policyFor(script, widget)}" />`;
                 return page.replace(CHARSET, () => `${CHARSET}\n        ${meta}`);
             },

@@ -356,13 +356,25 @@ describe('what every answer carries', () => {
         expect(missing.status).toBe(404);
         expect(missing.headers.get('cache-control')).toBe('no-store');
         expect(missing.headers.get('x-content-type-options')).toBe('nosniff');
+        // An answer with no body carries them too.
+        const kept = await fetch(`${demoBase}/events`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify([
+                { id: 'h1', kind: 'view', at: 1, sku: 'SL-00001', session: 't' },
+            ]),
+        });
+        expect(kept.status).toBe(204);
+        expect(kept.headers.get('x-content-type-options')).toBe('nosniff');
+        expect(kept.headers.get('content-security-policy')).toContain("default-src 'none'");
     });
 
-    it('answers a body past the limit with a 413 the client can read', async () => {
+    it('answers a body past the limit with a 413 the client can read, however large', async () => {
         const response = await fetch(`${demoBase}/graphql`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ query: `{ store { name } } # ${'x'.repeat(64 * 1024)}` }),
+            // Far past what the connection's buffers hold, so the rest has to be read and dropped.
+            body: JSON.stringify({ query: `{ store { name } } # ${'x'.repeat(768 * 1024)}` }),
         });
         expect(response.status).toBe(413);
         expect(await response.json()).toEqual({
@@ -404,6 +416,10 @@ describe('behind a proxy', () => {
             expect((await asking(proxied.base, '10.0.0.1')).status).toBe(200);
             expect((await asking(proxied.base, '10.0.0.2')).status).toBe(200);
             expect((await asking(proxied.base, '10.0.0.1')).status).toBe(429);
+            // What a client puts before the proxy's own entry is not who it is, and a
+            // port is not another client.
+            expect((await asking(proxied.base, 'made-up, 10.0.0.2')).status).toBe(429);
+            expect((await asking(proxied.base, '10.0.0.1:5678')).status).toBe(429);
         } finally {
             await proxied.close();
         }
@@ -439,11 +455,11 @@ describe('behind a proxy', () => {
 describe('the rate limit', () => {
     it('forgets a client once its window has ended, so it keeps only the last minute', () => {
         let at = 0;
-        const allow = createRateLimit(5, () => new Date(at));
-        for (let client = 0; client < 100; client += 1) allow(`client-${String(client)}`);
-        expect(allow.tracked()).toBe(100);
+        const limit = createRateLimit(5, () => new Date(at));
+        for (let client = 0; client < 100; client += 1) limit.allow(`client-${String(client)}`);
+        expect(limit.tracked()).toBe(100);
         at = 61_000;
-        allow('later');
-        expect(allow.tracked()).toBe(1);
+        limit.allow('later');
+        expect(limit.tracked()).toBe(1);
     });
 });
