@@ -12,6 +12,8 @@
     /* Borders on the fields a visitor types into or picks from, darker than the lines between things. */
     --control: #8a8a8a;
     --warn: #b7472a;
+    /* The edge of a product's swatch, faint on white and lighter on dark, so a dark color keeps its shape. */
+    --swatch-edge: rgba(0, 0, 0, 0.12);
     color-scheme: light;
     font-family:
         system-ui,
@@ -36,6 +38,7 @@
     --highlight: #1e2a4a;
     --control: #6e6e6e;
     --warn: #e8795a;
+    --swatch-edge: #6e6e6e;
     color-scheme: dark;
 }
 
@@ -533,11 +536,6 @@ body {
 
 .results-heading {
     margin: 0 auto 0 0;
-}
-
-/* The results as a place to skip to, with no ring of their own when they get there. */
-.results-main:focus {
-    outline: none;
 }
 
 .sort {
@@ -1152,9 +1150,4 @@ body {
 
 .rules-notice {
     margin: 0 0 1rem;
-}
-
-/* A swatch keeps an edge in the dark theme, where a dark color would vanish into the page. */
-:root[data-theme='dark'] .swatch rect {
-    stroke: var(--control);
 }

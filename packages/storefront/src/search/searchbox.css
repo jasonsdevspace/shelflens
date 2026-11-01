@@ -183,3 +183,8 @@ li[role='group'] + li[role='group'] {
 .swatch {
     flex: none;
 }
+
+/* The page's swatch edge, which a CSS rule sets over the drawing's own. */
+.swatch rect {
+    stroke: var(--swatch-edge, rgba(0, 0, 0, 0.12));
+}

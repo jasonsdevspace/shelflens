@@ -89,15 +89,36 @@ const headingFor = (state: SearchState, categories: CategoryTree, total: number)
 };
 
 /** The facets beside the results, or in a drawer where there is no room beside them. */
+/**
+ * The first stop in a column beside the results, seen only when it has
+ * focus, that takes a keyboard past the column to the results heading.
+ * Focus moves by script, so the address and the history stay as they are.
+ */
+const SkipToResults = ({ heading }: { readonly heading: string }) => (
+    <a
+        className="skip"
+        href={`#${heading}`}
+        onClick={(event) => {
+            event.preventDefault();
+            document.getElementById(heading)?.focus();
+        }}
+    >
+        Skip to results
+    </a>
+);
+
 const FacetColumn = ({
     narrow,
     active,
     total,
+    heading,
     children,
 }: {
     readonly narrow: boolean;
     readonly active: number;
     readonly total: number;
+    /** The results heading's id, for the link past the column. */
+    readonly heading: string;
     readonly children: ReactNode;
 }) =>
     narrow ? (
@@ -106,9 +127,7 @@ const FacetColumn = ({
         </FacetDrawer>
     ) : (
         <aside className="results-side" aria-label="Filters">
-            <a className="skip results-skip" href="#results">
-                Skip to results
-            </a>
+            <SkipToResults heading={heading} />
             {children}
         </aside>
     );
@@ -256,17 +275,22 @@ const SortField = ({
 /** The rules panel beside the results, or in a drawer where there is no room beside them. */
 const RulesColumn = ({
     narrow,
+    heading,
     children,
 }: {
     readonly narrow: boolean;
+    /** The results heading's id, for the link past the column. */
+    readonly heading: string;
     readonly children: ReactNode;
 }) =>
     narrow ? (
-        <Drawer opener="Rules" title="Rules" done="See the results" keep>
+        // Named apart from the Rules button beside it, which turns the panel off.
+        <Drawer opener="Edit rules" title="Rules" done="See the results" keep>
             {children}
         </Drawer>
     ) : (
         <aside className="results-side" aria-label="Rules">
+            <SkipToResults heading={heading} />
             {children}
         </aside>
     );
@@ -334,8 +358,9 @@ const Toolbar = ({
             corrected={result.matching === 'CORRECTED'}
         />
         {drawer}
-        {/* With nothing found there is nothing to explain or sort, so both step aside. */}
-        {result.total > 0 && (
+        {/* With nothing found there is nothing to explain or sort, so both step aside,
+            unless explain mode is on, which keeps its switch so it can be turned off. */}
+        {(result.total > 0 || state.explain === true) && (
             <button
                 type="button"
                 className="explain-toggle"
@@ -556,7 +581,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         navigate(rest);
     };
     const side = state.rules ? (
-        <RulesColumn narrow={narrow}>
+        <RulesColumn narrow={narrow} heading={`${id}-heading`}>
             <RulesPanel
                 editor={editor}
                 phrase={state.phrase}
@@ -575,7 +600,12 @@ export const ResultsPage = (props: ResultsPageProps) => {
         </RulesColumn>
     ) : (
         !facetless && (
-            <FacetColumn narrow={narrow} active={activeFilterCount(state)} total={result.total}>
+            <FacetColumn
+                narrow={narrow}
+                active={activeFilterCount(state)}
+                total={result.total}
+                heading={`${id}-heading`}
+            >
                 <Facets
                     facets={result.facets}
                     state={state}
@@ -592,13 +622,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
             {status}
             <div className={layout} aria-busy={loading}>
                 {!narrow && side}
-                <section
-                    className="results-main"
-                    id="results"
-                    tabIndex={-1}
-                    aria-labelledby={`${id}-heading`}
-                    ref={main}
-                >
+                <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
                     <Crumbs state={state} navigate={navigate} categories={categories} />
                     <Toolbar
                         id={`${id}-heading`}

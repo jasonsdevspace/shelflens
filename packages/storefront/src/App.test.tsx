@@ -208,6 +208,24 @@ describe('keeping place', () => {
         expect(current).toHaveFocus();
     });
 
+    it('skips the filter column to the results heading, leaving the address alone', async () => {
+        const user = await open('?q=jacket');
+        const before = window.location.href;
+        await user.click(screen.getByRole('link', { name: 'Skip to results' }));
+        expect(heading()).toHaveFocus();
+        expect(window.location.href).toBe(before);
+    });
+
+    it('keeps the explain switch on a page with nothing found while explain mode is on', async () => {
+        await open('?q=jacket&price=0-1&explain=1');
+        await settled();
+        expect(screen.getByRole('button', { name: 'Explain ranking' })).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
+        expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
+    });
+
     it('says when a page is past the last, and links to the last page', async () => {
         const user = await open('?page=999');
         const link = await screen.findByRole('link', { name: /Go to page \d+/ });
@@ -629,7 +647,7 @@ describe('on a phone', () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
         const last = cards()[cards().length - 1]?.getAttribute('data-sku') ?? '';
-        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
         const drawer = screen.getByRole('dialog', { name: 'Rules' });
         await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
         await user.type(within(drawer).getByRole('textbox', { name: 'Name' }), 'Last first');
@@ -638,7 +656,7 @@ describe('on a phone', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         await settled();
         expect(screen.getByText(/Previewing a draft/)).toBeVisible();
-        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
         expect(
             within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('textbox', {
                 name: 'Name',
@@ -668,7 +686,7 @@ describe('on a phone', () => {
         await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
         await user.type(within(panel).getByRole('textbox', { name: 'Name' }), 'Last first');
         turn(true);
-        await user.click(screen.getByRole('button', { name: 'Rules', expanded: false }));
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
         const drawer = screen.getByRole('dialog', { name: 'Rules' });
         expect(within(drawer).getByRole('textbox', { name: 'Name' })).toHaveValue('Last first');
         await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), 'SL-');

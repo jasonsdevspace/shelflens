@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * A panel over the results, for a phone.
@@ -82,40 +83,51 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
             >
                 {opener}
             </button>
-            {open && (
-                <div
-                    className="drawer-backdrop"
-                    onClick={() => setOpen(false)}
-                    aria-hidden="true"
-                />
-            )}
-            {(open || keep) && (
-                <div
-                    className="drawer-panel"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby={`${id}-title`}
-                    hidden={!open}
-                    ref={panel}
-                >
-                    <div className="drawer-head">
-                        <h2 id={`${id}-title`} className="drawer-title" tabIndex={-1}>
-                            {title}
-                        </h2>
-                        <button
-                            ref={closer}
-                            type="button"
-                            className="drawer-close"
+            {/* On the page's body, so nothing the results do, such as dimming while they
+                load, reaches the drawer or lays it under another layer. */}
+            {createPortal(
+                <>
+                    {open && (
+                        <div
+                            className="drawer-backdrop"
                             onClick={() => setOpen(false)}
+                            aria-hidden="true"
+                        />
+                    )}
+                    {(open || keep) && (
+                        <div
+                            className="drawer-panel"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby={`${id}-title`}
+                            hidden={!open}
+                            ref={panel}
                         >
-                            Close
-                        </button>
-                    </div>
-                    <div className="drawer-body">{children}</div>
-                    <button type="button" className="drawer-done" onClick={() => setOpen(false)}>
-                        {done}
-                    </button>
-                </div>
+                            <div className="drawer-head">
+                                <h2 id={`${id}-title`} className="drawer-title" tabIndex={-1}>
+                                    {title}
+                                </h2>
+                                <button
+                                    ref={closer}
+                                    type="button"
+                                    className="drawer-close"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                            <div className="drawer-body">{children}</div>
+                            <button
+                                type="button"
+                                className="drawer-done"
+                                onClick={() => setOpen(false)}
+                            >
+                                {done}
+                            </button>
+                        </div>
+                    )}
+                </>,
+                document.body
             )}
         </div>
     );
