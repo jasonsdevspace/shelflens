@@ -529,6 +529,22 @@ type PriceRange {
     so for a guest this is always false, and the other price is never sent.
     """
     memberPrice: Boolean!
+
+    """
+    What a guest pays, when the viewer pays less, so a member can see what
+    the member price saves. Null for a guest, and whenever the price is the
+    same for everyone. A guest's price is the list price, which every
+    viewer may see.
+    """
+    listPrice: PriceBounds
+}
+
+"""
+The least and the most a product costs.
+"""
+type PriceBounds {
+    min: Money!
+    max: Money!
 }
 
 """
@@ -575,6 +591,13 @@ type Recommendations {
     category: Category!
 
     items: [Product!]!
+
+    """
+    How many of the items, from the first, were viewed with this product.
+    The rest are the category's most rated, so a rail can say where each
+    part of it came from. Zero when the source is the category alone.
+    """
+    viewedTogether: Int!
 }
 
 enum RecommendationSource {

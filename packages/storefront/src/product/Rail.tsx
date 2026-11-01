@@ -5,9 +5,11 @@ import { ProductCard } from '../results/ProductCard.jsx';
 
 /**
  * What stands beside a product, under a heading that says which it is:
- * what this tab viewed with it, or the most rated in its category when
- * nothing has been viewed with it yet. Nothing at all when the category
- * has nothing else to show, rather than a heading over an empty list.
+ * what this tab viewed with it, the most rated in its category when
+ * nothing has been viewed with it yet, or both, in that order, when a few
+ * views lead and the category fills the rest. Nothing at all when the
+ * category has nothing else to show, rather than a heading over an empty
+ * list.
  */
 
 export type RailData = NonNullable<RecommendationsQuery['recommendations']>;
@@ -20,10 +22,13 @@ export interface RailProps {
 
 export const RAIL_HEADING_ID = 'rail-heading';
 
-export const railHeading = (rail: RailData): string =>
-    rail.source === 'VIEWED_TOGETHER'
-        ? 'Viewed with this product'
-        : `Top rated in ${rail.category.name}`;
+export const railHeading = (rail: RailData): string => {
+    const mostRated = `most rated in ${rail.category.name}`;
+    if (rail.viewedTogether === 0) return `Most rated in ${rail.category.name}`;
+    return rail.viewedTogether < rail.items.length
+        ? `Viewed with this product, then ${mostRated}`
+        : 'Viewed with this product';
+};
 
 export const Rail = ({ rail, state, navigate }: RailProps) => {
     if (rail.items.length === 0) return null;
@@ -33,7 +38,8 @@ export const Rail = ({ rail, state, navigate }: RailProps) => {
             <h2 id={RAIL_HEADING_ID} className="product-subheading">
                 {heading}
             </h2>
-            <ul className="cards" aria-label={heading}>
+            {/* The section is named by the heading already, so the list is not named again. */}
+            <ul className="cards">
                 {rail.items.map((product) => (
                     <ProductCard
                         key={product.sku}

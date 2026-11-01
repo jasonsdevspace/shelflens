@@ -63,7 +63,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'cache-key',
         title: 'The cache that forgets who is asking',
-        body: 'This product does not exist for a guest. Choose "Member" under "Shopping as" at the top of the page and it appears, and the brands that give members a discount show lower prices. A cache keyed on the query alone would serve a member\u2019s answer to the next guest, and a test proves it does.',
+        body: 'A guest is told this product does not exist. Choose "Member" under "Shopping as" at the top of the page and it appears, marked "Members only". A store that remembered answers by the search alone would hand a member\u2019s answer to the next guest, and a test shows the naive version doing exactly that.',
         to: { ...EMPTY_STATE, product: MEMBERS_ONLY_SKU },
         tests: ['packages/api/src/cache.test.ts'],
     },
@@ -143,14 +143,14 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'prices',
         title: 'A range, in the store’s currency',
-        body: 'A product with variants shows the least and the most it costs, and every amount is formatted for the store’s currency and locale rather than with a symbol typed into the page. Open the product for the table of variants.',
+        body: 'A product sold in several sizes or colors shows its lowest and highest price, and every amount is formatted for the store’s currency and locale rather than with a symbol typed into the page. Open any jacket to see the price of each size and color.',
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-desc' },
         tests: ['packages/storefront/src/format/money.test.ts'],
     },
     {
         id: 'cold-start',
-        title: 'A rail that is never empty, and never lies',
-        body: 'Beneath this product is a rail. With nothing viewed yet it shows the most rated in the category and says so. Open a second product and the first leads its rail under a heading that says why. It never shows the product itself, never a product you cannot see, and starts over when you clear site data.',
+        title: 'A rail that never lies',
+        body: 'With nothing else viewed yet, the row of products under this one shows the most rated in its category, and its heading says so. Open a product from that row and this one leads the next row, under a heading that begins "Viewed with this product" and says where the rest come from. It never shows the product itself or one you cannot see, and it starts over when you clear site data.',
         to: { ...EMPTY_STATE, product: 'SL-00001' },
         tests: ['packages/api/src/recommend.test.ts', 'packages/storefront/src/App.test.tsx'],
     },

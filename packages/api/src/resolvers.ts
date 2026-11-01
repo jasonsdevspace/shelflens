@@ -145,13 +145,23 @@ const whenEmpty = (input: SearchInput, context: Context): NoResultsModel => ({
     recovery: recoverStore(context.store.engine, toStoreRequest(input, context), FIXED_ATTRIBUTES),
 });
 
-const priceFor = (product: Product, group: CustomerGroup, currency: string) => ({
-    min: { amount: product.price[group].min, currency },
-    max: { amount: product.price[group].max, currency },
-    memberPrice:
+const priceFor = (product: Product, group: CustomerGroup, currency: string) => {
+    const memberPrice =
         product.price[group].min < product.price.guest.min ||
-        product.price[group].max < product.price.guest.max,
-});
+        product.price[group].max < product.price.guest.max;
+    return {
+        min: { amount: product.price[group].min, currency },
+        max: { amount: product.price[group].max, currency },
+        memberPrice,
+        // The list price is what a guest pays and sees, so a member may see it beside their own.
+        listPrice: memberPrice
+            ? {
+                  min: { amount: product.price.guest.min, currency },
+                  max: { amount: product.price.guest.max, currency },
+              }
+            : null,
+    };
+};
 
 const categoryOf = (id: string, context: Context): Category => {
     const category = context.store.categories.get(id);

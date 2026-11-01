@@ -1,6 +1,7 @@
 query Recommendations($sku: ID!, $limit: Int = 6, $session: String) {
     recommendations(sku: $sku, limit: $limit, session: $session) {
         source
+        viewedTogether
         category {
             id
             name

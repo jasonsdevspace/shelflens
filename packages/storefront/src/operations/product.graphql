@@ -25,6 +25,16 @@ query Product($sku: ID!) {
                 amount
                 currency
             }
+            listPrice {
+                min {
+                    amount
+                    currency
+                }
+                max {
+                    amount
+                    currency
+                }
+            }
         }
         rating {
             average

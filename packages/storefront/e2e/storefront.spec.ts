@@ -147,7 +147,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
     await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
     // The product's own line, since the rail beneath it may carry member prices too.
-    await expect(page.locator('.product-member')).toHaveText('Member price');
+    await expect(page.locator('.product-member')).toHaveText(/^Member price, .+ for guests$/);
 });
 
 test('answers travel as named operations the browser may keep', async ({ page }) => {
@@ -280,7 +280,7 @@ test('browser Back along the rail shows each product from its heading', async ({
     await page.goto('/?q=jacket&page=2');
     await page.getByRole('list', { name: 'Products' }).getByRole('link').nth(4).click();
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-    const rail = page.getByRole('region', { name: /Viewed with|Top rated in/ });
+    const rail = page.getByRole('region', { name: /Viewed with|Most rated in/ });
     for (let step = 0; step < 2; step += 1) {
         // The shopper reads down to the rail before choosing from it.
         const next = rail.getByRole('link').nth(1);
@@ -380,14 +380,17 @@ test('a second product shows the first beside it, and the first shows its catego
     const first = page.getByRole('heading', { level: 1 });
     await expect(first).toBeFocused();
     const firstName = await first.textContent();
-    const rail = page.getByRole('region', { name: /Top rated in|Viewed with/ });
-    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(/^Top rated in /);
+    const rail = page.getByRole('region', { name: /Most rated in|Viewed with/ });
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(/^Most rated in /);
     await expect(rail.locator('.card-link[data-sku="SL-00001"]')).toHaveCount(0);
     await audit(page);
 
     await page.goto('/?product=SL-00002');
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-    await expect(rail.getByRole('heading', { level: 2 })).toHaveText('Viewed with this product');
+    // One product was viewed with it, and the category fills the rest, so the heading says both.
+    await expect(rail.getByRole('heading', { level: 2 })).toHaveText(
+        /^Viewed with this product, then most rated in /
+    );
     await expect(rail.getByRole('link').first()).toContainText(firstName ?? '');
     await audit(page);
 });
@@ -704,7 +707,7 @@ test('the product page holds its shape: a name without a ring, the stock with th
 
     // With no product to show, the page has a heading and says so in the text's own color.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('No such product');
-    expect(await color(page.locator('.product > .notice'))).toBe(text);
+    expect(await color(page.locator('.product > .notice.is-answer'))).toBe(text);
     const view = page.getByRole('region', { name: /^There is no product NOPE-1/ });
     await expect(view).toBeFocused();
     expect(await view.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');

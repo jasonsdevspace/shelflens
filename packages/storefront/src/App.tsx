@@ -439,6 +439,8 @@ export const App = ({
                             state={state}
                             navigate={navigate}
                             direct={direct}
+                            group={group}
+                            switchable={viewerSwitch}
                         />
                     )}
                     {isReady && state.product === undefined && (

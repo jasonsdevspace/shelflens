@@ -820,8 +820,11 @@ describe('as a member', () => {
         expect(asGuest).toBeGreaterThan(0);
         await shopAs(user, 'member');
         await waitFor(() => expect(shownPrice()).toBeLessThan(asGuest));
-        // The product's own line, not a card's in the rail beneath it.
-        expect(document.querySelector('.product-member')).toHaveTextContent('Member price');
+        // The product's own line, not a card's in the rail beneath it, with what a guest pays.
+        expect(document.querySelector('.product-member')).toHaveTextContent(
+            /^Member price, \$[\d,.]+( to \$[\d,.]+)? for guests$/
+        );
+        expect(screen.getByRole('table', { name: 'Sizes and colors' })).toBeInTheDocument();
         await shopAs(user, 'guest');
         await waitFor(() => expect(shownPrice()).toBe(asGuest));
         expect(document.querySelector('.product-member')).toBeNull();
@@ -904,6 +907,12 @@ describe('as a member', () => {
         document.removeEventListener('focusin', listen);
         expect(document.title).toMatch(/^No such product/);
         expect(screen.queryByRole('alert')).toBeNull();
+        // Under every missing product, a guest is told how a member would see more.
+        expect(
+            screen.getByText(
+                'Some products are for members only. Choose "Member" under "Shopping as" to see them.'
+            )
+        ).toBeInTheDocument();
         await shopAs(user, 'member');
         await screen.findByRole('heading', { level: 1, name: membersOnly.name });
         expect(screen.getByText('Members only')).toBeInTheDocument();
@@ -916,7 +925,7 @@ describe('as a member', () => {
         if (!seen) throw new Error('expected a product every viewer may see');
         const user = await open(`?product=${seen.sku}`);
         await screen.findByRole('heading', { level: 1, name: seen.name });
-        const rail = () => screen.queryByRole('region', { name: /Viewed with|Top rated in/ });
+        const rail = () => screen.queryByRole('region', { name: /Viewed with|Most rated in/ });
         await waitFor(() => expect(rail()).not.toBeNull());
         const served = globalThis.fetch;
         let release = () => undefined as void;
@@ -1198,7 +1207,7 @@ describe('beside a product', () => {
             p.sku !== subject.sku && p.categoryId === subject.categoryId && p.visibleTo.length === 2
     );
     if (!peer) throw new Error('expected a second product in the category');
-    const rail = () => screen.queryByRole('region', { name: /Viewed with|Top rated in/ });
+    const rail = () => screen.queryByRole('region', { name: /Viewed with|Most rated in/ });
     const railSkus = () =>
         within(rail() ?? document.body)
             .getAllByRole('link')
@@ -1228,7 +1237,9 @@ describe('beside a product', () => {
         await open(`?product=${subject.sku}`);
         await screen.findByRole('heading', { level: 1, name: subject.name });
         await waitFor(() => expect(rail()).not.toBeNull());
-        expect(screen.getByRole('heading', { level: 2, name: /^Top rated in / })).toHaveTextContent(
+        expect(
+            screen.getByRole('heading', { level: 2, name: /^Most rated in / })
+        ).toHaveTextContent(
             catalog.categories.find((c) => c.id === subject.categoryId)?.name ?? ''
         );
         const skus = railSkus();
@@ -1248,8 +1259,15 @@ describe('beside a product', () => {
         expect(posted.status).toBe(204);
         const user = await open(`?product=${subject.sku}`);
         await screen.findByRole('heading', { level: 1, name: subject.name });
-        await screen.findByRole('heading', { level: 2, name: 'Viewed with this product' });
+        // One was viewed with it and the category fills the rest, and the heading says both.
+        const category = catalog.categories.find((c) => c.id === subject.categoryId)?.name ?? '';
+        await screen.findByRole('heading', {
+            level: 2,
+            name: `Viewed with this product, then most rated in ${category}`,
+        });
         expect(railSkus()[0]).toBe(peer.sku);
+        // The section is named by its heading, and its list is not named again.
+        expect(within(rail() ?? document.body).getByRole('list')).not.toHaveAccessibleName();
 
         // A rail card opens its product in place, over the same results.
         await user.click(within(rail() ?? document.body).getAllByRole('link')[0] as HTMLElement);

@@ -311,6 +311,10 @@ export type ProductQuery = {
             readonly memberPrice: boolean;
             readonly min: { readonly amount: number; readonly currency: string };
             readonly max: { readonly amount: number; readonly currency: string };
+            readonly listPrice: {
+                readonly min: { readonly amount: number; readonly currency: string };
+                readonly max: { readonly amount: number; readonly currency: string };
+            } | null;
         };
         readonly rating: { readonly average: number; readonly count: number } | null;
         readonly variants: ReadonlyArray<{
@@ -332,6 +336,7 @@ export type RecommendationsQueryVariables = Exact<{
 export type RecommendationsQuery = {
     readonly recommendations: {
         readonly source: RecommendationSource;
+        readonly viewedTogether: number;
         readonly category: { readonly id: string; readonly name: string };
         readonly items: ReadonlyArray<{
             readonly sku: string;
@@ -949,6 +954,16 @@ export const ProductDocument = new TypedDocumentString(
         amount
         currency
       }
+      listPrice {
+        min {
+          amount
+          currency
+        }
+        max {
+          amount
+          currency
+        }
+      }
     }
     rating {
       average
@@ -967,13 +982,14 @@ export const ProductDocument = new TypedDocumentString(
   }
 }
     `,
-    { hash: 'ad1f2602a0218504d86ebd70506c6431131da90fc42706b534e6edad855b44bc' }
+    { hash: '63abfd335812efa73bfcb9cb96c3eacbf11e8fa6777186785c8d97461da2950b' }
 ) as unknown as TypedDocumentString<ProductQuery, ProductQueryVariables>;
 export const RecommendationsDocument = new TypedDocumentString(
     `
     query Recommendations($sku: ID!, $limit: Int = 6, $session: String) {
   recommendations(sku: $sku, limit: $limit, session: $session) {
     source
+    viewedTogether
     category {
       id
       name
@@ -1008,7 +1024,7 @@ export const RecommendationsDocument = new TypedDocumentString(
   }
   inStock
 }`,
-    { hash: '7a4d5268f4c6013a102fe689beedda204b450f4377062c93b0a2428b12ff28c5' }
+    { hash: 'bfa8279da724de11d5d50e9155585444cea7b04df4dfc6ea021adec87b0769cf' }
 ) as unknown as TypedDocumentString<RecommendationsQuery, RecommendationsQueryVariables>;
 export const SearchDocument = new TypedDocumentString(
     `
