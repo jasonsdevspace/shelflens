@@ -1,6 +1,6 @@
 {
     "name": "@jasonsdevspace/shelflens",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "A product search engine with typo tolerance, synonyms, facets, merchandising rules and an explanation for every result. No dependencies, runs anywhere JavaScript does.",
     "keywords": [
         "search",

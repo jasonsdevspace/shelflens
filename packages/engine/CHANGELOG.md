@@ -4,6 +4,19 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.3.0
+
+Two changes to how a search is ordered, so a sort only reorders what relevance would show.
+
+- **A hide holds under every sort.** A rule's hides say what may be shown, not where, so a sort
+  other than relevance no longer sets them aside. Only pins, boosts and buries are, as before.
+  A rule that hides is reported in `rules.applied` under any sort, and one that also pins, boosts
+  or buries is in `rules.setAsideBySort` as well.
+- **`id` is a sort.** `{ by: 'id' }` orders by the order the documents were indexed in, either way,
+  where it used to be refused as an unknown attribute. It is the sort already used when browsing
+  without a query or a scope. A config that declares an attribute named `id` sorts by that
+  attribute instead.
+
 ## 0.2.1
 
 The same engine as 0.2.0. The README now links a
