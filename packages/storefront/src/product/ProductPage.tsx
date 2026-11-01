@@ -86,7 +86,7 @@ const Bare = ({
         >
             {title !== undefined && <h1 className="product-name">{title}</h1>}
             {line !== undefined && (
-                <p className="notice" id={id}>
+                <p className={title === undefined ? 'notice' : 'notice is-answer'} id={id}>
                     {line}
                 </p>
             )}
@@ -273,7 +273,7 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
     const heading = useRef<HTMLHeadingElement>(null);
     const view = useRef<HTMLElement>(null);
     useProductFocus({ sku, loading, answer: data, heading, view });
-    useTitle(current?.product?.name);
+    useTitle(current && (current.product?.name ?? 'No such product'));
     useOwnScroll();
     const rail = useViewed(client, data?.product?.sku);
     const back = () => {
@@ -297,7 +297,8 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
     }
     if (current === undefined) {
         return (
-            <Bare view={view} line="Loading the product.">
+            // Keyed apart from the answer that replaces it, so focus lands on that answer anew.
+            <Bare key="loading" view={view} line="Loading the product.">
                 {backButton}
             </Bare>
         );
@@ -306,6 +307,7 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
     if (!product) {
         return (
             <Bare
+                key="missing"
                 view={view}
                 title="No such product"
                 line={`There is no product ${sku} in this store.`}

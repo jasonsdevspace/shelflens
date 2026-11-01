@@ -42,15 +42,41 @@ describe('the sizes and colors table', () => {
         expect(row?.stock).toBe('Out of stock');
     });
 
-    it('keeps a row per size where a color is priced differently by size', () => {
+    it('gives a color a row for each price, where its larger sizes cost more', () => {
         const rows = variantRows([
             variant('a', 'Black', 'S', 5000),
-            variant('b', 'Black', 'XL', 5500, false),
+            variant('b', 'Black', 'M', 5000),
+            variant('c', 'Black', 'L', 5000, false),
+            variant('d', 'Black', 'XL', 5500),
+            variant('e', 'Black', 'XXL', 5500, false),
         ]);
         expect(rows.map(({ sizes, price, stock }) => [sizes, price.amount, stock])).toEqual([
-            ['S', 5000, 'In stock'],
-            ['XL', 5500, 'Out of stock'],
+            ['S, M and L', 5000, 'Size L out of stock'],
+            ['XL and XXL', 5500, 'Size XXL out of stock'],
         ]);
+    });
+
+    it('names a size once, and as in while any of its variants is', () => {
+        const [row] = variantRows([
+            variant('a', 'Black', 'S', 5000),
+            variant('b', 'Black', 'M', 5000),
+            variant('c', 'Black', 'M', 5000, false),
+        ]);
+        expect(row).toMatchObject({ sizes: 'S and M', stock: 'In stock' });
+    });
+
+    it('says only that some are out when the one out has no size to name', () => {
+        const [row] = variantRows([
+            variant('a', 'Oak', '', 9000),
+            variant('b', 'Oak', '', 9000, false),
+            variant('c', 'Oak', 'Large', 9000),
+        ]);
+        expect(row?.stock).toBe('In stock');
+        const [mixed] = variantRows([
+            variant('a', 'Oak', 'Large', 9000),
+            variant('b', 'Oak', '', 9000, false),
+        ]);
+        expect(mixed?.stock).toBe('Some out of stock');
     });
 
     it('leaves the sizes empty for a catalog that has none', () => {

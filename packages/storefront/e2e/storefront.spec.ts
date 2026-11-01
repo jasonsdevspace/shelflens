@@ -84,7 +84,11 @@ interface ShippedCatalog {
         readonly sku: string;
         readonly name: string;
         readonly visibleTo: readonly string[];
-        readonly variants: readonly { readonly color: string; readonly price: number }[];
+        readonly variants: readonly {
+            readonly color: string;
+            readonly price: number;
+            readonly inStock: boolean;
+        }[];
         readonly price: {
             readonly guest: { readonly min: number };
             readonly member: { readonly min: number };
@@ -646,7 +650,13 @@ test('the product page holds its shape: a name without a ring, the stock with th
     page,
     request,
 }) => {
-    await page.goto('/?product=SL-00145');
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const everyone = catalog.products.filter((p) => p.visibleTo.length === 2);
+    const soldOut = everyone.find((p) => p.variants.every((v) => !v.inStock));
+    const long = [...everyone].sort((a, b) => b.variants.length - a.variants.length)[0];
+    if (!soldOut || !long) throw new Error('expected a sold out product and a long one');
+
+    await page.goto(`/?product=${soldOut.sku}`);
     const name = page.getByRole('heading', { level: 1 });
     await expect(name).toBeFocused();
     // Focus put there by the page draws no ring, since the heading is not a control.
@@ -657,30 +667,47 @@ test('the product page holds its shape: a name without a ring, the stock with th
     if (!price || !stock) throw new Error('expected the price and the stock line');
     expect(stock.y - (price.y + price.height)).toBeLessThanOrEqual(6);
 
-    // A long list of variants is a row per color, or per size where a color's prices differ.
-    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
-    const long = catalog.products.find((p) => p.sku === 'SL-00241');
-    if (!long) throw new Error('expected a product with many variants');
-    const colors = new Map<string, number[]>();
-    for (const v of long.variants) colors.set(v.color, [...(colors.get(v.color) ?? []), v.price]);
-    const rows = [...colors.values()].reduce(
-        (sum, prices) => sum + (new Set(prices).size === 1 ? 1 : prices.length),
-        0
-    );
-    expect(rows).toBeLessThan(long.variants.length);
-    await page.goto('/?product=SL-00241');
-    await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(rows);
+    // A long list of variants is a few rows, so the rail is within a scroll of the top.
+    await page.goto(`/?product=${long.sku}`);
+    const rows = await page.getByRole('table').locator('tbody tr').count();
+    expect(rows).toBeLessThanOrEqual(long.variants.length / 2);
+    const rail = await page.locator('.rail').boundingBox();
+    const height = page.viewportSize()?.height ?? 0;
+    if (!rail) throw new Error('expected the rail');
+    expect(rail.y).toBeLessThan(height * 1.5);
     await audit(page);
 
-    // With no product to show, the page has a heading and says so in the text's own color.
+    // While a product loads, its line stays muted, a moment on the way and not the answer.
+    // The store answers inside the page, so the request is held there until released.
+    await page.addInitScript(() => {
+        const answer = window.fetch.bind(window);
+        const gate = new Promise<void>((resolve) => {
+            Object.assign(window, { releaseProduct: resolve });
+        });
+        window.fetch = async (input, init) => {
+            const url =
+                typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+            if (decodeURIComponent(url).includes('"sku":"NOPE-1"')) await gate;
+            return answer(input, init);
+        };
+    });
     await page.goto('/?product=NOPE-1');
+    const loading = page.getByText('Loading the product.');
+    await expect(loading).toBeVisible();
+    const color = (locator: ReturnType<typeof page.locator>) =>
+        locator.evaluate((el) => getComputedStyle(el).color);
+    const text = await color(page.locator('body'));
+    expect(await color(loading)).not.toBe(text);
+    await page.evaluate(() => {
+        (window as unknown as { releaseProduct: () => void }).releaseProduct();
+    });
+
+    // With no product to show, the page has a heading and says so in the text's own color.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('No such product');
-    const notice = page.locator('.product > .notice');
-    const colorOf = (selector: string) =>
-        page.locator(selector).evaluate((el) => getComputedStyle(el).color);
-    expect(await notice.evaluate((el) => getComputedStyle(el).color)).toBe(await colorOf('body'));
+    expect(await color(page.locator('.product > .notice'))).toBe(text);
     const view = page.getByRole('region', { name: /^There is no product NOPE-1/ });
     await expect(view).toBeFocused();
     expect(await view.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+    await expect(page).toHaveTitle(/^No such product, /);
     await audit(page);
 });

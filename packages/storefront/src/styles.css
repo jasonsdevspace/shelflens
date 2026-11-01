@@ -791,7 +791,7 @@ body {
 }
 
 /* With no product to show, the line is the page's message, in the text's own color. */
-.product > .notice {
+.product > .notice.is-answer {
     color: var(--fg);
     margin: 0 0 0.75rem;
 }

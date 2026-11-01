@@ -2,7 +2,7 @@ import type { ProductQuery } from '../generated/operations.js';
 
 type Variant = NonNullable<ProductQuery['product']>['variants'][number];
 
-/** One line of the sizes and colors table: a color, its sizes, one price and what is out. */
+/** One line of the sizes and colors table: a color, its sizes at one price, and what is out. */
 export interface VariantRow {
     readonly key: string;
     readonly color: string;
@@ -17,56 +17,60 @@ const list = (words: readonly string[]): string =>
         ? (words[0] ?? '')
         : `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`;
 
-const stockOf = (variants: readonly Variant[]): string => {
-    const out = variants.filter((variant) => !variant.inStock);
-    if (out.length === 0) return 'In stock';
-    const named = out.map((variant) => variant.size).filter((size) => size !== '');
-    return out.length === variants.length || named.length < out.length
-        ? 'Out of stock'
-        : // Named as sizes, so "13 out of stock" is never read as a count.
-          `${named.length === 1 ? 'Size' : 'Sizes'} ${list(named)} out of stock`;
-};
-
-const samePrice = (variants: readonly Variant[]): boolean =>
-    variants.every(
-        (variant) =>
-            variant.price.amount === variants[0]?.price.amount &&
-            variant.price.currency === variants[0].price.currency
-    );
+/** The sizes once each, in the catalog's order. */
+const sizesOf = (variants: readonly Variant[]): readonly string[] => [
+    ...new Set(variants.map((variant) => variant.size)),
+];
 
 /**
- * The variants as the table shows them: one row per color, its sizes in
- * one cell and the sizes that are out named in the stock cell, so a long
- * list of variants is a few rows. A color whose sizes are priced
- * differently keeps a row per size, since one price would not be true.
+ * What is out among variants at one price: nothing, all of it, or the
+ * sizes none of whose variants is in. A variant with no size cannot be
+ * named, so when one of those is out beside others that are in, the row
+ * says only that some are out.
  */
-export const variantRows = (variants: readonly Variant[]): readonly VariantRow[] => {
-    const byColor = new Map<string, Variant[]>();
-    for (const variant of variants) {
-        const group = byColor.get(variant.color) ?? [];
-        group.push(variant);
-        byColor.set(variant.color, group);
-    }
-    return [...byColor.entries()].flatMap(([color, group]): VariantRow[] => {
-        const [first] = group;
-        if (!first) return [];
-        if (!samePrice(group)) {
-            return group.map((variant) => ({
-                key: variant.sku,
-                color,
-                sizes: variant.size,
-                price: variant.price,
-                stock: variant.inStock ? 'In stock' : 'Out of stock',
-            }));
-        }
-        return [
-            {
-                key: first.sku,
-                color,
-                sizes: list(group.map((variant) => variant.size).filter((size) => size !== '')),
-                price: first.price,
-                stock: stockOf(group),
-            },
-        ];
-    });
+const stockOf = (variants: readonly Variant[]): string => {
+    if (variants.every((variant) => variant.inStock)) return 'In stock';
+    if (variants.every((variant) => !variant.inStock)) return 'Out of stock';
+    const out = sizesOf(variants).filter((size) =>
+        variants.every((variant) => variant.size !== size || !variant.inStock)
+    );
+    if (out.length === 0) return 'In stock';
+    if (out.includes('')) return 'Some out of stock';
+    // Named as sizes, so "13 out of stock" is never read as a count.
+    return `${out.length === 1 ? 'Size' : 'Sizes'} ${list(out)} out of stock`;
 };
+
+const groupBy = <T>(items: readonly T[], keyOf: (item: T) => string): readonly T[][] => {
+    const groups = new Map<string, T[]>();
+    for (const item of items) {
+        const key = keyOf(item);
+        groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
+    return [...groups.values()];
+};
+
+/**
+ * The variants as the table shows them: a row for each color and price,
+ * its sizes in one cell and the sizes that are out named in the stock
+ * cell, so a long list of variants is a few rows. A color whose larger
+ * sizes cost more has a row for each price, since one price would not be
+ * true of every size.
+ */
+export const variantRows = (variants: readonly Variant[]): readonly VariantRow[] =>
+    groupBy(variants, (variant) => variant.color).flatMap((color) =>
+        groupBy(color, (variant) => `${variant.price.currency} ${variant.price.amount}`).flatMap(
+            (group): VariantRow[] => {
+                const [first] = group;
+                if (!first) return [];
+                return [
+                    {
+                        key: first.sku,
+                        color: first.color,
+                        sizes: list(sizesOf(group).filter((size) => size !== '')),
+                        price: first.price,
+                        stock: stockOf(group),
+                    },
+                ];
+            }
+        )
+    );
