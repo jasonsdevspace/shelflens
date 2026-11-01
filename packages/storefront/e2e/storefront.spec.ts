@@ -84,6 +84,7 @@ interface ShippedCatalog {
         readonly sku: string;
         readonly name: string;
         readonly visibleTo: readonly string[];
+        readonly variants: readonly { readonly color: string; readonly price: number }[];
         readonly price: {
             readonly guest: { readonly min: number };
             readonly member: { readonly min: number };
@@ -639,4 +640,47 @@ test('the strip and the brand are in the page itself, and a browser without Java
     await page.goto('/widget/');
     expect(await noScript.last().textContent()).toContain('The search box needs JavaScript.');
     await context.close();
+});
+
+test('the product page holds its shape: a name without a ring, the stock with the price, a short table', async ({
+    page,
+    request,
+}) => {
+    await page.goto('/?product=SL-00145');
+    const name = page.getByRole('heading', { level: 1 });
+    await expect(name).toBeFocused();
+    // Focus put there by the page draws no ring, since the heading is not a control.
+    expect(await name.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+    // "Out of stock" sits under the price as the member lines do.
+    const price = await page.locator('.product-price').boundingBox();
+    const stock = await page.locator('.product-stock').boundingBox();
+    if (!price || !stock) throw new Error('expected the price and the stock line');
+    expect(stock.y - (price.y + price.height)).toBeLessThanOrEqual(6);
+
+    // A long list of variants is a row per color, or per size where a color's prices differ.
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const long = catalog.products.find((p) => p.sku === 'SL-00241');
+    if (!long) throw new Error('expected a product with many variants');
+    const colors = new Map<string, number[]>();
+    for (const v of long.variants) colors.set(v.color, [...(colors.get(v.color) ?? []), v.price]);
+    const rows = [...colors.values()].reduce(
+        (sum, prices) => sum + (new Set(prices).size === 1 ? 1 : prices.length),
+        0
+    );
+    expect(rows).toBeLessThan(long.variants.length);
+    await page.goto('/?product=SL-00241');
+    await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(rows);
+    await audit(page);
+
+    // With no product to show, the page has a heading and says so in the text's own color.
+    await page.goto('/?product=NOPE-1');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('No such product');
+    const notice = page.locator('.product > .notice');
+    const colorOf = (selector: string) =>
+        page.locator(selector).evaluate((el) => getComputedStyle(el).color);
+    expect(await notice.evaluate((el) => getComputedStyle(el).color)).toBe(await colorOf('body'));
+    const view = page.getByRole('region', { name: /^There is no product NOPE-1/ });
+    await expect(view).toBeFocused();
+    expect(await view.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+    await audit(page);
 });

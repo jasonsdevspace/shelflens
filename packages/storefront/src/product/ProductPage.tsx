@@ -19,6 +19,7 @@ import {
 import { focusIsFree } from '../results/useReturnFocus.js';
 import { Swatch } from '../search/Swatch.jsx';
 import { Rail } from './Rail.jsx';
+import { variantRows } from './variants.js';
 
 /**
  * One product, over the results it was found in.
@@ -60,14 +61,17 @@ const backLabel = (state: SearchState, direct: boolean): string => {
  * A view with no product in it: loading, missing or failed, with the way
  * out beside it. Focus lands on the view, which is named by its line, so
  * the line is heard once, as focus arrives, rather than also as an alert
- * or a status.
+ * or a status. A view that is the page's answer, not a moment on the way
+ * to one, has a heading too.
  */
 const Bare = ({
     view,
+    title,
     line,
     children,
 }: {
     readonly view: RefObject<HTMLElement | null>;
+    readonly title?: string;
     /** What the view says, when it is one line. */
     readonly line?: string;
     readonly children: ReactNode;
@@ -80,6 +84,7 @@ const Bare = ({
             tabIndex={-1}
             aria-labelledby={line === undefined ? undefined : id}
         >
+            {title !== undefined && <h1 className="product-name">{title}</h1>}
             {line !== undefined && (
                 <p className="notice" id={id}>
                     {line}
@@ -198,7 +203,7 @@ const Details = ({
                     </p>
                     {product.price.memberPrice && <p className="product-member">Member price</p>}
                     {product.membersOnly && <p className="product-member">Members only</p>}
-                    {!product.inStock && <p className="card-stock">Out of stock</p>}
+                    {!product.inStock && <p className="product-stock">Out of stock</p>}
                 </div>
             </div>
             <p className="product-description">{product.description}</p>
@@ -207,18 +212,18 @@ const Details = ({
                 <thead>
                     <tr>
                         <th scope="col">Color</th>
-                        <th scope="col">Size</th>
+                        <th scope="col">Sizes</th>
                         <th scope="col">Price</th>
                         <th scope="col">Stock</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {product.variants.map((variant) => (
-                        <tr key={variant.sku}>
-                            <td>{variant.color}</td>
-                            <td>{variant.size}</td>
-                            <td>{formatMoney(variant.price, locale)}</td>
-                            <td>{variant.inStock ? 'In stock' : 'Out of stock'}</td>
+                    {variantRows(product.variants).map((row) => (
+                        <tr key={row.key}>
+                            <td>{row.color}</td>
+                            <td>{row.sizes}</td>
+                            <td>{formatMoney(row.price, locale)}</td>
+                            <td>{row.stock}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -300,7 +305,11 @@ export const ProductPage = ({ client, sku, state, navigate, direct = false }: Pr
     const { product } = current;
     if (!product) {
         return (
-            <Bare view={view} line={`There is no product ${sku} in this store.`}>
+            <Bare
+                view={view}
+                title="No such product"
+                line={`There is no product ${sku} in this store.`}
+            >
                 {backButton}
             </Bare>
         );

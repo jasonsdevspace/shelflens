@@ -139,3 +139,19 @@ test('Escape closes the drawer after a choice takes away the button that had foc
     await expect(drawer).toBeHidden();
     await expect(page.getByRole('button', { name: /Filters/ })).toBeFocused();
 });
+
+test('on a phone the product name has the width of the page, under its swatch', async ({
+    page,
+}) => {
+    await page.goto('/?product=SL-00145');
+    const name = page.getByRole('heading', { level: 1 });
+    await expect(name).toBeFocused();
+    const swatch = await page.locator('.product-head .swatch').boundingBox();
+    const box = await name.boundingBox();
+    if (!swatch || !box) throw new Error('expected the swatch and the name');
+    expect(box.y).toBeGreaterThanOrEqual(swatch.y + swatch.height);
+    expect(await name.evaluate((el) => getComputedStyle(el).fontSize)).toBe('24px');
+    // The name wraps once at most.
+    const line = Number.parseFloat(await name.evaluate((el) => getComputedStyle(el).lineHeight));
+    expect(box.height).toBeLessThanOrEqual(line * 2 + 1);
+});
