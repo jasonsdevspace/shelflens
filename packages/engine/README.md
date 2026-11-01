@@ -62,7 +62,8 @@ which route, and for how much. That is what an explain mode shows.
 - Filters narrow the candidates before anything is scored: a single value, any of several, or a
   numeric range whose upper bound is exclusive. A filter on an attribute the config does not
   declare is an `EngineError`, since that is the caller's mistake and not an empty result.
-- Sorts take any declared attribute, `relevance`, or `id` for the index's own order, each clause breaking the ties of the one
+- Sorts take any declared attribute, `relevance`, or `id` for the order the documents were
+  indexed in, each clause breaking the ties of the one
   before it, and every sort ends on the id. Documents that tie on everything asked for still come
   back in one fixed order, so paging never shows a document twice or skips one. A sort declared as
   scoped to a filter, such as a position within a category, falls back to relevance when the

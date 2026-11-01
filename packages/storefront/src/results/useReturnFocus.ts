@@ -1,5 +1,14 @@
 import { type RefObject, useEffect, useRef } from 'react';
 
+/** Whether nothing holds focus, so the page may put it somewhere without taking it from the visitor. */
+const focusIsFree = (): boolean => {
+    const active = document.activeElement;
+    return active === null || active === document.body;
+};
+
+const headingIn = (container: RefObject<HTMLElement | null>) =>
+    container.current?.querySelector<HTMLElement>('.results-heading');
+
 /**
  * Puts focus back where the visitor was when a product closes: on the card
  * for the product just closed, or on the results heading when that card is
@@ -16,14 +25,10 @@ export const useReturnFocus = (
 ): void => {
     useEffect(() => {
         if (sku === undefined || !settled) return;
-        const active = document.activeElement;
-        const taken = active !== null && active !== document.body;
-        if (!taken) {
-            const root = container.current;
-            const links = root?.querySelectorAll<HTMLElement>('.card-link') ?? [];
+        if (focusIsFree()) {
+            const links = container.current?.querySelectorAll<HTMLElement>('.card-link') ?? [];
             const card = [...links].find((link) => link.dataset.sku === sku);
-            const heading = root?.querySelector<HTMLElement>('.results-heading');
-            (card ?? heading)?.focus({ preventScroll: !card });
+            (card ?? headingIn(container))?.focus({ preventScroll: !card });
         }
         onDone();
     }, [container, sku, settled, onDone]);
@@ -44,35 +49,35 @@ export const useArrivalFocus = (
     useEffect(() => {
         if (arrival === undefined || !answered || handled.current === arrival) return;
         handled.current = arrival;
-        const active = document.activeElement;
-        if (active !== null && active !== document.body) return;
-        container.current?.querySelector<HTMLElement>('.results-heading')?.focus();
+        if (focusIsFree()) headingIn(container)?.focus();
     }, [container, arrival, answered]);
 };
 
 /**
- * Puts focus back on the page when the control that had it went away with
- * the last change, such as a category's button replaced by its children,
- * or a page number pressed. Once the answer lands, focus goes to the open
+ * Puts focus back on the page when the control that had it went away, such
+ * as a category's button replaced by its children, or "Clear all filters"
+ * once nothing is ticked. Once the answer is in, focus goes to the open
  * drawer's title, or else to the results heading, so the next Tab starts
- * from there and a screen reader says where it is. The first answer is
- * left alone, so a page that has just opened keeps its focus where it was.
+ * from there and a screen reader says where it is. Only a control that is
+ * gone counts, so a browser that leaves focus on the page after a click,
+ * as Safari does, never has it moved.
  */
-export const useKeptFocus = (
-    container: RefObject<HTMLElement | null>,
-    key: string,
-    answered: boolean
-): void => {
-    const first = useRef<string | undefined>(key);
+export const useKeptFocus = (container: RefObject<HTMLElement | null>, answered: boolean): void => {
+    const last = useRef<Element | null>(null);
     useEffect(() => {
-        if (!answered) return;
-        if (first.current === key) return;
-        first.current = undefined;
-        const active = document.activeElement;
-        if (active !== null && active !== document.body) return;
+        const seen = (event: FocusEvent) => {
+            last.current = event.target instanceof Element ? event.target : null;
+        };
+        document.addEventListener('focusin', seen);
+        return () => document.removeEventListener('focusin', seen);
+    }, []);
+    // After every render, since any change can take a control away.
+    useEffect(() => {
+        if (!answered || !focusIsFree() || last.current?.isConnected !== false) return;
+        last.current = null;
         const drawer = document.querySelector<HTMLElement>(
             '.drawer-panel:not([hidden]) .drawer-title'
         );
-        (drawer ?? container.current?.querySelector<HTMLElement>('.results-heading'))?.focus();
-    }, [container, key, answered]);
+        (drawer ?? headingIn(container))?.focus();
+    });
 };

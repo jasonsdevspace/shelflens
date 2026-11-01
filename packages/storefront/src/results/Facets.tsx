@@ -126,7 +126,7 @@ const ListFacet = ({
     // A ticked value nothing else matches stays in its group, checked, so it can be unticked.
     const stranded = state[name]
         .filter((value) => !answered.some((bucket) => bucket.value === value))
-        .map((value) => ({ value, count: 0 }));
+        .map((value): { value: string; count?: number } => ({ value }));
     const listed = [...answered, ...stranded];
     if (listed.length === 0) return null;
     const buckets = all
@@ -155,7 +155,10 @@ const ListFacet = ({
                         }
                     />
                     <span className="facet-label">{bucket.value}</span>
-                    <span className="facet-count">{bucket.count}</span>
+                    {/* A ticked value the answer left out has no count to show. */}
+                    {bucket.count !== undefined && (
+                        <span className="facet-count">{bucket.count}</span>
+                    )}
                 </label>
             ))}
             {listed.length > SHOWN && (
@@ -260,19 +263,15 @@ export const Facets = (props: FacetsProps) => {
             aria-label="Narrow the results"
             onSubmit={(event) => event.preventDefault()}
         >
-            {/* Kept in place and marked off when nothing is ticked, so pressing it never
-                takes the button out from under focus. Marked rather than disabled, since a
-                browser moves focus off a button that is disabled. */}
-            <button
-                type="button"
-                className="facets-clear"
-                aria-disabled={!hasFilters(state)}
-                onClick={() => {
-                    if (hasFilters(state)) onChange(withoutFilters(state));
-                }}
-            >
-                Clear all filters
-            </button>
+            {hasFilters(state) && (
+                <button
+                    type="button"
+                    className="facets-clear"
+                    onClick={() => onChange(withoutFilters(state))}
+                >
+                    Clear all filters
+                </button>
+            )}
             {category && <CategoryFacet {...props} facet={category} />}
             {LISTS.map((name) => {
                 const facet = facetFor(name);

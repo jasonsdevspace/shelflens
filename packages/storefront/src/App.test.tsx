@@ -1,6 +1,6 @@
 import { createMemoryEventStore, createMemoryRuleStore } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -173,7 +173,8 @@ describe('keeping place', () => {
         await open('?color=Nowhere');
         const nowhere = within(facet('Color')).getByRole('checkbox', { name: /Nowhere/ });
         expect(nowhere).toBeChecked();
-        expect(nowhere.parentElement).toHaveTextContent('0');
+        // The answer gave it no count, so none is made up.
+        expect(nowhere.parentElement?.querySelector('.facet-count')).toBeNull();
     });
 
     it('moves focus to the new page heading after Next, and says the page', async () => {
@@ -187,6 +188,24 @@ describe('keeping place', () => {
                     .some((status) => /page 2 of \d+/.test(status.textContent))
             ).toBe(true)
         );
+    });
+
+    it('leaves focus alone after a click that never took it, as Safari does', async () => {
+        await open();
+        const box = within(facet('Brand')).getAllByRole('checkbox')[0];
+        if (!box) throw new Error('expected a brand');
+        // A click with no focus, as Safari gives a checkbox.
+        fireEvent.click(box);
+        await waitFor(() => expect(window.location.search).toContain('brand='));
+        await settled();
+        expect(document.activeElement).toBe(document.body);
+    });
+
+    it("keeps focus on the current page's number when it is pressed again", async () => {
+        const user = await open();
+        const current = screen.getByRole('button', { name: 'Page 1' });
+        await user.click(current);
+        expect(current).toHaveFocus();
     });
 
     it('says when a page is past the last, and links to the last page', async () => {
@@ -408,10 +427,9 @@ describe('narrowing', () => {
         await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
         await settled();
         expect(window.location.search).toBe('');
-        // Marked off rather than taken away, so the focus it had stays on it.
-        const clear = screen.getByRole('button', { name: 'Clear all filters' });
-        expect(clear).toHaveAttribute('aria-disabled', 'true');
-        expect(clear).toHaveFocus();
+        // The button goes with the filters, and focus moves to the results heading.
+        expect(screen.queryByRole('button', { name: 'Clear all filters' })).not.toBeInTheDocument();
+        await waitFor(() => expect(heading()).toHaveFocus());
     });
 
     it('sorts by price from the toolbar', async () => {

@@ -158,7 +158,10 @@ const applyPlan = (
     return { docs, scores, units, mode: candidates.mode };
 };
 
-/** The sort by the index's own order, which every sort also ends on. */
+/**
+ * The sort by the order the documents were indexed in, unless the config
+ * declares an attribute of that name, which then sorts as any other.
+ */
 const ID_SORT = 'id';
 
 const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
@@ -199,12 +202,23 @@ const compareByClause = (
     if (clause.by === 'relevance') {
         return byNumber(candidates.scores[a] ?? 0, candidates.scores[b] ?? 0, direction);
     }
-    if (clause.by === ID_SORT) {
-        const rank = (i: number) => index.idRank[candidates.docs[i] ?? 0] ?? 0;
-        return byNumber(rank(a), rank(b), direction);
+    if (clause.by === ID_SORT && !index.columns.has(ID_SORT)) {
+        // The order the documents came in, which is the catalog's own.
+        return byNumber(candidates.docs[a] ?? 0, candidates.docs[b] ?? 0, direction);
     }
-    const left = attributeOf(index, candidates.docs[a] ?? 0, clause.by);
-    const right = attributeOf(index, candidates.docs[b] ?? 0, clause.by);
+    return byAttribute(
+        attributeOf(index, candidates.docs[a] ?? 0, clause.by),
+        attributeOf(index, candidates.docs[b] ?? 0, clause.by),
+        direction
+    );
+};
+
+/** Two values of an attribute in the clause's direction, a missing one last either way. */
+const byAttribute = (
+    left: AttributeValue | undefined,
+    right: AttributeValue | undefined,
+    direction: number
+): number | undefined => {
     if (left === undefined || right === undefined) {
         if (left === undefined && right === undefined) return undefined;
         return left === undefined ? 1 : -1;
@@ -283,7 +297,7 @@ const defaultSort = (
  * Settles which sort applies.
  *
  * A clause on an unknown attribute is the caller's mistake. The id is
- * always known, as the index's own order. A scoped sort
+ * always known, as the order the documents were indexed in. A scoped sort
  * without its filter falls back to relevance, as a category position does
  * outside a category.
  */
@@ -294,11 +308,12 @@ const resolveSort = (
 ): SortClause[] => {
     const resolved: SortClause[] = [];
     for (const clause of request.sort ?? []) {
-        if (clause.by === 'relevance' || clause.by === ID_SORT) {
+        const declared = config.attributes[clause.by] !== undefined;
+        if (clause.by === 'relevance' || (clause.by === ID_SORT && !declared)) {
             resolved.push(clause);
             continue;
         }
-        if (!config.attributes[clause.by]) {
+        if (!declared) {
             throw new EngineError(
                 'unknown_attribute',
                 `cannot sort by unknown attribute ${clause.by}`

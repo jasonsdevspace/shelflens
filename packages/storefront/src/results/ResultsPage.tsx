@@ -386,7 +386,13 @@ const useAppliedRules = (
     const ids =
         !answered || previewing || !result
             ? undefined
-            : [...result.merchandising.applied, ...result.merchandising.setAsideBySort];
+            : // A rule that pins and hides is in both under a sort, and is listed once.
+              [
+                  ...new Set([
+                      ...result.merchandising.applied,
+                      ...result.merchandising.setAsideBySort,
+                  ]),
+              ];
     // The last answer from the store itself for this search, kept through a preview
     // and through the request after it, so the list beside the results never blanks
     // or shows a draft's. Another search starts over. It is state, so the same array
@@ -433,10 +439,12 @@ const Answer = ({
     navigate,
     previewing,
     sortKey,
+    onPage,
 }: Pick<ResultsPageProps, 'state' | 'navigate'> & {
     readonly result: Result;
     readonly previewing: boolean;
     readonly sortKey: SortKey;
+    readonly onPage: (page: number) => void;
 }) => (
     <>
         <Notices
@@ -457,16 +465,7 @@ const Answer = ({
             </p>
         )}
         {result.items.length > 0 && <Cards result={result} state={state} navigate={navigate} />}
-        <Pagination
-            page={result.page}
-            totalPages={result.totalPages}
-            onPage={(page) => {
-                // The pressed button stays, but the page under it is new, so focus moves to
-                // the new page's heading once it lands.
-                if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-                navigate({ ...state, page });
-            }}
-        />
+        <Pagination page={result.page} totalPages={result.totalPages} onPage={onPage} />
     </>
 );
 
@@ -496,8 +495,16 @@ export const ResultsPage = (props: ResultsPageProps) => {
     // Try again takes its own button away, so the results heading takes focus once they land.
     const [retried, setRetried] = useState<number>();
     useArrivalFocus(main, retried, answered);
-    const { product: _product, ...shown } = state;
-    useKeptFocus(main, serializeSearchState(shown), answered);
+    useKeptFocus(main, answered);
+    // A new page under the button pressed, so its heading takes focus once it lands.
+    const [paged, setPaged] = useState<number>();
+    useArrivalFocus(main, paged, answered);
+    const toPage = (page: number) => {
+        if (page === state.page) return;
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        setPaged(performance.now());
+        navigate({ ...state, page });
+    };
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
     // An error is the page, except with the panel open: the answer before it stays
@@ -598,6 +605,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                             navigate={navigate}
                             previewing={previewing}
                             sortKey={sortKey}
+                            onPage={toPage}
                         />
                     )}
                 </section>
