@@ -835,6 +835,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 ready="started"
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
+                // Every product in a visitor's catalog is for everyone.
+                membersOnly={false}
                 arrival={stage.arrival}
                 banner={
                     <CatalogBar

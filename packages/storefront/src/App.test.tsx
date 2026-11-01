@@ -907,17 +907,32 @@ describe('as a member', () => {
         document.removeEventListener('focusin', listen);
         expect(document.title).toMatch(/^No such product/);
         expect(screen.queryByRole('alert')).toBeNull();
-        // Under every missing product, a guest is told how a member would see more.
-        expect(
-            screen.getByText(
-                'Some products are for members only. Choose "Member" under "Shopping as" to see them.'
-            )
-        ).toBeInTheDocument();
+        // Under every missing product, a guest is told how a member would see more, and
+        // hears it with the notice as focus arrives.
+        expect(notice).toHaveAccessibleDescription(
+            'Some products are for members only. Choose "Member" under "Shopping as" to see them.'
+        );
         await shopAs(user, 'member');
         await screen.findByRole('heading', { level: 1, name: membersOnly.name });
         expect(screen.getByText('Members only')).toBeInTheDocument();
         // The switch keeps focus, since the visitor is still using it.
         expect(screen.getByRole('combobox', { name: 'Shopping as' })).toHaveFocus();
+    });
+
+    it('tells a guest nothing about members where no product is for members only', async () => {
+        window.history.replaceState(null, '', '/?product=NOPE-1');
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={Promise.resolve()}
+                membersOnly={false}
+            />
+        );
+        const notice = await screen.findByRole('region', { name: /^There is no product NOPE-1/ });
+        expect(notice).not.toHaveAccessibleDescription();
+        expect(screen.queryByText(/for members only/)).toBeNull();
     });
 
     it('keeps the product and its rail on screen while a switch asks again', async () => {

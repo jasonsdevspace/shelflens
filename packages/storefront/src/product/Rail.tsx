@@ -22,10 +22,16 @@ export interface RailProps {
 
 export const RAIL_HEADING_ID = 'rail-heading';
 
+/**
+ * The source says whether anything was viewed with the product, and the
+ * count says how much of the rail that is, so the two never disagree on
+ * the first and an answer without a count is still headed truly.
+ */
 export const railHeading = (rail: RailData): string => {
     const mostRated = `most rated in ${rail.category.name}`;
-    if (rail.viewedTogether === 0) return `Most rated in ${rail.category.name}`;
-    return rail.viewedTogether < rail.items.length
+    if (rail.source !== 'VIEWED_TOGETHER') return `Most rated in ${rail.category.name}`;
+    const viewed = rail.viewedTogether > 0 ? rail.viewedTogether : rail.items.length;
+    return viewed < rail.items.length
         ? `Viewed with this product, then ${mostRated}`
         : 'Viewed with this product';
 };

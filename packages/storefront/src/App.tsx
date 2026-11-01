@@ -54,6 +54,12 @@ export interface AppProps {
     readonly tour?: boolean;
     /** Whether the shopper can switch customer group, which changes nothing when every price is the same. */
     readonly viewerSwitch?: boolean;
+    /**
+     * Whether some products are for members only, so a guest told a product
+     * is not there may be told a member could see it. A visitor's catalog
+     * shows every product to everyone.
+     */
+    readonly membersOnly?: boolean;
     /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
     readonly banner?: ReactNode;
     /** Starts the store again after it did not start. A fresh load of the page unless a test passes its own. */
@@ -343,6 +349,7 @@ export const App = ({
     ready,
     tour = true,
     viewerSwitch = true,
+    membersOnly,
     banner,
     retry,
     arrival,
@@ -441,6 +448,7 @@ export const App = ({
                             direct={direct}
                             group={group}
                             switchable={viewerSwitch}
+                            membersOnly={membersOnly}
                         />
                     )}
                     {isReady && state.product === undefined && (

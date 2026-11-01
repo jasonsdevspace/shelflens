@@ -37,6 +37,14 @@ import { variantRows } from './variants.js';
 const FOR_MEMBERS =
     'Some products are for members only. Choose "Member" under "Shopping as" to see them.';
 
+/** Said only where it can be true: to a guest, with a switch to name and products it would show. */
+const forMembers = ({
+    group,
+    switchable,
+    membersOnly,
+}: Pick<ProductPageProps, 'group' | 'switchable' | 'membersOnly'>): string | undefined =>
+    group === 'guest' && switchable === true && membersOnly !== false ? FOR_MEMBERS : undefined;
+
 /** How many products stand beside one. */
 export const RAIL_SIZE = 6;
 
@@ -51,6 +59,11 @@ export interface ProductPageProps {
     readonly group?: CustomerGroup;
     /** Whether the viewer switch is beside the page, so the way to it can be named. */
     readonly switchable?: boolean;
+    /**
+     * Whether the store has products for members only, so a missing one may
+     * be one of them. Unless told otherwise, a store has.
+     */
+    readonly membersOnly?: boolean | undefined;
 }
 
 /**
@@ -76,12 +89,15 @@ const Bare = ({
     view,
     title,
     line,
+    note,
     children,
 }: {
     readonly view: RefObject<HTMLElement | null>;
     readonly title?: string;
     /** What the view says, when it is one line. */
     readonly line?: string;
+    /** A line after it, said with it as focus arrives. */
+    readonly note?: string | undefined;
     readonly children: ReactNode;
 }) => {
     const id = useId();
@@ -91,11 +107,17 @@ const Bare = ({
             ref={view}
             tabIndex={-1}
             aria-labelledby={line === undefined ? undefined : id}
+            aria-describedby={note === undefined ? undefined : `${id}-note`}
         >
             {title !== undefined && <h1 className="product-name">{title}</h1>}
             {line !== undefined && (
                 <p className={title === undefined ? 'notice' : 'notice is-answer'} id={id}>
                     {line}
+                </p>
+            )}
+            {note !== undefined && (
+                <p className="notice" id={`${id}-note`}>
+                    {note}
                 </p>
             )}
             {children}
@@ -280,8 +302,7 @@ export const ProductPage = ({
     state,
     navigate,
     direct = false,
-    group = 'guest',
-    switchable = false,
+    ...viewer
 }: ProductPageProps) => {
     const { data, loading, error, retry, current } = useProduct(client, sku);
     const heading = useRef<HTMLHeadingElement>(null);
@@ -325,9 +346,9 @@ export const ProductPage = ({
                 view={view}
                 title="No such product"
                 line={`There is no product ${sku} in this store.`}
+                // Said for every missing product, so it tells a guest nothing about which exist.
+                note={forMembers(viewer)}
             >
-                {/* Said for every missing product, so it tells a guest nothing about which exist. */}
-                {switchable && group === 'guest' && <p className="notice">{FOR_MEMBERS}</p>}
                 {backButton}
             </Bare>
         );
