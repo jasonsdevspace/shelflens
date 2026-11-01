@@ -174,6 +174,24 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     const aside = page.getByText(/set aside the pins and boosts/);
     await expect(aside).toBeVisible();
     await expect(aside).toContainText('featured-jackets');
+    // The cafe racer sample stays hidden: a hide holds under any sort, and is not set aside.
+    await expect(aside).not.toContainText('racer-sample');
+});
+
+test('every sort answers, and the results stay', async ({ page }) => {
+    await page.goto('/?q=jacket');
+    const heading = page.getByRole('heading', { level: 1 });
+    await expect(heading).toContainText('results for "jacket"');
+    const sort = page.getByRole('combobox', { name: 'Sort by' });
+    const options = await sort
+        .locator('option')
+        .evaluateAll((all) => all.map((option) => (option as HTMLOptionElement).value));
+    for (const option of options) {
+        await sort.selectOption(option);
+        await expect(page).toHaveURL(new RegExp(`sort=${option}`));
+        await expect(heading).toContainText('results for "jacket"');
+        await expect(page.getByRole('alert')).toHaveCount(0);
+    }
 });
 
 test('nothing matched still shows a page: a shorter phrase with results, or a spelling', async ({

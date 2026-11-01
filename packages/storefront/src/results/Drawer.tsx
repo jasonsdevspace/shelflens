@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 /**
  * A panel over the results, for a phone.
@@ -41,25 +41,34 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
         }
     }, [open]);
 
-    const trap = (event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            setOpen(false);
-            return;
-        }
-        if (event.key !== 'Tab') return;
-        const focusable = event.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE);
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (!first || !last) return;
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
-    };
+    // On the document while open, so Escape and Tab still work when a choice in the
+    // drawer took away the control that had focus.
+    const panel = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return undefined;
+        const trap = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setOpen(false);
+                return;
+            }
+            if (event.key !== 'Tab' || !panel.current) return;
+            const focusable = panel.current.querySelectorAll<HTMLElement>(FOCUSABLE);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first || !last) return;
+            const inside = panel.current.contains(document.activeElement);
+            if (!inside || (event.shiftKey && document.activeElement === first)) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', trap);
+        return () => document.removeEventListener('keydown', trap);
+    }, [open]);
 
     return (
         <div className="drawer">
@@ -87,10 +96,10 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
                     aria-modal="true"
                     aria-labelledby={`${id}-title`}
                     hidden={!open}
-                    onKeyDown={trap}
+                    ref={panel}
                 >
                     <div className="drawer-head">
-                        <h2 id={`${id}-title`} className="drawer-title">
+                        <h2 id={`${id}-title`} className="drawer-title" tabIndex={-1}>
                             {title}
                         </h2>
                         <button

@@ -108,15 +108,17 @@ describe('rules on a query', () => {
 });
 
 describe('rules and the sort', () => {
-    it('sets a query rule aside under any sort but relevance, and says so', () => {
+    it('sets a query rule aside under any sort but relevance, and says so, but keeps a hide', () => {
         const result = engine.search({
             query: 'runner',
             sort: [{ by: 'price', direction: 'asc' }],
         });
-        expect(result.hits.map((h) => h.id)).toEqual(['p2', 'p3', 'p1']);
+        // p2 stays hidden, so a sort only reorders what relevance would show.
+        expect(result.hits.map((h) => h.id)).toEqual(['p3', 'p1']);
+        expect(result.total).toBe(2);
         expect(result.rules).toEqual({
-            applied: [],
-            setAsideBySort: ['runner-promo', 'hide-pro'],
+            applied: ['hide-pro'],
+            setAsideBySort: ['runner-promo'],
         });
     });
 

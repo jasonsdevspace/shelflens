@@ -62,7 +62,8 @@ which route, and for how much. That is what an explain mode shows.
 - Filters narrow the candidates before anything is scored: a single value, any of several, or a
   numeric range whose upper bound is exclusive. A filter on an attribute the config does not
   declare is an `EngineError`, since that is the caller's mistake and not an empty result.
-- Sorts take any declared attribute or `relevance`, each clause breaking the ties of the one
+- Sorts take any declared attribute, `relevance`, or `id` for the order the documents were
+  indexed in, each clause breaking the ties of the one
   before it, and every sort ends on the id. Documents that tie on everything asked for still come
   back in one fixed order, so paging never shows a document twice or skips one. A sort declared as
   scoped to a filter, such as a position within a category, falls back to relevance when the
@@ -98,10 +99,11 @@ pinned or buried takes no signal at all, so the crowd never moves what a merchan
 hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
 new counts over the same index.
 
-Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins and
-hides still apply under a sort scoped to the rule's own filter, which is how a category's
-merchandising survives its position sort. A rule set aside by the sort is reported in the result,
-so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
+Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins
+still apply under a sort scoped to the rule's own filter, which is how a category's merchandising
+survives its position sort. A hide says what may be shown rather than where, so it holds under
+every sort. A rule whose pins, boosts or buries are set aside by the sort is reported in the
+result, so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
 result is recorded on that hit, alongside its matches, for explain mode.
 
 ## Where it comes from

@@ -158,6 +158,12 @@ const applyPlan = (
     return { docs, scores, units, mode: candidates.mode };
 };
 
+/**
+ * The sort by the order the documents were indexed in, unless the config
+ * declares an attribute of that name, which then sorts as any other.
+ */
+const ID_SORT = 'id';
+
 const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
 
 /** A multi-valued attribute sorts by its first value. */
@@ -167,6 +173,10 @@ const compareValues = (a: AttributeValue, b: AttributeValue): number => {
     if (typeof left === 'number' && typeof right === 'number') return left - right;
     return String(left).localeCompare(String(right));
 };
+
+/** Two numbers in the clause's direction, or a tie. */
+const byNumber = (left: number, right: number, direction: number): number | undefined =>
+    left === right ? undefined : (left - right) * direction;
 
 interface Ordering {
     readonly sort: readonly SortClause[];
@@ -190,12 +200,25 @@ const compareByClause = (
 ): number | undefined => {
     const direction = clause.direction === 'asc' ? 1 : -1;
     if (clause.by === 'relevance') {
-        const left = candidates.scores[a] ?? 0;
-        const right = candidates.scores[b] ?? 0;
-        return left === right ? undefined : (left - right) * direction;
+        return byNumber(candidates.scores[a] ?? 0, candidates.scores[b] ?? 0, direction);
     }
-    const left = attributeOf(index, candidates.docs[a] ?? 0, clause.by);
-    const right = attributeOf(index, candidates.docs[b] ?? 0, clause.by);
+    if (clause.by === ID_SORT && !index.columns.has(ID_SORT)) {
+        // The order the documents came in, which is the catalog's own.
+        return byNumber(candidates.docs[a] ?? 0, candidates.docs[b] ?? 0, direction);
+    }
+    return byAttribute(
+        attributeOf(index, candidates.docs[a] ?? 0, clause.by),
+        attributeOf(index, candidates.docs[b] ?? 0, clause.by),
+        direction
+    );
+};
+
+/** Two values of an attribute in the clause's direction, a missing one last either way. */
+const byAttribute = (
+    left: AttributeValue | undefined,
+    right: AttributeValue | undefined,
+    direction: number
+): number | undefined => {
     if (left === undefined || right === undefined) {
         if (left === undefined && right === undefined) return undefined;
         return left === undefined ? 1 : -1;
@@ -267,13 +290,14 @@ const defaultSort = (
     const browsed = Object.entries(config.sortScopes ?? {}).find(([, scope]) =>
         filters.some((filter) => filter.attribute === scope && 'eq' in filter)
     );
-    return browsed ? { by: browsed[0], direction: 'asc' } : { by: 'id', direction: 'asc' };
+    return browsed ? { by: browsed[0], direction: 'asc' } : { by: ID_SORT, direction: 'asc' };
 };
 
 /**
  * Settles which sort applies.
  *
- * A clause on an unknown attribute is the caller's mistake. A scoped sort
+ * A clause on an unknown attribute is the caller's mistake. The id is
+ * always known, as the order the documents were indexed in. A scoped sort
  * without its filter falls back to relevance, as a category position does
  * outside a category.
  */
@@ -284,11 +308,12 @@ const resolveSort = (
 ): SortClause[] => {
     const resolved: SortClause[] = [];
     for (const clause of request.sort ?? []) {
-        if (clause.by === 'relevance') {
+        const declared = config.attributes[clause.by] !== undefined;
+        if (clause.by === 'relevance' || (clause.by === ID_SORT && !declared)) {
             resolved.push(clause);
             continue;
         }
-        if (!config.attributes[clause.by]) {
+        if (!declared) {
             throw new EngineError(
                 'unknown_attribute',
                 `cannot sort by unknown attribute ${clause.by}`

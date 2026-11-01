@@ -325,6 +325,43 @@ describe('sorting', () => {
         expect(result.hits.map((h) => h.id)).toEqual(['p2', 'p3']);
     });
 
+    it("sorts by the index's own order when asked, either way", () => {
+        const ascending = engine.search({ sort: [{ by: 'id', direction: 'asc' }] });
+        expect(ascending.sort).toEqual([{ by: 'id', direction: 'asc' }]);
+        const descending = engine.search({ sort: [{ by: 'id', direction: 'desc' }] });
+        expect(descending.hits.map((h) => h.id)).toEqual(
+            [...ascending.hits.map((h) => h.id)].reverse()
+        );
+        expect(ascending.hits.map((h) => h.id)).toEqual(engine.search({}).hits.map((h) => h.id));
+    });
+
+    it('sorts by id in the order the documents came in, not by the ids as text', () => {
+        const unpadded = createEngine(
+            [
+                product('p10', 'Tenth', '', { brand: 'A' }),
+                product('p2', 'Second', '', { brand: 'A' }),
+            ],
+            config
+        );
+        const sorted = (direction: 'asc' | 'desc') =>
+            unpadded.search({ sort: [{ by: 'id', direction }] }).hits.map((h) => h.id);
+        expect(sorted('asc')).toEqual(['p10', 'p2']);
+        expect(sorted('desc')).toEqual(['p2', 'p10']);
+    });
+
+    it('sorts by a declared attribute named id as any other attribute', () => {
+        const declared = createEngine(
+            [
+                product('a', 'First', '', { brand: 'A', id: 2 }),
+                product('b', 'Second', '', { brand: 'A', id: 1 }),
+            ],
+            { ...config, attributes: { ...config.attributes, id: 'number' } }
+        );
+        expect(
+            declared.search({ sort: [{ by: 'id', direction: 'asc' }] }).hits.map((h) => h.id)
+        ).toEqual(['b', 'a']);
+    });
+
     it('refuses to sort by an unknown attribute', () => {
         expect(() => engine.search({ sort: [{ by: 'popularity', direction: 'desc' }] })).toThrow(
             EngineError

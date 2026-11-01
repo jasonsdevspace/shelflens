@@ -201,6 +201,21 @@ interface Draft {
     readonly setAsideBySort: string[];
 }
 
+/** Whether the rule changes the order of the results, which only relevance can take. */
+const ordersResults = (rule: Rule): boolean =>
+    (rule.pin ?? []).length + (rule.boost ?? []).length + (rule.bury ?? []).length > 0;
+
+/**
+ * What a rule keeps under a sort other than relevance. A hide is about what
+ * may be shown, not where, so it holds. The effects on the order are set aside.
+ */
+const keepUnderSort = (draft: Draft, rule: Rule): void => {
+    const hides = rule.hide ?? [];
+    for (const id of hides) draft.hidden.add(id);
+    if (hides.length > 0) draft.applied.push(rule.id);
+    if (ordersResults(rule)) draft.setAsideBySort.push(rule.id);
+};
+
 const addEffects = (draft: Draft, rule: Rule, relevance: boolean): void => {
     for (const id of rule.pin ?? []) {
         if (draft.pinnedBy.has(id)) continue;
@@ -235,7 +250,7 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
         const ownScope =
             rule.when?.filter !== undefined && context.sortScope === rule.when.filter.attribute;
         if (!relevance && !ownScope) {
-            draft.setAsideBySort.push(rule.id);
+            keepUnderSort(draft, rule);
             continue;
         }
         draft.applied.push(rule.id);

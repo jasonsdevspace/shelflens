@@ -117,3 +117,18 @@ test('a rule half typed in the drawer survives the device turning', async ({ pag
         'Last first'
     );
 });
+
+test('Escape closes the drawer after a choice takes away the button that had focus', async ({
+    page,
+}) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Filters' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Filters' });
+    // A category's button gives way to its children once chosen.
+    await drawer.getByRole('group', { name: 'Category' }).getByRole('button').first().click();
+    await expect(page).toHaveURL(/category=/);
+    await expect(drawer.getByRole('heading', { name: 'Filters' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole('button', { name: /Filters/ })).toBeFocused();
+});

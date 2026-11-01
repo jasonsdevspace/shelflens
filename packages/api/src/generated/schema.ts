@@ -103,7 +103,11 @@ export type Matching =
 export type Merchandising = {
     readonly __typename?: 'Merchandising';
     readonly applied: ReadonlyArray<Scalars['ID']['output']>;
-    /** Rules that would have applied under a relevance sort. */
+    /**
+     * Rules whose pins, boosts or buries would have applied under a relevance
+     * sort. A rule that also hides is in applied as well, since a hide holds
+     * under any sort.
+     */
     readonly setAsideBySort: ReadonlyArray<Scalars['ID']['output']>;
 };
 
