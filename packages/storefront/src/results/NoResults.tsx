@@ -62,7 +62,16 @@ const lead = (state: SearchState): string | undefined => {
 
 /** Whether the API offered no spelling, no shorter phrase and nothing without the filters. */
 const nothingNearer = (offered: NoResultsProps['offered']): boolean =>
-    !offered?.suggestion && !offered?.relaxed && (offered?.foundWithoutFilters ?? 0) === 0;
+    offered !== null &&
+    !offered.suggestion &&
+    !offered.relaxed &&
+    offered.foundWithoutFilters === 0;
+
+/** What to try when nothing nearer was offered: fewer words only when there are words to spare. */
+const tryNext = (phrase: string): string =>
+    phrase.trim().split(/\s+/).length > 1
+        ? 'Try fewer words or another spelling.'
+        : 'Try another spelling, or another word for the same thing.';
 
 /** The relaxed phrase's link: every result it found, or the one. */
 const seeAll = (total: number): string =>
@@ -85,8 +94,8 @@ const Relaxed = ({
             Showing results for &quot;{relaxed.phrase}&quot; instead
         </h2>
         <p className="no-results-offer">
-            Nothing matched &quot;{relaxed.dropped.join('" or "')}&quot;, so{' '}
-            {relaxed.dropped.length === 1 ? 'that word was' : 'those words were'} left out.{' '}
+            No product matched every word, so &quot;{relaxed.dropped.join('" and "')}&quot;{' '}
+            {relaxed.dropped.length === 1 ? 'was' : 'were'} left out.{' '}
             <StateLink to={{ ...state, phrase: relaxed.phrase, page: 1 }} navigate={navigate}>
                 {seeAll(relaxed.result.total)}
             </StateLink>
@@ -108,7 +117,7 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
     return (
         <section className="no-results">
             {sentence && <p className="notice">{sentence}</p>}
-            {stuck && <p className="notice">Try fewer words or another spelling.</p>}
+            {stuck && <p className="notice">{tryNext(state.phrase ?? '')}</p>}
             {offered?.suggestion && (
                 <p className="no-results-offer">
                     Did you mean{' '}

@@ -755,9 +755,22 @@ describe('as a member', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(screen.queryByText(/Shopping as a member/)).toBeNull();
-        await shopAs(user, 'member');
-        await settled();
         const line = () => document.querySelector('.results-aside');
+        // The member's answer is held, so the page is seen while it is on its way.
+        const served = globalThis.fetch;
+        let release = () => undefined as void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            await held;
+            return served(input, init);
+        });
+        await shopAs(user, 'member');
+        // The answer in hand is still the guest's, so the line waits rather than speak for it.
+        expect(line()).toBeNull();
+        release();
+        await settled();
         const said = () =>
             screen.getAllByRole('status').filter((status) => /Shopping as/.test(status.textContent))
                 .length;
@@ -1116,7 +1129,7 @@ describe('when nothing matches', () => {
         expect(screen.queryByText(/with these filters/)).toBeNull();
         // The word left out is named, and why.
         expect(screen.getByText(/left out/)).toHaveTextContent(
-            /^Nothing matched "zzqx", so that word was left out\. See all \d+ results$/
+            /^No product matched every word, so "zzqx" was left out\. See all \d+ results$/
         );
         expect(screen.queryByRole('group', { name: 'Brand' })).toBeNull();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
@@ -1181,7 +1194,10 @@ describe('when nothing matches', () => {
         await settled();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Popular products');
         // With nothing nearer to offer, the shopper is told what to try.
-        expect(screen.getByText('Try fewer words or another spelling.')).toBeInTheDocument();
+        // One word has no words to spare, so fewer is not offered.
+        expect(
+            screen.getByText('Try another spelling, or another word for the same thing.')
+        ).toBeInTheDocument();
         expect(
             within(screen.getByRole('list', { name: 'Popular products' })).getAllByRole('link')
         ).toHaveLength(8);

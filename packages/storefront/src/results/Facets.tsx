@@ -91,14 +91,15 @@ const CategoryFacet = ({
 }: FacetsProps & { readonly facet: Facet }) => {
     if (!('buckets' in facet)) return null;
     const counts = new Map(facet.buckets.map((bucket) => [bucket.value, bucket.count]));
-    const next = childrenOf(categories, state.category).filter((category) =>
-        counts.has(category.id)
-    );
+    const next = childrenOf(categories, state.category).flatMap((category) => {
+        const n = counts.get(category.id);
+        return n === undefined ? [] : [{ category, n }];
+    });
     if (next.length === 0) return null;
     return (
         <Group title={TITLES.category ?? 'Category'}>
             <ul className="facet-links">
-                {next.map((category) => (
+                {next.map(({ category, n }) => (
                     <li key={category.id}>
                         <button
                             type="button"
@@ -106,7 +107,7 @@ const CategoryFacet = ({
                             onClick={() => onChange({ ...state, category: category.id, page: 1 })}
                         >
                             <span className="facet-label">{category.name}</span>
-                            <FacetCount n={counts.get(category.id) ?? 0} />
+                            <FacetCount n={n} />
                         </button>
                     </li>
                 ))}
@@ -226,7 +227,9 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
 
 const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: Facet }) => {
     if (!('ranges' in facet)) return null;
-    const bands = facet.ranges.filter((bucket) => bucket.count > 0 && bucket.from !== null);
+    const bands = facet.ranges.flatMap((bucket) =>
+        bucket.count > 0 && bucket.from !== null ? [{ ...bucket, from: bucket.from }] : []
+    );
     if (bands.length === 0) return null;
     const choose = (rating: number | undefined) => {
         const { rating: _dropped, ...rest } = state;
@@ -249,10 +252,10 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         type="radio"
                         name="rating"
                         checked={state.rating === bucket.from}
-                        onChange={() => choose(bucket.from ?? undefined)}
+                        onChange={() => choose(bucket.from)}
                     />
                     <span className="facet-label">
-                        {count(bucket.from ?? 0, 'star', 'stars')} and up
+                        {count(bucket.from, 'star', 'stars')} and up
                     </span>
                     <FacetCount n={bucket.count} />
                 </label>
