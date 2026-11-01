@@ -879,6 +879,13 @@ describe('as a member', () => {
     });
 
     it('sees a product a guest is told does not exist', async () => {
+        // What each view focused was called as focus arrived, so a view reused in place is caught.
+        const heard: string[] = [];
+        const listen = (event: FocusEvent) => {
+            const id = (event.target as Element).getAttribute('aria-labelledby') ?? '';
+            heard.push(document.getElementById(id)?.textContent ?? '');
+        };
+        document.addEventListener('focusin', listen);
         window.history.replaceState(null, '', `/?product=${membersOnly.sku}`);
         render(
             <App
@@ -892,6 +899,10 @@ describe('as a member', () => {
         // Focus moves to the notice, which reads it once, so it is not an alert as well.
         const notice = await screen.findByRole('region', { name: /^There is no product / });
         await waitFor(() => expect(notice).toHaveFocus());
+        // Focus arrives at the answer itself, not only at the loading line it replaced.
+        expect(heard.at(-1)).toMatch(/^There is no product /);
+        document.removeEventListener('focusin', listen);
+        expect(document.title).toMatch(/^No such product/);
         expect(screen.queryByRole('alert')).toBeNull();
         await shopAs(user, 'member');
         await screen.findByRole('heading', { level: 1, name: membersOnly.name });

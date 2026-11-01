@@ -84,6 +84,11 @@ interface ShippedCatalog {
         readonly sku: string;
         readonly name: string;
         readonly visibleTo: readonly string[];
+        readonly variants: readonly {
+            readonly color: string;
+            readonly price: number;
+            readonly inStock: boolean;
+        }[];
         readonly price: {
             readonly guest: { readonly min: number };
             readonly member: { readonly min: number };
@@ -639,4 +644,70 @@ test('the strip and the brand are in the page itself, and a browser without Java
     await page.goto('/widget/');
     expect(await noScript.last().textContent()).toContain('The search box needs JavaScript.');
     await context.close();
+});
+
+test('the product page holds its shape: a name without a ring, the stock with the price, a short table', async ({
+    page,
+    request,
+}) => {
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const everyone = catalog.products.filter((p) => p.visibleTo.length === 2);
+    const soldOut = everyone.find((p) => p.variants.every((v) => !v.inStock));
+    const long = [...everyone].sort((a, b) => b.variants.length - a.variants.length)[0];
+    if (!soldOut || !long) throw new Error('expected a sold out product and a long one');
+
+    await page.goto(`/?product=${soldOut.sku}`);
+    const name = page.getByRole('heading', { level: 1 });
+    await expect(name).toBeFocused();
+    // Focus put there by the page draws no ring, since the heading is not a control.
+    expect(await name.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+    // "Out of stock" sits under the price as the member lines do.
+    const price = await page.locator('.product-price').boundingBox();
+    const stock = await page.locator('.product-stock').boundingBox();
+    if (!price || !stock) throw new Error('expected the price and the stock line');
+    expect(stock.y - (price.y + price.height)).toBeLessThanOrEqual(6);
+
+    // A long list of variants is a few rows, so the rail is within a scroll of the top.
+    await page.goto(`/?product=${long.sku}`);
+    const rows = await page.getByRole('table').locator('tbody tr').count();
+    expect(rows).toBeLessThanOrEqual(long.variants.length / 2);
+    const rail = await page.locator('.rail').boundingBox();
+    const height = page.viewportSize()?.height ?? 0;
+    if (!rail) throw new Error('expected the rail');
+    expect(rail.y).toBeLessThan(height * 1.5);
+    await audit(page);
+
+    // While a product loads, its line stays muted, a moment on the way and not the answer.
+    // The store answers inside the page, so the request is held there until released.
+    await page.addInitScript(() => {
+        const answer = window.fetch.bind(window);
+        const gate = new Promise<void>((resolve) => {
+            Object.assign(window, { releaseProduct: resolve });
+        });
+        window.fetch = async (input, init) => {
+            const url =
+                typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+            if (decodeURIComponent(url).includes('"sku":"NOPE-1"')) await gate;
+            return answer(input, init);
+        };
+    });
+    await page.goto('/?product=NOPE-1');
+    const loading = page.getByText('Loading the product.');
+    await expect(loading).toBeVisible();
+    const color = (locator: ReturnType<typeof page.locator>) =>
+        locator.evaluate((el) => getComputedStyle(el).color);
+    const text = await color(page.locator('body'));
+    expect(await color(loading)).not.toBe(text);
+    await page.evaluate(() => {
+        (window as unknown as { releaseProduct: () => void }).releaseProduct();
+    });
+
+    // With no product to show, the page has a heading and says so in the text's own color.
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('No such product');
+    expect(await color(page.locator('.product > .notice'))).toBe(text);
+    const view = page.getByRole('region', { name: /^There is no product NOPE-1/ });
+    await expect(view).toBeFocused();
+    expect(await view.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+    await expect(page).toHaveTitle(/^No such product, /);
+    await audit(page);
 });
