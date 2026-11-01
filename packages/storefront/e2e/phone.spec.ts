@@ -17,7 +17,7 @@ test('the facets open in a drawer, narrow the results, and close back to them', 
     page,
 }) => {
     await page.goto('/?category=shoes');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shoes');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Shoes, \d+ products$/);
     await expect(page.getByRole('group', { name: 'Brand' })).toBeHidden();
 
     const open = page.getByRole('button', { name: 'Filters' });

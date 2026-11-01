@@ -78,7 +78,9 @@ test('searches a visitor’s file with everything the demo has, without it leavi
 
     // The store over a visitor's catalog opens on every product, which runs to pages.
     await page.goto('try/');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        /^All products, \d+ products$/
+    );
     const pages = page.getByRole('navigation', { name: 'Pages' });
     await pages.getByRole('button', { name: 'Page 2', exact: true }).click();
     await expect(page).toHaveURL(/page=2/);

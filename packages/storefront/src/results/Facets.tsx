@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
+import { count } from '../format/count.js';
 import { formatMoney } from '../format/money.js';
 import type { SearchQuery } from '../generated/operations.js';
 
@@ -59,6 +60,14 @@ const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string =>
     return 'Any price';
 };
 
+/** How many results a choice gives: a number to see, and what it counts to hear. */
+const FacetCount = ({ n }: { readonly n: number }) => (
+    <span className="facet-count">
+        <span aria-hidden="true">{n}</span>
+        <span className="visually-hidden">{`, ${count(n, 'result', 'results')}`}</span>
+    </span>
+);
+
 const Group = ({
     title,
     id,
@@ -97,7 +106,7 @@ const CategoryFacet = ({
                             onClick={() => onChange({ ...state, category: category.id, page: 1 })}
                         >
                             <span className="facet-label">{category.name}</span>
-                            <span className="facet-count">{counts.get(category.id)}</span>
+                            <FacetCount n={counts.get(category.id) ?? 0} />
                         </button>
                     </li>
                 ))}
@@ -156,9 +165,7 @@ const ListFacet = ({
                     />
                     <span className="facet-label">{bucket.value}</span>
                     {/* A ticked value the answer left out has no count to show. */}
-                    {bucket.count !== undefined && (
-                        <span className="facet-count">{bucket.count}</span>
-                    )}
+                    {bucket.count !== undefined && <FacetCount n={bucket.count} />}
                 </label>
             ))}
             {listed.length > SHOWN && (
@@ -169,7 +176,9 @@ const ListFacet = ({
                     aria-controls={id}
                     onClick={fold}
                 >
-                    {all ? 'Show fewer' : `Show all ${listed.length} ${title.toLowerCase()}s`}
+                    {all
+                        ? `Show fewer ${title.toLowerCase()}s`
+                        : `Show all ${listed.length} ${title.toLowerCase()}s`}
                 </button>
             )}
         </Group>
@@ -207,7 +216,7 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
                             onChange={() => choose(band)}
                         />
                         <span className="facet-label">{priceLabel(band, store)}</span>
-                        <span className="facet-count">{bucket.count}</span>
+                        <FacetCount n={bucket.count} />
                     </label>
                 );
             })}
@@ -242,8 +251,10 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         checked={state.rating === bucket.from}
                         onChange={() => choose(bucket.from ?? undefined)}
                     />
-                    <span className="facet-label">{bucket.from} and up</span>
-                    <span className="facet-count">{bucket.count}</span>
+                    <span className="facet-label">
+                        {count(bucket.from ?? 0, 'star', 'stars')} and up
+                    </span>
+                    <FacetCount n={bucket.count} />
                 </label>
             ))}
         </Group>

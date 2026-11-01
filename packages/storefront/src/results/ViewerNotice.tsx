@@ -1,33 +1,70 @@
+import { useEffect, useRef, useState } from 'react';
+
 import type { CustomerGroup } from '../client/graphql.js';
 import { count } from '../format/count.js';
 import type { Hit } from './ProductCard.jsx';
 
 /**
- * What the viewer switch changed on this page, said once, after a switch.
- * Read from the answer in hand: which prices are member prices and which
- * products are for members only. The app says whether this page is the one
- * the switch happened on, so the line survives opening a product and goes
- * quiet on the next search, which was never seen as the other viewer.
+ * What the viewer switch changed on this page, shown after a switch and
+ * said once. Read from the answer in hand: which prices are member prices
+ * and which products are for members only. The app says whether this page
+ * is the one the switch happened on, so the line survives opening a
+ * product and goes quiet on the next search, which was never seen as the
+ * other viewer.
+ *
+ * The line on the page stays through loading, so it never flickers. What
+ * a screen reader hears is a separate live region, mounted empty and
+ * filled once the first answer after the switch lands, so the switch is
+ * heard once rather than again on every sort, page or return after it.
  */
 export const ViewerNotice = ({
     group,
     items,
     shown,
+    answered,
+    heard,
+    onHeard,
 }: {
     readonly group: CustomerGroup;
     readonly items: readonly Hit[];
     readonly shown: boolean;
+    /** Whether the items are the answer to the current request. */
+    readonly answered: boolean;
+    /** Whether this switch has been said already. */
+    readonly heard: boolean;
+    readonly onHeard: () => void;
 }) => {
-    if (!shown || items.length === 0) return null;
+    const text = shown && items.length > 0 ? sentence(group, items) : '';
+    const [said, setSaid] = useState('');
+    // Once the page moves on, the line said is not left for a screen reader to find twice.
+    if (said !== '' && said !== text) setSaid('');
+    const heardRef = useRef(onHeard);
+    useEffect(() => {
+        heardRef.current = onHeard;
+    });
+    useEffect(() => {
+        if (heard || !answered || text === '') return;
+        const timer = setTimeout(() => {
+            setSaid(text);
+            heardRef.current();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [heard, answered, text]);
     return (
-        <p className="results-aside" role="status">
-            {group === 'member' ? asMember(items) : AS_GUEST}
-        </p>
+        <>
+            <p className="visually-hidden" role="status">
+                {said}
+            </p>
+            {text !== '' && <p className="results-aside">{text}</p>}
+        </>
     );
 };
 
+const sentence = (group: CustomerGroup, items: readonly Hit[]): string =>
+    group === 'member' ? asMember(items) : AS_GUEST;
+
 const AS_GUEST =
-    'Shopping as a guest: prices are list prices, and products for members only are not shown.';
+    'Shopping as a guest: prices are list prices, and products for members only are hidden. Choose "Member" under "Shopping as" to see them.';
 
 const asMember = (items: readonly Hit[]): string => {
     const discounted = items.filter((hit) => hit.product.price.memberPrice).length;
@@ -38,7 +75,7 @@ const asMember = (items: readonly Hit[]): string => {
             : `${count(discounted, 'product', 'products')} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
     const products =
         hidden === 0
-            ? 'none is for members only'
-            : `${hidden} ${hidden === 1 ? 'is' : 'are'} shown to members only`;
+            ? 'none are for members only'
+            : `${hidden} ${hidden === 1 ? 'is' : 'are'} for members only`;
     return `Shopping as a member: ${prices}, and ${products}.`;
 };

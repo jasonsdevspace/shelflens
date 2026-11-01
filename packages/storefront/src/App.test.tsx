@@ -340,7 +340,7 @@ describe('a store that does not start', () => {
 describe('browsing', () => {
     it('shows every product in catalog order with the facets beside them', async () => {
         await open();
-        expect(heading()).toHaveTextContent('All products');
+        expect(heading()).toHaveTextContent(/^All products, \d+ products$/);
         expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveValue('catalog');
         expect(cards()).toHaveLength(24);
         for (const title of ['Category', 'Brand', 'Color', 'Size', 'Price', 'Rating']) {
@@ -363,7 +363,15 @@ describe('browsing', () => {
         );
         await settled();
         expect(window.location.search).toBe(`?category=${root.id}`);
-        expect(heading()).toHaveTextContent(root.name);
+        // The category says how many products it holds, on the page and to a screen reader.
+        expect(heading()).toHaveTextContent(new RegExp(`^${root.name}, \\d+ products$`));
+        await waitFor(() =>
+            expect(
+                screen
+                    .getAllByRole('status')
+                    .some((status) => status.textContent.startsWith(heading().textContent))
+            ).toBe(true)
+        );
         expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveValue('position');
         const crumbs = screen.getByRole('navigation', { name: 'Category' });
         expect(within(crumbs).getByRole('link', { name: root.name })).toHaveAttribute(
@@ -376,7 +384,9 @@ describe('browsing', () => {
         );
         if (!child) throw new Error('expected a child category');
         expect(
-            within(facet('Category')).getByRole('button', { name: new RegExp(child.name) })
+            within(facet('Category')).getByRole('button', {
+                name: new RegExp(`^${child.name}, \\d+ results?$`),
+            })
         ).toBeInTheDocument();
     });
 });
@@ -394,7 +404,7 @@ describe('narrowing', () => {
         if (!last) throw new Error('expected a brand');
         await user.click(last);
         await settled();
-        await user.click(within(facet('Brand')).getByRole('button', { name: 'Show fewer' }));
+        await user.click(within(facet('Brand')).getByRole('button', { name: 'Show fewer brands' }));
         expect(brands()).toHaveLength(7);
         const kept = brands().at(-1);
         if (!kept) throw new Error('expected the ticked brand');
@@ -438,7 +448,9 @@ describe('narrowing', () => {
         expect(window.location.search).toBe('?price=-50');
         for (const card of cards()) expect(card.textContent).toMatch(/\$\d+/);
 
-        await user.click(within(facet('Rating')).getByRole('radio', { name: /4 and up/ }));
+        await user.click(
+            within(facet('Rating')).getByRole('radio', { name: /^4 stars and up, \d+ results?$/ })
+        );
         await settled();
         expect(window.location.search).toBe('?price=-50&rating=4');
 
@@ -474,6 +486,28 @@ describe('narrowing', () => {
         await settled();
         expect(window.location.search).toBe('');
         expect(within(facet('Color')).getAllByRole('checkbox')[0]).not.toBeChecked();
+    });
+});
+
+describe('counting', () => {
+    it('says one result in the singular, in the heading and the status', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        // A filter that leaves one result, read from the counts beside the filters.
+        const [one] = within(screen.getByRole('form', { name: 'Narrow the results' }))
+            .getAllByRole('checkbox')
+            .filter((box) => /, 1 result$/.test(box.closest('label')?.textContent ?? ''));
+        if (!one) throw new Error('expected a filter with one result');
+        await user.click(one);
+        await settled();
+        expect(heading()).toHaveTextContent(/^1 result for "jacket"$/);
+        await waitFor(() =>
+            expect(
+                screen
+                    .getAllByRole('status')
+                    .some((status) => status.textContent === '1 result for "jacket"')
+            ).toBe(true)
+        );
     });
 });
 
@@ -627,7 +661,8 @@ describe('on a phone', () => {
         await user.keyboard('{Escape}');
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Filters/ })).toHaveFocus();
-        expect(screen.getByRole('button', { name: /Filters/ })).toHaveTextContent('1');
+        // The badge's number is said as how many filters are on.
+        expect(screen.getByRole('button', { name: 'Filters, 1 on' })).toHaveTextContent('1');
     });
 
     it('cycles focus inside the drawer with Tab', async () => {
@@ -652,7 +687,7 @@ describe('on a phone', () => {
         await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
         await user.type(within(drawer).getByRole('textbox', { name: 'Name' }), 'Last first');
         await user.type(within(drawer).getByRole('combobox', { name: 'Product' }), last);
-        await user.click(within(drawer).getByRole('button', { name: 'See the results' }));
+        await user.click(within(drawer).getByRole('button', { name: 'Show the results' }));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         await settled();
         expect(screen.getByText(/Previewing a draft/)).toBeVisible();
@@ -722,22 +757,36 @@ describe('as a member', () => {
         expect(screen.queryByText(/Shopping as a member/)).toBeNull();
         await shopAs(user, 'member');
         await settled();
-        const notice = await screen.findByText(/Shopping as a member/);
-        expect(notice).toHaveAttribute('role', 'status');
-        expect(notice.textContent).toMatch(/member price/);
-        // A way of looking at the same page keeps it, and a product opened and closed keeps it.
+        const line = () => document.querySelector('.results-aside');
+        const said = () =>
+            screen.getAllByRole('status').filter((status) => /Shopping as/.test(status.textContent))
+                .length;
+        await waitFor(() => expect(said()).toBe(1));
+        expect(line()?.textContent).toMatch(/^Shopping as a member: .*member price/);
+        // A way of looking at the same page keeps the line and says nothing again.
         await user.click(screen.getByRole('button', { name: 'Explain ranking' }));
+        expect(line()?.textContent).toMatch(/^Shopping as a member/);
         await settled();
-        expect(screen.getByText(/Shopping as a member/)).toBeInTheDocument();
+        expect(line()?.textContent).toMatch(/^Shopping as a member/);
+        // A product opened and closed keeps the line, and the switch is not said again.
         const [first] = cards();
         if (!first) throw new Error('expected a product');
         await user.click(first);
         await user.click(await screen.findByRole('button', { name: 'Back to results' }));
         await settled();
-        expect(screen.getByText(/Shopping as a member/)).toBeInTheDocument();
+        expect(line()?.textContent).toMatch(/^Shopping as a member/);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(said()).toBe(0);
+        // Switching back says the guest line, with the way to see what it hides.
+        await shopAs(user, 'guest');
+        await settled();
+        await waitFor(() => expect(said()).toBe(1));
+        expect(line()).toHaveTextContent(
+            'Shopping as a guest: prices are list prices, and products for members only are hidden. Choose "Member" under "Shopping as" to see them.'
+        );
         await user.type(screen.getByRole('combobox', { name: 'Search the store' }), 'boot{Enter}');
         await settled();
-        expect(screen.queryByText(/Shopping as a member/)).toBeNull();
+        expect(screen.queryByText(/Shopping as a/)).toBeNull();
     });
 
     it('sees a product a guest is told does not exist', async () => {
@@ -785,11 +834,12 @@ describe('explain mode', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
-        expect(screen.queryByText(/set aside the pins and boosts/)).toBeNull();
+        expect(screen.queryByText(/sets aside the pins/)).toBeNull();
         await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'price-asc');
         await settled();
-        expect(screen.getByText(/set aside the pins and boosts/)).toHaveTextContent(
-            'Sorting by price, low to high set aside the pins and boosts from featured-jacket.'
+        // It names the rule and the way back, in the sort's own words.
+        expect(screen.getByText(/sets aside the pins/)).toHaveTextContent(
+            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket. Choose “Relevance” under “Sort by” to bring it back.'
         );
     });
 });
@@ -1063,7 +1113,11 @@ describe('when nothing matches', () => {
         await settled();
         expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
         // The heading has said it, and with nothing to narrow the facets stay out of the way.
-        expect(screen.queryByText(/Nothing matched/)).toBeNull();
+        expect(screen.queryByText(/with these filters/)).toBeNull();
+        // The word left out is named, and why.
+        expect(screen.getByText(/left out/)).toHaveTextContent(
+            /^Nothing matched "zzqx", so that word was left out\. See all \d+ results$/
+        );
         expect(screen.queryByRole('group', { name: 'Brand' })).toBeNull();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
             'Showing results for "jacket" instead'
@@ -1091,7 +1145,11 @@ describe('when nothing matches', () => {
         // Nothing to explain or sort, so both step aside.
         expect(screen.queryByRole('button', { name: 'Explain ranking' })).toBeNull();
         expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
-        await user.click(screen.getByRole('link', { name: 'Clear the filters' }));
+        // The link has the filter column's name for the same thing, and counts in its words.
+        expect(
+            screen.getByRole('link', { name: 'Clear all filters' }).parentElement
+        ).toHaveTextContent(/^Clear all filters to see \d+ results\.$/);
+        await user.click(screen.getByRole('link', { name: 'Clear all filters' }));
         await settled();
         expect(window.location.search).toBe('?q=jacket');
         expect(cards().length).toBeGreaterThan(0);
@@ -1115,13 +1173,15 @@ describe('when nothing matches', () => {
         await settled();
         expect(heading()).toHaveTextContent('0 results for "jacket"');
         expect(screen.queryByText(/Nothing matched/)).toBeNull();
-        expect(screen.queryByRole('link', { name: 'Clear the filters' })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Clear all filters' })).toBeNull();
     });
 
     it('falls back to popular products when nothing else helps', async () => {
         await open('?q=zzqx');
         await settled();
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Popular products');
+        // With nothing nearer to offer, the shopper is told what to try.
+        expect(screen.getByText('Try fewer words or another spelling.')).toBeInTheDocument();
         expect(
             within(screen.getByRole('list', { name: 'Popular products' })).getAllByRole('link')
         ).toHaveLength(8);

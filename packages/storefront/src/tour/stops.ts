@@ -112,7 +112,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'explain',
         title: 'Why is this product first?',
-        body: '"Explain ranking" is on. Under each card is which typed word matched which indexed term in which field, exactly, by prefix, by synonym or corrected, and which rule pinned, boosted or buried it. The tool a merchandiser needs, and the engine carries it on every hit.',
+        body: '"Explain ranking" is on. Under each card is which typed word matched which indexed term in which field, exactly, by prefix, by synonym or one typo away, and which rule pinned, boosted or buried it. The tool a merchandiser needs, and the engine carries it on every hit.',
         to: { ...EMPTY_STATE, phrase: 'jackit', explain: true },
         tests: ['packages/api/src/api.test.ts', 'packages/engine/src/search.test.ts'],
     },

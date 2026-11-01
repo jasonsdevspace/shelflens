@@ -337,9 +337,12 @@ export const App = ({
     const [group, setGroup] = useState<CustomerGroup>('guest');
     // The search the viewer was last switched on, so its results can say what changed.
     const [switchedOn, setSwitchedOn] = useState<string>();
+    // Whether the switch has been said, so a screen reader hears it once, not on each return.
+    const [switchHeard, setSwitchHeard] = useState(true);
     const switchGroup = (next: CustomerGroup) => {
         setGroup(next);
         setSwitchedOn(searchKey(state));
+        setSwitchHeard(false);
     };
     const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
         useTour(tour);
@@ -431,6 +434,8 @@ export const App = ({
                             onFocused={focused}
                             group={group}
                             switchedOn={switchedOn}
+                            switchHeard={switchHeard}
+                            onSwitchHeard={() => setSwitchHeard(true)}
                             rulesUrl={rulesUrl}
                             onStoreChanged={storeChanged}
                             storeRevision={revision}

@@ -35,6 +35,36 @@ const card = (hit: Hit) =>
     );
 
 describe('the explanation on a card', () => {
+    it('says a boost by its factor, a typo as one typo away, and a rule-placed product plainly', () => {
+        card(
+            hitWith({
+                matches: [],
+                rules: [{ ruleId: 'summer-promo', action: 'BOOST', weight: 1.5 }],
+                popularity: null,
+            })
+        );
+        expect(screen.getByText('Boosted 1.5× by rule summer-promo')).toBeInTheDocument();
+        expect(screen.getByText('Did not match the search')).toBeInTheDocument();
+        expect(document.querySelector('.card-rating')).toHaveTextContent(
+            '5.0 out of 5, from 544 ratings'
+        );
+    });
+
+    it('says a close match is one typo away from the word it found', () => {
+        card(
+            hitWith({
+                matches: [
+                    { typed: 'jackit', matched: 'jacket', field: 'name', route: 'CORRECTED' },
+                ],
+                rules: [],
+                popularity: null,
+            })
+        );
+        expect(
+            screen.getByText('"jackit" is one typo away from "jacket" in the name')
+        ).toBeInTheDocument();
+    });
+
     it('makes the card and its reasons one box, with the rule line set apart', () => {
         card(
             hitWith({
@@ -64,7 +94,7 @@ describe('the explanation on a card', () => {
         expect(lines).toEqual([
             'Result 1, score 25.34',
             'Pinned to the top by rule featured-jackets',
-            'Clicked in 3 visits before, score raised by 10%',
+            'Opened from the results in 3 earlier visits, score raised by 10%',
             '"jacket" matched "jacket" in the name',
         ]);
     });
@@ -72,7 +102,7 @@ describe('the explanation on a card', () => {
     it('says one click in the singular, and nothing when nothing was clicked', () => {
         card(hitWith({ matches: [], rules: [], popularity: { clicks: 1, weight: 1.05 } }));
         expect(
-            screen.getByText('Clicked in 1 visit before, score raised by 5%')
+            screen.getByText('Opened from the results in 1 earlier visit, score raised by 5%')
         ).toBeInTheDocument();
     });
 

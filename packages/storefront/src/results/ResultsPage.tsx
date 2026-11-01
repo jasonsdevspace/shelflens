@@ -20,6 +20,7 @@ import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
 import { useRecord } from '../events/EventsContext.jsx';
+import { count } from '../format/count.js';
 import {
     PreviewDocument,
     type PreviewQuery,
@@ -64,6 +65,9 @@ export interface ResultsPageProps {
     readonly group: CustomerGroup;
     /** The search the viewer was last switched on, so this page can say what changed. */
     readonly switchedOn: string | undefined;
+    /** Whether that switch has been said to a screen reader, and what to call once it has. */
+    readonly switchHeard: boolean;
+    readonly onSwitchHeard: () => void;
     /** Where the merchandiser's rules are read and saved. */
     readonly rulesUrl: string;
     /** The store was built again under a new version, so everything remembered is stale. */
@@ -82,10 +86,29 @@ export interface ResultsPageProps {
 
 const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
 
-const headingFor = (state: SearchState, categories: CategoryTree, total: number): string => {
-    if (state.phrase) return `${total} results for "${state.phrase}"`;
+/** What the heading answers with, and what it notes after: the count, or that the matches are close ones. */
+interface Heading {
+    readonly text: string;
+    readonly note: string | undefined;
+}
+
+const headingFor = (
+    state: SearchState,
+    categories: CategoryTree,
+    result: { readonly total: number; readonly matching: string }
+): Heading => {
+    if (state.phrase) {
+        return {
+            text: `${count(result.total, 'result', 'results')} for "${state.phrase}"`,
+            note: result.matching === 'CORRECTED' ? ', showing close matches' : undefined,
+        };
+    }
+    // A category or the whole store is named, and how many products it holds is said after.
     const [leaf] = ancestry(categories, state.category).slice(-1);
-    return leaf ? leaf.name : 'All products';
+    return {
+        text: leaf ? leaf.name : 'All products',
+        note: `, ${count(result.total, 'product', 'products')}`,
+    };
 };
 
 /** The facets beside the results, or in a drawer where there is no room beside them. */
@@ -156,29 +179,28 @@ const announcement = (
     state: SearchState,
     categories: CategoryTree,
     result:
-        { readonly total: number; readonly page: number; readonly totalPages: number } | undefined,
+        | {
+              readonly total: number;
+              readonly matching: string;
+              readonly page: number;
+              readonly totalPages: number;
+          }
+        | undefined,
     loading: boolean
 ): string => {
     if (!result || loading) return '';
-    const heading = headingFor(state, categories, result.total);
+    const { text, note } = headingFor(state, categories, result);
+    const heading = `${text}${note ?? ''}`;
     // The page is said too, so a step through the pages, or back, is heard as one.
     return result.totalPages > 1
         ? `${heading}, page ${result.page} of ${result.totalPages}`
         : heading;
 };
 
-const ResultsHeading = ({
-    id,
-    text,
-    corrected,
-}: {
-    readonly id: string;
-    readonly text: string;
-    readonly corrected: boolean;
-}) => (
+const ResultsHeading = ({ id, heading }: { readonly id: string; readonly heading: Heading }) => (
     <h1 id={id} className="results-heading" tabIndex={-1}>
-        {text}
-        {corrected && <span className="results-note"> showing close matches</span>}
+        {heading.text}
+        {heading.note !== undefined && <span className="results-note">{heading.note}</span>}
     </h1>
 );
 
@@ -285,7 +307,7 @@ const RulesColumn = ({
 }) =>
     narrow ? (
         // Named apart from the Rules button beside it, which turns the panel off.
-        <Drawer opener="Edit rules" title="Rules" done="See the results" keep>
+        <Drawer opener="Edit rules" title="Rules" done="Show the results" keep>
             {children}
         </Drawer>
     ) : (
@@ -352,11 +374,7 @@ const Toolbar = ({
     readonly drawer: ReactNode;
 }) => (
     <div className="results-toolbar">
-        <ResultsHeading
-            id={id}
-            text={headingFor(state, categories, result.total)}
-            corrected={result.matching === 'CORRECTED'}
-        />
+        <ResultsHeading id={id} heading={headingFor(state, categories, result)} />
         {drawer}
         {/* With nothing found there is nothing to explain or sort, so both step aside,
             unless explain mode is on, which keeps its switch so it can be turned off. */}
@@ -384,6 +402,28 @@ const Toolbar = ({
     </div>
 );
 
+/**
+ * The rules a sort set aside, by name, and the way back. A sort only
+ * reorders, so the pins, boosts and buries give way to it, while a rule's
+ * hides still hold.
+ */
+const SetAside = ({
+    sortKey,
+    setAside,
+}: {
+    readonly sortKey: SortKey;
+    readonly setAside: readonly string[];
+}) => {
+    const one = setAside.length === 1;
+    return (
+        <p className="results-aside" role="status">
+            The sort &ldquo;{SORTS[sortKey].label}&rdquo; sets aside the pins, boosts and buries of{' '}
+            {one ? 'the rule' : 'the rules'} {setAside.join(', ')}. Choose &ldquo;Relevance&rdquo;
+            under &ldquo;Sort by&rdquo; to bring {one ? 'it' : 'them'} back.
+        </p>
+    );
+};
+
 /** What the page says over the cards: a preview in progress, and rules a sort set aside. */
 const Notices = ({
     previewing,
@@ -397,15 +437,11 @@ const Notices = ({
     <>
         {previewing && (
             <p className="results-aside" role="status">
-                Previewing a draft. The store&rsquo;s rules stay in effect until you save.
+                Previewing a draft rule. Shoppers see the saved rules until you press &ldquo;Save
+                rule&rdquo;.
             </p>
         )}
-        {setAside.length > 0 && (
-            <p className="results-aside" role="status">
-                Sorting by {SORTS[sortKey].label.toLowerCase()} set aside the pins and boosts from{' '}
-                {setAside.join(', ')}. They apply under relevance only.
-            </p>
-        )}
+        {setAside.length > 0 && <SetAside sortKey={sortKey} setAside={setAside} />}
     </>
 );
 
@@ -637,7 +673,10 @@ export const ResultsPage = (props: ResultsPageProps) => {
                     <ViewerNotice
                         group={group}
                         items={result.items}
-                        shown={!loading && switchedOn === searchKey(state)}
+                        shown={switchedOn === searchKey(state)}
+                        answered={answered}
+                        heard={props.switchHeard}
+                        onHeard={props.onSwitchHeard}
                     />
                     {alert ?? (
                         <Answer

@@ -27,7 +27,7 @@ export interface SearchState {
     readonly color: readonly string[];
     readonly size: readonly string[];
     readonly price?: PriceBand;
-    /** The least rating shown, "4 and up". */
+    /** The least rating shown, "4 stars and up". */
     readonly rating?: number;
     readonly sort?: SortKey;
     readonly page: number;
