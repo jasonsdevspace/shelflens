@@ -325,6 +325,16 @@ describe('sorting', () => {
         expect(result.hits.map((h) => h.id)).toEqual(['p2', 'p3']);
     });
 
+    it("sorts by the index's own order when asked, either way", () => {
+        const ascending = engine.search({ sort: [{ by: 'id', direction: 'asc' }] });
+        expect(ascending.sort).toEqual([{ by: 'id', direction: 'asc' }]);
+        const descending = engine.search({ sort: [{ by: 'id', direction: 'desc' }] });
+        expect(descending.hits.map((h) => h.id)).toEqual(
+            [...ascending.hits.map((h) => h.id)].reverse()
+        );
+        expect(ascending.hits.map((h) => h.id)).toEqual(engine.search({}).hits.map((h) => h.id));
+    });
+
     it('refuses to sort by an unknown attribute', () => {
         expect(() => engine.search({ sort: [{ by: 'popularity', direction: 'desc' }] })).toThrow(
             EngineError

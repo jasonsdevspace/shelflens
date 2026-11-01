@@ -158,6 +158,9 @@ const applyPlan = (
     return { docs, scores, units, mode: candidates.mode };
 };
 
+/** The sort by the index's own order, which every sort also ends on. */
+const ID_SORT = 'id';
+
 const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
 
 /** A multi-valued attribute sorts by its first value. */
@@ -167,6 +170,10 @@ const compareValues = (a: AttributeValue, b: AttributeValue): number => {
     if (typeof left === 'number' && typeof right === 'number') return left - right;
     return String(left).localeCompare(String(right));
 };
+
+/** Two numbers in the clause's direction, or a tie. */
+const byNumber = (left: number, right: number, direction: number): number | undefined =>
+    left === right ? undefined : (left - right) * direction;
 
 interface Ordering {
     readonly sort: readonly SortClause[];
@@ -190,9 +197,11 @@ const compareByClause = (
 ): number | undefined => {
     const direction = clause.direction === 'asc' ? 1 : -1;
     if (clause.by === 'relevance') {
-        const left = candidates.scores[a] ?? 0;
-        const right = candidates.scores[b] ?? 0;
-        return left === right ? undefined : (left - right) * direction;
+        return byNumber(candidates.scores[a] ?? 0, candidates.scores[b] ?? 0, direction);
+    }
+    if (clause.by === ID_SORT) {
+        const rank = (i: number) => index.idRank[candidates.docs[i] ?? 0] ?? 0;
+        return byNumber(rank(a), rank(b), direction);
     }
     const left = attributeOf(index, candidates.docs[a] ?? 0, clause.by);
     const right = attributeOf(index, candidates.docs[b] ?? 0, clause.by);
@@ -267,13 +276,14 @@ const defaultSort = (
     const browsed = Object.entries(config.sortScopes ?? {}).find(([, scope]) =>
         filters.some((filter) => filter.attribute === scope && 'eq' in filter)
     );
-    return browsed ? { by: browsed[0], direction: 'asc' } : { by: 'id', direction: 'asc' };
+    return browsed ? { by: browsed[0], direction: 'asc' } : { by: ID_SORT, direction: 'asc' };
 };
 
 /**
  * Settles which sort applies.
  *
- * A clause on an unknown attribute is the caller's mistake. A scoped sort
+ * A clause on an unknown attribute is the caller's mistake. The id is
+ * always known, as the index's own order. A scoped sort
  * without its filter falls back to relevance, as a category position does
  * outside a category.
  */
@@ -284,7 +294,7 @@ const resolveSort = (
 ): SortClause[] => {
     const resolved: SortClause[] = [];
     for (const clause of request.sort ?? []) {
-        if (clause.by === 'relevance') {
+        if (clause.by === 'relevance' || clause.by === ID_SORT) {
             resolved.push(clause);
             continue;
         }

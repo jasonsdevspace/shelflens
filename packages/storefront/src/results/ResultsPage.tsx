@@ -37,7 +37,7 @@ import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
-import { useArrivalFocus, useReturnFocus } from './useReturnFocus.js';
+import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
 /**
@@ -131,9 +131,17 @@ const LiveStatus = ({ text }: { readonly text: string }) => {
 const announcement = (
     state: SearchState,
     categories: CategoryTree,
-    result: { readonly total: number } | undefined,
+    result:
+        { readonly total: number; readonly page: number; readonly totalPages: number } | undefined,
     loading: boolean
-): string => (result && !loading ? headingFor(state, categories, result.total) : '');
+): string => {
+    if (!result || loading) return '';
+    const heading = headingFor(state, categories, result.total);
+    // The page is said too, so a step through the pages, or back, is heard as one.
+    return result.totalPages > 1
+        ? `${heading}, page ${result.page} of ${result.totalPages}`
+        : heading;
+};
 
 const ResultsHeading = ({
     id,
@@ -436,15 +444,28 @@ const Answer = ({
             sortKey={sortKey}
             setAside={result.merchandising.setAsideBySort}
         />
-        {result.total === 0 ? (
+        {result.total === 0 && (
             <NoResults state={state} navigate={navigate} offered={result.noResults} />
-        ) : (
-            <Cards result={result} state={state} navigate={navigate} />
         )}
+        {result.total > 0 && result.items.length === 0 && (
+            <p className="notice">
+                Page {result.page} is past the last page of results.{' '}
+                <StateLink to={{ ...state, page: result.totalPages }} navigate={navigate}>
+                    Go to page {result.totalPages}
+                </StateLink>
+                .
+            </p>
+        )}
+        {result.items.length > 0 && <Cards result={result} state={state} navigate={navigate} />}
         <Pagination
             page={result.page}
             totalPages={result.totalPages}
-            onPage={(page) => navigate({ ...state, page })}
+            onPage={(page) => {
+                // The pressed button stays, but the page under it is new, so focus moves to
+                // the new page's heading once it lands.
+                if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                navigate({ ...state, page });
+            }}
         />
     </>
 );
@@ -475,6 +496,8 @@ export const ResultsPage = (props: ResultsPageProps) => {
     // Try again takes its own button away, so the results heading takes focus once they land.
     const [retried, setRetried] = useState<number>();
     useArrivalFocus(main, retried, answered);
+    const { product: _product, ...shown } = state;
+    useKeptFocus(main, serializeSearchState(shown), answered);
     const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
 
     // An error is the page, except with the panel open: the answer before it stays

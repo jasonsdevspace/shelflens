@@ -49,3 +49,30 @@ export const useArrivalFocus = (
         container.current?.querySelector<HTMLElement>('.results-heading')?.focus();
     }, [container, arrival, answered]);
 };
+
+/**
+ * Puts focus back on the page when the control that had it went away with
+ * the last change, such as a category's button replaced by its children,
+ * or a page number pressed. Once the answer lands, focus goes to the open
+ * drawer's title, or else to the results heading, so the next Tab starts
+ * from there and a screen reader says where it is. The first answer is
+ * left alone, so a page that has just opened keeps its focus where it was.
+ */
+export const useKeptFocus = (
+    container: RefObject<HTMLElement | null>,
+    key: string,
+    answered: boolean
+): void => {
+    const first = useRef<string | undefined>(key);
+    useEffect(() => {
+        if (!answered) return;
+        if (first.current === key) return;
+        first.current = undefined;
+        const active = document.activeElement;
+        if (active !== null && active !== document.body) return;
+        const drawer = document.querySelector<HTMLElement>(
+            '.drawer-panel:not([hidden]) .drawer-title'
+        );
+        (drawer ?? container.current?.querySelector<HTMLElement>('.results-heading'))?.focus();
+    }, [container, key, answered]);
+};

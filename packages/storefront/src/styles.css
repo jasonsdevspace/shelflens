@@ -435,6 +435,13 @@ body {
     text-decoration: underline;
 }
 
+/* Nothing to clear: the button stays where it is, in the muted voice, with the plain arrow. */
+.facets-clear[aria-disabled='true'] {
+    color: var(--muted);
+    text-decoration: none;
+    cursor: default;
+}
+
 .facet {
     margin: 0;
     padding: 0;

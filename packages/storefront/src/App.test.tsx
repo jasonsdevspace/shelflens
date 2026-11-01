@@ -168,6 +168,36 @@ describe('a store that starts', () => {
     });
 });
 
+describe('keeping place', () => {
+    it('keeps a ticked filter in its group, checked, when nothing else in the group matches', async () => {
+        await open('?color=Nowhere');
+        const nowhere = within(facet('Color')).getByRole('checkbox', { name: /Nowhere/ });
+        expect(nowhere).toBeChecked();
+        expect(nowhere.parentElement).toHaveTextContent('0');
+    });
+
+    it('moves focus to the new page heading after Next, and says the page', async () => {
+        const user = await open();
+        await user.click(screen.getByRole('button', { name: 'Next' }));
+        await waitFor(() => expect(heading()).toHaveFocus());
+        await waitFor(() =>
+            expect(
+                screen
+                    .getAllByRole('status')
+                    .some((status) => /page 2 of \d+/.test(status.textContent))
+            ).toBe(true)
+        );
+    });
+
+    it('says when a page is past the last, and links to the last page', async () => {
+        const user = await open('?page=999');
+        const link = await screen.findByRole('link', { name: /Go to page \d+/ });
+        expect(screen.getByText(/Page 999 is past the last page of results/)).toBeInTheDocument();
+        await user.click(link);
+        await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    });
+});
+
 describe('what did not load', () => {
     /** Fails the first request for an operation, then answers as usual. */
     const failOnce = (operation: { readonly __meta__?: Record<string, unknown> | undefined }) => {
@@ -378,7 +408,10 @@ describe('narrowing', () => {
         await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
         await settled();
         expect(window.location.search).toBe('');
-        expect(screen.queryByRole('button', { name: 'Clear all filters' })).not.toBeInTheDocument();
+        // Marked off rather than taken away, so the focus it had stays on it.
+        const clear = screen.getByRole('button', { name: 'Clear all filters' });
+        expect(clear).toHaveAttribute('aria-disabled', 'true');
+        expect(clear).toHaveFocus();
     });
 
     it('sorts by price from the toolbar', async () => {

@@ -114,7 +114,7 @@ const ListFacet = ({
     name,
     state,
     onChange,
-}: FacetsProps & { readonly facet: Facet; readonly name: ListName }) => {
+}: FacetsProps & { readonly facet: Facet | undefined; readonly name: ListName }) => {
     const id = useId();
     const [all, setAll] = useState(false);
     // Entries past the first few that a tick brought into view. They stay until the list
@@ -122,10 +122,16 @@ const ListFacet = ({
     const [revealed, setRevealed] = useState<readonly string[]>([]);
     const ticked = state[name].filter((value) => !revealed.includes(value));
     if (ticked.length > 0) setRevealed([...revealed, ...ticked]);
-    if (!('buckets' in facet) || facet.buckets.length === 0) return null;
+    const answered = facet && 'buckets' in facet ? facet.buckets : [];
+    // A ticked value nothing else matches stays in its group, checked, so it can be unticked.
+    const stranded = state[name]
+        .filter((value) => !answered.some((bucket) => bucket.value === value))
+        .map((value) => ({ value, count: 0 }));
+    const listed = [...answered, ...stranded];
+    if (listed.length === 0) return null;
     const buckets = all
-        ? facet.buckets
-        : facet.buckets.filter((bucket, index) => index < SHOWN || revealed.includes(bucket.value));
+        ? listed
+        : listed.filter((bucket, index) => index < SHOWN || revealed.includes(bucket.value));
     const title = TITLES[name] ?? name;
     const fold = () => {
         setAll(!all);
@@ -152,7 +158,7 @@ const ListFacet = ({
                     <span className="facet-count">{bucket.count}</span>
                 </label>
             ))}
-            {facet.buckets.length > SHOWN && (
+            {listed.length > SHOWN && (
                 <button
                     type="button"
                     className="facet-more"
@@ -160,9 +166,7 @@ const ListFacet = ({
                     aria-controls={id}
                     onClick={fold}
                 >
-                    {all
-                        ? 'Show fewer'
-                        : `Show all ${facet.buckets.length} ${title.toLowerCase()}s`}
+                    {all ? 'Show fewer' : `Show all ${listed.length} ${title.toLowerCase()}s`}
                 </button>
             )}
         </Group>
@@ -256,19 +260,23 @@ export const Facets = (props: FacetsProps) => {
             aria-label="Narrow the results"
             onSubmit={(event) => event.preventDefault()}
         >
-            {hasFilters(state) && (
-                <button
-                    type="button"
-                    className="facets-clear"
-                    onClick={() => onChange(withoutFilters(state))}
-                >
-                    Clear all filters
-                </button>
-            )}
+            {/* Kept in place and marked off when nothing is ticked, so pressing it never
+                takes the button out from under focus. Marked rather than disabled, since a
+                browser moves focus off a button that is disabled. */}
+            <button
+                type="button"
+                className="facets-clear"
+                aria-disabled={!hasFilters(state)}
+                onClick={() => {
+                    if (hasFilters(state)) onChange(withoutFilters(state));
+                }}
+            >
+                Clear all filters
+            </button>
             {category && <CategoryFacet {...props} facet={category} />}
             {LISTS.map((name) => {
                 const facet = facetFor(name);
-                return facet && isList(name) ? (
+                return (facet || state[name].length > 0) && isList(name) ? (
                     <ListFacet key={name} {...props} facet={facet} name={name} />
                 ) : null;
             })}

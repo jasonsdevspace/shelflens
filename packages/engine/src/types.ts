@@ -172,7 +172,7 @@ export type Filter =
       };
 
 export interface SortClause {
-    /** An attribute name, or `relevance` for the match score. */
+    /** An attribute name, `relevance` for the match score, or `id` for the index's own order. */
     readonly by: string;
     readonly direction: 'asc' | 'desc';
 }
