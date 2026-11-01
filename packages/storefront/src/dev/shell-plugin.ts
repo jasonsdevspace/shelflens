@@ -10,7 +10,8 @@ import { type Plugin, runnerImport } from 'vite';
  * loading line where the search box goes.
  */
 const ROOT = '<div id="root"><!-- page-shell --></div>';
-const WIDGET = '<div id="shelflens-search"><!-- widget-waiting --></div>';
+/** Where a widget page mounts the search box, which also marks it as a widget page. */
+export const WIDGET = '<div id="shelflens-search"><!-- widget-waiting --></div>';
 const HEAD_END = '</head>';
 const SHELL = fileURLToPath(new URL('../app/shell.tsx', import.meta.url));
 
