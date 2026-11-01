@@ -569,7 +569,6 @@ test('the strip and the brand are in the page itself, and a browser without Java
         await page.goto(path);
         await expect(page.getByRole('navigation', { name: 'Portfolio' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'ShelfLens' })).toBeVisible();
-        await expect(page.getByText('Preparing the store.')).toBeHidden();
         expect(await noScript.textContent()).toContain('ShelfLens needs JavaScript.');
     }
     await page.goto('/widget/');

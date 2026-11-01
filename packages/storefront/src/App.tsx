@@ -42,8 +42,11 @@ export interface AppProps {
     readonly eventsUrl: string;
     /** Where the merchandiser's rules are read and saved. */
     readonly rulesUrl: string;
-    /** Resolves once the API can answer, which on a first visit is after the worker claims the page. */
-    readonly ready: Promise<void>;
+    /**
+     * Resolves once the API can answer, which on a first visit is after the
+     * worker claims the page, or 'started' when it already answers.
+     */
+    readonly ready: Promise<void> | 'started';
     /**
      * Whether the guided tour is offered. Its stops name the demo's own
      * products, so a store over a visitor's catalog leaves it out.
@@ -276,16 +279,28 @@ const freshFrom = (state: SearchState): SearchState => ({
     ...(state.explain && { explain: true }),
 });
 
+/** How long the page waits for the categories before it shows the store without them. */
+export const REVEAL_WITHIN_MS = 1000;
+
+/** Already answered, for what waits on the store's start without a promise of its own. */
+const STARTED = Promise.resolve();
+
+/** The store's start, as a promise either way. */
+const startOf = (ready: Promise<void> | 'started') => (ready === 'started' ? STARTED : ready);
+
 /**
  * Whether the store answers, and what the page knows about it once it does:
- * the category tree and the store line. The store counts as ready once the
- * categories have answered, or failed, so the masthead and the content
- * arrive together and change once, from waiting to ready.
+ * the category tree and the store line. A store that is starting shows
+ * once its categories have answered, or failed, so the masthead and the
+ * content arrive together and change once. A slow answer holds the page
+ * a second at most, and once shown it stays shown. A store that already
+ * answers shows at once.
  */
-const useStore = (client: GraphQLClient, ready: Promise<void>) => {
-    const [started, setStarted] = useState<Readiness>('waiting');
+const useStore = (client: GraphQLClient, ready: Promise<void> | 'started') => {
+    const [started, setStarted] = useState<Readiness>(ready === 'started' ? 'ready' : 'waiting');
+    const [shown, setShown] = useState(ready === 'started');
     useEffect(() => {
-        ready.then(
+        startOf(ready).then(
             () => setStarted('ready'),
             (error: unknown) => setStarted(startFailure(error))
         );
@@ -295,7 +310,14 @@ const useStore = (client: GraphQLClient, ready: Promise<void>) => {
     const store = useQuery(client, StoreDocument, asked);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
     const settled = categories.data !== undefined || categories.error !== undefined;
-    const readiness: Readiness = started === 'ready' && !settled ? 'waiting' : started;
+    // Kept once true, so a later client, whose categories are not in yet, never hides the store.
+    if (started === 'ready' && settled && !shown) setShown(true);
+    useEffect(() => {
+        if (started !== 'ready' || shown) return undefined;
+        const timer = window.setTimeout(() => setShown(true), REVEAL_WITHIN_MS);
+        return () => window.clearTimeout(timer);
+    }, [started, shown]);
+    const readiness: Readiness = started === 'ready' && !shown && !settled ? 'waiting' : started;
     return { readiness, tree, store };
 };
 
@@ -334,7 +356,7 @@ export const App = ({
     // What the shopper does, sent in batches once the store answers, and never awaited.
     // Making the collector touches nothing, so the effect is what attaches it to the page.
     const collector = useMemo(
-        () => createCollector({ url: eventsUrl, ready, session: sessionId }),
+        () => createCollector({ url: eventsUrl, ready: startOf(ready), session: sessionId }),
         [eventsUrl, ready]
     );
     useEffect(() => collector.attach(window), [collector]);

@@ -49,3 +49,17 @@
     align-items: center;
     margin-top: 1rem;
 }
+
+/*
+ * The line where the search box goes, shown only after a moment, as the
+ * store's own is, so a usual load never flickers it.
+ */
+.widget-waiting {
+    animation: widget-waiting 0s 0.4s both;
+}
+
+@keyframes widget-waiting {
+    from {
+        visibility: hidden;
+    }
+}

@@ -14,13 +14,6 @@
         <title>ShelfLens on a store's page, with your products</title>
         <link rel="stylesheet" href="/src/styles.css" />
         <link rel="stylesheet" href="/src/widget/host.css" />
-        <noscript>
-            <style>
-                .widget-waiting {
-                    display: none;
-                }
-            </style>
-        </noscript>
         <style>
             /* The snippet a store adds, scrolling within itself on a narrow screen. */
             .host pre {
@@ -61,15 +54,7 @@
                     box.
                 </p>
                 <div class="host-clip">
-                    <div id="shelflens-search">
-                        <p class="notice widget-waiting">Loading the search box.</p>
-                        <noscript>
-                            <p class="notice">
-                                The search box needs JavaScript. Turn it on in this browser and
-                                reload the page.
-                            </p>
-                        </noscript>
-                    </div>
+                    <div id="shelflens-search"><!-- widget-waiting --></div>
                 </div>
                 <ul>
                     <li>Free delivery on orders over $50. This is the store's own list style.</li>

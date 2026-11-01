@@ -817,7 +817,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 apiUrl={`${base}graphql`}
                 eventsUrl={`${base}events`}
                 rulesUrl={`${base}rules`}
-                ready={Promise.resolve()}
+                ready="started"
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
                 arrival={stage.arrival}

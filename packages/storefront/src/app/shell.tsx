@@ -15,8 +15,21 @@ const PAGES: Readonly<Record<string, { readonly home: string; readonly main: str
     '/try/index.html': { home: '../', main: 'content try' },
 };
 
-export const NO_SCRIPT =
-    '<noscript><p class="notice">ShelfLens needs JavaScript. Turn it on in this browser and reload the page.</p></noscript>';
+/** The line for a browser with JavaScript turned off, about the thing that needs it. */
+const noScript = (what: string) =>
+    `<noscript><p class="notice">${what} needs JavaScript. Turn it on in this browser and reload the page.</p></noscript>`;
+
+export const NO_SCRIPT = noScript('ShelfLens');
+
+/**
+ * What the widget pages show where the search box goes, until the box
+ * covers it. The loading line shows only after a moment, as the store's
+ * does, and a browser with JavaScript turned off sees the other line
+ * instead, since the style in the head hides the first.
+ */
+export const WIDGET_WAITING = `<p class="notice widget-waiting" role="status">Loading the search box.</p>${noScript('The search box')}`;
+export const WIDGET_NO_SCRIPT_STYLE =
+    '<noscript><style>.widget-waiting { display: none; }</style></noscript>';
 
 /** The page's first screen, without the line for a browser with JavaScript turned off. */
 export const firstScreen = (page: string): string => {
