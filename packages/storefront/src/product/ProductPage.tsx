@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { SearchState } from '../app/url.js';
 import { useQuery } from '../app/useQuery.js';
@@ -35,7 +36,7 @@ export interface ProductPageProps {
 }
 
 export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) => {
-    const { data, loading, error } = useQuery(client, ProductDocument, { sku });
+    const { data, loading, error, retry } = useQuery(client, ProductDocument, { sku });
     const { locale } = useStoreInfo();
     // A new view: focus lands on its heading, or on the notice when there is no
     // product, so a keyboard or screen reader user starts where the page starts
@@ -63,12 +64,16 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
 
     if (error) {
         return (
-            <p className="notice" role="alert">
-                {error}
-            </p>
+            <section className="product" ref={missing} tabIndex={-1}>
+                <LoadFailure what="This product" reason={error} onRetry={retry} announce={false}>
+                    <button type="button" className="back" onClick={back}>
+                        Back to results
+                    </button>
+                </LoadFailure>
+            </section>
         );
     }
-    if (loading || !data) return <p className="notice">Loading product.</p>;
+    if (loading || !data) return <p className="notice">Loading the product.</p>;
     const { product } = data;
     if (!product) {
         return (

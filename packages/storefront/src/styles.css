@@ -148,6 +148,19 @@ body {
     color: var(--fg);
 }
 
+/* What did not load, in the text's own color since it asks for something to be done. */
+.load-failure {
+    color: var(--fg);
+}
+
+/* What did not load, with the way to ask again and any other way on beside it. */
+.load-failure-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 /* A store that did not start offers to try again, in the look of the page's other buttons. */
 .standby-retry {
     font: inherit;

@@ -188,6 +188,30 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await rules.current()).toEqual(SAVED);
     });
 
+    it('says the products are gone, and how to search the new file, when there is nothing to keep', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
+        // Gone from this browser since the question was asked, as when another tab removed them.
+        failure = failWhen('GET', `${BASE}catalog`, () =>
+            Promise.resolve(new Response('not found', { status: 404 }))
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Keep my products' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.'
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Yes, search this file' }));
+        failure = undefined;
+        await screen.findByText(/your own catalog of 150 products/);
+    });
+
     it('replaces the products and forgets their rules once the visitor says yes', async () => {
         const { rules } = page();
         await loadSample();

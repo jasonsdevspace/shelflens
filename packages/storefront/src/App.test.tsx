@@ -6,7 +6,7 @@ import axe from 'axe-core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App, REVEAL_WITHIN_MS } from './App.jsx';
-import { CategoriesDocument } from './generated/operations.js';
+import { CategoriesDocument, ProductDocument, SearchDocument } from './generated/operations.js';
 import { createWorkerApi } from './worker/handle.js';
 import { StoreDidNotStart, WorkerUnsupported } from './worker/register.js';
 import { serving } from './worker/serving.js';
@@ -165,6 +165,73 @@ describe('a store that starts', () => {
         );
         expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
         expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    });
+});
+
+describe('what did not load', () => {
+    /** Fails the first request for an operation, then answers as usual. */
+    const failOnce = (operation: { readonly __meta__?: Record<string, unknown> | undefined }) => {
+        const op = `op=${String(operation.__meta__?.['hash'])}`;
+        const answer = globalThis.fetch;
+        let failed = false;
+        vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+            if (!failed && new Request(input, init).url.includes(op)) {
+                failed = true;
+                return Promise.resolve(new Response('unavailable', { status: 503 }));
+            }
+            return answer(input, init);
+        });
+    };
+
+    it('says the products could not be loaded, and loads them on Try again', async () => {
+        failOnce(SearchDocument);
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={Promise.resolve()}
+            />
+        );
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(
+            'The products could not be loaded. Try again, and if it keeps happening, reload the page.'
+        );
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
+        // The button went with the message, so the results heading takes focus.
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('All products');
+    });
+
+    const openProduct = () => {
+        window.history.replaceState(null, '', `/?product=${featured.sku}`);
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={Promise.resolve()}
+            />
+        );
+        return screen.findByText(/This product could not be loaded\./);
+    };
+
+    it('says a product could not be loaded, and loads it on Try again', async () => {
+        failOnce(ProductDocument);
+        const message = await openProduct();
+        // Focus moves to the message, which reads it, so it is not announced as well.
+        expect(message).not.toHaveAttribute('role', 'alert');
+        expect(message.closest('section')).toHaveFocus();
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
+        expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(featured.name);
+        expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
+    });
+
+    it('goes back to the results from a product that did not load', async () => {
+        failOnce(ProductDocument);
+        await openProduct();
+        await userEvent.setup().click(screen.getByRole('button', { name: 'Back to results' }));
+        expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('All products');
     });
 });
 

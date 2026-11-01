@@ -294,6 +294,9 @@ interface Said {
     readonly suggested: number;
 }
 
+/** Said when the suggestions fail, with the way on that still works. */
+export const SUGGESTIONS_FAILED = 'Suggestions could not be loaded. You can still search.';
+
 /**
  * What the status line says. Only while the popover is open, so a landed search
  * is not talked over by a count the visitor did not ask for. While it is open, a
@@ -305,7 +308,7 @@ const statusOf = ({ notice, open, askable, loading, error, recent, suggested }: 
     if (!open) return '';
     if (!askable) return recent > 0 ? count(recent, 'recent search', 'recent searches') : '';
     // A failure is news before a wait is: nothing is coming.
-    if (error) return error;
+    if (error) return SUGGESTIONS_FAILED;
     if (loading && suggested === 0) return 'Searching';
     const recents = count(recent, 'recent search', 'recent searches');
     if (suggested > 0 && recent > 0) {
