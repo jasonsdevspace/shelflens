@@ -29,7 +29,7 @@ const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> = {
     EXACT: (m) => `"${m.typed}" matched "${m.matched}" in the ${m.field}`,
     PREFIX: (m) => `"${m.typed}" is the start of "${m.matched}" in the ${m.field}`,
     SYNONYM: (m) => `"${m.typed}" is a synonym of "${m.matched}" in the ${m.field}`,
-    CORRECTED: (m) => `"${m.typed}" corrected to "${m.matched}" in the ${m.field}`,
+    CORRECTED: (m) => `"${m.typed}" is one typo away from "${m.matched}" in the ${m.field}`,
 };
 
 /** A route the page does not know yet still reads as a match. */
@@ -38,12 +38,12 @@ const matchText = (match: Match): string =>
 
 type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
 
-/** What the clicks did, in the shopper's words: in how many visits, and by how much. */
+/** What the opens did, in the shopper's words: in how many visits, and by how much. */
 const popularityText = ({ clicks, weight }: Popularity): string =>
-    `Clicked in ${count(clicks, 'visit', 'visits')} before, score raised by ${Math.round((weight - 1) * 100)}%`;
+    `Opened from the results in ${count(clicks, 'earlier visit', 'earlier visits')}, score raised by ${Math.round((weight - 1) * 100)}%`;
 
 const effectText = (effect: Effect): string => {
-    const weight = effect.weight === null ? '' : ` by ${effect.weight}`;
+    const weight = effect.weight === null ? '' : ` ${effect.weight}×`;
     if (effect.action === 'PIN') return `Pinned to the top by rule ${effect.ruleId}`;
     if (effect.action === 'BOOST') return `Boosted${weight} by rule ${effect.ruleId}`;
     return `Buried${weight} by rule ${effect.ruleId}`;
@@ -79,7 +79,7 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
                 <li key={index}>{matchText(match)}</li>
             ))}
             {phrase && matches.length === 0 && rules.length > 0 && (
-                <li>Did not match the phrase</li>
+                <li>Did not match the search</li>
             )}
         </ul>
     );
@@ -110,7 +110,8 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     {product.price.memberPrice && <span className="card-member">Member price</span>}
                     {product.rating && (
                         <span className="card-rating">
-                            {product.rating.average.toFixed(1)} from {product.rating.count} ratings
+                            {product.rating.average.toFixed(1)} out of 5, from{' '}
+                            {count(product.rating.count, 'rating', 'ratings')}
                         </span>
                     )}
                     {!product.inStock && <span className="card-stock">Out of stock</span>}

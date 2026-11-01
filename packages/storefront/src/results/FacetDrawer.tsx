@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { count } from '../format/count.js';
 import { Drawer } from './Drawer.jsx';
 
 /**
@@ -17,9 +18,23 @@ export interface FacetDrawerProps {
 
 export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => (
     <Drawer
-        opener={<>Filters{active > 0 && <span className="drawer-badge"> {active}</span>}</>}
+        opener={
+            <>
+                Filters
+                {active > 0 && (
+                    <>
+                        {/* The badge is the number alone, so it is said in words. */}
+                        <span className="drawer-badge" aria-hidden="true">
+                            {' '}
+                            {active}
+                        </span>
+                        <span className="visually-hidden">, {active} on</span>
+                    </>
+                )}
+            </>
+        }
         title="Filters"
-        done={`Show ${total} results`}
+        done={`Show ${count(total, 'result', 'results')}`}
     >
         {children}
     </Drawer>

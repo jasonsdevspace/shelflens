@@ -209,8 +209,8 @@ export const summary = (rule: Rule): string => {
     const parts: string[] = [];
     if (rule.pin) parts.push(`Pins ${products(rule.pin.length)}`);
     if (rule.hide) parts.push(`Hides ${products(rule.hide.length)}`);
-    for (const boost of rule.boost ?? []) parts.push(`Boosts ${named(boost)} by ${boost.weight}`);
-    for (const bury of rule.bury ?? []) parts.push(`Buries ${named(bury)} by ${bury.weight}`);
+    for (const boost of rule.boost ?? []) parts.push(`Boosts ${named(boost)} ${boost.weight}×`);
+    for (const bury of rule.bury ?? []) parts.push(`Buries ${named(bury)} ${bury.weight}×`);
     if (rule.active?.from) parts.push(`Active from ${rule.active.from.slice(0, 10)}`);
     return parts.join('. ');
 };

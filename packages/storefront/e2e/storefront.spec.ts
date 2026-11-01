@@ -27,7 +27,9 @@ test('a first visit reaches suggestions, results and a product, with no audit fi
     await page.goto('/');
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await expect(search).toBeVisible();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        /^All products, \d+ products$/
+    );
     await audit(page);
 
     await search.fill('trail ru');
@@ -60,7 +62,7 @@ test('browsing a category sorts by position, and a facet narrows the results in 
     page,
 }) => {
     await page.goto('/?category=shoes');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shoes');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Shoes, \d+ products$/);
     await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('position');
 
     const brand = page.getByRole('group', { name: 'Brand' }).getByRole('checkbox').first();
@@ -130,7 +132,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     await page.goto('/?q=jacket');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
-    await expect(page.getByText(/Shopping as a member/)).toBeVisible();
+    await expect(page.locator('.results-aside')).toContainText(/^Shopping as a member/);
     await expect(page.locator('.card-member').first()).toHaveText('Member price');
 
     await page.goto(`/?product=${discounted.sku}`);
@@ -145,7 +147,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
 
 test('answers travel as named operations the browser may keep', async ({ page }) => {
     await page.goto('/?category=shoes');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shoes');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Shoes, \d+ products$/);
     const answered = page.waitForResponse(
         (response) => response.url().includes('op=') && response.url().includes('v=')
     );
@@ -171,9 +173,10 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await audit(page);
 
     await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
-    const aside = page.getByText(/set aside the pins and boosts/);
+    const aside = page.getByText(/sets aside the pins, boosts and buries/);
     await expect(aside).toBeVisible();
     await expect(aside).toContainText('featured-jackets');
+    await expect(aside).toContainText('Choose “Relevance” under “Sort by”');
     // The cafe racer sample stays hidden: a hide holds under any sort, and is not set aside.
     await expect(aside).not.toContainText('racer-sample');
 });
@@ -217,7 +220,9 @@ test('says whose demo it is before anything else, and follows the theme the port
 }) => {
     await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        /^All products, \d+ products$/
+    );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
     await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
         'href',
@@ -463,7 +468,7 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
     await expect(
         page.locator(`.card:has([data-sku="${last}"]) .card-explain`),
         JSON.stringify(held)
-    ).toContainText('Clicked in 3 visits before');
+    ).toContainText('Opened from the results in 3 earlier visits');
     const after = await cards.evaluateAll((links) =>
         links.map((link) => link.getAttribute('data-sku'))
     );
@@ -572,7 +577,9 @@ test('a catalog that does not download ends the wait, and the store starts on a 
     await context.unroute('**/catalog.json');
     await alert.getByRole('button', { name: 'Try again' }).click();
     await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        /^All products, \d+ products$/
+    );
 });
 
 test('the strip and the brand are in the page itself, and a browser without JavaScript is told what to do', async ({

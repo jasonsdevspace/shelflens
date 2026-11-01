@@ -8,6 +8,7 @@ import type { Navigate } from '../app/useUrlState.js';
 import type { GraphQLClient } from '../client/graphql.js';
 import { useRecord } from '../events/EventsContext.jsx';
 import { sessionId } from '../events/session.js';
+import { count } from '../format/count.js';
 import { formatMoney, formatPriceRange } from '../format/money.js';
 import { ProductDocument, RecommendationsDocument } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
@@ -106,7 +107,7 @@ export const ProductPage = ({ client, sku, state, navigate }: ProductPageProps) 
                         {' · '}
                         {product.material}
                         {product.rating &&
-                            ` · ${product.rating.average.toFixed(1)} from ${product.rating.count} ratings`}
+                            ` · ${product.rating.average.toFixed(1)} out of 5, from ${count(product.rating.count, 'rating', 'ratings')}`}
                     </p>
                     <p className="product-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
