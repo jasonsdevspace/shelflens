@@ -1070,6 +1070,9 @@ describe('when nothing matches', () => {
         const user = await open('?q=jacket&price=0-1');
         await settled();
         expect(screen.getByText(/Nothing matched "jacket" with these filters/)).toBeInTheDocument();
+        // Nothing to explain or sort, so both step aside.
+        expect(screen.queryByRole('button', { name: 'Explain ranking' })).toBeNull();
+        expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
         await user.click(screen.getByRole('link', { name: 'Clear the filters' }));
         await settled();
         expect(window.location.search).toBe('?q=jacket');

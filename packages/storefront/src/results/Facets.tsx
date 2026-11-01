@@ -96,7 +96,7 @@ const CategoryFacet = ({
                             className="facet-link"
                             onClick={() => onChange({ ...state, category: category.id, page: 1 })}
                         >
-                            {category.name}{' '}
+                            <span className="facet-label">{category.name}</span>
                             <span className="facet-count">{counts.get(category.id)}</span>
                         </button>
                     </li>

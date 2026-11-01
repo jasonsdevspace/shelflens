@@ -21,6 +21,10 @@ test('the facets open in a drawer, narrow the results, and close back to them', 
     await expect(page.getByRole('group', { name: 'Brand' })).toBeHidden();
 
     const open = page.getByRole('button', { name: 'Filters' });
+    // The heading comes first, then the button, on its own line under it.
+    const headingBox = await page.getByRole('heading', { level: 1 }).boundingBox();
+    const openBox = await open.boundingBox();
+    expect(openBox?.y).toBeGreaterThan((headingBox?.y ?? 0) + (headingBox?.height ?? 0) - 1);
     await open.click();
     const drawer = page.getByRole('dialog', { name: 'Filters' });
     await expect(drawer).toBeVisible();

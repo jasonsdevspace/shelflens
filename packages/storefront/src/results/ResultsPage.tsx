@@ -105,7 +105,12 @@ const FacetColumn = ({
             {children}
         </FacetDrawer>
     ) : (
-        <aside className="results-side">{children}</aside>
+        <aside className="results-side" aria-label="Filters">
+            <a className="skip results-skip" href="#results">
+                Skip to results
+            </a>
+            {children}
+        </aside>
     );
 
 /**
@@ -313,11 +318,14 @@ const Toolbar = ({
     result,
     sortKey,
     onCloseRules,
+    drawer,
 }: Pick<ResultsPageProps, 'state' | 'navigate' | 'categories'> & {
     readonly id: string;
     readonly result: Result;
     readonly sortKey: SortKey;
     readonly onCloseRules: () => void;
+    /** On a phone, the drawer's button, which sits with the others under the heading. */
+    readonly drawer: ReactNode;
 }) => (
     <div className="results-toolbar">
         <ResultsHeading
@@ -325,14 +333,18 @@ const Toolbar = ({
             text={headingFor(state, categories, result.total)}
             corrected={result.matching === 'CORRECTED'}
         />
-        <button
-            type="button"
-            className="explain-toggle"
-            aria-pressed={state.explain ?? false}
-            onClick={() => navigate({ ...state, explain: !state.explain })}
-        >
-            Explain ranking
-        </button>
+        {drawer}
+        {/* With nothing found there is nothing to explain or sort, so both step aside. */}
+        {result.total > 0 && (
+            <button
+                type="button"
+                className="explain-toggle"
+                aria-pressed={state.explain ?? false}
+                onClick={() => navigate({ ...state, explain: !state.explain })}
+            >
+                Explain ranking
+            </button>
+        )}
         <button
             type="button"
             className="explain-toggle"
@@ -343,7 +355,7 @@ const Toolbar = ({
         >
             Rules
         </button>
-        <SortField sortKey={sortKey} state={state} navigate={navigate} />
+        {result.total > 0 && <SortField sortKey={sortKey} state={state} navigate={navigate} />}
     </div>
 );
 
@@ -469,6 +481,10 @@ const Answer = ({
     </>
 );
 
+/** The layout's classes: dimmed while loading, and one column when there are no facets. */
+const layoutClass = (loading: boolean, empty: boolean) =>
+    ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
+
 export const ResultsPage = (props: ResultsPageProps) => {
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
@@ -569,20 +585,20 @@ export const ResultsPage = (props: ResultsPageProps) => {
             </FacetColumn>
         )
     );
-    const layout = [
-        'results-layout',
-        loading && 'is-loading',
-        facetless && !state.rules && 'is-empty',
-    ]
-        .filter(Boolean)
-        .join(' ');
+    const layout = layoutClass(loading, facetless && !state.rules);
 
     return (
         <>
             {status}
             <div className={layout} aria-busy={loading}>
-                {side}
-                <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
+                {!narrow && side}
+                <section
+                    className="results-main"
+                    id="results"
+                    tabIndex={-1}
+                    aria-labelledby={`${id}-heading`}
+                    ref={main}
+                >
                     <Crumbs state={state} navigate={navigate} categories={categories} />
                     <Toolbar
                         id={`${id}-heading`}
@@ -592,6 +608,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                         result={result}
                         sortKey={sortKey}
                         onCloseRules={closeRules}
+                        drawer={narrow && side}
                     />
                     <ViewerNotice
                         group={group}

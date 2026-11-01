@@ -35,6 +35,20 @@ const card = (hit: Hit) =>
     );
 
 describe('the explanation on a card', () => {
+    it('makes the card and its reasons one box, with the rule line set apart', () => {
+        card(
+            hitWith({
+                matches: [{ typed: 'jacket', matched: 'jacket', field: 'name', route: 'EXACT' }],
+                rules: [{ ruleId: 'featured-jackets', action: 'PIN', weight: null }],
+                popularity: null,
+            })
+        );
+        expect(document.querySelector('.card')).toHaveClass('is-explained');
+        expect(screen.getByText('Pinned to the top by rule featured-jackets')).toHaveClass(
+            'card-explain-rule'
+        );
+    });
+
     it('answers where it landed, what a rule did, then what it matched, in that order', () => {
         card(
             hitWith({
