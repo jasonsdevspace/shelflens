@@ -556,3 +556,22 @@ test('a catalog that does not download ends the wait, and the store starts on a 
     await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('All products');
 });
+
+test('the strip and the brand are in the page itself, and a browser without JavaScript is told what to do', async ({
+    browser,
+}) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    // Turning scripts off here leaves the browser parsing as though they ran, so the
+    // line for a browser without JavaScript is checked in the markup.
+    const noScript = page.locator('noscript');
+    for (const path of ['/', '/try/']) {
+        await page.goto(path);
+        await expect(page.getByRole('navigation', { name: 'Portfolio' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'ShelfLens' })).toBeVisible();
+        expect(await noScript.textContent()).toContain('ShelfLens needs JavaScript.');
+    }
+    await page.goto('/widget/');
+    expect(await noScript.last().textContent()).toContain('The search box needs JavaScript.');
+    await context.close();
+});

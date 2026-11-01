@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { App } from './App.jsx';
+import { App, REVEAL_WITHIN_MS } from './App.jsx';
+import { CategoriesDocument } from './generated/operations.js';
 import { createWorkerApi } from './worker/handle.js';
 import { StoreDidNotStart, WorkerUnsupported } from './worker/register.js';
 import { serving } from './worker/serving.js';
@@ -92,6 +93,80 @@ const settled = () =>
     waitFor(() =>
         expect(document.querySelector('.results-layout')).not.toHaveAttribute('aria-busy', 'true')
     );
+
+describe('a store that starts', () => {
+    it('arrives in one step, the masthead, the content and the footer together', async () => {
+        let start: () => void = () => undefined;
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={new Promise<void>((resolve) => (start = resolve))}
+            />
+        );
+        expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+        act(() => start());
+        await screen.findByRole('heading', { level: 1 });
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Categories' })).toBeInTheDocument();
+        expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    });
+
+    it('shows the store without its categories when they do not answer', async () => {
+        const CATEGORIES_OP = String(CategoriesDocument.__meta__?.['hash']);
+        const answer = globalThis.fetch;
+        vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) =>
+            new Request(input, init).url.includes(`op=${CATEGORIES_OP}`)
+                ? new Promise<Response>(() => undefined)
+                : answer(input, init)
+        );
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={Promise.resolve()}
+            />
+        );
+        expect(
+            await screen.findByRole(
+                'combobox',
+                { name: 'Search the store' },
+                { timeout: REVEAL_WITHIN_MS + 1000 }
+            )
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('navigation', { name: 'Categories' })).not.toBeInTheDocument();
+    });
+
+    it('stays shown when its categories failed and the viewer changes', async () => {
+        const CATEGORIES_OP = String(CategoriesDocument.__meta__?.['hash']);
+        const answer = globalThis.fetch;
+        vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) =>
+            new Request(input, init).url.includes(`op=${CATEGORIES_OP}`)
+                ? Promise.resolve(new Response('unavailable', { status: 503 }))
+                : answer(input, init)
+        );
+        const user = await open();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await shopAs(user, 'member');
+        // The same box, never taken down while the new viewer's categories were asked for.
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBe(box);
+    });
+
+    it('shows a store that already answers at once', () => {
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready="started"
+            />
+        );
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
+        expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    });
+});
 
 describe('a store that does not start', () => {
     const startWith = (ready: Promise<void>, retry = vi.fn()) => {

@@ -1,7 +1,9 @@
 import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { App } from '../App.jsx';
-import { DemoFooter, PortfolioStrip } from '../app/Portfolio.jsx';
+import { PageTop } from '../app/PageTop.jsx';
+import { DemoFooter } from '../app/Portfolio.jsx';
+import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
@@ -498,16 +500,9 @@ const BeforeStore = ({
 }) => {
     return (
         <>
-            <PortfolioStrip />
-            <header className="masthead">
-                <div className="masthead-row">
-                    <a className="brand" href="../">
-                        ShelfLens
-                    </a>
-                </div>
-            </header>
+            <PageTop home="../" />
             <main className="content try">
-                {stage.kind === 'starting' && <p className="notice">Preparing the store.</p>}
+                {stage.kind === 'starting' && <Preparing />}
                 {stage.kind === 'loading' && (
                     <Building products={stage.products} announce={announce} />
                 )}
@@ -551,7 +546,7 @@ const BeforeStore = ({
                     />
                 )}
             </main>
-            <DemoFooter />
+            {stage.kind !== 'starting' && <DemoFooter />}
         </>
     );
 };
@@ -822,7 +817,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 apiUrl={`${base}graphql`}
                 eventsUrl={`${base}events`}
                 rulesUrl={`${base}rules`}
-                ready={Promise.resolve()}
+                ready="started"
                 tour={false}
                 viewerSwitch={stage.loaded.memberPrices}
                 arrival={stage.arrival}
