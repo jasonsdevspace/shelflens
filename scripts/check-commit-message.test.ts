@@ -1,11 +1,18 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { messageProblems, storedMessage } from './check-commit-message.mjs';
+import { messageProblems, storedMessage, textToCheck } from './check-commit-message.mjs';
 
 const DASH = String.fromCodePoint(0x2014);
 
 describe('the commit message check', () => {
+    it('reads a pull request body as GitHub keeps it, headings included', () => {
+        // The tool's name is put together here, so this file does not trip the check itself.
+        const body = `Fix the check\n\n## Notes from ${'Co'}dex`;
+        expect(messageProblems(textToCheck(body, '#', false))).toEqual([]);
+        expect(messageProblems(textToCheck(body, '#', true))).not.toEqual([]);
+    });
+
     it('passes a plain message', () => {
         expect(
             messageProblems('Keep the floor job beside the other checks\n\nIt gates the release.')

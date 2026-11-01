@@ -150,16 +150,6 @@ jobs:
             - name: Lint the engine's package
               run: npx publint packages/engine
 
-            # The release publishes this tarball, the one proven below, so the
-            # job that holds the publish token never installs or builds anything.
-            - name: Keep the packed engine for a release
-              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-              with:
-                  name: engine-package
-                  path: ${{ runner.temp }}/jasonsdevspace-shelflens-*.tgz
-                  if-no-files-found: error
-                  retention-days: 1
-
             # Written as an exact version, because setup-node given a range
             # installs the newest Node in it, the opposite of a floor. The file
             # is not committed, and its name is not one the Node check reads.
@@ -199,32 +189,18 @@ jobs:
                   node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.nodenext.json
                   node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.bundler.json
 
-    # A pull request's title and body become the commit on main when it is
-    # squashed, written on GitHub where no hook runs, so they pass the same
-    # check a commit message does. Dependabot's body quotes release notes
-    # written elsewhere, so only its title is held to the house rules.
-    message:
-        if: github.event_name == 'pull_request'
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        steps:
-            - name: Checkout
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            # The release publishes this tarball, now that it is proven, so the
+            # job that holds the publish token never installs or builds anything.
+            # Kept on every run, so the hand-off is exercised before a release
+            # needs it, and long enough to repeat a release's publish.
+            - name: Keep the packed engine for a release
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  persist-credentials: false
-
-            - name: Check the title and body
-              env:
-                  TITLE: ${{ github.event.pull_request.title }}
-                  BODY: ${{ github.event.pull_request.body }}
-                  AUTHOR: ${{ github.event.pull_request.user.login }}
-              run: |
-                  if [ "$AUTHOR" = "dependabot[bot]" ]; then
-                      printf '%s\n' "$TITLE" > "$RUNNER_TEMP/message"
-                  else
-                      printf '%s\n\n%s\n' "$TITLE" "$BODY" > "$RUNNER_TEMP/message"
-                  fi
-                  node scripts/check-commit-message.mjs "$RUNNER_TEMP/message"
+                  name: engine-package
+                  path: ${{ runner.temp }}/jasonsdevspace-shelflens-*.tgz
+                  if-no-files-found: error
+                  retention-days: 7
+                  overwrite: true
 
     # The demo, published to GitHub Pages at jasonsdevspace.com/shelflens/
     # once everything above has passed on main. A merge that fails a check

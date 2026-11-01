@@ -35,6 +35,11 @@ updates:
           # The Node types follow the Node major in .nvmrc.
           - dependency-name: '@types/node'
             update-types: ['version-update:semver-major']
+          # Lighthouse 13.6 brought in a source-available license and a
+          # moderate advisory through its error reporting, so it stays on 13.5
+          # until a later version drops them, checked by hand.
+          - dependency-name: lighthouse
+            versions: ['>=13.6.0']
 
     - package-ecosystem: github-actions
       directory: /

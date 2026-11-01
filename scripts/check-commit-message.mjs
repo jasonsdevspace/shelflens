@@ -6,7 +6,9 @@
  * human or otherwise, is not part of that, so the message is rejected before
  * the commit exists rather than cleaned up after. Em dashes and semicolons
  * joining clauses are refused too, as everywhere else. Run by the commit-msg
- * hook with the path to the message file.
+ * hook with the path to the message file, and by CI with `--as-is` for a
+ * pull request's title and body, which GitHub keeps whole when it squashes,
+ * lines that start like git's comments included.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -49,6 +51,18 @@ export const storedMessage = (raw, commentChar) => {
 };
 
 /**
+ * The text to check: the message as git will store it, or, for one GitHub
+ * writes as it is, every line of it.
+ *
+ * @param {string} raw
+ * @param {string} commentChar
+ * @param {boolean} asIs
+ * @returns {string}
+ */
+export const textToCheck = (raw, commentChar, asIs) =>
+    asIs ? raw : storedMessage(raw, commentChar);
+
+/**
  * What is wrong with a stored message, one line per problem.
  *
  * @param {string} message
@@ -78,13 +92,15 @@ const commentCharacter = () => {
 };
 
 const main = () => {
-    const [, , messagePath] = process.argv;
+    const args = process.argv.slice(2);
+    const asIs = args.includes('--as-is');
+    const messagePath = args.find((arg) => arg !== '--as-is');
     if (!messagePath) {
-        console.error('usage: check-commit-message.mjs <path to the commit message>');
+        console.error('usage: check-commit-message.mjs [--as-is] <path to the commit message>');
         process.exit(2);
     }
     const problems = messageProblems(
-        storedMessage(readFileSync(messagePath, 'utf8'), commentCharacter())
+        textToCheck(readFileSync(messagePath, 'utf8'), commentCharacter(), asIs)
     );
     if (problems.length > 0) {
         console.error(

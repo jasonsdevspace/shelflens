@@ -129,7 +129,9 @@ jobs:
                   node-version-file: .nvmrc
 
             # Trusted publishing and staging need an npm newer than the runner
-            # ships. Pinned, so what publishes is the npm a release was proven on.
+            # ships. Pinned, so what publishes is the npm a release was proven
+            # on. Dependabot cannot see a version in a script, so it is raised
+            # by hand, with a release, when npm changes how publishing works.
             - name: Use a pinned npm
               run: npm install -g --ignore-scripts npm@12.2.1 && npm --version
 

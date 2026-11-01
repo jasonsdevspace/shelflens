@@ -24,5 +24,5 @@ What ships is the engine, which depends on nothing, and the demo's pages, which 
 GraphQL, all under the MIT license. The tools used to build and check the project are not shipped.
 Among them, the accessibility checker and a CSS parser are under the Mozilla Public License, and a
 lint plugin is under the GNU Lesser General Public License. Both are accepted for tools that run
-only in development. A moderate advisory in a pattern matcher the lint tools depend on waits for
-those tools to take its fix, and touches nothing that ships.
+only in development. A moderate advisory in a pattern matcher that the lint and code generation
+tools depend on waits for those tools to take its fix, and touches nothing that ships.
