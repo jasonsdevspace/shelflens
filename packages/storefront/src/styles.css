@@ -370,9 +370,24 @@ body {
     grid-template-columns: 1fr;
 }
 
+/*
+ * The results dim while the next ones load, after a short wait, so a fast
+ * answer never flickers. They come back at once, and with reduced motion
+ * they change without fading.
+ */
+.results-main {
+    transition: opacity 0.15s;
+}
+
 .results-layout.is-loading .results-main {
     opacity: 0.6;
-    transition: opacity 0.15s;
+    transition-delay: 0.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .results-main {
+        transition-duration: 0s;
+    }
 }
 
 .facets {

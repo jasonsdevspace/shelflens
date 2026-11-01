@@ -10,7 +10,9 @@ import {
 
 import { type CategoryTree, treeOf } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
-import { DemoFooter, PortfolioStrip } from './app/Portfolio.jsx';
+import { PageTop } from './app/PageTop.jsx';
+import { DemoFooter } from './app/Portfolio.jsx';
+import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
@@ -71,7 +73,7 @@ const Standby = ({
     readonly readiness: Readiness;
     readonly retry: (() => void) | undefined;
 }) => {
-    if (readiness === 'waiting') return <p className="notice">Preparing the store.</p>;
+    if (readiness === 'waiting') return <Preparing />;
     if (readiness === 'ready') return null;
     return <StartFailure kind={readiness} retry={retry} />;
 };
@@ -274,12 +276,27 @@ const freshFrom = (state: SearchState): SearchState => ({
     ...(state.explain && { explain: true }),
 });
 
-/** What the page knows about the store once it is ready: the category tree and the store line. */
-const useStoreShape = (client: GraphQLClient, isReady: boolean) => {
-    const categories = useQuery(client, CategoriesDocument, isReady ? {} : undefined);
-    const store = useQuery(client, StoreDocument, isReady ? {} : undefined);
+/**
+ * Whether the store answers, and what the page knows about it once it does:
+ * the category tree and the store line. The store counts as ready once the
+ * categories have answered, or failed, so the masthead and the content
+ * arrive together and change once, from waiting to ready.
+ */
+const useStore = (client: GraphQLClient, ready: Promise<void>) => {
+    const [started, setStarted] = useState<Readiness>('waiting');
+    useEffect(() => {
+        ready.then(
+            () => setStarted('ready'),
+            (error: unknown) => setStarted(startFailure(error))
+        );
+    }, [ready]);
+    const asked = started === 'ready' ? {} : undefined;
+    const categories = useQuery(client, CategoriesDocument, asked);
+    const store = useQuery(client, StoreDocument, asked);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
-    return { tree, store };
+    const settled = categories.data !== undefined || categories.error !== undefined;
+    const readiness: Readiness = started === 'ready' && !settled ? 'waiting' : started;
+    return { readiness, tree, store };
 };
 
 export const App = ({
@@ -293,7 +310,6 @@ export const App = ({
     retry,
     arrival,
 }: AppProps) => {
-    const [readiness, setReadiness] = useState<Readiness>('waiting');
     const [state, navigate] = useUrlState();
     const { closedSku, focused } = useClosedProduct(state.product);
     const [group, setGroup] = useState<CustomerGroup>('guest');
@@ -308,16 +324,10 @@ export const App = ({
     const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
     // Counts the searches submitted, so one run again is remembered again though the page is the same.
     const [searched, setSearched] = useState(0);
+    const { readiness, tree, store } = useStore(client, ready);
     const isReady = readiness === 'ready';
-    const { tree, store } = useStoreShape(client, isReady);
+    const tourShown = isReady && touring;
     const fresh = freshFrom(state);
-
-    useEffect(() => {
-        ready.then(
-            () => setReadiness('ready'),
-            (error: unknown) => setReadiness(startFailure(error))
-        );
-    }, [ready]);
 
     const info = useMemo(() => storeInfoOf(store.data), [store.data]);
 
@@ -338,39 +348,32 @@ export const App = ({
     return (
         <EventsProvider value={collector.record}>
             <StoreProvider value={info}>
-                <PortfolioStrip />
-                <header className="masthead">
-                    <div className="masthead-row">
-                        <a
-                            className="brand"
-                            href="./"
-                            onClick={(event) => {
-                                event.preventDefault();
-                                navigate(fresh);
-                            }}
-                        >
-                            ShelfLens
-                        </a>
-                        {isReady && (
-                            <Masthead
-                                client={client}
-                                state={state}
-                                fresh={fresh}
-                                onSearched={() => setSearched((n) => n + 1)}
-                                navigate={navigate}
-                                categories={tree}
-                                group={group}
-                                onGroup={switchGroup}
-                                touring={touring}
-                                onTour={touring ? closeTour : openTour}
-                                tourButton={tourButton}
-                                tour={tour}
-                                viewerSwitch={viewerSwitch}
-                            />
-                        )}
-                    </div>
-                </header>
-                {isReady && touring && (
+                <PageTop
+                    home="./"
+                    onHome={(event) => {
+                        event.preventDefault();
+                        navigate(fresh);
+                    }}
+                >
+                    {isReady && (
+                        <Masthead
+                            client={client}
+                            state={state}
+                            fresh={fresh}
+                            onSearched={() => setSearched((n) => n + 1)}
+                            navigate={navigate}
+                            categories={tree}
+                            group={group}
+                            onGroup={switchGroup}
+                            touring={touring}
+                            onTour={touring ? closeTour : openTour}
+                            tourButton={tourButton}
+                            tour={tour}
+                            viewerSwitch={viewerSwitch}
+                        />
+                    )}
+                </PageTop>
+                {tourShown && (
                     <Tour
                         index={tourStop}
                         onIndex={setTourStop}
@@ -379,7 +382,7 @@ export const App = ({
                         takeFocus={tourAsked}
                     />
                 )}
-                <main className={`content${touring ? ' has-tour' : ''}`}>
+                <main className={`content${tourShown ? ' has-tour' : ''}`}>
                     <Notices
                         readiness={readiness}
                         retry={retry}
@@ -414,7 +417,7 @@ export const App = ({
                         />
                     )}
                 </main>
-                <DemoFooter />
+                {readiness !== 'waiting' && <DemoFooter />}
             </StoreProvider>
         </EventsProvider>
     );

@@ -93,6 +93,26 @@ const settled = () =>
         expect(document.querySelector('.results-layout')).not.toHaveAttribute('aria-busy', 'true')
     );
 
+describe('a store that starts', () => {
+    it('arrives in one step, the masthead, the content and the footer together', async () => {
+        let start: () => void = () => undefined;
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={new Promise<void>((resolve) => (start = resolve))}
+            />
+        );
+        expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+        act(() => start());
+        await screen.findByRole('heading', { level: 1 });
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Categories' })).toBeInTheDocument();
+        expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    });
+});
+
 describe('a store that does not start', () => {
     const startWith = (ready: Promise<void>, retry = vi.fn()) => {
         render(

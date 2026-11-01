@@ -91,3 +91,19 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     await expect(page).toHaveURL(/\/\?q=boot/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for');
 });
+
+test('says the search box is loading until it arrives', async ({ page }) => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    await page.route('**/widget.js', async (route) => {
+        await held;
+        await route.continue();
+    });
+    await page.goto('/widget/');
+    await expect(page.getByText('Loading the search box.')).toBeVisible();
+    release();
+    await expect(page.getByRole('combobox')).toBeVisible();
+    await expect(page.getByText('Loading the search box.')).toBeHidden();
+});

@@ -14,6 +14,13 @@
         <title>ShelfLens on another page</title>
         <link rel="stylesheet" href="/src/styles.css" />
         <link rel="stylesheet" href="/src/widget/host.css" />
+        <noscript>
+            <style>
+                .widget-waiting {
+                    display: none;
+                }
+            </style>
+        </noscript>
     </head>
     <body>
         <a class="skip" href="#main-content">Skip to content</a>
@@ -44,7 +51,15 @@
                     and those searches come first.
                 </p>
                 <div class="host-clip">
-                    <div id="shelflens-search"></div>
+                    <div id="shelflens-search">
+                        <p class="notice widget-waiting">Loading the search box.</p>
+                        <noscript>
+                            <p class="notice">
+                                The search box needs JavaScript. Turn it on in this browser and
+                                reload the page.
+                            </p>
+                        </noscript>
+                    </div>
                 </div>
                 <ul>
                     <li>

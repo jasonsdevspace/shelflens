@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 import { storeApi } from './src/dev/api-plugin.js';
+import { pageShell } from './src/dev/shell-plugin.js';
 import { themeScript } from './src/dev/theme-plugin.js';
 
 /**
@@ -18,7 +19,7 @@ import { themeScript } from './src/dev/theme-plugin.js';
  */
 export default defineConfig({
     base: process.env.BASE_PATH ?? '/',
-    plugins: [react(), storeApi(), themeScript()],
+    plugins: [react(), storeApi(), themeScript(), pageShell()],
     // The preview serves the built files as GitHub Pages does, to any origin, so a page
     // on another origin can load the widget's file from it in the browser test.
     preview: { cors: true },
