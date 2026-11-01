@@ -30,6 +30,7 @@ jobs:
     # The cheap checks first, so a mistyped tag fails in seconds.
     agree:
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         outputs:
             version: ${{ steps.version.outputs.version }}
             prerelease: ${{ steps.version.outputs.prerelease }}
@@ -92,16 +93,79 @@ jobs:
             pages: write
             id-token: write
 
+    # The job that can publish does nothing else. It holds the token npm's
+    # trusted publishing asks for, so it checks out only the Node version,
+    # restores no cache and installs nothing but a pinned npm, without
+    # install scripts.
+    # What it publishes is the tarball CI packed and proved on the floor
+    # Node, in a job with no more than read access.
     publish:
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'engine'
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         # The environment is what npm's trusted publisher is registered
-        # against, and where a required reviewer can be set.
+        # against, and it accepts a deployment only from an engine tag.
         environment: npm
         permissions:
-            contents: write
+            contents: read
             id-token: write
+        env:
+            VERSION: ${{ needs.agree.outputs.version }}
+            PRERELEASE: ${{ needs.agree.outputs.prerelease }}
+        steps:
+            # The one file the job reads, for the Node the project names. No
+            # code is checked out, so none can run.
+            - name: Read the Node version
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+                  sparse-checkout: .nvmrc
+                  sparse-checkout-cone-mode: false
+
+            - name: Setup Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+
+            # Trusted publishing and staging need an npm newer than the runner
+            # ships. Pinned, so what publishes is the npm a release was proven on.
+            - name: Use a pinned npm
+              run: npm install -g --ignore-scripts npm@12.2.1 && npm --version
+
+            - name: Take the packed engine
+              uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: engine-package
+                  path: ${{ runner.temp }}/package
+
+            # A version already on npm is left alone, so a run can be repeated
+            # after a later step failed.
+            - name: Stage the version on npm with provenance
+              run: |
+                  if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
+                      echo "$VERSION is already on npm"
+                      exit 0
+                  fi
+                  tarball="$RUNNER_TEMP/package/jasonsdevspace-shelflens-$VERSION.tgz"
+                  if [ ! -f "$tarball" ]; then
+                      echo "the packed engine is not $VERSION"
+                      ls "$RUNNER_TEMP/package"
+                      exit 1
+                  fi
+                  tag=latest
+                  [ "$PRERELEASE" = "true" ] && tag=next
+                  npm stage publish "$tarball" --provenance --access public --tag "$tag"
+
+    # A release on GitHub with the changelog entry as its notes, so the tag
+    # has a page a reader can land on. Left alone if it exists. Its own job,
+    # so writing to the repository and publishing to npm never share one.
+    engine-release:
+        needs: [agree, publish]
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
         env:
             VERSION: ${{ needs.agree.outputs.version }}
             PRERELEASE: ${{ needs.agree.outputs.prerelease }}
@@ -112,34 +176,6 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Setup Node
-              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-              with:
-                  node-version-file: .nvmrc
-                  cache: 'npm'
-
-            # Trusted publishing needs a recent npm, whatever the runner ships.
-            - name: Use a current npm
-              run: npm install -g npm@latest && npm --version
-
-            - name: Install dependencies
-              run: npm ci
-
-            # The engine builds itself on pack. A version already on npm is
-            # left alone, so a run can be repeated after a later step failed.
-            - name: Stage the version on npm with provenance
-              working-directory: packages/engine
-              run: |
-                  if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
-                      echo "$VERSION is already on npm"
-                      exit 0
-                  fi
-                  tag=latest
-                  [ "$PRERELEASE" = "true" ] && tag=next
-                  npm stage publish --provenance --access public --tag "$tag"
-
-            # A release on GitHub with the changelog entry as its notes, so
-            # the tag has a page a reader can land on. Left alone if it exists.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -157,6 +193,7 @@ jobs:
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'storefront'
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         permissions:
             contents: write
         env:
