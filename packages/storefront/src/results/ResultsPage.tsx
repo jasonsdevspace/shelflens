@@ -89,15 +89,36 @@ const headingFor = (state: SearchState, categories: CategoryTree, total: number)
 };
 
 /** The facets beside the results, or in a drawer where there is no room beside them. */
+/**
+ * The first stop in a column beside the results, seen only when it has
+ * focus, that takes a keyboard past the column to the results heading.
+ * Focus moves by script, so the address and the history stay as they are.
+ */
+const SkipToResults = ({ heading }: { readonly heading: string }) => (
+    <a
+        className="skip"
+        href={`#${heading}`}
+        onClick={(event) => {
+            event.preventDefault();
+            document.getElementById(heading)?.focus();
+        }}
+    >
+        Skip to results
+    </a>
+);
+
 const FacetColumn = ({
     narrow,
     active,
     total,
+    heading,
     children,
 }: {
     readonly narrow: boolean;
     readonly active: number;
     readonly total: number;
+    /** The results heading's id, for the link past the column. */
+    readonly heading: string;
     readonly children: ReactNode;
 }) =>
     narrow ? (
@@ -105,7 +126,10 @@ const FacetColumn = ({
             {children}
         </FacetDrawer>
     ) : (
-        <aside className="results-side">{children}</aside>
+        <aside className="results-side" aria-label="Filters">
+            <SkipToResults heading={heading} />
+            {children}
+        </aside>
     );
 
 /**
@@ -251,17 +275,22 @@ const SortField = ({
 /** The rules panel beside the results, or in a drawer where there is no room beside them. */
 const RulesColumn = ({
     narrow,
+    heading,
     children,
 }: {
     readonly narrow: boolean;
+    /** The results heading's id, for the link past the column. */
+    readonly heading: string;
     readonly children: ReactNode;
 }) =>
     narrow ? (
-        <Drawer opener="Rules" title="Rules" done="See the results" keep>
+        // Named apart from the Rules button beside it, which turns the panel off.
+        <Drawer opener="Edit rules" title="Rules" done="See the results" keep>
             {children}
         </Drawer>
     ) : (
         <aside className="results-side" aria-label="Rules">
+            <SkipToResults heading={heading} />
             {children}
         </aside>
     );
@@ -313,11 +342,14 @@ const Toolbar = ({
     result,
     sortKey,
     onCloseRules,
+    drawer,
 }: Pick<ResultsPageProps, 'state' | 'navigate' | 'categories'> & {
     readonly id: string;
     readonly result: Result;
     readonly sortKey: SortKey;
     readonly onCloseRules: () => void;
+    /** On a phone, the drawer's button, which sits with the others under the heading. */
+    readonly drawer: ReactNode;
 }) => (
     <div className="results-toolbar">
         <ResultsHeading
@@ -325,14 +357,19 @@ const Toolbar = ({
             text={headingFor(state, categories, result.total)}
             corrected={result.matching === 'CORRECTED'}
         />
-        <button
-            type="button"
-            className="explain-toggle"
-            aria-pressed={state.explain ?? false}
-            onClick={() => navigate({ ...state, explain: !state.explain })}
-        >
-            Explain ranking
-        </button>
+        {drawer}
+        {/* With nothing found there is nothing to explain or sort, so both step aside,
+            unless explain mode is on, which keeps its switch so it can be turned off. */}
+        {(result.total > 0 || state.explain === true) && (
+            <button
+                type="button"
+                className="explain-toggle"
+                aria-pressed={state.explain ?? false}
+                onClick={() => navigate({ ...state, explain: !state.explain })}
+            >
+                Explain ranking
+            </button>
+        )}
         <button
             type="button"
             className="explain-toggle"
@@ -343,7 +380,7 @@ const Toolbar = ({
         >
             Rules
         </button>
-        <SortField sortKey={sortKey} state={state} navigate={navigate} />
+        {result.total > 0 && <SortField sortKey={sortKey} state={state} navigate={navigate} />}
     </div>
 );
 
@@ -469,6 +506,10 @@ const Answer = ({
     </>
 );
 
+/** The layout's classes: dimmed while loading, and one column when there are no facets. */
+const layoutClass = (loading: boolean, empty: boolean) =>
+    ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
+
 export const ResultsPage = (props: ResultsPageProps) => {
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
@@ -540,7 +581,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         navigate(rest);
     };
     const side = state.rules ? (
-        <RulesColumn narrow={narrow}>
+        <RulesColumn narrow={narrow} heading={`${id}-heading`}>
             <RulesPanel
                 editor={editor}
                 phrase={state.phrase}
@@ -559,7 +600,12 @@ export const ResultsPage = (props: ResultsPageProps) => {
         </RulesColumn>
     ) : (
         !facetless && (
-            <FacetColumn narrow={narrow} active={activeFilterCount(state)} total={result.total}>
+            <FacetColumn
+                narrow={narrow}
+                active={activeFilterCount(state)}
+                total={result.total}
+                heading={`${id}-heading`}
+            >
                 <Facets
                     facets={result.facets}
                     state={state}
@@ -569,19 +615,13 @@ export const ResultsPage = (props: ResultsPageProps) => {
             </FacetColumn>
         )
     );
-    const layout = [
-        'results-layout',
-        loading && 'is-loading',
-        facetless && !state.rules && 'is-empty',
-    ]
-        .filter(Boolean)
-        .join(' ');
+    const layout = layoutClass(loading, facetless && !state.rules);
 
     return (
         <>
             {status}
             <div className={layout} aria-busy={loading}>
-                {side}
+                {!narrow && side}
                 <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
                     <Crumbs state={state} navigate={navigate} categories={categories} />
                     <Toolbar
@@ -592,6 +632,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                         result={result}
                         sortKey={sortKey}
                         onCloseRules={closeRules}
+                        drawer={narrow && side}
                     />
                     <ViewerNotice
                         group={group}

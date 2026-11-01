@@ -21,10 +21,17 @@ test('the facets open in a drawer, narrow the results, and close back to them', 
     await expect(page.getByRole('group', { name: 'Brand' })).toBeHidden();
 
     const open = page.getByRole('button', { name: 'Filters' });
+    // The heading comes first, then the button, on its own line under it.
+    const headingBox = await page.getByRole('heading', { level: 1 }).boundingBox();
+    const openBox = await open.boundingBox();
+    if (!headingBox || !openBox) throw new Error('expected the heading and the button on screen');
+    expect(openBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
     await open.click();
     const drawer = page.getByRole('dialog', { name: 'Filters' });
     await expect(drawer).toBeVisible();
     await expect(page.getByRole('button', { name: 'Close' })).toBeFocused();
+    // Outside the results, so their dimming while the next answer loads never reaches it.
+    expect(await drawer.evaluate((panel) => panel.closest('.results-main'))).toBeNull();
 
     const brand = drawer.getByRole('group', { name: 'Brand' }).getByRole('checkbox').first();
     await brand.check();
@@ -101,7 +108,7 @@ test('the recent searches fit the screen and audit clean', async ({ page }) => {
 test('a rule half typed in the drawer survives the device turning', async ({ page }) => {
     await page.goto('/?q=jacket&explain=1&rules=1');
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    await page.getByRole('button', { name: 'Rules', expanded: false }).tap();
+    await page.getByRole('button', { name: 'Edit rules' }).tap();
     const drawer = page.getByRole('dialog', { name: 'Rules' });
     await drawer.getByRole('button', { name: 'Add a rule' }).tap();
     await drawer.getByRole('textbox', { name: 'Name', exact: true }).fill('Last first');
@@ -112,7 +119,7 @@ test('a rule half typed in the drawer survives the device turning', async ({ pag
         'Last first'
     );
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole('button', { name: 'Rules', expanded: false }).tap();
+    await page.getByRole('button', { name: 'Edit rules' }).tap();
     await expect(drawer.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
         'Last first'
     );

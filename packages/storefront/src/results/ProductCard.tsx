@@ -67,7 +67,12 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
             </li>
             {hit.product.membersOnly && <li>Shown to members only</li>}
             {rules.map((effect, index) => (
-                <li key={`${effect.ruleId}-${effect.action}-${index}`}>{effectText(effect)}</li>
+                <li
+                    key={`${effect.ruleId}-${effect.action}-${index}`}
+                    className="card-explain-rule"
+                >
+                    {effectText(effect)}
+                </li>
             ))}
             {popularity && <li>{popularityText(popularity)}</li>}
             {matches.map((match, index) => (
@@ -83,7 +88,7 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
 export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps) => {
     const { locale } = useStoreInfo();
     return (
-        <li className="card">
+        <li className={explain?.hit.explanation ? 'card is-explained' : 'card'}>
             <a
                 className="card-link"
                 href={href}

@@ -19,6 +19,7 @@
     --highlight: #eef2fd;
     --control: #8a8a8a;
     --warn: #b7472a;
+    --swatch-edge: rgba(0, 0, 0, 0.12);
     display: block;
     position: relative;
     isolation: isolate;
@@ -45,6 +46,7 @@
         --highlight: light-dark(#eef2fd, #1e2a4a);
         --control: light-dark(#8a8a8a, #6e6e6e);
         --warn: light-dark(#b7472a, #e8795a);
+        --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
     }
 }
 
