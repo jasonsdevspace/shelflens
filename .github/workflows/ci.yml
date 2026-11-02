@@ -170,6 +170,19 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 7
 
+            # A test that failed for another reason, a page that never settled say, is
+            # read from its trace and the report.
+            - name: Keep the report when something fails
+              if: failure()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: visual-report
+                  path: |
+                      packages/storefront/playwright-report
+                      packages/storefront/test-results
+                  if-no-files-found: ignore
+                  retention-days: 7
+
     # The engine is published with an engines range, and this proves it works
     # on the lowest Node that range admits, as someone installing it from npm
     # gets it: packed, installed into an empty project outside the repository,
@@ -262,7 +275,7 @@ jobs:
     # access, so nothing the build installs or runs can deploy, and the
     # deploy job runs only GitHub's own Pages actions.
     site:
-        needs: [verify, browser, floor]
+        needs: [verify, browser, floor, visual]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
         timeout-minutes: 15

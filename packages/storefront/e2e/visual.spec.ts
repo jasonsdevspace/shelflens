@@ -1,3 +1,5 @@
+import type { Locator } from '@playwright/test';
+
 import { expect, type Page, test } from './support.js';
 
 /*
@@ -15,11 +17,18 @@ import { expect, type Page, test } from './support.js';
  * commit. Taking them again is `npm run screenshots:accept` with the run.
  */
 
-/** The page as it settles: its answer in, its fonts loaded, nothing moving. */
-const settle = async (page: Page) => {
+/**
+ * The page as it settles: what the test waits for is there, which a page
+ * still loading has not drawn, then nothing is busy and the fonts are in.
+ */
+const settle = async (page: Page, ready: Locator) => {
+    await expect(ready).toBeVisible();
     await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
     await page.evaluate(() => document.fonts.ready);
 };
+
+const resultsFor = (page: Page, phrase: string) =>
+    page.getByRole('heading', { level: 1, name: new RegExp(`results? for "${phrase}"`) });
 
 for (const colorScheme of ['light', 'dark'] as const) {
     test.describe(`in the ${colorScheme} theme`, () => {
@@ -29,7 +38,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
         test('the results toolbar', { tag: ['@desktop', '@phone'] }, async ({ page }) => {
             await page.goto('/?q=jacket');
-            await settle(page);
+            await settle(page, resultsFor(page, 'jacket'));
             await expect(page.locator('.results-toolbar')).toHaveScreenshot(
                 `toolbar-${colorScheme}.png`
             );
@@ -41,13 +50,14 @@ for (const colorScheme of ['light', 'dark'] as const) {
             async ({ page }) => {
                 await page.goto('/?product=SL-00241');
                 await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-                await settle(page);
-                await expect(page.locator('.product-head')).toHaveScreenshot(
-                    `product-head-${colorScheme}.png`
-                );
-                await expect(page.locator('table.variants')).toHaveScreenshot(
-                    `variants-${colorScheme}.png`
-                );
+                await settle(page, page.getByRole('table', { name: 'Sizes and colors' }));
+                // Soft, so a run that finds the first changed still takes the second.
+                await expect
+                    .soft(page.locator('.product-head'))
+                    .toHaveScreenshot(`product-head-${colorScheme}.png`);
+                await expect
+                    .soft(page.locator('table.variants'))
+                    .toHaveScreenshot(`variants-${colorScheme}.png`);
             }
         );
 
@@ -56,19 +66,20 @@ for (const colorScheme of ['light', 'dark'] as const) {
             { tag: '@desktop' },
             async ({ page }) => {
                 await page.goto('/?q=jacket&explain=1');
-                await settle(page);
+                await settle(page, page.getByRole('list', { name: 'Why this is result 1' }));
                 const first = page
                     .getByRole('list', { name: 'Products' })
                     .getByRole('listitem')
                     .first();
-                await expect(first).toHaveScreenshot(`card-explained-${colorScheme}.png`);
+                // Soft, so a run that finds the first changed still takes the second.
+                await expect.soft(first).toHaveScreenshot(`card-explained-${colorScheme}.png`);
                 await page.goto('/?q=jacket');
-                await settle(page);
+                await settle(page, resultsFor(page, 'jacket'));
                 const card = page.getByRole('list', { name: 'Products' }).getByRole('link').first();
                 await card.focus();
-                await expect(card.locator('xpath=..')).toHaveScreenshot(
-                    `card-focused-${colorScheme}.png`
-                );
+                await expect
+                    .soft(card.locator('xpath=..'))
+                    .toHaveScreenshot(`card-focused-${colorScheme}.png`);
             }
         );
 
@@ -76,28 +87,25 @@ for (const colorScheme of ['light', 'dark'] as const) {
             await page.goto('/');
             await page.getByRole('combobox', { name: 'Search the store' }).fill('jack');
             const popover = page.locator('.searchbox-popover');
-            await expect(popover.getByRole('option').first()).toBeVisible();
-            await settle(page);
+            await settle(page, popover.getByRole('option').first());
             await expect(popover).toHaveScreenshot(`suggestions-${colorScheme}.png`);
         });
 
         test('the widget on a host page', { tag: '@desktop' }, async ({ page }) => {
             await page.goto('widget/');
             await page.getByRole('combobox', { name: 'Search the store' }).fill('jack');
-            await expect(page.getByRole('option').first()).toBeVisible();
-            await settle(page);
+            await settle(page, page.getByRole('option').first());
             // The page around the box, since its list opens past the box's own edges.
             await expect(page.locator('main')).toHaveScreenshot(`widget-${colorScheme}.png`);
         });
 
         test('the filters drawer', { tag: '@phone' }, async ({ page }) => {
             await page.goto('/?category=shoes');
-            await settle(page);
+            await settle(page, page.getByRole('heading', { level: 1, name: /^Shoes, / }));
             await page.getByRole('button', { name: 'Filters' }).click();
-            await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible();
             // The tap leaves the pointer over a row, so it is moved off before the picture.
             await page.mouse.move(0, 0);
-            await settle(page);
+            await settle(page, page.getByRole('dialog', { name: 'Filters' }));
             await expect(page.locator('.drawer-panel')).toHaveScreenshot(
                 `drawer-${colorScheme}.png`
             );

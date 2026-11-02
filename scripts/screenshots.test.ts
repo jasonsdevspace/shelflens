@@ -15,6 +15,9 @@ describe('where a screenshot that differs belongs', () => {
                 'drawer-light-actual.png'
             )
         ).toBe(join(SCREENSHOTS, 'visual-phone', 'drawer-light.png'));
+        expect(
+            destinationOf('visual-toolbar-visual-phone-retry1-repeat1', 'toolbar-dark-actual.png')
+        ).toBe(join(SCREENSHOTS, 'visual-phone', 'toolbar-dark.png'));
     });
 
     it('leaves alone what is not a screenshot test or not the picture it took', () => {

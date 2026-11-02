@@ -10,14 +10,15 @@
  * beside its test as `<name>-actual.png`, so this puts each of those where
  * the picture it differs from lives, ready to upload as one folder.
  *
- * `accept` downloads that folder from a run and puts it in place, so the
- * pictures can be looked at in the diff and committed. It needs the GitHub
- * command line, signed in to the repository.
+ * `accept` downloads that folder from a run of this branch's last commit
+ * and puts it in place, so the pictures can be looked at in the diff and
+ * committed. It needs the GitHub command line, signed in to the repository.
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { isRunDirectly } from './repository.mjs';
 
@@ -35,7 +36,7 @@ export const ARTIFACT = 'screenshots';
  * @returns {string | undefined}
  */
 export const destinationOf = (folder, file) => {
-    const project = /-(visual-[a-z]+)(-retry\d+)?$/.exec(folder)?.[1];
+    const project = /-(visual-[a-z]+)(-retry\d+)?(-repeat\d+)?$/.exec(folder)?.[1];
     if (project === undefined || !file.endsWith('-actual.png')) return undefined;
     return join(SCREENSHOTS, project, file.replace(/-actual\.png$/, '.png'));
 };
@@ -53,12 +54,40 @@ const collect = () => {
     }
 };
 
+/** @param {string[]} args */
+const git = (args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+
+/**
+ * Refuses a run that is not of this branch's last commit, so accepting
+ * never brings back pictures from another branch or from before a change.
+ *
+ * @param {string} run
+ */
+const checkRun = (run) => {
+    const { headBranch, headSha } = /** @type {{ headBranch: string; headSha: string }} */ (
+        JSON.parse(
+            execFileSync('gh', ['run', 'view', run, '--json', 'headBranch,headSha'], {
+                encoding: 'utf8',
+            })
+        )
+    );
+    const branch = git(['branch', '--show-current']);
+    const head = git(['rev-parse', 'HEAD']);
+    if (headBranch !== branch || headSha !== head) {
+        console.error(
+            `Run ${run} is of ${headBranch} at ${headSha.slice(0, 7)}, and this is ${branch} at ${head.slice(0, 7)}. Push, wait for its run, and accept that one.`
+        );
+        process.exit(1);
+    }
+};
+
 /** @param {string | undefined} run */
 const accept = (run) => {
     if (!run || !/^\d+$/.test(run)) {
         console.error('usage: node scripts/screenshots.mjs accept <run id>');
         process.exit(2);
     }
+    checkRun(run);
     const into = mkdtempSync(join(tmpdir(), 'shelflens-screenshots-'));
     try {
         execFileSync('gh', ['run', 'download', run, '--name', ARTIFACT, '--dir', into], {
@@ -75,6 +104,13 @@ const accept = (run) => {
 };
 
 const main = () => {
+    // From the top of the repository wherever it is started, as the other checks run.
+    process.chdir(
+        execFileSync('git', ['rev-parse', '--show-toplevel'], {
+            cwd: dirname(fileURLToPath(import.meta.url)),
+            encoding: 'utf8',
+        }).trim()
+    );
     const [, , command, run] = process.argv;
     if (command === 'collect') collect();
     else if (command === 'accept') accept(run);
