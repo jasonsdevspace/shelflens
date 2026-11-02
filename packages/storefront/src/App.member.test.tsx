@@ -34,7 +34,7 @@ describe('as a member', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(screen.queryByText(/Shopping as a member/)).toBeNull();
-        const line = () => document.querySelector('.results-aside');
+        const line = () => document.querySelector('.callout');
         // The member's answer is held, so the page is seen while it is on its way.
         const served = globalThis.fetch;
         let release = () => undefined as void;

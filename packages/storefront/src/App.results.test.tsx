@@ -396,7 +396,7 @@ describe('keeping place on the results', () => {
         const nowhere = within(facet('Color')).getByRole('checkbox', { name: /Nowhere/ });
         expect(nowhere).toBeChecked();
         // The answer gave it no count, so none is made up.
-        expect(nowhere.parentElement?.querySelector('.facet-count')).toBeNull();
+        expect(nowhere.parentElement?.querySelector('.hint')).toBeNull();
     });
 
     it('moves focus to the new page heading after Next, and says the page', async () => {

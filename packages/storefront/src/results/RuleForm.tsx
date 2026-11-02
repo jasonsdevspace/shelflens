@@ -54,7 +54,7 @@ const Field = ({
         <label htmlFor={id}>{label}</label>
         {children}
         {line !== undefined && (
-            <span id={`${id}-line`} className="facet-count">
+            <span id={`${id}-line`} className="hint">
                 {line}
             </span>
         )}
@@ -108,7 +108,7 @@ const ProductFields = ({
                 </option>
             ))}
         </datalist>
-        <span id={`${id}-skus`} className="facet-count">
+        <span id={`${id}-skus`} className="hint">
             {under(
                 tried,
                 problems.skus,
@@ -118,7 +118,7 @@ const ProductFields = ({
         {(form.action === 'pin' || form.action === 'hide') && (
             <button
                 type="button"
-                className="facet-more"
+                className="text-button"
                 onClick={() => onChange({ ...form, skus: [...form.skus, ''] })}
             >
                 Add another product
@@ -233,7 +233,7 @@ export const RuleForm = (props: RuleFormProps) => {
                             onChange={() => onChange({ ...form, action: action.value, step: 1 })}
                         />
                         <span>
-                            {action.label} <span className="facet-count">{action.gloss}</span>
+                            {action.label} <span className="hint">{action.gloss}</span>
                         </span>
                     </label>
                 ))}
@@ -260,14 +260,14 @@ export const RuleForm = (props: RuleFormProps) => {
             )}
             <WeightField id={id} form={form} onChange={onChange} />
             <div className="rules-actions">
-                <button type="submit" className="drawer-done rules-save">
+                <button type="submit" className="button button-primary">
                     Save rule
                 </button>
-                <button type="button" className="tour-step" onClick={onCancel}>
+                <button type="button" className="button" onClick={onCancel}>
                     Cancel
                 </button>
                 {existing && (
-                    <button type="button" className="facets-clear" onClick={onRemove}>
+                    <button type="button" className="text-button" onClick={onRemove}>
                         Remove rule
                     </button>
                 )}

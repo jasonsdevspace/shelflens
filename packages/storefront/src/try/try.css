@@ -76,15 +76,6 @@
     outline-offset: var(--ring-offset);
 }
 
-.try-link {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--accent);
-    font: inherit;
-    text-decoration: underline;
-}
-
 .try-mapping {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
@@ -150,22 +141,6 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     margin-block: var(--space-5);
-}
-
-.try-actions button {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--control);
-    border-radius: var(--radius-small);
-    background: var(--bg);
-    color: var(--fg);
-    font: inherit;
-}
-
-.try-actions .try-primary {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--on-accent);
-    font-weight: var(--weight-strong);
 }
 
 .try-bar {

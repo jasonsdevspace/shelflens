@@ -28,7 +28,7 @@ export const LoadFailure = ({
         </p>
         {import.meta.env.DEV && <p>{reason}</p>}
         <div className="load-failure-actions">
-            <button type="button" className="standby-retry" onClick={onRetry}>
+            <button type="button" className="button" onClick={onRetry}>
                 Try again
             </button>
             {children}

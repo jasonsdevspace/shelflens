@@ -27,18 +27,18 @@ export const Pagination = ({ page, totalPages, onPage }: PaginationProps) => {
         <nav className="pagination" aria-label="Pages">
             <button
                 type="button"
-                className="page-step"
+                className="button"
                 disabled={page <= 1}
                 onClick={() => onPage(page - 1)}
             >
                 Previous
             </button>
-            <ul className="page-list">
+            <ul className="pagination-list">
                 {windowOf(page, totalPages).map((number) => (
                     <li key={number}>
                         <button
                             type="button"
-                            className="page-number"
+                            className="button pagination-number"
                             aria-current={number === page ? 'page' : undefined}
                             aria-label={`Page ${number}`}
                             onClick={() => onPage(number)}
@@ -50,13 +50,13 @@ export const Pagination = ({ page, totalPages, onPage }: PaginationProps) => {
             </ul>
             <button
                 type="button"
-                className="page-step"
+                className="button"
                 disabled={page >= totalPages}
                 onClick={() => onPage(page + 1)}
             >
                 Next
             </button>
-            <span className="page-status">
+            <span className="pagination-status">
                 Page {page} of {totalPages}
             </span>
         </nav>

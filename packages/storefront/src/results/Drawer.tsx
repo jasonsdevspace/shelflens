@@ -76,7 +76,7 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
             <button
                 ref={openButton}
                 type="button"
-                className="drawer-open"
+                className="button"
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 onClick={() => setOpen(true)}
@@ -110,7 +110,7 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
                                 <button
                                     ref={closer}
                                     type="button"
-                                    className="drawer-close"
+                                    className="text-button drawer-close"
                                     onClick={() => setOpen(false)}
                                 >
                                     Close
@@ -119,7 +119,7 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
                             <div className="drawer-body">{children}</div>
                             <button
                                 type="button"
-                                className="drawer-done"
+                                className="button button-primary button-large drawer-done"
                                 onClick={() => setOpen(false)}
                             >
                                 {done}

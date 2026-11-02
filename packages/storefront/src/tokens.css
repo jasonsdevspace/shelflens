@@ -100,5 +100,7 @@
 
     /* A field a visitor types into or picks from: its height and its text's inset. */
     --field-height: 2.25rem;
+    /* The height of anything a thumb presses on a phone, and of the actions that end a step. */
+    --target: 2.75rem;
     --field-inline: var(--space-2);
 }

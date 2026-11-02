@@ -63,7 +63,7 @@ export const ViewerNotice = ({
             <p className="visually-hidden" role="status">
                 {said}
             </p>
-            {text !== '' && <p className="results-aside">{text}</p>}
+            {text !== '' && <p className="callout">{text}</p>}
         </>
     );
 };

@@ -41,7 +41,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 <p className="tour-count">
                     Stop {index + 1} of {STOPS.length}
                 </p>
-                <button ref={closer} type="button" className="tour-close" onClick={onClose}>
+                <button ref={closer} type="button" className="button" onClick={onClose}>
                     Close
                 </button>
             </div>
@@ -60,13 +60,13 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             </div>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink className="tour-try" to={stop.to} navigate={navigate}>
+                    <StateLink className="button tour-try" to={stop.to} navigate={navigate}>
                         Try it
                     </StateLink>
                 )}
                 <button
                     type="button"
-                    className="tour-step"
+                    className="button"
                     disabled={index === 0}
                     onClick={() => onIndex(index - 1)}
                 >
@@ -74,7 +74,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 </button>
                 <button
                     type="button"
-                    className="tour-step"
+                    className="button"
                     onClick={() => (last ? onClose() : onIndex(index + 1))}
                 >
                     {last ? 'Finish' : 'Next'}

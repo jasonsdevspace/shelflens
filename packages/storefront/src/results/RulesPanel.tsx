@@ -217,18 +217,18 @@ const RuleList = ({
                         <li key={rule.id}>
                             <button
                                 type="button"
-                                className="facet-link rules-rule"
+                                className="option-button rules-rule"
                                 onClick={() => onPick(rule)}
                             >
                                 <span className="rules-rule-name">{rule.name ?? rule.id}</span>
-                                <span className="facet-count">{summary(rule)}</span>
+                                <span className="hint">{summary(rule)}</span>
                             </button>
                         </li>
                     ))}
                 </ul>
             )}
             {rules.length > applying.length && (
-                <button type="button" className="facet-more" onClick={() => setShowAll(!showAll)}>
+                <button type="button" className="text-button" onClick={() => setShowAll(!showAll)}>
                     {showAll ? 'Show the rules that apply' : 'Show every rule'}
                 </button>
             )}
@@ -257,7 +257,7 @@ export const DiscardRules = ({
         return (
             <>
                 {failure !== undefined && <span role="alert">{failure} </span>}
-                <button type="button" className="facets-clear" onClick={() => setAsking(true)}>
+                <button type="button" className="text-button" onClick={() => setAsking(true)}>
                     Discard your rules
                 </button>
             </>
@@ -266,10 +266,10 @@ export const DiscardRules = ({
     return (
         <p className="notice">
             Discard your rules? They cannot be brought back.{' '}
-            <button type="button" className="facets-clear" onClick={() => void discard()}>
+            <button type="button" className="text-button" onClick={() => void discard()}>
                 Yes, discard
             </button>{' '}
-            <button type="button" className="facets-clear" onClick={() => setAsking(false)}>
+            <button type="button" className="text-button" onClick={() => setAsking(false)}>
                 Keep them
             </button>
         </p>
@@ -471,13 +471,13 @@ export const RulesPanel = ({
             {!byRelevance && (
                 <p className="notice">
                     Sorting sets this search&rsquo;s rules aside.{' '}
-                    <button type="button" className="facets-clear" onClick={onSortByRelevance}>
+                    <button type="button" className="text-button" onClick={onSortByRelevance}>
                         Sort by relevance
                     </button>
                 </p>
             )}
             {message && (
-                <p className="results-aside" role="status">
+                <p className="callout" role="status">
                     {message}
                 </p>
             )}
@@ -512,7 +512,7 @@ export const RulesPanel = ({
                         <div className="rules-actions">
                             <button
                                 type="button"
-                                className="facet-more"
+                                className="text-button"
                                 onClick={() => edit(fresh(phrase))}
                             >
                                 Add a rule

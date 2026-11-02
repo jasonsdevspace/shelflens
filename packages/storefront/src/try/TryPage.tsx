@@ -246,7 +246,7 @@ const Chooser = ({
             </div>
             <p>
                 No file of your own?{' '}
-                <button type="button" className="try-link" onClick={onSample}>
+                <button type="button" className="text-button" onClick={onSample}>
                     {SAMPLE_BUTTON}
                 </button>
                 , or{' '}
@@ -356,12 +356,16 @@ const Review = ({
                         />
                     ) : (
                         <div className="try-actions">
-                            <button type="button" className="try-primary" onClick={onSearch}>
+                            <button
+                                type="button"
+                                className="button button-primary"
+                                onClick={onSearch}
+                            >
                                 {partial
                                     ? 'Search these products'
                                     : searchLabel(result.catalog.products.length)}
                             </button>
-                            <button type="button" onClick={onAnother}>
+                            <button type="button" className="button" onClick={onAnother}>
                                 Choose another file
                             </button>
                         </div>
@@ -373,7 +377,7 @@ const Review = ({
                         {result.error}
                     </p>
                     <div className="try-actions">
-                        <button type="button" onClick={onAnother}>
+                        <button type="button" className="button" onClick={onAnother}>
                             Choose another file
                         </button>
                     </div>
@@ -405,10 +409,10 @@ const Ask = ({
     return (
         <p className="notice">
             {question}{' '}
-            <button type="button" className="try-link" onClick={onYes}>
+            <button type="button" className="text-button" onClick={onYes}>
                 {yes}
             </button>{' '}
-            <button ref={safe} type="button" className="try-link" onClick={onNo}>
+            <button ref={safe} type="button" className="text-button" onClick={onNo}>
                 {no}
             </button>
         </p>
@@ -450,7 +454,7 @@ const CatalogBar = ({
         }
     }, [focusRemove, confirm, onFocused]);
     return (
-        <div className="results-aside try-bar">
+        <div className="callout try-bar">
             <span>
                 You are searching your own catalog of{' '}
                 {count(loaded.products, 'product', 'products')}, kept in this browser.
@@ -465,13 +469,13 @@ const CatalogBar = ({
                 />
             ) : (
                 <>
-                    <button type="button" className="try-link" onClick={onAnother}>
+                    <button type="button" className="text-button" onClick={onAnother}>
                         Choose another file
                     </button>{' '}
-                    <button ref={remove} type="button" className="try-link" onClick={onRemove}>
+                    <button ref={remove} type="button" className="text-button" onClick={onRemove}>
                         Remove your products
                     </button>{' '}
-                    <a className="try-link" href={widgetUrl}>
+                    <a className="text-button" href={widgetUrl}>
                         See your products on a store&rsquo;s page
                     </a>
                 </>

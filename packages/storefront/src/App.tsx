@@ -99,7 +99,7 @@ const TourToggle = ({
     <button
         ref={buttonRef}
         type="button"
-        className="tour-open"
+        className="button"
         aria-expanded={touring}
         aria-controls={TOUR_ID}
         onClick={onToggle}
@@ -119,7 +119,7 @@ const EditedRulesNotice = ({
     readonly rulesUrl: string;
     readonly onReset: () => void;
 }) => (
-    <div className="results-aside rules-notice">
+    <div className="callout rules-notice">
         Your edited rules are in effect. <DiscardRules rulesUrl={rulesUrl} onReset={onReset} />
     </div>
 );
