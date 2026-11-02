@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support.js';
 
 /*
  * The widget on a page the store does not serve, against the Node server.

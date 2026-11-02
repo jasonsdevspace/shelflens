@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, type Request, test } from '@playwright/test';
+import type { Request } from '@playwright/test';
+
+import { audit, expect, type Page, test } from './support.js';
 
 /*
  * The widget on a made-up store's page, over a visitor's own catalog. The
@@ -16,10 +17,6 @@ const BENCHES = {
         'Title,Price\nCedar Bench,$95.00\nOak Bench,$80.00\nPine Bench,$60.00\nWalnut Bench,$120.00\n'
     ),
 };
-
-test.beforeEach(({ page }) =>
-    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
-);
 
 const loadBenches = async (page: Page) => {
     await page.goto('try/');
@@ -76,10 +73,7 @@ test('searches the visitor’s own products from a store’s page, over its bann
     }
     // As on the widget's own host page, the list is a scrolling region the
     // combobox scrolls from the arrow keys, so that one rule is left out.
-    const audit = await new AxeBuilder({ page })
-        .disableRules(['scrollable-region-focusable'])
-        .analyze();
-    expect(audit.violations).toEqual([]);
+    await audit(page, ['scrollable-region-focusable']);
 
     // Nothing leaves the browser: every request is to this origin, and every
     // question the box asks goes to the store for try/.

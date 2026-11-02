@@ -1,5 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { audit, expect, test } from './support.js';
 
 /*
  * The widget on a page that is not the store's: a React of its own, styles
@@ -8,10 +7,6 @@ import { expect, test } from '@playwright/test';
  * look, its place and its React. Playwright's locators see into the
  * widget's shadow root, and axe audits it.
  */
-
-test.beforeEach(({ page }) =>
-    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
-);
 
 test('keeps its look, its place over the host and its own React, and sends a search to the store', async ({
     page,
@@ -74,10 +69,7 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     // the rule for those wants a tab stop. The combobox contract keeps focus in the
     // box and scrolls the list from the arrow keys, which the rule cannot see and the
     // steps below prove, so that one rule is left out of this audit.
-    const audit = await new AxeBuilder({ page })
-        .disableRules(['scrollable-region-focusable'])
-        .analyze();
-    expect(audit.violations).toEqual([]);
+    await audit(page, ['scrollable-region-focusable']);
     const scrolledBefore = await listbox.evaluate((el) => el.parentElement?.scrollTop ?? 0);
     for (let step = 0; step < 6; step += 1) await search.press('ArrowDown');
     const scrolledAfter = await listbox.evaluate((el) => el.parentElement?.scrollTop ?? 0);
