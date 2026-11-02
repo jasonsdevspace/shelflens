@@ -302,10 +302,12 @@ export const createWorkerApi = ({
                 options.timing.buildMs = performance.now() - began;
                 return built;
             } catch (error) {
-                await (previous ? held.replace(previous) : held.clear());
+                // Back in hand first, so the next build is from the last catalog that
+                // worked even if putting it back in the database fails.
                 inHand = previous;
-                if (previousRules) await rules?.replace(previousRules);
                 host.forgetSource();
+                await (previous ? held.replace(previous) : held.clear());
+                if (previousRules) await rules?.replace(previousRules);
                 const reason = error instanceof Error ? error.message : 'it could not be read';
                 return `the catalog could not be built: ${reason}`;
             }
@@ -325,7 +327,9 @@ export const createWorkerApi = ({
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
-            const kept = await held.current();
+            // The catalog in hand, so what this says is loaded is what the store is built from.
+            inHand ??= await held.current();
+            const kept = inHand;
             if (!kept) return noCatalog();
             return json(200, { version: kept.version, products: kept.products.length });
         }

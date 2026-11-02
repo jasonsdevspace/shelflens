@@ -80,7 +80,9 @@ describe('the worker and the Node server', () => {
         expect(await rankedOf(await fetch(ask(nodeBase, '/graphql', query)))).toEqual(before);
 
         // Clicks on the lowest of the five, from two shoppers, sent to each host as a page sends them.
-        const lowest = before[before.length - 1]?.sku ?? '';
+        // Five results to nudge the last of, so a change to the catalog fails here and says so.
+        expect(before).toHaveLength(5);
+        const lowest = before[4]?.sku ?? '';
         const batch = JSON.stringify(
             ['a', 'b', 'b'].map((session, index) => ({
                 id: `c${String(index)}`,

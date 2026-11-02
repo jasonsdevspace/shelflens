@@ -275,6 +275,43 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(reads).toHaveBeenCalledOnce();
     });
 
+    it('builds from the last catalog that worked when one cannot be built, even if putting it back fails', async () => {
+        const catalogs = createMemoryCatalogStore();
+        let saved: readonly Rule[] | undefined;
+        // Rules that cannot be cleared, so the next catalog cannot be built with them.
+        const stubborn: RuleStore = {
+            current: () => Promise.resolve(saved),
+            replace: (next) => {
+                saved = next;
+                return Promise.resolve();
+            },
+            reset: () => Promise.resolve(),
+        };
+        const api = createWorkerApi({ catalogs, base: BASE, rules: stubborn });
+        expect((await api.handle(catalogRequest('PUT', LAMPS)))?.status).toBe(204);
+        saved = UNBUILDABLE;
+        const replace = catalogs.replace.bind(catalogs);
+        // The new catalog is written, and putting the last one back is not.
+        vi.spyOn(catalogs, 'replace')
+            .mockImplementationOnce(replace)
+            .mockRejectedValueOnce(new Error('the quota is full'));
+        await api.handle(catalogRequest('PUT', MUGS, true)).catch(() => undefined);
+        const reads = vi.spyOn(catalogs, 'current');
+        // A save builds again, from the catalog in hand, which is the last one that worked.
+        const answer = await api.handle(
+            new Request(`${ORIGIN}${BASE}rules`, {
+                method: 'POST',
+                body: JSON.stringify({ rules: pinFirst(LAMPS) }),
+            })
+        );
+        expect(answer?.status).toBe(204);
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: LAMPS.version,
+            products: 2,
+        });
+        expect(reads).not.toHaveBeenCalled();
+    });
+
     it('keeps the last catalog and its rules when a new one cannot be built', async () => {
         // Rules that cannot be cleared, and that no store can be built with.
         let saved: readonly Rule[] | undefined;
