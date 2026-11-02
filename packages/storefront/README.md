@@ -3,8 +3,9 @@
 The demo: the store's search as a shopper sees it, deployed to GitHub Pages with the API inside
 the page.
 
-- **The client is written here.** `src/client` sends typed documents, generated as strings from
-  the operations in `src/operations` and named at build time by the hash of their text. A named
+- **The client is written here.** `src/client` sends typed documents, generated from the
+  operations in `src/operations` and named at build time by the hash of their text. The page keeps
+  the names and the types, and leaves the text to the API's manifest, since it never sends it. A named
   operation goes as a `GET` with its variables and the store version in the URL, so a cache can
   keep the answer under it. The client remembers answers too, on the API's one cache key, for a
   count and an age, in a memory the page holds and shares between viewers. Beside it is the

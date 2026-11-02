@@ -3,10 +3,16 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
+import { GOLDEN_CASES } from '@shelflens/search';
 import { build, type Plugin } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 
-import { BUDGET_BYTES, TRY_BUDGET_BYTES, WIDGET_BUDGET_BYTES } from './budgets.js';
+import {
+    BUDGET_BYTES,
+    TRY_BUDGET_BYTES,
+    WIDGET_BUDGET_BYTES,
+    WORKER_BUDGET_BYTES,
+} from './budgets.js';
 
 /*
  * The pages' download budgets, as esbuild bundles each entry on its own.
@@ -61,27 +67,41 @@ const bundled = async (entry: string) => {
     };
 };
 
+/** Text only the golden queries hold, which the tests read and no page should. */
+const FIXTURE = GOLDEN_CASES[0]?.because ?? 'the golden queries';
+
 describe('the page in a browser', () => {
-    it('stays within its download budget, with nothing from GraphQL in it', async () => {
+    it('stays within its download budget, with nothing from GraphQL or a test in it', async () => {
         const { code, compressed } = await bundled('./main.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
+        expect(code).not.toContain(FIXTURE);
         expect(compressed).toBeLessThan(BUDGET_BYTES);
     }, 60_000);
 
-    it('keeps the page for a visitor’s catalog within its own budget, with nothing from GraphQL', async () => {
+    it('keeps the page for a visitor’s catalog within its own budget, with nothing from GraphQL or a test', async () => {
         const { code, compressed } = await bundled('./try/main.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
+        expect(code).not.toContain(FIXTURE);
         expect(compressed).toBeLessThan(TRY_BUDGET_BYTES);
     }, 60_000);
 });
 
 describe('the widget in a host page', () => {
-    it('stays within its own budget, with nothing from GraphQL in it', async () => {
+    it('stays within its own budget, with nothing from GraphQL or a test in it', async () => {
         const { code, compressed } = await bundled('./widget/index.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
+        expect(code).not.toContain(FIXTURE);
         expect(compressed).toBeLessThan(WIDGET_BUDGET_BYTES);
+    }, 60_000);
+});
+
+describe('the service worker', () => {
+    it('stays within its own budget, with no test fixture in it', async () => {
+        const { code, compressed } = await bundled('./worker/sw.ts');
+        expect(code).not.toContain(FIXTURE);
+        expect(compressed).toBeLessThan(WORKER_BUDGET_BYTES);
     }, 60_000);
 });

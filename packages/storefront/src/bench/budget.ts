@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-import { BUDGET_BYTES, TRY_BUDGET_BYTES, WIDGET_BUDGET_BYTES } from '../budgets.js';
+import { GOLDEN_CASES } from '@shelflens/search';
+
+import {
+    BUDGET_BYTES,
+    TRY_BUDGET_BYTES,
+    WIDGET_BUDGET_BYTES,
+    WORKER_BUDGET_BYTES,
+} from '../budgets.js';
 
 /**
  * The download budgets, held over the files the build ships.
@@ -9,11 +16,13 @@ import { BUDGET_BYTES, TRY_BUDGET_BYTES, WIDGET_BUDGET_BYTES } from '../budgets.
  *   npm run budget
  *
  * Runs after `npm run storefront`. Each page's scripts are the ones its
- * HTML loads or preloads, each compressed as a server sends it, and the
- * widget is the one file a host page loads. That is what a page needs
+ * HTML loads or preloads, each compressed as a server sends it, the widget
+ * is the one file a host page loads, and the service worker is the one file
+ * the browser installs. That is what a page needs
  * before it can answer: a chunk it imports later, on demand, is not part
  * of it, and the stylesheets are measured by Lighthouse with the page. A page past its budget, or
- * with anything from GraphQL in it, fails the run. The test beside the
+ * with anything from GraphQL in it, fails the run, and so does any file
+ * that carries a test fixture. The worker carries GraphQL by design. The test beside the
  * budgets measures each entry as esbuild bundles it, which catches a
  * change in the source before anything is built.
  */
@@ -42,10 +51,15 @@ const scriptsOf = (page: string): readonly string[] => {
     });
 };
 
+/** Text only the golden queries hold, which the tests read and nothing shipped should. */
+const FIXTURE = GOLDEN_CASES[0]?.because ?? 'the golden queries';
+
 const SHIPPED: readonly {
     readonly what: string;
     readonly files: readonly string[];
     readonly budget: number;
+    /** Whether GraphQL may be in it, which only the worker needs. */
+    readonly graphql?: true;
 }[] = [
     { what: 'the page', files: scriptsOf('index.html'), budget: BUDGET_BYTES },
     {
@@ -54,19 +68,21 @@ const SHIPPED: readonly {
         budget: TRY_BUDGET_BYTES,
     },
     { what: 'the widget', files: ['widget.js'], budget: WIDGET_BUDGET_BYTES },
+    { what: 'the service worker', files: ['sw.js'], budget: WORKER_BUDGET_BYTES, graphql: true },
 ];
 
 const failures: string[] = [];
-for (const { what, files, budget } of SHIPPED) {
+for (const { what, files, budget, graphql } of SHIPPED) {
     if (files.length === 0) failures.push(`${what} loads no script the build wrote`);
     let compressed = 0;
     for (const file of files) {
         const code = readFileSync(new URL(file, DIST));
         compressed += gzipSync(code).length;
         const text = code.toString('utf8');
-        if (text.includes('GraphQLError') || text.includes('buildSchema')) {
+        if (!graphql && (text.includes('GraphQLError') || text.includes('buildSchema'))) {
             failures.push(`${what} carries GraphQL in ${file}`);
         }
+        if (text.includes(FIXTURE)) failures.push(`${what} carries a test fixture in ${file}`);
     }
     const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
     console.log(`${what}: ${kb(compressed)} of ${kb(budget)}, in ${files.join(', ')}`);

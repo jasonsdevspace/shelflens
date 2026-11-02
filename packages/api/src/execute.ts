@@ -1,5 +1,6 @@
 import {
     type ASTVisitor,
+    type DocumentNode,
     execute,
     type FieldNode,
     GraphQLError,
@@ -160,28 +161,86 @@ export interface StoreApiOptions {
     readonly events?: EventStore | undefined;
 }
 
+/**
+ * The schema with its resolvers attached, built once.
+ *
+ * It describes the store's shape, not one store's contents, which reach the
+ * resolvers through the context. A store built again for a saved rule or a
+ * visit's clicks serves the same schema, so what was parsed and validated
+ * against it still holds.
+ */
+let schemaOnce: GraphQLSchema | undefined;
+const storeSchema = (): GraphQLSchema => (schemaOnce ??= attach(buildStoreSchema(), resolvers));
+
+/** How many valid queries are kept. The demo's page sends a handful. */
+export const KEPT_QUERIES = 64;
+
+/**
+ * Queries already parsed and validated, by their text, kept per set of
+ * limits, since a query within one set may be past another.
+ *
+ * The page sends the same few operations all visit, and parsing and
+ * validating one costs more than answering it from the index. Only a query
+ * that validated is kept, the most recently used first, so a stream of
+ * different or broken queries can neither grow the set nor push the page's
+ * own operations out for long.
+ */
+const kept = new WeakMap<Limits, Map<string, DocumentNode>>();
+
+const keptFor = (limits: Limits): Map<string, DocumentNode> => {
+    let documents = kept.get(limits);
+    if (!documents) {
+        documents = new Map();
+        kept.set(limits, documents);
+    }
+    return documents;
+};
+
+type Prepared =
+    { readonly document: DocumentNode } | { readonly errors: NonNullable<StoreResponse['errors']> };
+
+/** The query parsed and validated, from what was kept when it was seen before. */
+const prepare = (query: string, limits: Limits): Prepared => {
+    const documents = keptFor(limits);
+    const known = documents.get(query);
+    if (known) {
+        documents.delete(query);
+        documents.set(query, known);
+        return { document: known };
+    }
+    let document;
+    try {
+        document = parse(query);
+    } catch (error) {
+        const message =
+            error instanceof GraphQLError ? error.message : 'the query could not be parsed';
+        return { errors: [{ message, extensions: { code: 'GRAPHQL_PARSE_FAILED' } }] };
+    }
+    const problems = validate(storeSchema(), document, [...specifiedRules, withinLimits(limits)]);
+    if (problems.length > 0) return { errors: problems.map(shaped) };
+    documents.set(query, document);
+    while (documents.size > KEPT_QUERIES) {
+        const oldest = documents.keys().next().value;
+        if (oldest === undefined) break;
+        documents.delete(oldest);
+    }
+    return { document };
+};
+
 export const createStoreApi = (
     store: Store,
     { limits = DEFAULT_LIMITS, events }: StoreApiOptions = {}
 ): StoreApi => {
-    const schema = attach(buildStoreSchema(), resolvers);
-    const rules = [...specifiedRules, withinLimits(limits)];
+    const schema = storeSchema();
 
     const run = async (
         request: StoreRequest,
         viewer: Viewer,
         now = new Date(0)
     ): Promise<StoreResponse> => {
-        let document;
-        try {
-            document = parse(request.query);
-        } catch (error) {
-            const message =
-                error instanceof GraphQLError ? error.message : 'the query could not be parsed';
-            return { errors: [{ message, extensions: { code: 'GRAPHQL_PARSE_FAILED' } }] };
-        }
-        const problems = validate(schema, document, rules);
-        if (problems.length > 0) return { errors: problems.map(shaped) };
+        const prepared = prepare(request.query, limits);
+        if ('errors' in prepared) return { errors: prepared.errors };
+        const { document } = prepared;
 
         const context: Context = { store, viewer, now, events, answer: { volatile: false } };
         const result = await execute({

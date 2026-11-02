@@ -90,7 +90,8 @@ Three caches share the key, and each holds it in the form its medium allows.
   reviewer switching between guest and member keeps both viewers' answers, kept apart by the
   key, and the version.
 - **The browser, or an edge.** The storefront's operations are persisted: each is named at
-  build time by the hash of its text, and the client sends the name in a `GET` with the
+  build time by the hash of its text, and the page keeps only the name, since it never sends the
+  text. The client sends the name in a `GET` with the
   variables and the version it last saw in the URL, and the viewer in a header the cache varies
   on. An answer is marked cacheable only when the URL named the version that answered and
   nothing failed. So the URL is the key, a new version is a new URL, and nothing is ever purged.
@@ -120,8 +121,9 @@ test holds the two together.
 
 ## How it is tested
 
-- The persisted manifest: every document the page can send has a name, and the name stands for
-  exactly the text of that document with GraphQL's insignificant characters removed.
+- The persisted manifest: every document the page can send has a name, the name is the hash of
+  the text the manifest holds for it, that text is the operation the document is named for, and
+  the page's documents hold no text of their own.
 - Over HTTP: a persisted operation resolves from its name, variables and expected version, an
   unknown name is refused, a full query is refused where the host says so, and an answer is
   marked cacheable only under the version that answered and with no errors.

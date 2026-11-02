@@ -7,6 +7,11 @@
  * which is the only form of query the public demo accepts. The hash is of
  * the document with GraphQL's insignificant characters removed, so the
  * same operation spelled differently has the same name.
+ *
+ * The page sends only the name, so the generated documents keep the hash
+ * and give up their text, and the fragments, which are never sent, give up
+ * theirs too. Text the page never sends is text it never downloads. The
+ * manifest in the API holds the only copy.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -24,15 +29,24 @@ const source = readFileSync(operationsPath, 'utf8');
 const manifest = new Map();
 // A fragment is generated as a document too, but only an operation can be
 // sent, so only operations are named. Their text carries the fragments.
-const named = source.replace(
-    /(export const \w+Document = new TypedDocumentString\()`([^`]*)`(?:, \{[^}]*\})?\)/g,
-    (_, head, text) => {
-        const document = stripIgnoredCharacters(text);
-        const hash = createHash('sha256').update(document).digest('hex');
-        manifest.set(hash, document);
-        return `${head}\`${text}\`, { hash: '${hash}' })`;
-    }
-);
+const named = source
+    .replace(
+        /(export const \w+Document = new TypedDocumentString\()`([^`]*)`(?:, \{[^}]*\})?\)/g,
+        (_, head, text) => {
+            // Already emptied by an earlier run, so there is nothing left to name.
+            if (text.trim() === '') {
+                throw new Error('the operations have no text to name, run `npm run codegen`');
+            }
+            const document = stripIgnoredCharacters(text);
+            const hash = createHash('sha256').update(document).digest('hex');
+            manifest.set(hash, document);
+            return `${head}'', { hash: '${hash}' })`;
+        }
+    )
+    .replace(
+        /(export const \w+FragmentDoc = new TypedDocumentString\()`[^`]*`(, \{[^}]*\})?\)/g,
+        (_, head, meta = '') => `${head}''${meta})`
+    );
 
 const expected = (source.match(/^export const \w+Document = /gm) ?? []).length;
 if (manifest.size !== expected) {
