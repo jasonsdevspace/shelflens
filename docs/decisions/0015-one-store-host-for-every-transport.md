@@ -55,6 +55,8 @@ to a third of a second.
 
 - A test of the Node server is now a test of the store a visitor's browser builds. The server
   tests post clicks over a real socket and see them ranked on the next visit, and not mid-visit.
+  One test sends the same batch of clicks to the worker and to the Node server and sees the same
+  products nudged by the same amount on the next visit to each.
 - The worker's own code is now its transport and its catalog: which catalog to load, the
   database a visitor's catalog keeps, and the answers it caches.
 - The Node server answers `/rules` as the worker does, kept in memory for as long as it runs. A
