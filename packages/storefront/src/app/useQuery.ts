@@ -14,9 +14,11 @@ import type { TypedDocumentString } from '../generated/operations.js';
  * two filters, or between two viewers.
  */
 
-export interface QueryState<Result> {
+export interface QueryState<Result, Variables = unknown> {
     /** The newest answer received, which may be for the variables before these. */
     readonly data: Result | undefined;
+    /** The variables that answer was for, so a caller can tell an earlier answer from this one. */
+    readonly answers: Variables | undefined;
     /** Whether the answer for the current variables is still on its way. */
     readonly loading: boolean;
     readonly error: string | undefined;
@@ -29,7 +31,7 @@ export const useQuery = <Result, Variables>(
     document: TypedDocumentString<Result, Variables>,
     /** The variables, or nothing to ask nothing. */
     variables: Variables | undefined
-): QueryState<Result> => {
+): QueryState<Result, Variables> => {
     const key = variables === undefined ? undefined : JSON.stringify(variables);
     const [answered, setAnswered] = useState<{
         client: GraphQLClient;
@@ -68,6 +70,10 @@ export const useQuery = <Result, Variables>(
 
     return {
         data: key === undefined ? undefined : answered?.data,
+        answers:
+            key === undefined || answered === undefined
+                ? undefined
+                : (JSON.parse(answered.key) as Variables),
         loading: key !== undefined && !current(answered) && !current(failed),
         error: current(failed) ? failed?.message : undefined,
         retry,
