@@ -7,7 +7,7 @@ import { isStoreRequest, type StoreRequest, type StoreResponse } from './execute
  * Two forms of request. A persisted operation is a `GET` naming one of the
  * storefront's operations by hash, with its variables and the store
  * version it expects in the URL. A full query is a `POST` with the query
- * text, which a host may refuse, and the public demo does. The host reads
+ * text, refused unless a host takes them, which the public demo does not. The host reads
  * the request and writes the response. What is decided here is what the
  * request means and what the response may be cached as, so the Node
  * server and the service worker cannot disagree about either.
@@ -35,8 +35,12 @@ export interface HttpRequest {
 export interface HttpOptions {
     /** The operations a client may name, by hash. */
     readonly persisted: Readonly<Record<string, string>>;
-    /** Refuse full query text, so only the persisted operations run. */
-    readonly persistedOnly?: boolean | undefined;
+    /**
+     * Take full query text as well as the persisted operations. Refused
+     * unless a host turns this on, so a host that forgets it runs only the
+     * operations the storefront ships.
+     */
+    readonly allowFullQueries?: boolean | undefined;
 }
 
 export type Resolution =
@@ -80,9 +84,9 @@ const persistedRequest = (url: URL, { persisted }: HttpOptions): Resolution | St
 
 const fullRequest = (
     body: string | undefined,
-    { persistedOnly }: HttpOptions
+    { allowFullQueries = false }: HttpOptions
 ): Resolution | StoreRequest => {
-    if (persistedOnly) return refused(400, 'this store accepts persisted operations only');
+    if (!allowFullQueries) return refused(400, 'this store accepts persisted operations only');
     const parsed = body === undefined ? undefined : parseJson(body);
     if (parsed === undefined) return refused(400, 'the request body is not JSON');
     if (!isStoreRequest(parsed)) return refused(400, 'the request needs a query');

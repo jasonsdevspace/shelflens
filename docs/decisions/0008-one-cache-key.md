@@ -125,7 +125,7 @@ test holds the two together.
   the text the manifest holds for it, that text is the operation the document is named for, and
   the page's documents hold no text of their own.
 - Over HTTP: a persisted operation resolves from its name, variables and expected version, an
-  unknown name is refused, a full query is refused where the host says so, and an answer is
+  unknown name is refused, a full query is refused unless the host takes them, and an answer is
   marked cacheable only under the version that answered and with no errors.
 - The page's cache: a repeated question is asked once, a guest and a member are kept apart in
   one memory, an answer with errors is not remembered, an answer past its age is asked again,

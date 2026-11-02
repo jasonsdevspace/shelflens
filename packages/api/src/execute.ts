@@ -130,7 +130,8 @@ export interface StoreApi {
     readonly schema: GraphQLSchema;
     /** The store's version, part of every cache key. */
     readonly version: string;
-    run(request: StoreRequest, viewer: Viewer, now?: Date): Promise<StoreResponse>;
+    /** Answers a request, as of the time the host says it arrived, which rules with a window read. */
+    run(request: StoreRequest, viewer: Viewer, now: Date): Promise<StoreResponse>;
 }
 
 /** What a client is told when a resolver fails for a reason that is ours. */
@@ -250,7 +251,7 @@ export const createStoreApi = (
     const run = async (
         request: StoreRequest,
         viewer: Viewer,
-        now = new Date(0)
+        now: Date
     ): Promise<StoreResponse> => {
         const prepared = prepare(request.query, limits);
         if ('errors' in prepared) return { errors: prepared.errors };

@@ -27,7 +27,7 @@ import {
  * `/events`, the rules a merchandiser saves at `/rules`, and a health
  * check. A persisted operation is
  * a `GET` naming one of the storefront's operations, and a full query is
- * a `POST`, which the host may refuse. The customer group arrives in a
+ * a `POST`, refused unless the host takes them. The customer group arrives in a
  * header, standing in for the session a real store would have. Requests
  * are rate limited per group and address before any work is done, bodies
  * are bounded, each answer says what may be cached, and a failure reaches
@@ -66,8 +66,8 @@ export type ServerOptions = StoreSupply & {
     readonly now?: () => Date;
     /** The operations a client may name. The storefront's, unless told otherwise. */
     readonly persisted?: Readonly<Record<string, string>>;
-    /** Refuse full query text, as the public demo does. */
-    readonly persistedOnly?: boolean;
+    /** Take full query text as well as the persisted operations. Refused unless set, as the public demo does. */
+    readonly allowFullQueries?: boolean;
     /** How long a cacheable answer may be served, in seconds. */
     readonly maxAgeSeconds?: number;
     /** The path the API is served under, so `graphql` is answered only there. */
@@ -356,7 +356,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         rateLimitPerMinute = 600,
         now = () => new Date(),
         persisted = PERSISTED_OPERATIONS,
-        persistedOnly = false,
+        allowFullQueries = false,
         maxAgeSeconds,
         base = '/',
         events,
@@ -493,7 +493,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
                 body,
                 header: (name) => request.headers[name]?.toString(),
             },
-            { persisted, persistedOnly }
+            { persisted, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
             refuse(response, resolved.status, resolved.message, requestId);

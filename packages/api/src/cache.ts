@@ -58,8 +58,7 @@ export const createResponseCache = (
     let hits = 0;
     let misses = 0;
 
-    const run = (request: StoreRequest, viewer: Viewer, now?: Date): Promise<StoreResponse> => {
-        const clock = now ?? new Date();
+    const run = (request: StoreRequest, viewer: Viewer, clock: Date): Promise<StoreResponse> => {
         const at = clock.getTime();
         const id = key({ version: api.version, viewer, request });
         const found = entries.get(id);

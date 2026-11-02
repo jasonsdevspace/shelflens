@@ -4,6 +4,9 @@ import { GOLDEN_CASES } from '@shelflens/search';
 
 import { round } from './record.js';
 
+/** When the benchmark's requests arrive, the same for every run. */
+const NOW = new Date('2026-11-01T12:00:00Z');
+
 /**
  * What the popover waits for.
  *
@@ -90,13 +93,13 @@ const timeEach = async (
     // filled the way they are after the first keystroke, rather than the samples
     // carrying the one-time cost of a cold start.
     for (const phrase of phrases) {
-        const response = await api.run({ query, variables: { phrase } }, guest);
+        const response = await api.run({ query, variables: { phrase } }, guest, NOW);
         if (response.errors) throw new Error(JSON.stringify(response.errors));
     }
     for (let round = 0; round < iterations; round += 1) {
         for (const phrase of phrases) {
             const started = performance.now();
-            const response = await api.run({ query, variables: { phrase } }, guest);
+            const response = await api.run({ query, variables: { phrase } }, guest, NOW);
             durations.push(performance.now() - started);
             if (response.errors) throw new Error(JSON.stringify(response.errors));
         }

@@ -17,7 +17,8 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
  *   curl localhost:8080/graphql --header 'content-type: application/json' \
  *     --data '{ "query": "{ store { name catalogVersion } }" }'
  *
- * `PERSISTED_ONLY=true` refuses full queries, as the public demo does.
+ * `FULL_QUERIES=true` takes full queries as well as the persisted operations,
+ * which are all the server runs otherwise, as the public demo does.
  * `RULES=path` loads merchandising rules from a JSON file, validated here.
  * `ORIGINS=https://a.example,https://b.example` lets pages on those origins
  * use the API, as the widget does on a page the store does not serve, and
@@ -72,7 +73,7 @@ const host = createStoreHost({
 });
 const server = createServer({
     host,
-    persistedOnly: process.env['PERSISTED_ONLY'] === 'true',
+    allowFullQueries: process.env['FULL_QUERIES'] === 'true',
     // Only behind a proxy that sets the forwarded headers, which a client could otherwise forge.
     trustProxy: process.env['TRUST_PROXY'] === 'true',
     events,

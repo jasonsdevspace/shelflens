@@ -72,7 +72,7 @@ export interface WorkerApiOptions {
     /** The path the site is served under, where `graphql` is answered. */
     readonly base?: string;
     readonly fetch?: typeof fetch;
-    /** Accept full query text as well as persisted operations. The demo does not. */
+    /** Take full query text as well as the persisted operations. Refused unless set, as the demo does. */
     readonly allowFullQueries?: boolean;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
@@ -372,7 +372,7 @@ export const createWorkerApi = ({
                 body: request.method === 'POST' ? await request.text() : undefined,
                 header: (name) => request.headers.get(name),
             },
-            { persisted: PERSISTED_OPERATIONS, persistedOnly: !allowFullQueries }
+            { persisted: PERSISTED_OPERATIONS, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
             return json(resolved.status, { errors: [{ message: resolved.message }] });

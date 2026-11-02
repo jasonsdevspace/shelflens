@@ -16,11 +16,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createRateLimit, createServer } from './server.js';
 
 const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
-const server = createServer({ api, rateLimitPerMinute: 5 });
+const server = createServer({ api, rateLimitPerMinute: 5, allowFullQueries: true });
 const events = createMemoryEventStore();
-const demo = createServer({ api, persistedOnly: true, events });
+const demo = createServer({ api, events });
 /** A host given nowhere to keep events. */
-const bare = createServer({ api });
+const bare = createServer({ api, allowFullQueries: true });
 let base = '';
 let demoBase = '';
 let bareBase = '';
@@ -91,7 +91,7 @@ describe('the API over HTTP', () => {
         expect((await fetch(`${demoBase}/graphql?op=unknown`)).status).toBe(404);
     });
 
-    it('refuses full queries when told to accept persisted operations only', async () => {
+    it('refuses full queries unless told to take them', async () => {
         const response = await fetch(`${demoBase}/graphql`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -159,6 +159,7 @@ describe('rules over HTTP', () => {
             rules: createMemoryRuleStore(),
         }),
         rateLimitPerMinute: 6,
+        allowFullQueries: true,
     });
     let hostBase = '';
     beforeAll(async () => {
