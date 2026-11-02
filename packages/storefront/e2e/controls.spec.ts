@@ -117,45 +117,54 @@ const inspect = () => {
         .flatMap((control) => [...edgeOf(control), ...selectOf(control)]);
 };
 
-/** Each control focus reaches by Tab, and how its ring is drawn. */
+/** The most Tab presses a page may take before focus comes back around. */
+const MOST_STOPS = 400;
+
+/**
+ * Each control focus reaches by Tab, and how its ring is drawn, until focus
+ * comes back to one it has already reached. Each is marked in the page as
+ * it is reached, so scrolling never makes one look new.
+ */
 const rings = async (page: Page): Promise<string[]> => {
     const problems: string[] = [];
-    const seen = new Set<string>();
-    for (let step = 0; step < 120; step += 1) {
+    for (let step = 0; step < MOST_STOPS; step += 1) {
         await page.keyboard.press('Tab');
         const found = await page.evaluate(() => {
             let active = document.activeElement;
             while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
             if (!active || active === document.body) return undefined;
-            if (!active.matches('a[href], button, input, select, textarea, summary'))
+            const reached = ((window as { reached?: WeakSet<Element> }).reached ??= new WeakSet());
+            if (reached.has(active)) return 'around';
+            reached.add(active);
+            if (
+                !active.matches("a[href], button, input, select, textarea, summary, [tabindex='0']")
+            ) {
                 return undefined;
+            }
             const style = getComputedStyle(active);
-            const accent = style.getPropertyValue('--accent').trim();
             const probe = document.createElement('i');
-            probe.style.color = accent;
+            probe.style.color = style.getPropertyValue('--accent').trim();
             document.body.append(probe);
-            const expected = getComputedStyle(probe).color;
+            const accent = getComputedStyle(probe).color;
             probe.remove();
-            const ring = `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`;
-            const box = active.getBoundingClientRect();
+            const width = style.getPropertyValue('--ring-width').trim();
             return {
-                id: `${active.tagName}:${String(Math.round(box.x))},${String(Math.round(box.y))}:${active.textContent.slice(0, 20)}`,
-                ring,
-                expected: `solid 2px ${expected}`,
+                id: `${active.tagName.toLowerCase()} "${active.textContent.trim().slice(0, 30)}"`,
+                ring: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
+                expected: `solid ${width} ${accent}`,
                 // A file input draws its ring on the box around it.
                 around: active.matches('input[type="file"]')
                     ? getComputedStyle(active.parentElement as Element).outlineStyle
                     : undefined,
             };
         });
-        if (!found) continue;
-        if (seen.has(found.id)) break;
-        seen.add(found.id);
-        if (found.around === 'solid') continue;
-        if (found.ring !== found.expected)
+        if (found === 'around') return problems;
+        if (!found || found.around === 'solid') continue;
+        if (found.ring !== found.expected) {
             problems.push(`${found.id} draws ${found.ring}, not ${found.expected}`);
+        }
     }
-    return problems;
+    return [...problems, `focus did not come back around within ${String(MOST_STOPS)} stops`];
 };
 
 for (const colorScheme of ['light', 'dark'] as const) {
@@ -208,13 +217,13 @@ test('lines the rule form’s text fields up with its selects, and holds its con
     page,
     isMobile,
 }) => {
-    test.skip(
-        isMobile,
-        'the rules panel opens from the desktop toolbar, as the merchandising tests do'
-    );
-    await page.goto('/?q=jacket');
-    await page.getByRole('button', { name: 'Rules', exact: true }).click();
-    const panel = page.getByRole('complementary', { name: 'Rules' });
+    // The rules open beside the results on a wide screen, and a phone opens them in a drawer.
+    await page.goto('/?q=jacket&explain=1&rules=1');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    if (isMobile) await page.getByRole('button', { name: 'Edit rules' }).tap();
+    const panel = isMobile
+        ? page.getByRole('dialog', { name: 'Rules' })
+        : page.getByRole('complementary', { name: 'Rules' });
     await panel.getByRole('button', { name: 'Add a rule' }).click();
     await panel.getByRole('textbox', { name: 'Name', exact: true }).waitFor();
     // A boost asks what it is on and how much, so the form holds selects beside its text fields.

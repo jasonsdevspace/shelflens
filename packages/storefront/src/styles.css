@@ -595,25 +595,48 @@ body {
 }
 
 /*
+ * A field a visitor types into or picks from, a text field and a select
+ * alike: one height, one inset for its text, one edge and one set of
+ * corners, so fields stacked in a form line up. On a phone each is a
+ * thumb's size, with text large enough that a tap does not zoom the page.
+ */
+.select,
+.rules-input {
+    min-height: var(--field-height);
+    padding: 0.25rem var(--field-inline);
+    font: inherit;
+    border: 1px solid var(--control);
+    border-radius: var(--field-radius);
+    background-color: var(--bg);
+    color: var(--fg);
+}
+
+@media (max-width: 48rem) {
+    .select,
+    .rules-input {
+        min-height: 2.75rem;
+        font-size: max(1rem, 16px);
+    }
+}
+
+/*
  * Every select on every page. The browser's own list opens, but the closed
  * control is drawn here, so its caret is the muted text color and sits as
- * far from the right edge as the text does from the left, and a long value
- * stops short of it rather than running under it. In forced colors the
- * caret image would be lost, so the browser draws its own again.
+ * far from the right edge as the text does from the left, and the padding
+ * keeps a long value short of it, cut off with an ellipsis where the
+ * browser draws one. In forced colors the caret image would be lost, so the
+ * browser draws its own again.
  */
 .select {
     appearance: none;
     max-width: 100%;
-    min-height: var(--field-height);
-    padding-block: 0.25rem;
     /* The text's inset, then room for the caret and the same inset again beyond it. */
-    padding-inline: var(--field-inline) calc(var(--field-inline) * 2 + 0.75rem);
-    font: inherit;
+    padding-inline-end: calc(var(--field-inline) * 2 + 0.75rem);
     text-overflow: ellipsis;
-    border: 1px solid var(--control);
-    border-radius: var(--field-radius);
-    background: var(--bg) var(--caret) no-repeat right var(--field-inline) center / 0.75rem 0.5rem;
-    color: var(--fg);
+    background-image: var(--caret);
+    background-repeat: no-repeat;
+    background-position: right var(--field-inline) center;
+    background-size: 0.75rem 0.5rem;
 }
 
 @media (forced-colors: active) {
@@ -621,14 +644,6 @@ body {
         appearance: auto;
         padding-inline-end: var(--field-inline);
         background-image: none;
-    }
-}
-
-/* A thumb's size on a phone, and text large enough that a tap does not zoom the page. */
-@media (max-width: 48rem) {
-    .select {
-        min-height: 2.75rem;
-        font-size: max(1rem, 16px);
     }
 }
 
@@ -1177,8 +1192,9 @@ body {
 }
 
 /*
- * The merchandiser's rules panel, in the facet column's place. Its parts
- * wear the facets' classes, and these few are its own.
+ * The merchandiser's rules panel, in the facet column's place. Its heading
+ * and its fields are its own, and its other parts still wear the facets'
+ * classes.
  */
 .rules {
     display: grid;
@@ -1228,17 +1244,6 @@ body {
 .rules-field > legend {
     font-weight: 600;
     padding: 0;
-}
-
-/* A text field lines up with the selects beside and beneath it: the same height, inset and corners. */
-.rules-input {
-    min-height: var(--field-height);
-    font: inherit;
-    padding: 0.25rem var(--field-inline);
-    border: 1px solid var(--control);
-    border-radius: var(--field-radius);
-    background: var(--bg);
-    color: var(--fg);
 }
 
 .rules-input[aria-invalid='true'],
