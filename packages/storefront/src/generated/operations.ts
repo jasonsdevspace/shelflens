@@ -617,7 +617,7 @@ export type StoreQuery = {
         readonly name: string;
         readonly currency: string;
         readonly locale: string;
-        readonly catalogVersion: string;
+        readonly version: string;
         readonly rulesEdited: boolean;
         readonly memberPricing: boolean;
         readonly membersOnlyProducts: boolean;
@@ -688,7 +688,7 @@ export const SearchDocument = new TypedDocumentString('', {
     hash: '6364550e05c98c2178ccf363fbc8c495d5cc9c0ea39e311f50b46698e27c5719',
 }) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString('', {
-    hash: '4274cfc7f70814237ca1a63c6bcc4169fc957eff449aebc3af97534f4c030a61',
+    hash: 'eb7c84d125b3ed0449afca358e642b6a548fa289c526332c9e9ad0564d5397d0',
 }) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
 export const SuggestDocument = new TypedDocumentString('', {
     hash: '731d13d2ca8459eba1de835dc3f7c739878280e52319d26aa64680f88b443116',

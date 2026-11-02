@@ -3,7 +3,7 @@ query Store {
         name
         currency
         locale
-        catalogVersion
+        version
         rulesEdited
         memberPricing
         membersOnlyProducts

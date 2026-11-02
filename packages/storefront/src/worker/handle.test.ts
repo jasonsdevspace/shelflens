@@ -57,7 +57,7 @@ describe('the API inside the worker', () => {
         const second = await api.handle(persisted({ op: STORE }, { [GROUP_HEADER]: 'member' }));
 
         expect(await first?.json()).toMatchObject({
-            data: { store: { name: 'ShelfLens', catalogVersion: version } },
+            data: { store: { name: 'ShelfLens', version: version } },
         });
         expect(first?.headers.get(VERSION_HEADER)).toBe(version);
         expect(await second?.json()).toMatchObject({

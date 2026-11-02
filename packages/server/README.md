@@ -16,7 +16,7 @@ wrong one for a fleet.
 FULL_QUERIES=true npm run api
 curl localhost:8080/graphql --header 'content-type: application/json' \
   --header 'shelflens-customer-group: member' \
-  --data '{ "query": "{ store { name catalogVersion } }" }'
+  --data '{ "query": "{ store { name version } }" }'
 ```
 
 The store comes from the same store host the service worker runs, `createStoreHost` in

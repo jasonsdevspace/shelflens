@@ -15,7 +15,7 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
  *
  *   FULL_QUERIES=true npm run api
  *   curl localhost:8080/graphql --header 'content-type: application/json' \
- *     --data '{ "query": "{ store { name catalogVersion } }" }'
+ *     --data '{ "query": "{ store { name version } }" }'
  *
  * `FULL_QUERIES=true` takes full queries as well as the persisted operations,
  * which are all the server runs otherwise, as the public demo runs.

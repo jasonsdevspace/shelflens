@@ -1,4 +1,5 @@
 import { cacheKeyOf, GROUP_HEADER, touch, trimOldest, VERSION_HEADER } from '@shelflens/api';
+import type { CustomerGroup } from '@shelflens/catalog';
 
 import type { TypedDocumentString } from '../generated/operations.js';
 
@@ -24,7 +25,8 @@ import type { TypedDocumentString } from '../generated/operations.js';
  * guest and member keeps both viewers' answers and the version.
  */
 
-export type CustomerGroup = 'guest' | 'member';
+/** Who is shopping, as the catalog defines the groups. */
+export type { CustomerGroup };
 
 export interface MemoryOptions {
     /** How many answers to remember. */
