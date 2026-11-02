@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
@@ -45,6 +46,15 @@ const compiledAgainst = (): string[] => {
 describe('the published engine', () => {
     it('lists every value it exports in the smoke test', () => {
         expect(Object.keys(engine).sort()).toEqual(VALUE_EXPORTS);
+    });
+
+    it('names every value it exports in its README, and every type it exports', () => {
+        const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+        const section = /## What it exports\n([\s\S]*?)\n## /.exec(readme)?.[1] ?? '';
+        const named = new Set([...section.matchAll(/`(\w+)/g)].map((match) => match[1]));
+        const index = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+        const types = [...index.matchAll(/type (\w+)/g)].map((match) => match[1]);
+        for (const name of [...VALUE_EXPORTS, ...types]) expect(named, name).toContain(name);
     });
 
     it('names the lowest Node a range admits, down to the patch', () => {

@@ -34,6 +34,24 @@ const result = engine.search({
 A document is an id, some searchable text by field, and some attributes to filter and sort by.
 The engine knows nothing about products. Whoever owns the catalog decides what becomes a document.
 
+## What it exports
+
+`createEngine(documents, config)` builds an engine, and its `search`, `recover` and
+`reconfigure` are the whole interface. Beside it, the package exports:
+
+- `EngineError`, the error the engine throws for a config or a request it refuses, with a `code`.
+- `signalWeight`, `SIGNAL_CAP` and `SIGNAL_SATURATION`, so a host can show what a count of
+  choices does to a score.
+- `normalize`, `foldAccents`, `tokenize` and `stem`, the rules the engine applies to the catalog
+  and the query alike, for a host that has to match text the same way.
+- `withinEdits` and `withinOneEdit`, the edit-distance checks the fuzzy pass and the recovery use.
+
+And the types of everything it takes and gives: `Engine`, `EngineConfig`, `Document`,
+`TextField`, `AttributeKind`, `AttributeValue`, `SynonymRule`, `FacetConfig`, `Rule`,
+`RuleTrigger`, `RuleAdjustment`, `SearchRequest`, `Filter`, `SortClause`, `SearchResult`, `Hit`,
+`TermMatch`, `MatchKind`, `MatchMode`, `RuleEffect`, `SignalEffect`, `Facet`, `ValueBucket`,
+`RangeBucket` and `Recovery`.
+
 ## How matching works
 
 - **The same normalization on both sides.** Accents are folded, case is folded, hyphenated words
