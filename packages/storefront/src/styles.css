@@ -316,6 +316,11 @@ h4 {
     gap: var(--space-2);
 }
 
+/* The stop's own way in, on the left, with the steps through the tour on the right. */
+.tour-try {
+    margin-right: auto;
+}
+
 .viewer {
     display: flex;
     align-items: center;
@@ -399,12 +404,6 @@ h4 {
 .facets {
     display: grid;
     gap: var(--space-4);
-}
-
-/* Under a list of choices, a text button is the list's size, with a target a finger can find. */
-.facets .text-button {
-    min-height: 1.5rem;
-    font-size: var(--text-small);
 }
 
 .facet {
@@ -534,7 +533,7 @@ h4 {
 @media (max-width: 48rem) {
     .select,
     .rules-input {
-        min-height: 2.75rem;
+        min-height: var(--target);
         font-size: max(var(--text-body), 16px);
     }
 }
@@ -614,6 +613,7 @@ h4 {
 
 .button:disabled {
     color: var(--muted);
+    background: var(--bg);
     border-color: var(--line);
 }
 
@@ -624,8 +624,18 @@ h4 {
     border-color: var(--accent);
 }
 
+/* Its edge is the accent already, so a primary button shows the pointer over it by its label. */
+.button-primary:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+/* A disabled button of either kind looks the same, so a muted label never sits on the accent. */
+.button-primary:disabled {
+    font-weight: var(--weight-normal);
+}
+
 .button-large {
-    min-height: 2.75rem;
+    min-height: var(--target);
     padding-inline: var(--space-4);
     font-size: var(--text-body);
     border-radius: var(--radius-large);
@@ -634,7 +644,7 @@ h4 {
 /* A thumb's size on a phone, as the fields are. */
 @media (max-width: 48rem) {
     .button {
-        min-height: 2.75rem;
+        min-height: var(--target);
     }
 }
 
@@ -646,6 +656,13 @@ h4 {
     background: none;
     border: none;
     text-decoration: underline;
+}
+
+/* Under a list of choices, in the filters or the rules, a text button is the list's size, with a target a finger can find. */
+.facets .text-button,
+.rules .text-button {
+    min-height: 1.5rem;
+    font-size: var(--text-small);
 }
 
 .cards {
@@ -788,7 +805,7 @@ h4 {
     margin-top: var(--space-5);
 }
 
-.page-list {
+.pagination-list {
     display: flex;
     gap: var(--space-1);
     list-style: none;
@@ -796,14 +813,14 @@ h4 {
     padding: 0;
 }
 
-.page-number[aria-current='page'] {
+.pagination-number[aria-current='page'] {
     cursor: default;
     background: var(--accent);
     border-color: var(--accent);
     color: var(--on-accent);
 }
 
-.page-status {
+.pagination-status {
     margin-left: auto;
     font-size: var(--text-small);
     color: var(--muted);
@@ -974,7 +991,7 @@ h4 {
 
 /* The first stop in the drawer, as big as a thumb, as its rows are. */
 .drawer-close {
-    min-height: 2.75rem;
+    min-height: var(--target);
     padding-inline: var(--space-2);
 }
 
@@ -987,7 +1004,7 @@ h4 {
 /* Rows a thumb can hit. */
 .drawer-body .facet-option,
 .drawer-body .option-button {
-    min-height: 2.75rem;
+    min-height: var(--target);
 }
 
 .drawer-done {
@@ -1123,18 +1140,12 @@ h4 {
 }
 
 /*
- * The merchandiser's rules panel, in the facet column's place. Its heading
- * and its fields are its own, and its other parts still wear the facets'
- * classes.
+ * The merchandiser's rules panel, in the facet column's place. Its parts
+ * wear classes of their own and the shared look.
  */
 .rules {
     display: grid;
     gap: var(--space-4);
-}
-
-.rules .text-button {
-    min-height: 1.5rem;
-    font-size: var(--text-small);
 }
 
 .rules-list {

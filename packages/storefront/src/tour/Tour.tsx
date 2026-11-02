@@ -60,7 +60,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             </div>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink className="button" to={stop.to} navigate={navigate}>
+                    <StateLink className="button tour-try" to={stop.to} navigate={navigate}>
                         Try it
                     </StateLink>
                 )}

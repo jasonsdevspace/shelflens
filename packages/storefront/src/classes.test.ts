@@ -27,7 +27,7 @@ const SHARED = new Set([
 ]);
 
 /** Every component file, with the classes it names in its markup. */
-const components = (): { file: string; classes: string[] }[] => {
+const components = (): { file: string; defined: string[]; classes: string[] }[] => {
     const root = __dirname;
     const walk = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
@@ -41,15 +41,29 @@ const components = (): { file: string; classes: string[] }[] => {
         );
     return walk(root).map((path) => {
         const text = readFileSync(path, 'utf8');
-        // The class names written out, in quotes or in a template's fixed parts.
+        // The class names written out: in quotes, in a template's fixed parts, and in the
+        // quoted strings an expression chooses between.
+        const expressions = [...text.matchAll(/className=\{((?:[^{}]|\{[^{}]*\})*)\}/g)].map(
+            (match) => match[1] ?? ''
+        );
         const written = [
             ...[...text.matchAll(/className="([^"]*)"/g)].map((match) => match[1] ?? ''),
-            ...[...text.matchAll(/className=\{`([^`]*)`\}/g)].map((match) =>
-                (match[1] ?? '').replace(/\$\{[^}]*\}/g, ' ')
-            ),
+            ...expressions.flatMap((expression) => [
+                ...[...expression.matchAll(/'([^']*)'|"([^"]*)"/g)].map(
+                    (match) => match[1] ?? match[2] ?? ''
+                ),
+                ...[...expression.matchAll(/`([^`]*)`/g)].map((match) =>
+                    (match[1] ?? '').replace(/\$\{[^}]*\}/g, ' ')
+                ),
+            ]),
         ];
+        // The components the file defines, whose names are features of the file too.
+        const defined = [...text.matchAll(/^(?:export )?const ([A-Z]\w*) = /gm)].map(
+            (match) => match[1] ?? ''
+        );
         return {
             file: relative(root, path),
+            defined,
             classes: written.flatMap((names) => names.split(/\s+/)).filter(Boolean),
         };
     });
@@ -58,31 +72,36 @@ const components = (): { file: string; classes: string[] }[] => {
 /** The feature a class is named for: its first word, as "facet" in facet-label. */
 const ownerOf = (name: string) => (name.split('-')[0] ?? '').replace(/s$/, '');
 
-/** The features a component file is part of: its folder and each word of its name, as "results", "rule" and "form". */
-const featuresOf = (file: string) => {
+/** Each word of a name, as "rule" and "form" in RuleForm. */
+const wordsOf = (name: string) =>
+    (name.match(/[A-Z]?[a-z]+/g) ?? []).map((word) => word.toLowerCase().replace(/s$/, ''));
+
+/** The features the files are named for: each one's folder and each word of its name. */
+const namedFor = ({ file }: { file: string }) => {
     const parts = file.replace(/\.tsx$/, '').split('/');
     const stem = parts.pop() ?? '';
-    const words = [...parts, ...(stem.match(/[A-Z]?[a-z]+/g) ?? [])];
-    return new Set(words.map((word) => word.toLowerCase().replace(/s$/, '')));
+    return [...parts.map((part) => part.toLowerCase().replace(/s$/, '')), ...wordsOf(stem)];
 };
+
+/** The features a file is part of: those it is named for and those of the components it defines. */
+const partOf = (component: { file: string; defined: readonly string[] }) =>
+    new Set([...namedFor(component), ...component.defined.flatMap(wordsOf)]);
 
 describe('the components', () => {
     it('wear only their own classes and the shared look', () => {
         const found = components();
-        // A class is borrowed when a component of the feature it is named for wears it,
-        // and so does a component of another feature.
-        const borrowed = [...new Set(found.flatMap(({ classes }) => classes))]
-            .filter((name) => !SHARED.has(name))
-            .flatMap((name) => {
-                const owner = ownerOf(name);
-                const wearers = found.filter(({ classes }) => classes.includes(name));
-                const owned = wearers.some(({ file }) => featuresOf(file).has(owner));
-                return owned
-                    ? wearers
-                          .filter(({ file }) => !featuresOf(file).has(owner))
-                          .map(({ file }) => `${file} wears ${name}`)
-                    : [];
-            });
+        const features = new Set(found.flatMap(namedFor));
+        // A class named for a feature is that feature's, so a component that is not part of it
+        // borrows it, whether or not the feature's own components wear it too.
+        const borrowed = found.flatMap((component) =>
+            component.classes
+                .filter((name) => !SHARED.has(name))
+                .filter((name) => {
+                    const owner = ownerOf(name);
+                    return features.has(owner) && !partOf(component).has(owner);
+                })
+                .map((name) => `${component.file} wears ${name}`)
+        );
         expect(found.length).toBeGreaterThan(SHARED.size);
         expect(borrowed).toEqual([]);
     });
