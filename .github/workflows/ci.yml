@@ -123,6 +123,66 @@ jobs:
                       packages/storefront/test-results
                   retention-days: 7
 
+    # The screenshots, taken in Playwright's own Linux image, the one place they
+    # are taken, since text is drawn differently on every other system. The
+    # image's version is the one @playwright/test is pinned to, and the two
+    # move together. When a picture is missing or differs, the run fails and
+    # keeps what it took, to accept with `npm run screenshots:accept <run id>`.
+    visual:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        container:
+            # Pinned by digest, as the actions are, so the image cannot change under its tag.
+            image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+        env:
+            VISUAL: '1'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build the storefront
+              run: npm run storefront
+
+            - name: Compare the screenshots
+              run: npx playwright test --config packages/storefront/playwright.config.ts --project visual-desktop --project visual-phone
+
+            - name: Gather what was taken
+              if: failure()
+              run: node scripts/screenshots.mjs collect
+
+            - name: Keep what was taken
+              if: failure()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: screenshots
+                  path: packages/storefront/e2e/__screenshots__
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+            # A test that failed for another reason, a page that never settled say, is
+            # read from its trace and the report.
+            - name: Keep the report when something fails
+              if: failure()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: visual-report
+                  path: |
+                      packages/storefront/playwright-report
+                      packages/storefront/test-results
+                  if-no-files-found: ignore
+                  retention-days: 7
+
     # The engine is published with an engines range, and this proves it works
     # on the lowest Node that range admits, as someone installing it from npm
     # gets it: packed, installed into an empty project outside the repository,
@@ -215,7 +275,7 @@ jobs:
     # access, so nothing the build installs or runs can deploy, and the
     # deploy job runs only GitHub's own Pages actions.
     site:
-        needs: [verify, browser, floor]
+        needs: [verify, browser, floor, visual]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
         timeout-minutes: 15
