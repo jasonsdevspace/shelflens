@@ -105,12 +105,19 @@ const accept = (run) => {
 
 const main = () => {
     // From the top of the repository wherever it is started, as the other checks run.
-    process.chdir(
-        execFileSync('git', ['rev-parse', '--show-toplevel'], {
-            cwd: dirname(fileURLToPath(import.meta.url)),
-            encoding: 'utf8',
-        }).trim()
-    );
+    // A checkout git will not read, as in a container run as another user, is used
+    // from where the script was started, which in CI is its top.
+    try {
+        process.chdir(
+            execFileSync('git', ['rev-parse', '--show-toplevel'], {
+                cwd: dirname(fileURLToPath(import.meta.url)),
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore'],
+            }).trim()
+        );
+    } catch {
+        // Left where it was started.
+    }
     const [, , command, run] = process.argv;
     if (command === 'collect') collect();
     else if (command === 'accept') accept(run);

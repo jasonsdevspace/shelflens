@@ -66,7 +66,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
             { tag: '@desktop' },
             async ({ page }) => {
                 await page.goto('/?q=jacket&explain=1');
-                await settle(page, page.getByRole('list', { name: 'Why this is result 1' }));
+                await settle(
+                    page,
+                    page.getByRole('list', { name: 'Why this is result 1', exact: true })
+                );
                 const first = page
                     .getByRole('list', { name: 'Products' })
                     .getByRole('listitem')
