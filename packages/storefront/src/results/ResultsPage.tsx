@@ -5,12 +5,14 @@ import { ancestry, type CategoryTree } from '../app/categories.js';
 import { LiveStatus } from '../app/LiveStatus.jsx';
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { StateLink } from '../app/StateLink.jsx';
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import {
     activeFilterCount,
     hasFilters,
     searchKey,
     type SearchState,
     serializeSearchState,
+    SORT_KEYS,
     type SortKey,
     sortKeyOf,
     SORTS,
@@ -86,8 +88,6 @@ export interface ResultsPageProps {
     readonly arrival?: number | undefined;
 }
 
-const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
-
 /** What the heading answers with, and what it notes after: the count, or that the matches are close ones. */
 interface Heading {
     readonly text: string;
@@ -97,11 +97,12 @@ interface Heading {
 const headingFor = (
     state: SearchState,
     categories: CategoryTree,
-    result: { readonly total: number; readonly matching: string }
+    result: { readonly total: number; readonly matching: string },
+    locale: string
 ): Heading => {
     if (state.phrase) {
         return {
-            text: `${count(result.total, 'result', 'results')} for "${state.phrase}"`,
+            text: `${count(result.total, 'result', 'results', locale)} for "${state.phrase}"`,
             note: result.matching === 'CORRECTED' ? ', showing close matches' : undefined,
         };
     }
@@ -109,7 +110,7 @@ const headingFor = (
     const [leaf] = ancestry(categories, state.category).slice(-1);
     return {
         text: leaf ? leaf.name : 'All products',
-        note: `, ${count(result.total, 'product', 'products')}`,
+        note: `, ${count(result.total, 'product', 'products', locale)}`,
     };
 };
 
@@ -159,8 +160,11 @@ const FacetColumn = ({
 
 /** What the status line says: the heading once an answer has landed, nothing while one is coming. */
 const announcement = (
-    state: SearchState,
-    categories: CategoryTree,
+    {
+        state,
+        categories,
+        locale,
+    }: { readonly state: SearchState; readonly categories: CategoryTree; readonly locale: string },
     result:
         | {
               readonly total: number;
@@ -172,7 +176,7 @@ const announcement = (
     loading: boolean
 ): string => {
     if (!result || loading) return '';
-    const { text, note } = headingFor(state, categories, result);
+    const { text, note } = headingFor(state, categories, result, locale);
     const heading = `${text}${note ?? ''}`;
     // The page is said too, so a step through the pages, or back, is heard as one.
     return result.totalPages > 1
@@ -358,35 +362,40 @@ const Toolbar = ({
     readonly onCloseRules: () => void;
     /** On a phone, the drawer's button, which sits with the others under the heading. */
     readonly drawer: ReactNode;
-}) => (
-    <div className="results-toolbar">
-        <ResultsHeading id={id} heading={headingFor(state, categories, result)} />
-        {drawer}
-        {/* With nothing found there is nothing to explain or sort, so both step aside,
+}) => {
+    const { locale } = useStoreInfo();
+    return (
+        <div className="results-toolbar">
+            <ResultsHeading id={id} heading={headingFor(state, categories, result, locale)} />
+            {drawer}
+            {/* With nothing found there is nothing to explain or sort, so both step aside,
             unless explain mode is on, which keeps its switch so it can be turned off. */}
-        {(result.total > 0 || state.explain === true) && (
+            {(result.total > 0 || state.explain === true) && (
+                <button
+                    type="button"
+                    className="button"
+                    aria-pressed={state.explain ?? false}
+                    onClick={() => navigate({ ...state, explain: !state.explain })}
+                >
+                    Explain ranking
+                </button>
+            )}
             <button
                 type="button"
                 className="button"
-                aria-pressed={state.explain ?? false}
-                onClick={() => navigate({ ...state, explain: !state.explain })}
+                aria-pressed={state.rules ?? false}
+                onClick={() =>
+                    state.rules
+                        ? onCloseRules()
+                        : navigate({ ...state, rules: true, explain: true })
+                }
             >
-                Explain ranking
+                Rules
             </button>
-        )}
-        <button
-            type="button"
-            className="button"
-            aria-pressed={state.rules ?? false}
-            onClick={() =>
-                state.rules ? onCloseRules() : navigate({ ...state, rules: true, explain: true })
-            }
-        >
-            Rules
-        </button>
-        {result.total > 0 && <SortField sortKey={sortKey} state={state} navigate={navigate} />}
-    </div>
-);
+            {result.total > 0 && <SortField sortKey={sortKey} state={state} navigate={navigate} />}
+        </div>
+    );
+};
 
 /**
  * The rules a sort set aside, by name, and the way back. A sort only
@@ -533,6 +542,7 @@ const layoutClass = (loading: boolean, empty: boolean) =>
     ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
 
 export const ResultsPage = (props: ResultsPageProps) => {
+    const { locale } = useStoreInfo();
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
     const main = useRef<HTMLElement>(null);
@@ -568,7 +578,9 @@ export const ResultsPage = (props: ResultsPageProps) => {
         setPaged(performance.now());
         navigate({ ...state, page });
     };
-    const status = <LiveStatus text={announcement(state, categories, result, loading)} />;
+    const status = (
+        <LiveStatus text={announcement({ state, categories, locale }, result, loading)} />
+    );
 
     // An error is the page, except with the panel open: the answer before it stays
     // shown, the error takes the place of the cards, and the panel stays with whatever

@@ -1,4 +1,5 @@
 import type { Rule, RuleAdjustment, RuleTrigger } from '@jasonsdevspace/shelflens';
+import { slugify } from '@shelflens/catalog';
 
 import { count } from '../format/count.js';
 
@@ -69,14 +70,12 @@ export const ACTIONS: readonly {
     { value: 'hide', label: 'Hide', gloss: 'Leave it out.' },
 ];
 
-const slug = (text: string): string =>
-    text
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') || 'rule';
-
-/** An id made once from the name, with a short tail so two rules with one name stay apart. */
-const newId = (name: string): string => `${slug(name)}-${Math.random().toString(36).slice(2, 6)}`;
+/**
+ * An id made once from the name, as the catalog makes its ids, with its
+ * accents folded, and a short tail so two rules with one name stay apart.
+ */
+const newId = (name: string): string =>
+    `${slugify(name) || 'rule'}-${Math.random().toString(36).slice(2, 6)}`;
 
 export const fresh = (phrase: string | undefined): Form => ({
     id: newId(phrase ?? 'rule'),
@@ -199,17 +198,20 @@ export const problemsOf = (form: Form, known: ReadonlySet<string>): Problems => 
     return problems;
 };
 
-const products = (n: number) => count(n, 'product', 'products');
-const named = (adjustment: RuleAdjustment) =>
-    adjustment.attribute ? adjustment.attribute.value : products(adjustment.ids?.length ?? 0);
+const products = (n: number, locale: string) => count(n, 'product', 'products', locale);
+const named = (adjustment: RuleAdjustment, locale: string) =>
+    adjustment.attribute
+        ? adjustment.attribute.value
+        : products(adjustment.ids?.length ?? 0, locale);
 
 /** What a rule does, in a few words, for the list. */
-export const summary = (rule: Rule): string => {
+export const summary = (rule: Rule, locale: string): string => {
     const parts: string[] = [];
-    if (rule.pin) parts.push(`Pins ${products(rule.pin.length)}`);
-    if (rule.hide) parts.push(`Hides ${products(rule.hide.length)}`);
-    for (const boost of rule.boost ?? []) parts.push(`Boosts ${named(boost)} ${boost.weight}×`);
-    for (const bury of rule.bury ?? []) parts.push(`Buries ${named(bury)} ${bury.weight}×`);
+    if (rule.pin) parts.push(`Pins ${products(rule.pin.length, locale)}`);
+    if (rule.hide) parts.push(`Hides ${products(rule.hide.length, locale)}`);
+    for (const boost of rule.boost ?? [])
+        parts.push(`Boosts ${named(boost, locale)} ${boost.weight}×`);
+    for (const bury of rule.bury ?? []) parts.push(`Buries ${named(bury, locale)} ${bury.weight}×`);
     if (rule.active?.from) parts.push(`Active from ${rule.active.from.slice(0, 10)}`);
     return parts.join('. ');
 };

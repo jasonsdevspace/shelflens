@@ -16,6 +16,7 @@ import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
 import { reasonOf } from '../client/reason.js';
+import { count } from '../format/count.js';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -77,9 +78,6 @@ type Stage =
           /** Set when focus goes back to the remove button, after a kept or failed removal. */
           readonly focusRemove?: boolean;
       };
-
-const count = (n: number, one: string, many: string) =>
-    `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {

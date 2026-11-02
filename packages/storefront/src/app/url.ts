@@ -10,8 +10,8 @@ import type { SearchInput, SortDirection, SortField, SortInput } from '../genera
  * the window: parse and serialize are pure, and tested as such.
  */
 
-export type SortKey =
-    'relevance' | 'price-asc' | 'price-desc' | 'rating' | 'newest' | 'position' | 'catalog';
+/** A sort the page offers, by the key the URL carries. */
+export type SortKey = keyof typeof SORTS;
 
 export interface PriceBand {
     /** In minor units, inclusive. */
@@ -43,10 +43,8 @@ export const EMPTY_STATE: SearchState = { brand: [], color: [], size: [], page: 
 
 const PAGE_SIZE = 24;
 
-/** The sort each key means, and how the schema spells it. */
-export const SORTS: Readonly<
-    Record<SortKey, { readonly label: string; readonly clause: SortInput }>
-> = {
+/** The sort each key means, and how the schema spells it. The keys are written here and nowhere else. */
+export const SORTS = {
     relevance: { label: 'Relevance', clause: { by: 'RELEVANCE', direction: 'DESC' } },
     'price-asc': { label: 'Price, low to high', clause: { by: 'PRICE', direction: 'ASC' } },
     'price-desc': { label: 'Price, high to low', clause: { by: 'PRICE', direction: 'DESC' } },
@@ -54,9 +52,12 @@ export const SORTS: Readonly<
     newest: { label: 'Newest', clause: { by: 'ADDED', direction: 'DESC' } },
     position: { label: 'Featured', clause: { by: 'POSITION', direction: 'ASC' } },
     catalog: { label: 'Catalog order', clause: { by: 'CATALOG', direction: 'ASC' } },
-};
+} as const satisfies Readonly<
+    Record<string, { readonly label: string; readonly clause: SortInput }>
+>;
 
-const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
+/** Every sort, in the order the page offers them. */
+export const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
 
 const isSortKey = (value: string): value is SortKey =>
     (SORT_KEYS as readonly string[]).includes(value);

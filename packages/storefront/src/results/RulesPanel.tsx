@@ -2,6 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import { discardRules, readRules, type RulesBody, saveRules } from '../client/rules.js';
 import {
     type Form,
@@ -160,6 +161,7 @@ const RuleList = ({
     readonly phrase: string | undefined;
     readonly onPick: (rule: Rule) => void;
 }) => {
+    const { locale } = useStoreInfo();
     const [showAll, setShowAll] = useState(false);
     if (applied === undefined) return null;
     const applying = rules.filter((rule) => applied.includes(rule.id));
@@ -185,7 +187,7 @@ const RuleList = ({
                                 onClick={() => onPick(rule)}
                             >
                                 <span className="rules-rule-name">{rule.name ?? rule.id}</span>
-                                <span className="hint">{summary(rule)}</span>
+                                <span className="hint">{summary(rule, locale)}</span>
                             </button>
                         </li>
                     ))}

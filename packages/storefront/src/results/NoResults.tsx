@@ -1,4 +1,5 @@
 import { StateLink } from '../app/StateLink.jsx';
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type SearchState, serializeSearchState, withoutFilters } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
 import { count } from '../format/count.js';
@@ -74,8 +75,8 @@ const tryNext = (phrase: string): string =>
         : 'Try another spelling, or another word for the same thing.';
 
 /** The relaxed phrase's link: every result it found, or the one. */
-const seeAll = (total: number): string =>
-    total === 1 ? 'See the result' : `See all ${count(total, 'result', 'results')}`;
+const seeAll = (total: number, locale: string): string =>
+    total === 1 ? 'See the result' : `See all ${count(total, 'result', 'results', locale)}`;
 
 type Relaxation = NonNullable<NonNullable<NoResultsProps['offered']>['relaxed']>;
 
@@ -88,28 +89,32 @@ const Relaxed = ({
     readonly relaxed: Relaxation;
     readonly state: SearchState;
     readonly navigate: Navigate;
-}) => (
-    <>
-        <h2 className="no-results-heading">
-            Showing results for &quot;{relaxed.phrase}&quot; instead
-        </h2>
-        <p className="no-results-offer">
-            No product matched every word, so &quot;{relaxed.dropped.join('" and "')}&quot;{' '}
-            {relaxed.dropped.length === 1 ? 'was' : 'were'} left out.{' '}
-            <StateLink to={{ ...state, phrase: relaxed.phrase, page: 1 }} navigate={navigate}>
-                {seeAll(relaxed.result.total)}
-            </StateLink>
-        </p>
-        <Cards
-            label={`Results for "${relaxed.phrase}"`}
-            products={relaxed.result.items.map((hit) => hit.product)}
-            state={state}
-            navigate={navigate}
-        />
-    </>
-);
+}) => {
+    const { locale } = useStoreInfo();
+    return (
+        <>
+            <h2 className="no-results-heading">
+                Showing results for &quot;{relaxed.phrase}&quot; instead
+            </h2>
+            <p className="no-results-offer">
+                No product matched every word, so &quot;{relaxed.dropped.join('" and "')}&quot;{' '}
+                {relaxed.dropped.length === 1 ? 'was' : 'were'} left out.{' '}
+                <StateLink to={{ ...state, phrase: relaxed.phrase, page: 1 }} navigate={navigate}>
+                    {seeAll(relaxed.result.total, locale)}
+                </StateLink>
+            </p>
+            <Cards
+                label={`Results for "${relaxed.phrase}"`}
+                products={relaxed.result.items.map((hit) => hit.product)}
+                state={state}
+                navigate={navigate}
+            />
+        </>
+    );
+};
 
 export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
+    const { locale } = useStoreInfo();
     const relaxed = offered?.relaxed;
     const sentence = lead(state);
     // With a phrase and nothing nearer to offer, the shopper is told what to try.
@@ -135,7 +140,7 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
                     <StateLink to={withoutFilters(state)} navigate={navigate}>
                         Clear all filters
                     </StateLink>{' '}
-                    to see {count(offered.foundWithoutFilters, 'result', 'results')}.
+                    to see {count(offered.foundWithoutFilters, 'result', 'results', locale)}.
                 </p>
             )}
             {relaxed && <Relaxed relaxed={relaxed} state={state} navigate={navigate} />}
