@@ -1,4 +1,12 @@
-import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useState } from 'react';
+import {
+    type ChangeEvent,
+    type DragEvent,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 
 import { App } from '../App.jsx';
 import { PageTop } from '../app/PageTop.jsx';
@@ -115,11 +123,14 @@ const errorOf = async (response: Response, retry: string): Promise<string> => {
 /**
  * Moves focus to a stage's heading when it appears because of something the
  * visitor did, so a keyboard or screen reader user is told where they are.
+ * Focus moves in the same commit as the heading, as it does for the
+ * question and the remove button below, so it never rests on the page
+ * between the two.
  * On the page's first load the heading is left alone, as any page's is.
  */
 const useHeadingFocus = (key: string, announce: boolean) => {
     const heading = useRef<HTMLHeadingElement>(null);
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (announce) heading.current?.focus();
     }, [key, announce]);
     return heading;
@@ -390,7 +401,7 @@ const Ask = ({
     readonly onNo: () => void;
 }) => {
     const safe = useRef<HTMLButtonElement>(null);
-    useEffect(() => safe.current?.focus(), []);
+    useLayoutEffect(() => safe.current?.focus(), []);
     return (
         <p className="notice">
             {question}{' '}
@@ -432,7 +443,7 @@ const CatalogBar = ({
     const remove = useRef<HTMLButtonElement>(null);
     // After a removal kept or failed, the visitor is put back on the button they
     // pressed, once, so a later render never takes focus from them again.
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (focusRemove === true && confirm !== true) {
             remove.current?.focus();
             onFocused();
