@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { useCount } from '../app/StoreContext.jsx';
+import { useStoreInfo } from '../app/StoreContext.jsx';
+import { count } from '../format/count.js';
 import { Drawer } from './Drawer.jsx';
 
 /**
@@ -17,7 +18,7 @@ export interface FacetDrawerProps {
 }
 
 export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => {
-    const count = useCount();
+    const { locale } = useStoreInfo();
     return (
         <Drawer
             opener={
@@ -36,7 +37,7 @@ export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => {
                 </>
             }
             title="Filters"
-            done={`Show ${count(total, 'result', 'results')}`}
+            done={`Show ${count(total, 'result', 'results', locale)}`}
         >
             {children}
         </Drawer>

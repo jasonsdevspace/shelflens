@@ -1,6 +1,5 @@
 import { createContext, useContext } from 'react';
 
-import { count } from '../format/count.js';
 import { DEFAULT_LOCALE, safeLocale } from '../format/money.js';
 import type { StoreQuery } from '../generated/operations.js';
 
@@ -32,12 +31,6 @@ const StoreContext = createContext<StoreInfo>(DEFAULT_STORE_INFO);
 export const StoreProvider = StoreContext.Provider;
 
 export const useStoreInfo = (): StoreInfo => useContext(StoreContext);
-
-/** The page's `count`, with its digits grouped in the store's locale. */
-export const useCount = (): ((n: number, one: string, many: string) => string) => {
-    const { locale } = useStoreInfo();
-    return (n, one, many) => count(n, one, many, locale);
-};
 
 /** What the store query says about the store, or the defaults until it has answered. */
 export const storeInfoOf = (data: StoreQuery | undefined): StoreInfo =>

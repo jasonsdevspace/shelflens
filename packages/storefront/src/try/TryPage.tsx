@@ -17,6 +17,7 @@ import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
 import { reasonOf } from '../client/reason.js';
 import { count } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -104,7 +105,8 @@ const Building = ({
     return (
         <section className="try-stage" aria-labelledby="try-building">
             <h1 id="try-building" ref={heading} tabIndex={-1}>
-                Building the store from your {count(products, 'product', 'products')}
+                Building the store from your{' '}
+                {count(products, 'product', 'products', DEFAULT_LOCALE)}
             </h1>
         </section>
     );
@@ -163,7 +165,7 @@ const Chooser = ({
             <p>
                 Load a CSV or JSON file of products, such as an export from your shop, and search it
                 here with suggestions, filters, sorting and a reason for every result. Up to{' '}
-                {count(CATALOG_ROW_CAP, 'product', 'products')}.
+                {count(CATALOG_ROW_CAP, 'product', 'products', DEFAULT_LOCALE)}.
             </p>
             <p className="try-private">
                 Your file is read in this page and kept in this browser. Nothing is uploaded, and
@@ -270,8 +272,8 @@ const Review = ({
                 What is in {name}
             </h1>
             <p>
-                {count(table.rows.length, 'row', 'rows')} and{' '}
-                {count(table.headers.length, 'column', 'columns')}.
+                {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)} and{' '}
+                {count(table.headers.length, 'column', 'columns', DEFAULT_LOCALE)}.
             </p>
             <MappingEditor table={table} mapping={mapping} onChange={onMapping} />
             {result.ok ? (
@@ -279,17 +281,17 @@ const Review = ({
                     <Preview catalog={result.catalog} />
                     {partial ? (
                         <p className="notice" role="status">
-                            Checking all {count(table.rows.length, 'row', 'rows')}.
+                            Checking all {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.
                         </p>
                     ) : (
                         <>
                             <RowNotes
                                 notes={result.skipped}
-                                summary={`${count(result.skipped.length, 'row is', 'rows are')} left out`}
+                                summary={`${count(result.skipped.length, 'row is', 'rows are', DEFAULT_LOCALE)} left out`}
                             />
                             <RowNotes
                                 notes={result.notes}
-                                summary={`${count(result.notes.length, 'row needed', 'rows needed')} a default`}
+                                summary={`${count(result.notes.length, 'row needed', 'rows needed', DEFAULT_LOCALE)} a default`}
                             />
                         </>
                     )}
@@ -409,7 +411,8 @@ const CatalogBar = ({
         <div className="callout try-bar">
             <span>
                 You are searching your own catalog of{' '}
-                {count(loaded.products, 'product', 'products')}, kept in this browser.
+                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, kept in this
+                browser.
             </span>{' '}
             {confirm === true ? (
                 <Ask
@@ -521,7 +524,8 @@ const BeforeStore = ({
 const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
 
 /** The button that searches a whole file, named again by the messages that point to it. */
-const searchLabel = (products: number) => `Search ${count(products, 'product', 'products')}`;
+const searchLabel = (products: number) =>
+    `Search ${count(products, 'product', 'products', DEFAULT_LOCALE)}`;
 
 /** Files up to this many rows are made again on every change, which takes a moment. */
 const QUICK_ROWS = 1000;

@@ -221,7 +221,7 @@ const Details = ({
                     <h1 id="product-heading" className="product-name" ref={heading} tabIndex={-1}>
                         {product.name}
                     </h1>
-                    <p className="product-meta">{metaLine(product)}</p>
+                    <p className="product-meta">{metaLine(product, locale)}</p>
                     <p className="product-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </p>

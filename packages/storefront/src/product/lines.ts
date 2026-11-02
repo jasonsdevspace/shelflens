@@ -5,12 +5,15 @@ import type { ProductQuery } from '../generated/operations.js';
 type Product = NonNullable<ProductQuery['product']>;
 
 /** Brand, material and rating, leaving out what a catalog does not have, so no dot leads nowhere. */
-export const metaLine = (product: Pick<Product, 'brand' | 'material' | 'rating'>): string =>
+export const metaLine = (
+    product: Pick<Product, 'brand' | 'material' | 'rating'>,
+    locale: string
+): string =>
     [
         product.brand.name,
         product.material,
         product.rating &&
-            `${product.rating.average.toFixed(1)} out of 5, from ${count(product.rating.count, 'rating', 'ratings')}`,
+            `${product.rating.average.toFixed(1)} out of 5, from ${count(product.rating.count, 'rating', 'ratings', locale)}`,
     ]
         .filter((part) => typeof part === 'string' && part.trim() !== '')
         .join(' · ');

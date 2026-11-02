@@ -112,7 +112,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     {product.rating && (
                         <span className="card-rating">
                             {product.rating.average.toFixed(1)} out of 5, from{' '}
-                            {count(product.rating.count, 'rating', 'ratings')}
+                            {count(product.rating.count, 'rating', 'ratings', locale)}
                         </span>
                     )}
                     {!product.inStock && <span className="card-stock">Out of stock</span>}

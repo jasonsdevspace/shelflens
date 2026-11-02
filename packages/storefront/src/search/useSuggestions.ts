@@ -39,31 +39,39 @@ export const isAskable = (phrase: string): boolean => phrase.trim().length >= MI
 /**
  * The phrase once typing has paused on it, and nothing until it first has.
  * A phrase too short to ask about is let go at once, so typing back past it
- * waits for the pause again rather than asking the old phrase anew.
+ * waits for the pause again rather than asking the old phrase anew. Each
+ * pause is told to the caller, the same phrase again included.
  */
-const useSettled = (phrase: string): string | undefined => {
-    const [settled, setSettled] = useState<string>();
+const useSettled = (phrase: string): { readonly settled?: string; readonly pauses: number } => {
+    const [paused, setPaused] = useState<{ readonly settled?: string; readonly pauses: number }>({
+        pauses: 0,
+    });
     const askable = isAskable(phrase);
     // Let go during the render that sees the short phrase, as React adjusts state to a prop.
-    if (!askable && settled !== undefined) setSettled(undefined);
+    if (!askable && paused.settled !== undefined) setPaused({ pauses: paused.pauses });
     useEffect(() => {
         if (!askable) return;
-        const timer = setTimeout(() => setSettled(phrase.trim()), DEBOUNCE_MS);
+        const timer = setTimeout(() => {
+            setPaused((before) => ({ settled: phrase.trim(), pauses: before.pauses + 1 }));
+        }, DEBOUNCE_MS);
         return () => clearTimeout(timer);
     }, [phrase, askable]);
-    return settled;
+    return paused;
 };
 
 export const useSuggestions = (client: GraphQLClient, phrase: string): SuggestionState => {
     const wanted = phrase.trim();
     const askable = isAskable(wanted);
-    const settled = useSettled(phrase);
+    const { settled, pauses } = useSettled(phrase);
     // A phrase too short to ask about stops at once, rather than after the pause.
-    const asked = askable && settled !== undefined && isAskable(settled) ? settled : undefined;
+    const asked = askable ? settled : undefined;
+    // Every pause asks, as typing expects: an answer already held comes from the
+    // client's memory, and a phrase whose request failed is asked again.
     const { data, answers, error } = useQuery(
         client,
         SuggestDocument,
-        asked === undefined ? undefined : { phrase: asked, limit: SUGGESTION_LIMIT }
+        asked === undefined ? undefined : { phrase: asked, limit: SUGGESTION_LIMIT },
+        { asked: pauses }
     );
     const answered =
         askable && data && answers

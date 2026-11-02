@@ -402,6 +402,31 @@ describe('what this browser searched before', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Searching');
     });
 
+    it('asks a failed phrase again when typing comes back to it, and drops the failure once answered', async () => {
+        const network = createNetwork();
+        const box = renderBox(network.client);
+        const user = userEvent.setup();
+        await user.type(box.input, 'bo');
+        await waitFor(() => expect(network.pending).toHaveLength(1));
+        network.pending[0]?.fail('the network is down');
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(SUGGESTIONS_FAILED)
+        );
+        // Typed away and back, the same phrase is asked again rather than left failed.
+        await user.type(box.input, 'o');
+        await user.keyboard('{Backspace}');
+        await waitFor(() =>
+            expect(network.pending.filter((pending) => pending.phrase === 'bo')).toHaveLength(2)
+        );
+        network.pending
+            .filter((pending) => pending.phrase === 'bo')[1]
+            ?.answer(suggestionsFor('bo'));
+        await waitFor(() =>
+            expect(screen.getByRole('option', { name: 'bo runner' })).toBeVisible()
+        );
+        expect(screen.getByRole('status')).not.toHaveTextContent(SUGGESTIONS_FAILED);
+    });
+
     it('names the list for the store while the store is asked and no recent phrase matches', async () => {
         rememberSearch('boots');
         const network = createNetwork();
