@@ -150,6 +150,43 @@ test('a member sees the product guests cannot, and pays less, from the same page
     await expect(page.locator('.product-member')).toHaveText(/^Member price, .+ for guests$/);
 });
 
+test('a guest after a member sees the guest price and no product for members only', async ({
+    page,
+    request,
+}) => {
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
+    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    const viewer = page.getByRole('combobox', { name: 'Shopping as' });
+    const price = page.locator('.product-price');
+
+    // The guest's price, as a baseline, before any member answer is kept anywhere.
+    await page.goto(`/?product=${discounted.sku}`);
+    await expect(price).toBeVisible();
+    const asGuest = amount(await price.textContent());
+
+    // A member looks first, so their answers are kept in the page, the worker and the browser.
+    await viewer.selectOption('member');
+    await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
+    await page.goto(`/?product=${membersOnly.sku}`);
+    await viewer.selectOption('member');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(membersOnly.name);
+
+    // Then a guest, in the same page, is never served what the member was.
+    await viewer.selectOption('guest');
+    await expect(page.getByText(/There is no product/)).toBeVisible();
+    await page.goto(`/?product=${discounted.sku}`);
+    await expect.poll(async () => amount(await price.textContent())).toBe(asGuest);
+
+    // And after a reload, with only the worker's and the browser's kept answers left.
+    await page.reload();
+    await expect(viewer).toHaveValue('guest');
+    await expect.poll(async () => amount(await price.textContent())).toBe(asGuest);
+    await page.goto(`/?product=${membersOnly.sku}`);
+    await expect(page.getByText(/There is no product/)).toBeVisible();
+});
+
 test('answers travel as named operations the browser may keep', async ({ page }) => {
     await page.goto('/?category=shoes');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Shoes, \d+ products$/);
