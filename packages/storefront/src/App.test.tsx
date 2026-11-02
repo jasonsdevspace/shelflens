@@ -355,6 +355,34 @@ describe('a store that does not start', () => {
         expect(screen.queryByText('Preparing the store.')).not.toBeInTheDocument();
     });
 
+    it('keeps the masthead\u2019s room only while the store is on its way', async () => {
+        let fail = (_error: Error) => undefined as void;
+        startWith(
+            new Promise<void>((_resolve, reject) => {
+                fail = reject;
+            })
+        );
+        const masthead = () => document.querySelector('.masthead');
+        expect(masthead()).toHaveClass('is-waiting');
+        fail(new StoreDidNotStart('the store took too long'));
+        await screen.findByRole('alert');
+        // The search box will never come, so the room for it goes.
+        expect(masthead()).not.toHaveClass('is-waiting');
+    });
+
+    it('keeps no room on a page whose masthead is not the store\u2019s own', () => {
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={new Promise<void>(() => undefined)}
+                tour={false}
+            />
+        );
+        expect(document.querySelector('.masthead')).not.toHaveClass('is-waiting');
+    });
+
     it('says what to do instead in a browser that cannot run it, with nothing to retry', async () => {
         startWith(Promise.reject(new WorkerUnsupported('no service worker')));
         const alert = await screen.findByRole('alert');

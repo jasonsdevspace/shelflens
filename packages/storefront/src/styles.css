@@ -162,10 +162,15 @@ body {
     padding: 1rem;
     max-width: var(--column);
     margin: 0 auto;
-    /*
-     * At least a screen tall, so the footer starts below the fold and the
-     * answer arriving above it never moves it on screen.
-     */
+}
+
+/*
+ * The pages the script draws, whose answer arrives after the first screen,
+ * are at least a screen tall, so the footer starts below the fold and the
+ * answer arriving above it never moves it on screen. The pages written in
+ * their HTML have nothing on its way, and keep their height.
+ */
+#root > .content {
     min-height: 100dvh;
 }
 

@@ -74,6 +74,13 @@ export interface AppProps {
  */
 type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
 
+/**
+ * Whether the masthead keeps the room its search box and links will take:
+ * only on the store's own page, whose masthead is the one the room fits,
+ * and only while the store is on its way, not once it will never come.
+ */
+const keepsRoom = (tour: boolean, readiness: Readiness): boolean => tour && readiness === 'waiting';
+
 /** What the page says while the store is not answering yet, or cannot. */
 const Standby = ({
     readiness,
@@ -398,7 +405,7 @@ export const App = ({
             <StoreProvider value={info}>
                 <PageTop
                     home="./"
-                    waiting={!isReady}
+                    waiting={keepsRoom(tour, readiness)}
                     onHome={(event) => {
                         event.preventDefault();
                         navigate(fresh);

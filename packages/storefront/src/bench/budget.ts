@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 import { BUDGET_BYTES, TRY_BUDGET_BYTES, WIDGET_BUDGET_BYTES } from '../budgets.js';
@@ -10,13 +10,20 @@ import { BUDGET_BYTES, TRY_BUDGET_BYTES, WIDGET_BUDGET_BYTES } from '../budgets.
  *
  * Runs after `npm run storefront`. Each page's scripts are the ones its
  * HTML loads or preloads, each compressed as a server sends it, and the
- * widget is the one file a host page loads. A page past its budget, or
+ * widget is the one file a host page loads. That is what a page needs
+ * before it can answer: a chunk it imports later, on demand, is not part
+ * of it, and the stylesheets are measured by Lighthouse with the page. A page past its budget, or
  * with anything from GraphQL in it, fails the run. The test beside the
  * budgets measures each entry as esbuild bundles it, which catches a
  * change in the source before anything is built.
  */
 
 const DIST = new URL('../../dist/', import.meta.url);
+
+if (!existsSync(DIST)) {
+    console.error('Nothing is built to measure. Run `npm run storefront` first.');
+    process.exit(1);
+}
 
 /** The scripts a built page loads at once: its entry and what it preloads. */
 const scriptsOf = (page: string): readonly string[] => {
@@ -26,8 +33,13 @@ const scriptsOf = (page: string): readonly string[] => {
         ...html.matchAll(/<link rel="modulepreload"[^>]*\shref="([^"]+\.js)"/g),
     ].map((match) => match[1] ?? '');
     // Served under the site's base, which the build may have set, so the path is
-    // read from the assets folder down.
-    return [...new Set(found)].map((src) => src.slice(src.indexOf('assets/')));
+    // read from the assets folder down. A script from anywhere else is one this
+    // check does not know how to measure, and says so.
+    return [...new Set(found)].map((src) => {
+        const at = src.indexOf('assets/');
+        if (at === -1) throw new Error(`${page} loads ${src}, which is not among the built assets`);
+        return src.slice(at);
+    });
 };
 
 const SHIPPED: readonly {
