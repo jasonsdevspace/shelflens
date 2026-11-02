@@ -1,12 +1,16 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, test as base } from '@playwright/test';
+import { type APIRequestContext, expect, type Page, test as base } from '@playwright/test';
 
 import { DEFAULT_DB_NAME } from '../src/worker/event-db.js';
 
 /*
  * What the browser tests share: the test itself, which marks the tour seen
- * unless a file asks otherwise, an axe audit that names what it found, and
- * a reader for the events the worker keeps.
+ * unless a file asks otherwise, an axe audit that names what it found, a
+ * reader for the events the worker keeps, and the catalog the demo ships.
+ *
+ * Nothing in these tests is mocked. The page registers the worker, the
+ * worker fetches the catalog and builds the store, and every request is
+ * answered inside the browser, from the production build.
  */
 
 export { expect };
@@ -91,3 +95,25 @@ export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
             }),
         DEFAULT_DB_NAME
     );
+
+/** The catalog the demo ships, as much of it as the tests read. */
+export interface ShippedCatalog {
+    readonly products: readonly {
+        readonly sku: string;
+        readonly name: string;
+        readonly visibleTo: readonly string[];
+        readonly variants: readonly {
+            readonly color: string;
+            readonly price: number;
+            readonly inStock: boolean;
+        }[];
+        readonly price: {
+            readonly guest: { readonly min: number };
+            readonly member: { readonly min: number };
+        };
+    }[];
+}
+
+/** The catalog the demo ships, read from the built site as a page reads it. */
+export const shippedCatalog = async (request: APIRequestContext): Promise<ShippedCatalog> =>
+    (await (await request.get('/catalog.json')).json()) as ShippedCatalog;

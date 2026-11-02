@@ -47,7 +47,7 @@ export const STOPS: readonly Stop[] = [
         to: EMPTY_STATE,
         tests: [
             'packages/storefront/src/search/SearchBox.test.tsx',
-            'packages/storefront/e2e/storefront.spec.ts',
+            'packages/storefront/e2e/start.spec.ts',
         ],
     },
     {
@@ -107,7 +107,10 @@ export const STOPS: readonly Stop[] = [
         title: 'Pins and boosts disappear under a sort',
         body: 'Under relevance, two jackets are pinned first by a rule. Choose "Price, low to high" under "Sort by" and the pin is set aside, and the page says so rather than looking broken. Switch the sort back and watch them return.',
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-asc', explain: true },
-        tests: ['packages/engine/src/rules.test.ts', 'packages/storefront/src/App.test.tsx'],
+        tests: [
+            'packages/engine/src/rules.test.ts',
+            'packages/storefront/src/App.merchandising.test.tsx',
+        ],
     },
     {
         id: 'explain',
@@ -138,7 +141,10 @@ export const STOPS: readonly Stop[] = [
         title: 'Nothing is still a page',
         body: 'One word here matches nothing. The page shows the results of the phrase without it, offers a spelling when a word is two typos off, offers to clear filters that emptied the page, and falls back to the most clicked products, then the most rated.',
         to: { ...EMPTY_STATE, phrase: 'zzqx jacket' },
-        tests: ['packages/engine/src/recover.test.ts', 'packages/storefront/src/App.test.tsx'],
+        tests: [
+            'packages/engine/src/recover.test.ts',
+            'packages/storefront/src/App.results.test.tsx',
+        ],
     },
     {
         id: 'prices',
@@ -152,7 +158,10 @@ export const STOPS: readonly Stop[] = [
         title: 'A rail that never lies',
         body: 'With nothing else viewed yet, the row of products under this one shows the most rated in its category, and its heading says so. Open a product from that row and this one leads the next row, under a heading that begins "Viewed with this product" and says where the rest come from. It never shows the product itself or one you cannot see, and it starts over when you clear site data.',
         to: { ...EMPTY_STATE, product: 'SL-00001' },
-        tests: ['packages/api/src/recommend.test.ts', 'packages/storefront/src/App.test.tsx'],
+        tests: [
+            'packages/api/src/recommend.test.ts',
+            'packages/storefront/src/App.product.test.tsx',
+        ],
     },
     {
         id: 'telemetry',
