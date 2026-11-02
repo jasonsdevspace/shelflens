@@ -9,3 +9,12 @@ import type { CustomerGroup, Product } from '@shelflens/catalog';
 export const paysLess = (product: Product, group: CustomerGroup): boolean =>
     product.price[group].min < product.price.guest.min ||
     product.price[group].max < product.price.guest.max;
+
+/**
+ * Whether a member's price differs from a guest's for a product, lower or
+ * higher, at either end. Where it does, switching between them changes what
+ * the page shows, so the switch is worth offering.
+ */
+export const pricesDiffer = (product: Product): boolean =>
+    product.price.member.min !== product.price.guest.min ||
+    product.price.member.max !== product.price.guest.max;

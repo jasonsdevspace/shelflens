@@ -66,6 +66,7 @@ export {
     responseHeaders,
     VERSION_HEADER,
 } from './http.js';
+export { paysLess, pricesDiffer } from './prices.js';
 export {
     recommend,
     RECOMMENDATION_LIMIT,

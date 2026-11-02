@@ -366,7 +366,7 @@ describe('what shoppers clicked', () => {
 });
 
 describe('the viewer', () => {
-    it('says whether members pay less and see more, by the same rule as a product', async () => {
+    it('says whether members are priced differently and whether they see more', async () => {
         const ask = async (products: typeof catalog.products) =>
             data(
                 await createStoreApi(createStore({ catalog: { ...catalog, products } })).run(
@@ -394,6 +394,15 @@ describe('the viewer', () => {
             memberPricing: true,
             membersOnlyProducts: false,
         });
+        // A member who pays more still sees other prices, so the switch still means something.
+        const dearer = {
+            ...first,
+            price: {
+                guest: first.price.guest,
+                member: { min: first.price.guest.min + 100, max: first.price.guest.max + 100 },
+            },
+        };
+        expect(await ask([dearer, ...rest])).toMatchObject({ memberPricing: true });
         expect(await ask(catalog.products)).toMatchObject({ membersOnlyProducts: true });
     });
 

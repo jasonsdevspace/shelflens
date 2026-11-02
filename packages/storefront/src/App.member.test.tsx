@@ -127,16 +127,17 @@ describe('as a member', () => {
         const op = `op=${String(StoreDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
         vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            // The address is read before the request is sent, so nothing is read twice.
+            const asked = new Request(input, init).url;
             const response = await served(input, init);
-            if (!new Request(input, init).url.includes(op)) return response;
+            if (!asked.includes(op)) return response;
             const body = (await response.json()) as {
                 data: { store: Record<string, unknown> };
             };
             body.data.store.membersOnlyProducts = false;
-            return new Response(JSON.stringify(body), {
-                status: response.status,
-                headers: response.headers,
-            });
+            const headers = new Headers(response.headers);
+            headers.delete('content-length');
+            return new Response(JSON.stringify(body), { status: response.status, headers });
         });
         window.history.replaceState(null, '', '/?product=NOPE-1');
         render(

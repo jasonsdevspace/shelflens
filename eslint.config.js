@@ -45,6 +45,9 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
+/** Code that runs in the browser loads no Node module. */
+const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot load Node.' };
+
 export default tseslint.config(
     {
         ignores: [
@@ -155,12 +158,7 @@ export default tseslint.config(
             '@typescript-eslint/no-restricted-imports': [
                 'error',
                 {
-                    patterns: [
-                        {
-                            group: ['node:*'],
-                            message: 'Runs in the browser, so it cannot load Node.',
-                        },
-                    ],
+                    patterns: [NO_NODE],
                 },
             ],
         },
@@ -168,7 +166,7 @@ export default tseslint.config(
     {
         // The worker hosts the API for the pages, so it reads what the API packages
         // offer and never a page's own folder, which would make a page its dependency.
-        // Its own block replaces the one above for these files, so Node is named again.
+        // Its own block replaces the one above for these files, so it names Node too.
         files: ['packages/storefront/src/worker/**/*.ts'],
         ignores: ['**/*.test.ts'],
         rules: {
@@ -176,23 +174,11 @@ export default tseslint.config(
                 'error',
                 {
                     patterns: [
+                        NO_NODE,
                         {
-                            group: ['node:*'],
-                            message: 'Runs in the browser, so it cannot load Node.',
-                        },
-                        {
-                            group: [
-                                '../about/*',
-                                '../app/*',
-                                '../product/*',
-                                '../results/*',
-                                '../search/*',
-                                '../tour/*',
-                                '../try/*',
-                                '../widget/*',
-                            ],
+                            group: ['../*', '../**'],
                             message:
-                                'The worker takes what it needs from the API packages, not from a page.',
+                                'The worker takes what it needs from the API packages, not from the pages beside it.',
                         },
                     ],
                 },

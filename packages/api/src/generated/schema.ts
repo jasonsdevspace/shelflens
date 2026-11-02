@@ -525,9 +525,10 @@ export type Store = {
     readonly currency: Scalars['String']['output'];
     readonly locale: Scalars['String']['output'];
     /**
-     * Whether a member pays less than a guest for any product, at its lowest
-     * price or its highest. Without it, switching between them changes nothing.
-     * The same rule as a product's memberPrice.
+     * Whether a member's price differs from a guest's for any product, lower or
+     * higher, at its lowest price or its highest. Without it, switching between
+     * them changes no price. A product's memberPrice says the narrower thing,
+     * that the viewer pays less.
      */
     readonly memberPricing: Scalars['Boolean']['output'];
     /**

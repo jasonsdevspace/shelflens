@@ -60,6 +60,14 @@ describe('rows to a catalog', () => {
         expect(
             search.facets.find((facet) => facet.attribute === 'BRAND')?.buckets?.length
         ).toBeGreaterThan(0);
+        // The sample has member prices, so the store over it offers the viewer switch.
+        const store = await api.run(
+            { query: '{ store { memberPricing membersOnlyProducts } }' },
+            viewerFromHeader(undefined)
+        );
+        expect(store.data).toEqual({
+            store: { memberPricing: true, membersOnlyProducts: false },
+        });
     });
 
     it('gives a product with only a name and a price the stated defaults', () => {

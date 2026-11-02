@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { App, REVEAL_WITHIN_MS } from './App.jsx';
-import { CategoriesDocument, ProductDocument, SearchDocument } from './generated/operations.js';
+import {
+    CategoriesDocument,
+    ProductDocument,
+    SearchDocument,
+    StoreDocument,
+} from './generated/operations.js';
 import { featured, open, shopAs } from './test/store.jsx';
 import { StoreDidNotStart, WorkerUnsupported } from './worker/register.js';
 
@@ -26,6 +31,35 @@ describe('a store that starts', () => {
         expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
         expect(screen.getByRole('navigation', { name: 'Categories' })).toBeInTheDocument();
         expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    });
+
+    it('waits for the store to say what it holds, so the viewer switch arrives with the masthead', async () => {
+        const STORE_OP = String(StoreDocument.__meta__?.['hash']);
+        const answer = globalThis.fetch;
+        let release = () => undefined as void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            if (new Request(input, init).url.includes(`op=${STORE_OP}`)) await held;
+            return answer(input, init);
+        });
+        render(
+            <App
+                apiUrl="http://store.test/graphql"
+                eventsUrl="http://store.test/events"
+                rulesUrl="http://store.test/rules"
+                ready={Promise.resolve()}
+            />
+        );
+        // The categories answer, and still the page waits for the store's own facts.
+        await screen
+            .findByText('Preparing the store.', undefined, { timeout: 2000 })
+            .catch(() => undefined);
+        expect(screen.queryByRole('combobox', { name: 'Search the store' })).toBeNull();
+        release();
+        expect(await screen.findByRole('combobox', { name: 'Shopping as' })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
     });
 
     it('shows the store without its categories when they do not answer', async () => {

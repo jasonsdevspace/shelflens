@@ -336,7 +336,11 @@ const useStore = (client: GraphQLClient, ready: Promise<void> | 'started') => {
     const categories = useQuery(client, CategoriesDocument, asked);
     const store = useQuery(client, StoreDocument, asked);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
-    const settled = categories.data !== undefined || categories.error !== undefined;
+    // The categories and the store's own facts, which decide the viewer switch, so the
+    // masthead arrives whole rather than with the switch a beat behind it.
+    const settled = [categories, store].every(
+        (query) => query.data !== undefined || query.error !== undefined
+    );
     // Kept once true, so a later client, whose categories are not in yet, never hides the store.
     if (started === 'ready' && settled && !shown) setShown(true);
     useEffect(() => {

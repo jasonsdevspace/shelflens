@@ -1,7 +1,8 @@
+import { paysLess } from '@shelflens/api';
 import type { Catalog, Product } from '@shelflens/catalog';
 import { useId } from 'react';
 
-import { formatMoney } from '../format/money.js';
+import { formatMoney, formatPriceRange } from '../format/money.js';
 import type { Table } from './csv.js';
 import type { MappedField, Mapping } from './mapping.js';
 
@@ -156,8 +157,12 @@ const PreviewCard = ({
             </span>
             <span>
                 {formatMoney({ amount: product.price.guest.min, currency: catalog.currency })}
-                {product.price.member.min !== product.price.guest.min &&
-                    `, member price ${formatMoney({ amount: product.price.member.min, currency: catalog.currency })}`}
+                {/* By the store's own rule, so the preview and the cards say the same. */}
+                {paysLess(product, 'member') &&
+                    `, member price ${formatPriceRange(
+                        { amount: product.price.member.min, currency: catalog.currency },
+                        { amount: product.price.member.max, currency: catalog.currency }
+                    )}`}
                 {variant?.inStock === false && ', out of stock'}
             </span>
             {details.length > 0 && <span className="notice">{details.join(', ')}</span>}
