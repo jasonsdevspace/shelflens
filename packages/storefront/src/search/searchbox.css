@@ -82,7 +82,8 @@
     width: auto;
 }
 
-@media (max-width: 40em) {
+/* A phone, as the tokens name it. */
+@media (max-width: 48rem) {
     /* Without a top layer: over the whole width, and no taller than what the keyboard leaves. */
     .searchbox-popover:not([popover]) {
         position: fixed;

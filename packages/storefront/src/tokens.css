@@ -10,9 +10,25 @@
  * WCAG AA in both themes, and the control color passes 3 to 1 against the
  * page in both.
  *
- * Sizes are in rem, so they follow the visitor's own text size. The search
- * box, which also lives on other people's pages, keeps its sizes relative
- * to its own text instead, so a host's root size cannot reach it.
+ * Which unit goes where:
+ *
+ * - rem for anything that should grow with the visitor's own text size:
+ *   type, space, fields, corners, the column and the breakpoints.
+ * - em in the search box, which also lives on other people's pages, so its
+ *   sizes follow its own text and a host's root size cannot reach it.
+ * - px for what must not scale: a border, the focus ring, the shadow the
+ *   search box's list wears on other pages, the 16px below which a phone
+ *   zooms a field it is tapped in, the widget's pinned text, and the one
+ *   pixel a visually hidden element keeps.
+ *
+ * A test holds every sheet to these.
+ *
+ * A media query cannot read a custom property, so the breakpoints are
+ * named here and written out where they are used, and the same test holds
+ * every query to one of them:
+ *
+ * - a phone, up to 48rem, where the page lays out for a thumb;
+ * - a narrow phone, up to 24rem, where the masthead takes a fourth row.
  */
 :root,
 .shelflens {

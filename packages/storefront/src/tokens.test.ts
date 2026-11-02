@@ -137,3 +137,63 @@ describe('the design tokens', () => {
         ]).toEqual([]);
     });
 });
+
+/** Every declaration in the sheets, as its property and its value, with where it is. */
+const everyDeclaration = () =>
+    SHEETS.flatMap((at) =>
+        [...sheet(at).matchAll(/(?<![-\w])([a-z-]+):\s*([^;{}]+);/g)].map((match) => ({
+            at,
+            property: match[1] ?? '',
+            value: (match[2] ?? '').trim().replace(/\s+/g, ' '),
+        }))
+    );
+
+/**
+ * Where a pixel belongs, as the tokens say: a border or a ring, which must
+ * not scale, the floor below which a phone zooms a field, the widget's
+ * pinned text, and the one pixel a visually hidden element keeps.
+ */
+const PIXEL_ALLOWED = [
+    ({ property }: { property: string }) => /^(border|outline)(-[a-z]+)*$/.test(property),
+    ({ value }: { value: string }) => value === 'max(var(--text-body), 16px)',
+    ({ at, property, value }: { at: string; property: string; value: string }) =>
+        at === 'widget/widget.css' && property === 'font' && value.startsWith('16px/'),
+    ({ property, value }: { property: string; value: string }) =>
+        ['width', 'height', 'margin'].includes(property) && /^-?1px$/.test(value),
+    // The column's inset, which is never less than nothing.
+    ({ value }: { value: string }) => value.startsWith('calc(max(0px,'),
+];
+
+/** The breakpoints the tokens name, as a media query writes them. */
+const BREAKPOINTS = ['(max-width: 48rem)', '(max-width: 24rem)'];
+
+describe('the units', () => {
+    it('keep pixels to what must not scale', () => {
+        const stray = everyDeclaration()
+            .filter(({ value }) => /\dpx/.test(value))
+            .filter((declaration) => !PIXEL_ALLOWED.some((allowed) => allowed(declaration)))
+            .map(({ at, property, value }) => `${at}: ${property}: ${value}`);
+        expect(stray).toEqual([]);
+    });
+
+    it('break only where the tokens name a breakpoint', () => {
+        const queries = [...SHEETS, 'widget/host.css'].flatMap((at) =>
+            [...sheet(at).matchAll(/@media ([^{]+)\{/g)]
+                .map((match) => (match[1] ?? '').trim())
+                .filter((query) => /width|height/.test(query))
+                .map((query) => ({ at, query }))
+        );
+        expect(queries.length).toBeGreaterThan(0);
+        expect(
+            queries
+                .filter(({ query }) => !BREAKPOINTS.includes(query))
+                .map(({ at, query }) => `${at}: ${query}`)
+        ).toEqual([]);
+        const named = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
+        for (const breakpoint of BREAKPOINTS) {
+            expect(named, breakpoint).toContain(
+                breakpoint.replace(/^\(max-width: (.*)\)$/, 'up to $1')
+            );
+        }
+    });
+});
