@@ -40,7 +40,7 @@ const run = (query: string, variables?: Record<string, unknown>, viewer = guest)
 
 /* The shape of each answer is asserted by the test that reads it, so the data is left loose. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Loose = Record<string, any>;
+type Loose = any;
 
 const data = (response: StoreResponse): Loose => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
@@ -93,7 +93,7 @@ describe('searching', () => {
 
     it('translates a corrected phrase, an empty one, and a hopeless one', async () => {
         const matching = async (phrase: string | null) =>
-            data(await run(RESULTS, { input: { phrase, pageSize: 1 } }))['search'].matching;
+            data(await run(RESULTS, { input: { phrase, pageSize: 1 } })).search.matching;
         expect(await matching('jakcet')).toBe('CORRECTED');
         expect(await matching(null)).toBe('ALL');
         expect(await matching('xqzv')).toBe('NONE');
@@ -124,7 +124,7 @@ describe('searching', () => {
 
     it('browses in catalog order without a phrase, and by position within a category', async () => {
         const plain = data(await run(RESULTS, { input: { pageSize: 1 } }));
-        expect(plain['search'].sort).toEqual([{ by: 'CATALOG', direction: 'ASC' }]);
+        expect(plain.search.sort).toEqual([{ by: 'CATALOG', direction: 'ASC' }]);
         const inCategory = data(
             await run(RESULTS, {
                 input: {
@@ -134,7 +134,7 @@ describe('searching', () => {
                 },
             })
         );
-        expect(inCategory['search'].sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
+        expect(inCategory.search.sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
         // Browsing a category asks for nothing and gets position, as the schema promises.
         const browsing = data(
             await run(RESULTS, {
@@ -144,7 +144,7 @@ describe('searching', () => {
                 },
             })
         );
-        expect(browsing['search'].sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
+        expect(browsing.search.sort).toEqual([{ by: 'POSITION', direction: 'ASC' }]);
     });
 
     it('offers something instead of nothing, and nothing when it found something', async () => {
@@ -160,7 +160,7 @@ describe('searching', () => {
                 }
             }`;
         const ask = async (input: Record<string, unknown>) =>
-            data(await run(NOTHING, { input }))['search'];
+            data(await run(NOTHING, { input })).search;
 
         expect((await ask({ phrase: 'jacket' })).noResults).toBeNull();
 
@@ -191,7 +191,7 @@ describe('searching', () => {
 
         const hopeless = await ask({ phrase: 'xqzv' });
         expect(hopeless.noResults.relaxed).toBeNull();
-        const counts = hopeless.noResults.popular.map((p: Loose) => p['rating'].count);
+        const counts = hopeless.noResults.popular.map((p: Loose) => p.rating.count);
         expect(counts).toHaveLength(8);
         expect(counts).toEqual([...counts].sort((a: number, b: number) => b - a));
     });
@@ -231,9 +231,9 @@ describe('a merchandiser\u2019s preview', () => {
             },
             guest
         );
-        expect(data(previewed)['preview']).toEqual(data(searched)['search']);
-        expect(data(previewed)['preview'].items[0].product.sku).toBe(b.sku);
-        expect(data(previewed)['preview'].merchandising.applied).toEqual([
+        expect(data(previewed).preview).toEqual(data(searched).search);
+        expect(data(previewed).preview.items[0].product.sku).toBe(b.sku);
+        expect(data(previewed).preview.merchandising.applied).toEqual([
             'promo-b',
             'no-c',
             'lift-a',
@@ -241,9 +241,7 @@ describe('a merchandiser\u2019s preview', () => {
     });
 
     it('leaves the store as it was, and refuses a draft the engine refuses in its own words', async () => {
-        const after = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 3 } }))[
-            'search'
-        ];
+        const after = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 3 } })).search;
         expect(after.merchandising.applied).toEqual(['promo']);
         const refused = await run(
             `query ($input: SearchInput!, $rules: [RuleInput!]!) { preview(input: $input, rules: $rules) { total } }`,
@@ -290,18 +288,18 @@ describe('a merchandiser\u2019s preview', () => {
                 guest,
                 new Date('2026-06-01')
             );
-        const now = data(await week({ from: '2000-01-01', to: '2999-01-01' }))['preview'];
+        const now = data(await week({ from: '2000-01-01', to: '2999-01-01' })).preview;
         expect(now.merchandising.applied).toEqual(['brand-week']);
         expect(now.items[0].product.sku).toBe(a.sku);
-        const past = data(await week({ to: '2001-01-01' }))['preview'];
+        const past = data(await week({ to: '2001-01-01' })).preview;
         expect(past.merchandising.applied).toEqual([]);
     });
 
     it('says whether the rules in effect were saved by a visitor', async () => {
-        expect(data(await run('{ store { rulesEdited } }'))['store'].rulesEdited).toBe(false);
+        expect(data(await run('{ store { rulesEdited } }')).store.rulesEdited).toBe(false);
         const edited = createStoreApi(createStore({ catalog, rules: [], rulesEdited: true }));
         const answer = await edited.run({ query: '{ store { rulesEdited } }' }, guest);
-        expect(data(answer)['store'].rulesEdited).toBe(true);
+        expect(data(answer).store.rulesEdited).toBe(true);
     });
 });
 
@@ -310,9 +308,7 @@ describe('what shoppers clicked', () => {
         catalog.products.filter((p) => /jacket/i.test(p.name) && p.visibleTo.length === 2);
 
     it('raises a clicked product among its equals, says so in explain mode, and never passes a pin', async () => {
-        const plain = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 5 } }))[
-            'search'
-        ];
+        const plain = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 5 } })).search;
         const pinned = plain.items[0].product.sku;
         const last = plain.items[plain.items.length - 1].product.sku;
         const signals = { [last]: 20 };
@@ -328,10 +324,10 @@ describe('what shoppers clicked', () => {
                 { query: RESULTS, variables: { input: { phrase: 'jacket', pageSize: 5 } } },
                 guest
             )
-        )['search'];
+        ).search;
         expect(nudged.items[0].product.sku).toBe(pinned);
         expect(nudged.items[0].explanation.popularity).toBeNull();
-        const risen = nudged.items.findIndex((item: Loose) => item['product'].sku === last);
+        const risen = nudged.items.findIndex((item: Loose) => item.product.sku === last);
         expect(risen).toBeGreaterThan(0);
         expect(risen).toBeLessThan(plain.items.length - 1);
         expect(nudged.items[risen].explanation.popularity).toEqual({
@@ -357,16 +353,14 @@ describe('what shoppers clicked', () => {
         const query = `query ($input: SearchInput!) {
             search(input: $input) { noResults { popular { sku rating { count } } } }
         }`;
-        const before = data(await run(query, hopeless))['search'].noResults.popular;
-        const [least] = [...before].sort(
-            (a: Loose, b: Loose) => a['rating'].count - b['rating'].count
-        );
+        const before = data(await run(query, hopeless)).search.noResults.popular;
+        const [least] = [...before].sort((a: Loose, b: Loose) => a.rating.count - b.rating.count);
         const clicked = createStoreApi(createStore({ catalog, signals: { [least.sku]: 3 } }));
-        const after = data(await clicked.run({ query, variables: hopeless }, guest))['search']
+        const after = data(await clicked.run({ query, variables: hopeless }, guest)).search
             .noResults.popular;
         expect(after[0].sku).toBe(least.sku);
-        expect(after.slice(1).map((p: Loose) => p['sku'])).toEqual(
-            before.filter((p: Loose) => p['sku'] !== least.sku).map((p: Loose) => p['sku'])
+        expect(after.slice(1).map((p: Loose) => p.sku)).toEqual(
+            before.filter((p: Loose) => p.sku !== least.sku).map((p: Loose) => p.sku)
         );
     });
 });
@@ -379,7 +373,7 @@ describe('the viewer', () => {
                     { query: '{ store { memberPricing membersOnlyProducts } }' },
                     guest
                 )
-            )['store'];
+            ).store;
         const listed = catalog.products.map((p) => ({
             ...p,
             visibleTo: ['guest', 'member'] as typeof p.visibleTo,
@@ -418,8 +412,8 @@ describe('the viewer', () => {
     it('prices every product for the viewer, with no way to ask for another price', async () => {
         if (!discounted) throw new Error('expected a discounted product');
         const query = `{ product(sku: "${discounted.sku}") { price { min { amount } } variants { price { amount } } } }`;
-        const asGuest = data(await run(query, undefined, guest))['product'];
-        const asMember = data(await run(query, undefined, member))['product'];
+        const asGuest = data(await run(query, undefined, guest)).product;
+        const asMember = data(await run(query, undefined, member)).product;
         expect(asMember.price.min.amount).toBeLessThan(asGuest.price.min.amount);
         expect(asMember.variants[0].price.amount).toBeLessThan(asGuest.variants[0].price.amount);
     });
@@ -435,18 +429,18 @@ describe('the viewer', () => {
         if (!listed) throw new Error('expected a product at list price for members too');
         const query = (sku: string) =>
             `{ product(sku: "${sku}") { price { memberPrice listPrice { min { amount } max { amount } } } } }`;
-        expect(data(await run(query(discounted.sku), undefined, member))['product'].price).toEqual({
+        expect(data(await run(query(discounted.sku), undefined, member)).product.price).toEqual({
             memberPrice: true,
             listPrice: {
                 min: { amount: discounted.price.guest.min },
                 max: { amount: discounted.price.guest.max },
             },
         });
-        expect(data(await run(query(discounted.sku), undefined, guest))['product'].price).toEqual({
+        expect(data(await run(query(discounted.sku), undefined, guest)).product.price).toEqual({
             memberPrice: false,
             listPrice: null,
         });
-        expect(data(await run(query(listed.sku), undefined, member))['product'].price).toEqual({
+        expect(data(await run(query(listed.sku), undefined, member)).product.price).toEqual({
             memberPrice: false,
             listPrice: null,
         });
@@ -496,7 +490,7 @@ describe('recommendations', () => {
                     },
                     viewer
                 )
-            )['recommendations'];
+            ).recommendations;
             const search = data(
                 await quiet.run(
                     {
@@ -512,7 +506,7 @@ describe('recommendations', () => {
                     },
                     viewer
                 )
-            )['search'];
+            ).search;
             expect(search.total).toBe(0);
             expect(rail.source).toBe('CATEGORY_MOST_RATED');
             const railed = rail.items.map((p: { sku: string }) => p.sku);
@@ -542,30 +536,28 @@ describe('recommendations', () => {
             );
         const cold = await ask();
         expect(cold.extensions).toEqual({ volatile: true });
-        expect(data(cold)['recommendations']).toMatchObject({
+        expect(data(cold).recommendations).toMatchObject({
             source: 'CATEGORY_MOST_RATED',
             viewedTogether: 0,
             category: { id: b.categoryId },
         });
-        expect(data(cold)['recommendations'].items).toHaveLength(3);
+        expect(data(cold).recommendations.items).toHaveLength(3);
 
         await events.append([{ id: 'v1', kind: 'view', at: 1, sku: a.sku, session: 't1' }]);
         const warm = await ask('t1');
-        expect(data(warm)['recommendations'].source).toBe('VIEWED_TOGETHER');
-        expect(data(warm)['recommendations'].items[0].sku).toBe(a.sku);
+        expect(data(warm).recommendations.source).toBe('VIEWED_TOGETHER');
+        expect(data(warm).recommendations.items[0].sku).toBe(a.sku);
         // One was viewed with it, and the category's most rated fill the rest.
-        expect(data(warm)['recommendations'].viewedTogether).toBe(1);
-        expect(data(warm)['recommendations'].items).toHaveLength(3);
+        expect(data(warm).recommendations.viewedTogether).toBe(1);
+        expect(data(warm).recommendations.items).toHaveLength(3);
     });
 
     it('is nothing for a product the viewer may not see', async () => {
         const hidden = catalog.products.find((p) => p.visibleTo.length === 1);
         if (!hidden) throw new Error('expected a members-only product');
         const query = `query ($sku: ID!) { recommendations(sku: $sku) { source } }`;
-        expect(data(await run(query, { sku: hidden.sku }))['recommendations']).toBeNull();
-        expect(
-            data(await run(query, { sku: hidden.sku }, member))['recommendations']
-        ).toMatchObject({
+        expect(data(await run(query, { sku: hidden.sku })).recommendations).toBeNull();
+        expect(data(await run(query, { sku: hidden.sku }, member)).recommendations).toMatchObject({
             source: 'CATEGORY_MOST_RATED',
         });
         const plain = await run('{ store { name } }');
@@ -574,7 +566,7 @@ describe('recommendations', () => {
             `query ($sku: ID!) { recommendations(sku: $sku, limit: null) { items { sku } } }`,
             { sku: catalog.products[0]?.sku ?? '' }
         );
-        expect(data(nulled)['recommendations'].items).toHaveLength(6);
+        expect(data(nulled).recommendations.items).toHaveLength(6);
     });
 });
 

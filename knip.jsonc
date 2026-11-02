@@ -4,8 +4,10 @@
     // Each workspace names the files something runs directly. The private
     // packages' entries count, so an export no other package imports is
     // found, and the published engine's entry is its public API, so it does not.
-    // The build configs map each package's dist back to its source, so this
-    // runs before anything is built.
+    // Each package's build config says where its build writes, so a package's
+    // dist maps back to its source and this runs before anything is built. The
+    // storefront and the root build nothing another package imports, so their
+    // files are read as they are.
     "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
     // Written by codegen in full, whatever the operations use.
     "ignore": ["**/src/generated/**"],

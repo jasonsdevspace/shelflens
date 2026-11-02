@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import js from '@eslint/js';
@@ -52,7 +52,9 @@ const sizeBudgets = {
 /** The workspace's packages, each with a manifest of its own. */
 const WORKSPACES = readdirSync(new URL('packages/', import.meta.url), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
+    .map((entry) => entry.name)
+    // A folder left behind by another branch, with no manifest, is not a package.
+    .filter((name) => existsSync(new URL(`packages/${name}/package.json`, import.meta.url)));
 
 /** Code that runs in the browser loads no Node module. */
 const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot load Node.' };
@@ -103,7 +105,9 @@ export default defineConfig(
         extends: [...tseslint.configs.recommendedTypeChecked],
         languageOptions: {
             parserOptions: {
-                projectService: { allowDefaultProject: ['vitest.config.ts'] },
+                projectService: {
+                    allowDefaultProject: ['vitest.config.ts', 'source-condition.ts'],
+                },
                 tsconfigRootDir: import.meta.dirname,
             },
         },

@@ -1,6 +1,8 @@
 import react from '@vitejs/plugin-react';
 import { defaultClientConditions, defineConfig } from 'vite';
 
+import { SOURCE_CONDITION } from '../../source-condition.js';
+
 /**
  * The widget as one file, beside the page, for a host page to load.
  *
@@ -12,7 +14,7 @@ import { defaultClientConditions, defineConfig } from 'vite';
  */
 export default defineConfig({
     // Each workspace package's source, by the condition its exports name.
-    resolve: { conditions: ['source', ...defaultClientConditions] },
+    resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
     plugins: [react()],
     build: {
         outDir: 'dist',

@@ -25,7 +25,7 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
-            "source": "./src/index.ts",
+            "@shelflens/source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }

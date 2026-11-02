@@ -32,7 +32,7 @@ test proves what it must contain.
 
 ## Decision
 
-Option B. The key is `cacheKey` in `@shelflens/api`, and it is made of:
+Option B. The key is `cacheKey`, inside `@shelflens/api`, and it is made of:
 
 - **The store version.** The catalog's version and a fingerprint of the rules, folded together
   when the store is built, so an import or a rule change changes every key at once. The rules
