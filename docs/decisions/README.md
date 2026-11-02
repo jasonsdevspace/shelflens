@@ -39,3 +39,6 @@ so the evidence was still fresh.
 14. [The engine is proven on the Node it declares, as a user installs it](0014-the-engine-is-proven-on-the-node-it-declares.md):
     the packed tarball installed into an empty project and used on the lowest Node its engines
     range admits, with its types compiled as Node and a bundler resolve them.
+15. [One store host for every transport](0015-one-store-host-for-every-transport.md):
+    the worker, the Node server and the dev server serve one store host from the API, which
+    folds clicks in when a visit begins and keeps the index when a set of rules is saved.

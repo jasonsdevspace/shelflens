@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs';
 
 import {
     createMemoryEventStore,
-    createStore,
-    createStoreApi,
+    createMemoryRuleStore,
+    createStoreHost,
     parseRulesFile,
-    withResponseCache,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 
@@ -61,10 +60,17 @@ const origins: OriginsSupport | undefined =
           }
         : undefined;
 
-const store = createStore({ catalog: generateCatalog({ products }), rules });
+const catalog = generateCatalog({ products });
 const events = createMemoryEventStore();
+// The same host the service worker runs: the clicks folded in when a visit begins,
+// and rules a merchandiser saves kept in memory for as long as the server runs.
+const host = createStoreHost({
+    source: () => Promise.resolve({ catalog, rules }),
+    events,
+    rules: createMemoryRuleStore(),
+});
 const server = createServer({
-    api: withResponseCache(createStoreApi(store, { events })),
+    host,
     persistedOnly: process.env.PERSISTED_ONLY === 'true',
     // Only behind a proxy that sets the forwarded headers, which a client could otherwise forge.
     trustProxy: process.env.TRUST_PROXY === 'true',
@@ -73,10 +79,12 @@ const server = createServer({
 });
 
 server.listen(port, () => {
-    console.log(
-        `listening on ${port}, ${products} products, ${rules.length} rules, store ${store.version}` +
-            (origins ? `, open to ${origins.allowed.join(' ')}` : '')
-    );
+    void host.current().then(({ api }) => {
+        console.log(
+            `listening on ${port}, ${products} products, ${rules.length} rules, store ${api.version}` +
+                (origins ? `, open to ${origins.allowed.join(' ')}` : '')
+        );
+    });
 });
 
 const shutdown = () => {

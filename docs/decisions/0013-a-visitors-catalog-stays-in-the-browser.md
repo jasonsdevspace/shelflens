@@ -78,10 +78,11 @@ again keeps its answers.
   rules and clicks are kept and nothing is asked. The page asks then, and a visitor who keeps
   them is taken back to the products and the search they left.
 - The rules editor works on a visitor's store as it does on the demo's. The store over a
-  visitor's catalog ships no rules, so discarding them leaves none. A save builds the store
-  again, which at the cap costs about what a cold start's build does, a third of a second on a
-  laptop and about a second and a quarter slowed for a phone, by the
-  [catalog size benchmark](../benchmarks/catalog-size.md), inside its two-second budget.
+  visitor's catalog ships no rules, so discarding them leaves none. A save builds a new store
+  over the index already built, which at the cap takes a few milliseconds on a laptop rather
+  than a cold build's third of a second
+  ([decision 15](0015-one-store-host-for-every-transport.md)). Loading a new catalog still builds
+  everything, at the cost the [catalog size benchmark](../benchmarks/catalog-size.md) records.
 - The widget over a visitor's catalog runs on a made-up store's page at `try/widget/`, embedded
   as a store would embed it and showing the snippet a store adds. The visitor's worker answers
   only the pages it controls, those under `try/`, and it keeps the catalog in this site's

@@ -23,6 +23,12 @@ answer it over `@shelflens/search`.
   manifest `npm run codegen` writes, with its variables and the version it expects in the URL.
   A full query is a `POST`, which a host may refuse. An answer is cacheable only under the version
   that answered it, and the viewer is a header the cache varies on.
+- **One store host.** `createStoreHost` builds the store from a catalog, the shipped rules, the
+  rules a merchandiser saved and the clicks collected so far, and builds it again as a new version
+  when a visit begins after new clicks or a set of rules is saved. One change happens at a time,
+  and a build over the same catalog keeps its index. The service worker, the Node server and the
+  dev server all serve the store it holds, so none of them can rank differently.
+  [Decision record 15](../../docs/decisions/0015-one-store-host-for-every-transport.md).
 - **Requests have limits.** Depth and width are checked at validation. A client's own mistake
   comes back with a message and a code. A resolver's failure comes back as one fixed message
   with a path, never the reason.

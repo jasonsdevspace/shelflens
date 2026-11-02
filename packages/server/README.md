@@ -2,7 +2,7 @@
 
 The API over HTTP, for local runs and for any host that cannot run a service worker.
 
-One endpoint, `/graphql`, and `GET /health`. A persisted operation is a `GET` naming one of the
+Three paths, `/graphql`, `/events` and `/rules`, and `GET /health`. A persisted operation is a `GET` naming one of the
 storefront's operations by hash, with its variables and the store version it expects in the
 URL. A full query is a `POST`, refused when `persistedOnly` is set, as the public demo does. The
 customer group arrives in the `shelflens-customer-group` header, standing in for the session a
@@ -19,9 +19,19 @@ curl localhost:8080/graphql --header 'content-type: application/json' \
   --data '{ "query": "{ store { name catalogVersion } }" }'
 ```
 
+The store comes from the same store host the service worker runs, `createStoreHost` in
+`@shelflens/api`. A batch posted to `/events` is kept, and a request that names no store version,
+which is how a page asks its first question, folds the clicks collected since into ranking before
+it is answered. A request mid-visit names the version it has and keeps it. `/rules` reads,
+replaces and resets the rules in effect, as the demo's rules editor does in the browser, kept in
+memory for as long as the server runs. A save keeps the index and applies the new set, under a
+new store version.
+
 `createHandler` is the request handler on its own, for a host that already has a server. The
-storefront's dev server uses it to answer `/graphql` in development, so the same API runs there
-that the worker runs in production. `createServer` wraps it in `node:http`.
+storefront's dev server uses it with a store host of its own, so the store that answers in
+development is built and refreshed as the worker's is in production. `createServer` wraps it in
+`node:http`. Either takes a `host`, or a fixed `api` for a store that never changes, which
+answers `/rules` with a 404.
 
 `PORT` and `PRODUCTS` set the port and the size of the generated catalog. `PERSISTED_ONLY=true`
 refuses full queries. Behind one proxy that adds `x-forwarded-for` and sets `x-forwarded-proto`, `TRUST_PROXY=true` lets the rate limit count the address the proxy added, the last in the list, and the server read its own scheme from the proxy. Without it both headers are ignored, since any client can send them, so a server behind a proxy that ends TLS needs it, or `OWN_ORIGIN`, for its own page to be its own.
