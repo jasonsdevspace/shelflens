@@ -1,6 +1,7 @@
 import { type CacheKey, cacheKey } from './cache-key.js';
 import type { Viewer } from './context.js';
 import type { StoreApi, StoreRequest, StoreResponse } from './execute.js';
+import { touch, trimOldest } from './recent.js';
 
 /**
  * The API with its answers remembered.
@@ -64,8 +65,7 @@ export const createResponseCache = (
         const found = entries.get(id);
         if (found && (!found.settled || at - found.at < maxAgeMs)) {
             hits += 1;
-            entries.delete(id);
-            entries.set(id, found);
+            touch(entries, id, found);
             return found.response;
         }
         if (found) entries.delete(id);
@@ -91,11 +91,7 @@ export const createResponseCache = (
             }
         );
         entries.set(id, { at, settled: false, response });
-        while (entries.size > maxEntries) {
-            const oldest = entries.keys().next().value;
-            if (oldest === undefined) break;
-            entries.delete(oldest);
-        }
+        trimOldest(entries, maxEntries);
         return response;
     };
 

@@ -31,3 +31,11 @@ export const TRY_BUDGET_BYTES = 115 * 1024;
  * none. Measured at 74 KB compressed when the budget was set.
  */
 export const WORKER_BUDGET_BYTES = 85 * 1024;
+
+/**
+ * A sentence only the golden queries hold, which the tests read and nothing
+ * shipped should. The budget check and the bundle test refuse any file with
+ * it, and a test holds it to the golden queries' own text, so rewording them
+ * cannot leave the check looking for nothing.
+ */
+export const FIXTURE_PROBE = 'a two-word product name outranks products matching one word';

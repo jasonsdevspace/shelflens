@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     BUDGET_BYTES,
+    FIXTURE_PROBE,
     TRY_BUDGET_BYTES,
     WIDGET_BUDGET_BYTES,
     WORKER_BUDGET_BYTES,
@@ -67,15 +68,18 @@ const bundled = async (entry: string) => {
     };
 };
 
-/** Text only the golden queries hold, which the tests read and no page should. */
-const FIXTURE = GOLDEN_CASES[0]?.because ?? 'the golden queries';
+describe('the fixture probe', () => {
+    it('is the text of one of the golden queries', () => {
+        expect(GOLDEN_CASES.map((golden) => golden.because)).toContain(FIXTURE_PROBE);
+    });
+});
 
 describe('the page in a browser', () => {
     it('stays within its download budget, with nothing from GraphQL or a test in it', async () => {
         const { code, compressed } = await bundled('./main.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
-        expect(code).not.toContain(FIXTURE);
+        expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(BUDGET_BYTES);
     }, 60_000);
 
@@ -83,7 +87,7 @@ describe('the page in a browser', () => {
         const { code, compressed } = await bundled('./try/main.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
-        expect(code).not.toContain(FIXTURE);
+        expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(TRY_BUDGET_BYTES);
     }, 60_000);
 });
@@ -93,7 +97,7 @@ describe('the widget in a host page', () => {
         const { code, compressed } = await bundled('./widget/index.tsx');
         expect(code).not.toContain('GraphQLError');
         expect(code).not.toContain('buildSchema');
-        expect(code).not.toContain(FIXTURE);
+        expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(WIDGET_BUDGET_BYTES);
     }, 60_000);
 });
@@ -101,7 +105,7 @@ describe('the widget in a host page', () => {
 describe('the service worker', () => {
     it('stays within its own budget, with no test fixture in it', async () => {
         const { code, compressed } = await bundled('./worker/sw.ts');
-        expect(code).not.toContain(FIXTURE);
+        expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(WORKER_BUDGET_BYTES);
     }, 60_000);
 });

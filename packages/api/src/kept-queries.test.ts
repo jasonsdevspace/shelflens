@@ -3,7 +3,7 @@ import { parse } from 'graphql';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStore, viewerFromHeader } from './context.js';
-import { createStoreApi, KEPT_QUERIES } from './execute.js';
+import { createStoreApi, KEPT_QUERIES, KEPT_QUERY_LENGTH } from './execute.js';
 
 /*
  * The API keeps each query it has parsed and validated, so the operations a
@@ -46,6 +46,27 @@ describe('a query the API has seen', () => {
         const first = await api.run({ query }, guest);
         expect(first.errors?.[0]?.extensions?.code).toBe('GRAPHQL_VALIDATION_FAILED');
         expect(await api.run({ query }, guest)).toEqual(first);
+        expect(parsed).toHaveBeenCalledTimes(2);
+    });
+
+    it('is shared by stores given equal limits, however each was written', async () => {
+        const query = fresh();
+        await createStoreApi(store, { limits: { maxDepth: 8, maxFields: 200 } }).run(
+            { query },
+            guest
+        );
+        await createStoreApi(store, { limits: { maxDepth: 8, maxFields: 200 } }).run(
+            { query },
+            guest
+        );
+        expect(parsed).toHaveBeenCalledOnce();
+    });
+
+    it('is not kept when it is longer than any the page sends', async () => {
+        const api = createStoreApi(store);
+        const query = `${fresh()}${' '.repeat(KEPT_QUERY_LENGTH)}`;
+        await api.run({ query }, guest);
+        await api.run({ query }, guest);
         expect(parsed).toHaveBeenCalledTimes(2);
     });
 

@@ -25,10 +25,11 @@ answer it over `@shelflens/search`.
   that answered it, and the viewer is a header the cache varies on.
 - **A query is read once.** The schema is built once, since it describes the store's shape and
   not one store's contents, and each query that validates is kept, by its text, the most recently
-  used first, up to `KEPT_QUERIES`. A store built again for a saved rule or a visit's clicks
-  answers the page's operations without parsing or validating them again. A query that fails is
-  never kept, so broken ones cannot push the page's own out, and one kept under a set of limits is
-  checked again under any other.
+  used first, up to `KEPT_QUERIES` of at most `KEPT_QUERY_LENGTH` characters. A store built again
+  for a saved rule or a visit's clicks answers the page's operations without parsing or
+  validating them again. A query that fails is never kept, and one kept under a set of limits is
+  checked again under any other. A host that takes full queries can see the page's operations
+  pushed out by enough different ones, and reads them again when they return.
 - **One store host.** `createStoreHost` builds the store from a catalog, the shipped rules, the
   rules a merchandiser saved and the clicks collected so far, and builds it again as a new version
   when a visit begins after new clicks or a set of rules is saved. One change happens at a time,

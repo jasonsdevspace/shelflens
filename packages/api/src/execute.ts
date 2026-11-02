@@ -11,11 +11,13 @@ import {
     specifiedRules,
     validate,
     type ValidationContext,
+    type ValidationRule,
 } from 'graphql';
 
 import type { Context, Store, Viewer } from './context.js';
 import type { EventStore } from './events.js';
 import type { Resolvers } from './generated/schema.js';
+import { touch, trimOldest } from './recent.js';
 import { resolvers } from './resolvers.js';
 import { buildStoreSchema } from './schema.js';
 
@@ -176,24 +178,39 @@ const storeSchema = (): GraphQLSchema => (schemaOnce ??= attach(buildStoreSchema
 export const KEPT_QUERIES = 64;
 
 /**
+ * The longest query kept, in characters. The page's longest operation is
+ * about a kilobyte, and this bounds what the kept set can hold however
+ * large the queries a host accepts.
+ */
+export const KEPT_QUERY_LENGTH = 4096;
+
+/** What is kept for one set of limits: its validation rules, and its queries. */
+interface Kept {
+    readonly rules: readonly ValidationRule[];
+    readonly documents: Map<string, DocumentNode>;
+}
+
+/**
  * Queries already parsed and validated, by their text, kept per set of
  * limits, since a query within one set may be past another.
  *
  * The page sends the same few operations all visit, and parsing and
  * validating one costs more than answering it from the index. Only a query
- * that validated is kept, the most recently used first, so a stream of
- * different or broken queries can neither grow the set nor push the page's
- * own operations out for long.
+ * that validated is kept, up to a length, the most recently used first, so
+ * a broken query is never kept and the set never grows past its bound. A
+ * host that also takes full queries can see the page's operations pushed
+ * out by enough different ones, and reads them again when they return.
  */
-const kept = new WeakMap<Limits, Map<string, DocumentNode>>();
+const kept = new Map<string, Kept>();
 
-const keptFor = (limits: Limits): Map<string, DocumentNode> => {
-    let documents = kept.get(limits);
-    if (!documents) {
-        documents = new Map();
-        kept.set(limits, documents);
+const keptFor = (limits: Limits): Kept => {
+    const id = `${String(limits.maxDepth)}:${String(limits.maxFields)}`;
+    let found = kept.get(id);
+    if (!found) {
+        found = { rules: [...specifiedRules, withinLimits(limits)], documents: new Map() };
+        kept.set(id, found);
     }
-    return documents;
+    return found;
 };
 
 type Prepared =
@@ -201,11 +218,10 @@ type Prepared =
 
 /** The query parsed and validated, from what was kept when it was seen before. */
 const prepare = (query: string, limits: Limits): Prepared => {
-    const documents = keptFor(limits);
+    const { rules, documents } = keptFor(limits);
     const known = documents.get(query);
     if (known) {
-        documents.delete(query);
-        documents.set(query, known);
+        touch(documents, query, known);
         return { document: known };
     }
     let document;
@@ -216,13 +232,11 @@ const prepare = (query: string, limits: Limits): Prepared => {
             error instanceof GraphQLError ? error.message : 'the query could not be parsed';
         return { errors: [{ message, extensions: { code: 'GRAPHQL_PARSE_FAILED' } }] };
     }
-    const problems = validate(storeSchema(), document, [...specifiedRules, withinLimits(limits)]);
+    const problems = validate(storeSchema(), document, rules);
     if (problems.length > 0) return { errors: problems.map(shaped) };
-    documents.set(query, document);
-    while (documents.size > KEPT_QUERIES) {
-        const oldest = documents.keys().next().value;
-        if (oldest === undefined) break;
-        documents.delete(oldest);
+    if (query.length <= KEPT_QUERY_LENGTH) {
+        documents.set(query, document);
+        trimOldest(documents, KEPT_QUERIES);
     }
     return { document };
 };

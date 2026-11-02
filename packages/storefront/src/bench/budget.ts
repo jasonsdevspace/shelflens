@@ -1,10 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-import { GOLDEN_CASES } from '@shelflens/search';
-
 import {
     BUDGET_BYTES,
+    FIXTURE_PROBE,
     TRY_BUDGET_BYTES,
     WIDGET_BUDGET_BYTES,
     WORKER_BUDGET_BYTES,
@@ -22,7 +21,7 @@ import {
  * before it can answer: a chunk it imports later, on demand, is not part
  * of it, and the stylesheets are measured by Lighthouse with the page. A page past its budget, or
  * with anything from GraphQL in it, fails the run, and so does any file
- * that carries a test fixture. The worker carries GraphQL by design. The test beside the
+ * that carries the golden queries, the tests' own fixture. The worker carries GraphQL by design. The test beside the
  * budgets measures each entry as esbuild bundles it, which catches a
  * change in the source before anything is built.
  */
@@ -50,9 +49,6 @@ const scriptsOf = (page: string): readonly string[] => {
         return src.slice(at);
     });
 };
-
-/** Text only the golden queries hold, which the tests read and nothing shipped should. */
-const FIXTURE = GOLDEN_CASES[0]?.because ?? 'the golden queries';
 
 const SHIPPED: readonly {
     readonly what: string;
@@ -82,7 +78,8 @@ for (const { what, files, budget, graphql } of SHIPPED) {
         if (!graphql && (text.includes('GraphQLError') || text.includes('buildSchema'))) {
             failures.push(`${what} carries GraphQL in ${file}`);
         }
-        if (text.includes(FIXTURE)) failures.push(`${what} carries a test fixture in ${file}`);
+        if (text.includes(FIXTURE_PROBE))
+            failures.push(`${what} carries the golden queries in ${file}`);
     }
     const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
     console.log(`${what}: ${kb(compressed)} of ${kb(budget)}, in ${files.join(', ')}`);
