@@ -263,6 +263,18 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(forgetEvents).toHaveBeenCalledTimes(3);
     });
 
+    it('builds a file just loaded from the catalog in hand, without reading it back', async () => {
+        const catalogs = createMemoryCatalogStore();
+        const reads = vi.spyOn(catalogs, 'current');
+        const api = createWorkerApi({ catalogs, base: BASE });
+        expect((await api.handle(catalogRequest('PUT', LAMPS)))?.status).toBe(204);
+        // Nothing was loaded before, so the one read is the check for a last catalog.
+        expect(reads).toHaveBeenCalledOnce();
+        expect((await api.handle(catalogRequest('PUT', MUGS)))?.status).toBe(204);
+        expect(await versionOf(await api.handle(get({ op: STORE })))).toBe(storeVersion(MUGS));
+        expect(reads).toHaveBeenCalledOnce();
+    });
+
     it('keeps the last catalog and its rules when a new one cannot be built', async () => {
         // Rules that cannot be cleared, and that no store can be built with.
         let saved: readonly Rule[] | undefined;
