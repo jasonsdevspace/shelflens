@@ -467,7 +467,7 @@ export const RulesPanel = ({
     const edit = (next: Form) => editor.edit(next, products);
     return (
         <div className="rules">
-            <h2 className="facet-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
+            <h2 className="rules-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
             {!byRelevance && (
                 <p className="notice">
                     Sorting sets this search&rsquo;s rules aside.{' '}

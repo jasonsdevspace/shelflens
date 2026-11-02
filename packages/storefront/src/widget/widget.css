@@ -20,6 +20,8 @@
     --control: #8a8a8a;
     --warn: #b7472a;
     --swatch-edge: rgba(0, 0, 0, 0.12);
+    --ring-width: 2px;
+    --ring-offset: 2px;
     display: block;
     position: relative;
     isolation: isolate;

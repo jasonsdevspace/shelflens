@@ -279,7 +279,7 @@ const SortField = ({
     <label className="sort">
         <span className="sort-label">Sort by</span>
         <select
-            className="sort-select"
+            className="select"
             value={sortKey}
             onChange={(event) =>
                 navigate({ ...state, sort: event.target.value as SortKey, page: 1 })

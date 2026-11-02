@@ -160,7 +160,7 @@ const ViewerSwitch = ({
     <label className="viewer">
         Shopping as
         <select
-            className="viewer-select"
+            className="select"
             value={group}
             onChange={(event) => onChange(event.target.value === 'member' ? 'member' : 'guest')}
         >
