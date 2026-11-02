@@ -6,9 +6,9 @@ import { EVENT_LIMIT, type EventStore, type StoreEvent } from '@shelflens/api';
  * The worker is stopped after a few seconds idle, so anything it keeps in
  * memory is gone between a shopper's clicks. IndexedDB outlives it, and
  * the page shares it, so a browser test can look at what arrived. Each
- * event is stored under its id, and storing an id again replaces the
- * same event, which is how a batch delivered twice counts once. Past the
- * limit the oldest go, by the time the page gave them.
+ * event is stored under its id, and an id already kept is left as it was,
+ * which is how a batch delivered twice counts once, as in memory. Past
+ * the limit the oldest go, by the time the page gave them, then by id.
  */
 
 /** The demo's database. The page for a visitor's own catalog names its own. */
@@ -95,7 +95,13 @@ export const createIndexedDbEventStore = ({
         append: async (events) => {
             const transaction = (await database()).transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
-            for (const event of events) store.put(event);
+            const kept = await Promise.all(events.map((event) => request(store.getKey(event.id))));
+            const taken = new Set<string>();
+            events.forEach((event, index) => {
+                if (kept[index] !== undefined || taken.has(event.id)) return;
+                taken.add(event.id);
+                store.put(event);
+            });
             await trim(store, limit);
             await done(transaction);
         },

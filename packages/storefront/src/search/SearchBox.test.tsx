@@ -43,7 +43,14 @@ const suggestionsFor = (phrase: string): Suggestions => ({
     products: [product(`${phrase}-1`, `${phrase} one`), product(`${phrase}-2`, `${phrase} two`)],
 });
 
-const createNetwork = () => {
+/**
+ * A network that holds each request until the test answers it. A request
+ * the page aborts is refused, as fetch refuses it, unless `late` is set:
+ * then the answer arrives anyway, as it would by any path that does not
+ * honor the abort, so what keeps it off the page is the page's own check
+ * that an answer is for the newest phrase.
+ */
+const createNetwork = ({ late = false }: { readonly late?: boolean } = {}) => {
     const pending: Pending[] = [];
     const fetchImpl: typeof fetch = (url, init) =>
         new Promise((resolve, reject) => {
@@ -54,7 +61,7 @@ const createNetwork = () => {
             ).searchParams.get('variables');
             const variables = JSON.parse(encoded ?? '{}') as { phrase: string };
             const signal = init?.signal ?? undefined;
-            signal?.addEventListener('abort', () => reject(new Error('aborted')));
+            if (!late) signal?.addEventListener('abort', () => reject(new Error('aborted')));
             pending.push({
                 phrase: variables.phrase,
                 signal,
@@ -116,7 +123,7 @@ describe('the popover under real typing', () => {
     });
 
     it('shows the answer to the newest phrase even when an older answer arrives later', async () => {
-        const network = createNetwork();
+        const network = createNetwork({ late: true });
         const { input } = renderBox(network.client);
 
         typeQuickly(input, 'tr');
