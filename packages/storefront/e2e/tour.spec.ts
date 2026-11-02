@@ -1,12 +1,12 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { audit, expect, test } from './support.js';
+
+// The tour's own tests are the first visit the others are not.
+test.use({ tourSeen: false });
 
 /*
  * The tour on a first visit: it opens itself, each stop leads somewhere,
  * and once finished it stays closed until asked for.
  */
-
-test.skip(({ isMobile }) => isMobile, 'the phone has its own spec');
 
 test('opens on a first visit, walks every stop, and stays closed once finished', async ({
     page,
@@ -15,7 +15,7 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     const tour = page.getByRole('complementary', { name: 'Tour' });
     await expect(tour).toBeVisible();
     await expect(tour).toContainText('Stop 1 of');
-    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await audit(page);
 
     // The cache key stop, the fifth, lands on the product only members may see.
     for (let next = 0; next < 4; next += 1) {

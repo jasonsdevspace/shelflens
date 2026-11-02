@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-import AxeBuilder from '@axe-core/playwright';
-import { expect, type Locator, type Page, type Request, test } from '@playwright/test';
+import type { Locator, Request } from '@playwright/test';
+
+import { audit, expect, type Page, test } from './support.js';
 
 /*
  * A visitor's own catalog, through the worker registered for try/.
@@ -13,17 +14,7 @@ import { expect, type Locator, type Page, type Request, test } from '@playwright
  * leaves the browser, and the demo beside it is untouched afterwards.
  */
 
-test.skip(
-    ({ isMobile }) => isMobile,
-    'the desktop covers the page, and the store has its own phone spec'
-);
-
 const SAMPLE = new URL('../dist/try/sample-products.csv', import.meta.url).pathname;
-
-const audit = async (page: Page) => {
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations).toEqual([]);
-};
 
 /** Every request a page makes, for checking where they went. */
 const recordRequests = (page: Page): Request[] => {
@@ -107,7 +98,6 @@ test('searches a visitor’s file with everything the demo has, without it leavi
 });
 
 test('the demo beside it keeps its own catalog once a visitor’s is loaded', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'));
     await loadSample(page);
     await page.goto('./');
     await page.getByRole('combobox', { name: 'Search the store' }).fill('ridgeback');

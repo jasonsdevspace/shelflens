@@ -121,20 +121,32 @@ describe('a store that starts', () => {
                 ? new Promise<Response>(() => undefined)
                 : answer(input, init)
         );
-        render(
-            <App
-                apiUrl="http://store.test/graphql"
-                eventsUrl="http://store.test/events"
-                rulesUrl="http://store.test/rules"
-                ready={Promise.resolve()}
-            />
-        );
+        // The wait for the categories is the store's own clock, so the test moves it.
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            render(
+                <App
+                    apiUrl="http://store.test/graphql"
+                    eventsUrl="http://store.test/events"
+                    rulesUrl="http://store.test/rules"
+                    ready={Promise.resolve()}
+                />
+            );
+            // Moved a step at a time, so the store's own answer, which is not on the
+            // clock, lands between steps, and the moment the page shows is known.
+            const search = () => screen.queryByRole('combobox', { name: 'Search the store' });
+            let moved = 0;
+            while (!search() && moved < REVEAL_WITHIN_MS * 2) {
+                await act(() => vi.advanceTimersByTimeAsync(50));
+                moved += 50;
+            }
+            expect(search()).toBeInTheDocument();
+            expect(moved).toBeGreaterThanOrEqual(REVEAL_WITHIN_MS);
+        } finally {
+            vi.useRealTimers();
+        }
         expect(
-            await screen.findByRole(
-                'combobox',
-                { name: 'Search the store' },
-                { timeout: REVEAL_WITHIN_MS + 1000 }
-            )
+            await screen.findByRole('combobox', { name: 'Search the store' })
         ).toBeInTheDocument();
         expect(screen.queryByRole('navigation', { name: 'Categories' })).not.toBeInTheDocument();
     });
@@ -534,12 +546,12 @@ describe('narrowing', () => {
         await settled();
         expect(window.location.search).toMatch(/^\?color=/);
 
-        await act(async () => {
+        act(() => {
             window.history.back();
-            await new Promise((resolve) => setTimeout(resolve, 0));
         });
+        // The browser moves back on a task of its own, so the address is waited for.
+        await waitFor(() => expect(window.location.search).toBe(''));
         await settled();
-        expect(window.location.search).toBe('');
         expect(within(facet('Color')).getAllByRole('checkbox')[0]).not.toBeChecked();
     });
 });
@@ -895,7 +907,8 @@ describe('as a member', () => {
         await user.click(await screen.findByRole('button', { name: 'Back to results' }));
         await settled();
         expect(line()?.textContent).toMatch(/^Shopping as a member/);
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        // A timer queued after the notice's own, so the notice has had its turn to speak.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         expect(said()).toBe(0);
         // Switching back says the guest line, with the way to see what it hides.
         await shopAs(user, 'guest');

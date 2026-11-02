@@ -214,9 +214,20 @@ describe('announcing a visit', () => {
             announceVisit(answering as unknown as ServiceWorker, 50)
         ).resolves.toBeUndefined();
         const silent = { postMessage: vi.fn() };
-        const began = Date.now();
-        await announceVisit(silent, 20);
-        expect(Date.now() - began).toBeGreaterThanOrEqual(15);
+        vi.useFakeTimers();
+        try {
+            let resolved = false;
+            const waiting = announceVisit(silent, 20).then(() => {
+                resolved = true;
+            });
+            await vi.advanceTimersByTimeAsync(19);
+            expect(resolved).toBe(false);
+            await vi.advanceTimersByTimeAsync(1);
+            await waiting;
+            expect(resolved).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('waits for its own worker when the worker of another scope controls the page', async () => {

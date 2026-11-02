@@ -13,14 +13,27 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: Boolean(process.env.CI),
     retries: process.env.CI ? 1 : 0,
+    // A test that passes only when run again is flaky, and fails the run by name
+    // rather than hiding behind the retry.
+    failOnFlakyTests: Boolean(process.env.CI),
     reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
     use: {
         baseURL: 'http://localhost:4173/',
         trace: 'retain-on-failure',
     },
+    // Each project names the files it runs, so a run lists only real skips. The phone
+    // has its own spec for the store, and runs what lays out differently on a phone.
     projects: [
-        { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-        { name: 'phone', use: { ...devices['Pixel 7'] } },
+        {
+            name: 'desktop',
+            use: { ...devices['Desktop Chrome'] },
+            testIgnore: /phone\.spec\.ts$/,
+        },
+        {
+            name: 'phone',
+            use: { ...devices['Pixel 7'] },
+            testMatch: /(phone|widget|try-widget|embed|themes)\.spec\.ts$/,
+        },
     ],
     webServer: [
         {

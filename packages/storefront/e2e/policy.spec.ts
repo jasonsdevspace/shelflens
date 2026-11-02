@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './support.js';
 
 /*
  * Every page carries a Content Security Policy that allows only its own
@@ -8,15 +8,12 @@ import { expect, type Page, test } from '@playwright/test';
  * violation collected, and none is allowed.
  */
 
-test.skip(({ isMobile }) => isMobile, 'one browser is enough for the policy');
-
 const watch = async (page: Page): Promise<string[]> => {
     const refused: string[] = [];
     page.on('console', (message) => {
         if (/Content Security Policy/i.test(message.text())) refused.push(message.text());
     });
     await page.addInitScript(() => {
-        localStorage.setItem('shelflens.tour', 'seen');
         document.addEventListener('securitypolicyviolation', (event) => {
             console.error(
                 `Content Security Policy refused ${event.violatedDirective}: ${event.blockedURI}`

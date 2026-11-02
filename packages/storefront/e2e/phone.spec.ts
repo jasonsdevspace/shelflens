@@ -1,17 +1,9 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { audit, expect, test } from './support.js';
 
 /*
  * The same storefront on a phone: the facets are a drawer, and the popover
  * takes the width of the screen.
  */
-
-test.skip(({ isMobile }) => !isMobile, 'phone layout only');
-
-// The tour opens itself on a first visit. These are not that visit.
-test.beforeEach(({ page }) =>
-    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
-);
 
 test('the facets open in a drawer, narrow the results, and close back to them', async ({
     page,
@@ -37,8 +29,7 @@ test('the facets open in a drawer, narrow the results, and close back to them', 
     await brand.check();
     await expect(page).toHaveURL(/brand=/);
     await expect(drawer.getByRole('button', { name: /Show \d+ results/ })).toBeVisible();
-    const audit = await new AxeBuilder({ page }).analyze();
-    expect(audit.violations).toEqual([]);
+    await audit(page);
 
     await drawer.getByRole('button', { name: /Show \d+ results/ }).click();
     await expect(drawer).toBeHidden();
@@ -81,8 +72,7 @@ test('the explainer fits a phone, with its steps stacked and nothing scrolling s
         () => document.documentElement.scrollWidth - window.innerWidth
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations).toEqual([]);
+    await audit(page);
 });
 
 test('the recent searches fit the screen and audit clean', async ({ page }) => {
@@ -101,8 +91,7 @@ test('the recent searches fit the screen and audit clean', async ({ page }) => {
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     }
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations).toEqual([]);
+    await audit(page);
 });
 
 test('a rule half typed in the drawer survives the device turning', async ({ page }) => {

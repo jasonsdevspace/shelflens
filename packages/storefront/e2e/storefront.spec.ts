@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
+import type { APIRequestContext, Locator } from '@playwright/test';
+
+import { audit, expect, keptEvents, test } from './support.js';
 
 /*
  * A cold first visit, through the service worker.
@@ -8,18 +9,6 @@ import { type APIRequestContext, expect, type Locator, type Page, test } from '@
  * the catalog and builds the store, and every request below is answered
  * inside the browser. Each page is audited with axe as a shopper sees it.
  */
-
-test.skip(({ isMobile }) => isMobile, 'the phone has its own spec');
-
-// The tour opens itself on a first visit. These are not that visit.
-test.beforeEach(({ page }) =>
-    page.addInitScript(() => localStorage.setItem('shelflens.tour', 'seen'))
-);
-
-const audit = async (page: Page) => {
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations).toEqual([]);
-};
 
 test('a first visit reaches suggestions, results and a product, with no audit findings', async ({
     page,
@@ -317,13 +306,27 @@ test('keeps its place: a search is announced, a product takes focus, and back la
 });
 
 test('browser Back along the rail shows each product from its heading', async ({ page }) => {
-    // Where the focused heading sits once the page has settled. The browser's own restore
-    // comes after focus and the product's answer, with no event of its own to wait for, so
-    // the check waits out a moment first rather than passing on the first frame.
-    const settledTop = async () => {
-        await page.waitForTimeout(800);
-        return page.evaluate(() => document.activeElement?.getBoundingClientRect().top ?? NaN);
-    };
+    // Where the focused heading sits once the page has stopped scrolling. The browser's
+    // own restore comes after focus and the product's answer, with no event of its own,
+    // so the page is watched frame by frame until its scroll has held still for twenty.
+    const settledTop = () =>
+        page.evaluate(
+            () =>
+                new Promise<number>((resolve) => {
+                    let last = window.scrollY;
+                    let still = 0;
+                    const watch = () => {
+                        still = window.scrollY === last ? still + 1 : 0;
+                        last = window.scrollY;
+                        if (still >= 20) {
+                            resolve(document.activeElement?.getBoundingClientRect().top ?? NaN);
+                            return;
+                        }
+                        requestAnimationFrame(watch);
+                    };
+                    requestAnimationFrame(watch);
+                })
+        );
     await page.goto('/?q=jacket&page=2');
     await page.getByRole('list', { name: 'Products' }).getByRole('link').nth(4).click();
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
@@ -372,34 +375,7 @@ test('what the shopper did reaches the worker, through a beacon, and outlives th
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 
     // The page shares the worker's IndexedDB, so the test reads what arrived.
-    const kept = () =>
-        page.evaluate(
-            () =>
-                new Promise<{ kind: string; sku?: string; phrase?: string; position?: number }[]>(
-                    (resolve, reject) => {
-                        const opening = indexedDB.open('shelflens-events');
-                        opening.onerror = () =>
-                            reject(opening.error ?? new Error('could not open'));
-                        opening.onsuccess = () => {
-                            const db = opening.result;
-                            if (!db.objectStoreNames.contains('events')) {
-                                db.close();
-                                resolve([]);
-                                return;
-                            }
-                            const read = db.transaction('events').objectStore('events').getAll();
-                            read.onsuccess = () => {
-                                db.close();
-                                resolve(read.result);
-                            };
-                            read.onerror = () => {
-                                db.close();
-                                reject(read.error ?? new Error('could not read'));
-                            };
-                        };
-                    }
-                )
-        );
+    const kept = () => keptEvents(page);
     await expect
         .poll(async () => (await kept()).map((event) => event.kind).sort(), { timeout: 10_000 })
         .toEqual(['click', 'search', 'view']);
@@ -527,39 +503,20 @@ test('what the shopper clicked rises on the next visit, says so in explain mode,
     await page.reload();
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
     // What the worker holds, so a failure says which part did not happen.
-    const held = await page.evaluate(async () => {
-        const events = await new Promise<{ kind: string; sku?: string; session?: string }[]>(
-            (resolve, reject) => {
-                const opening = indexedDB.open('shelflens-events');
-                opening.onerror = () => reject(opening.error ?? new Error('could not open'));
-                opening.onsuccess = () => {
-                    const db = opening.result;
-                    if (!db.objectStoreNames.contains('events')) {
-                        db.close();
-                        resolve([]);
-                        return;
-                    }
-                    const read = db.transaction('events').objectStore('events').getAll();
-                    read.onsuccess = () => {
-                        db.close();
-                        resolve(read.result);
-                    };
-                    read.onerror = () => {
-                        db.close();
-                        reject(read.error ?? new Error('could not read'));
-                    };
-                };
-            }
-        );
+    const events = await keptEvents(page);
+    const asked = await page.evaluate(async () => {
         const response = await fetch('graphql?op=' + encodeURIComponent('x'), { method: 'GET' });
         return {
-            clicks: events
-                .filter((event) => event.kind === 'click')
-                .map((event) => [event.sku, event.session]),
             status: response.status,
             version: response.headers.get('shelflens-store-version'),
         };
     });
+    const held = {
+        clicks: events
+            .filter((event) => event.kind === 'click')
+            .map((event) => [event.sku, event.session]),
+        ...asked,
+    };
     await expect(
         page.locator(`.card:has([data-sku="${last}"]) .card-explain`),
         JSON.stringify(held)
@@ -594,9 +551,10 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await panel.getByRole('textbox', { name: 'Name', exact: true }).fill('Last first');
     await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
     await expect(page.getByText('Previewing a draft')).toBeVisible();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
+    // The order is read until the preview has moved the product up, since the page
+    // can read as settled a moment before the preview's answer has been asked for.
+    await expect.poll(async () => (await order()).indexOf(last)).toBeLessThan(before.indexOf(last));
     const previewed = await order();
-    expect(previewed.indexOf(last)).toBeLessThan(before.indexOf(last));
     await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
         'Pinned to the top by rule'
     );
@@ -606,21 +564,18 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await expect(panel.getByRole('status')).toContainText('Rule saved. The store is now version');
     const notice = page.locator('.rules-notice');
     await expect(notice).toContainText('Your edited rules are in effect');
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect(await order()).toEqual(previewed);
+    await expect.poll(order).toEqual(previewed);
 
     // The set is the worker's, so it outlives the page.
     await page.reload();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
     await expect(notice).toContainText('Your edited rules are in effect');
-    expect(await order()).toEqual(previewed);
+    await expect.poll(order).toEqual(previewed);
     await audit(page);
 
     await notice.getByRole('button', { name: 'Discard your rules' }).click();
     await notice.getByRole('button', { name: 'Yes, discard' }).click();
     await expect(notice).toBeHidden();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect(await order()).toEqual(before);
+    await expect.poll(order).toEqual(before);
 });
 
 test('what this browser searched before is offered on the next visit, filtered as you type, and cleared from the box', async ({
