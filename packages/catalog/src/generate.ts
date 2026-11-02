@@ -198,7 +198,7 @@ const createProduct = (generation: Generation, index: number): Product => {
         colors,
         sizes,
         material,
-        tags: [leaf.id, slugify(noun), ...(ratingCount > 1500 ? ['bestseller'] : [])],
+        tags: [leaf.id, slugify(noun)],
         variants,
         price: {
             guest: rangeOf(variants.map((variant) => variant.price)),

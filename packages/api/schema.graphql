@@ -610,7 +610,12 @@ enum RecommendationSource {
     Nothing has been viewed with this product yet, so the list is the
     category's most rated.
     """
-    CATEGORY_BESTSELLERS
+    CATEGORY_MOST_RATED
+
+    """
+    The old name for CATEGORY_MOST_RATED, which nothing answers with any more.
+    """
+    CATEGORY_BESTSELLERS @deprecated(reason: "Use CATEGORY_MOST_RATED.")
 }
 
 type Category {

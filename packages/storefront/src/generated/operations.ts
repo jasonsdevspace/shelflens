@@ -60,11 +60,13 @@ export type RangeInput = {
 };
 
 export type RecommendationSource =
+    /** The old name for CATEGORY_MOST_RATED, which nothing answers with any more. */
+    | 'CATEGORY_BESTSELLERS'
     /**
      * Nothing has been viewed with this product yet, so the list is the
      * category's most rated.
      */
-    | 'CATEGORY_BESTSELLERS'
+    | 'CATEGORY_MOST_RATED'
     /** At least one product viewed in the same tab as this one leads the list. */
     | 'VIEWED_TOGETHER';
 

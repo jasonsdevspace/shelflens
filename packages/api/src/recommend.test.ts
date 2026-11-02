@@ -88,7 +88,7 @@ describe('what was viewed together', () => {
 describe('the rail', () => {
     it('is the category’s most rated with no history, never the product itself', () => {
         const rail = recommend({ sku: subject.sku, limit: 6 }, [], context());
-        expect(rail?.source).toBe('CATEGORY_BESTSELLERS');
+        expect(rail?.source).toBe('CATEGORY_MOST_RATED');
         expect(rail?.category.id).toBe(subject.categoryId);
         const skus = rail?.items.map((p) => p.sku) ?? [];
         expect(skus).not.toContain(subject.sku);
@@ -115,7 +115,7 @@ describe('the rail', () => {
     it('never shows a guest a product only members may see, by either source', () => {
         const events = [view(membersOnly.sku, 't1'), view(subject.sku, 't1', 2)];
         const asGuest = recommend({ sku: subject.sku, limit: 6 }, events, context());
-        expect(asGuest?.source).toBe('CATEGORY_BESTSELLERS');
+        expect(asGuest?.source).toBe('CATEGORY_MOST_RATED');
         expect(asGuest?.items.map((p) => p.sku)).not.toContain(membersOnly.sku);
         const asMember = recommend({ sku: subject.sku, limit: 6 }, events, context(member));
         expect(asMember?.items[0]?.sku).toBe(membersOnly.sku);

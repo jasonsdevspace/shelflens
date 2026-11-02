@@ -6,7 +6,7 @@ import {
     type SearchResult,
 } from '@jasonsdevspace/shelflens';
 import type { Category, CustomerGroup, Product } from '@shelflens/catalog';
-import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
+import { mostRated, recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
@@ -118,15 +118,10 @@ const POPULAR_CANDIDATES = 50;
 const popularFor = (input: SearchInput, context: Context): Product[] => {
     const { signals } = context.store;
     const chosen = Object.keys(signals).length > 0;
-    const result = searchStore(context.store.engine, {
+    const result = mostRated(context.store.engine, {
         group: context.viewer.group,
         filters: (input.filters ?? []).filter((f) => f.attribute === 'CATEGORY').map(toFilter),
-        sort: [
-            { by: 'ratingCount', direction: 'desc' },
-            { by: 'rating', direction: 'desc' },
-        ],
-        pageSize: chosen ? POPULAR_CANDIDATES : POPULAR,
-        facets: [],
+        limit: chosen ? POPULAR_CANDIDATES : POPULAR,
         now: context.now,
     });
     const products = hitsOf(result, context).map((hit) => hit.product);

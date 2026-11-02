@@ -428,6 +428,43 @@ describe('the viewer', () => {
 });
 
 describe('recommendations', () => {
+    it('falls back on the same most rated list the nothing-found page offers', async () => {
+        // With nothing viewed and nothing clicked, both read one list for a category.
+        const quiet = createStoreApi(createStore({ catalog }));
+        const product = catalog.products.find((p) => p.visibleTo.length === 2);
+        if (!product) throw new Error('expected a product every viewer may see');
+        const rail = data(
+            await quiet.run(
+                {
+                    query: `query ($sku: ID!) { recommendations(sku: $sku, limit: 6) { source items { sku } } }`,
+                    variables: { sku: product.sku },
+                },
+                guest
+            )
+        ).recommendations;
+        const nothing = data(
+            await quiet.run(
+                {
+                    query: `query ($input: SearchInput!) { search(input: $input) { noResults { popular { sku } } } }`,
+                    variables: {
+                        input: {
+                            phrase: 'zzqxv',
+                            filters: [{ attribute: 'CATEGORY', match: { eq: product.categoryId } }],
+                        },
+                    },
+                },
+                guest
+            )
+        ).search.noResults;
+        expect(rail.source).toBe('CATEGORY_MOST_RATED');
+        const offered = nothing.popular
+            .map((p: { sku: string }) => p.sku)
+            .filter((sku: string) => sku !== product.sku);
+        expect(rail.items.map((p: { sku: string }) => p.sku)).toEqual(
+            offered.slice(0, rail.items.length)
+        );
+    });
+
     it('answers beside a product from the events the host collected, and says the answer is volatile', async () => {
         const events = createMemoryEventStore();
         const withEvents = createStoreApi(createStore({ catalog }), { events });
@@ -448,7 +485,7 @@ describe('recommendations', () => {
         const cold = await ask();
         expect(cold.extensions).toEqual({ volatile: true });
         expect(data(cold).recommendations).toMatchObject({
-            source: 'CATEGORY_BESTSELLERS',
+            source: 'CATEGORY_MOST_RATED',
             viewedTogether: 0,
             category: { id: b.categoryId },
         });
@@ -469,7 +506,7 @@ describe('recommendations', () => {
         const query = `query ($sku: ID!) { recommendations(sku: $sku) { source } }`;
         expect(data(await run(query, { sku: hidden.sku })).recommendations).toBeNull();
         expect(data(await run(query, { sku: hidden.sku }, member)).recommendations).toMatchObject({
-            source: 'CATEGORY_BESTSELLERS',
+            source: 'CATEGORY_MOST_RATED',
         });
         const plain = await run('{ store { name } }');
         expect(plain.extensions).toBeUndefined();

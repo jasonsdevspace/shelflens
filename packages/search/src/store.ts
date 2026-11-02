@@ -98,3 +98,34 @@ export const searchStore = (engine: Engine, request: StoreSearchRequest): Search
         facets: result.facets.map((facet) => asShopperFacet(facet, group)),
     };
 };
+
+/** What a most rated list is asked for: who is looking, where, how many, and when. */
+export interface MostRatedRequest {
+    readonly group: CustomerGroup;
+    /** Where to look, such as the category being browsed. Everywhere when there are none. */
+    readonly filters?: readonly Filter[];
+    readonly limit: number;
+    readonly now?: Date | undefined;
+}
+
+/**
+ * The products a group may see with the most ratings, then the highest
+ * rated among equals, found through the store like any search, so what the
+ * group may not see and what a rule hides stay out. The one list the rail
+ * falls back on and the nothing-found page offers, under one name.
+ */
+export const mostRated = (
+    engine: Engine,
+    { group, filters = [], limit, now }: MostRatedRequest
+): SearchResult =>
+    searchStore(engine, {
+        group,
+        filters,
+        sort: [
+            { by: 'ratingCount', direction: 'desc' },
+            { by: 'rating', direction: 'desc' },
+        ],
+        pageSize: limit,
+        facets: [],
+        ...(now && { now }),
+    });

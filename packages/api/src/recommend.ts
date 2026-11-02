@@ -1,5 +1,5 @@
 import type { Category, Product } from '@shelflens/catalog';
-import { searchStore } from '@shelflens/search';
+import { mostRated } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { StoreEvent } from './events.js';
@@ -13,14 +13,14 @@ import type { StoreEvent } from './events.js';
  * product's own category, found through the store like any search so
  * what a viewer may not see stays out. The product itself is never in
  * the list, and the list says which source leads it, so the page can say
- * so too rather than dressing bestsellers up as a signal.
+ * so too rather than dressing the most rated up as a signal.
  *
  * The tab asking is taken to have viewed the product already. Its own
  * view may still be on its way, and a shopper who viewed one product and
  * opened a second expects the first beside it now, not after a reload.
  */
 
-export type RecommendationSource = 'VIEWED_TOGETHER' | 'CATEGORY_BESTSELLERS';
+export type RecommendationSource = 'VIEWED_TOGETHER' | 'CATEGORY_MOST_RATED';
 
 export interface RecommendationsModel {
     readonly source: RecommendationSource;
@@ -79,17 +79,12 @@ export const viewedWith = (
         .map(([other]) => other);
 };
 
-/** The most rated products the viewer may see in a category, through the store's own search. */
-const bestsellers = (categoryId: string, limit: number, context: Context): readonly Product[] =>
-    searchStore(context.store.engine, {
+/** The most rated products the viewer may see in a category. */
+const mostRatedIn = (categoryId: string, limit: number, context: Context): readonly Product[] =>
+    mostRated(context.store.engine, {
         group: context.viewer.group,
         filters: [{ attribute: 'category', eq: categoryId }],
-        sort: [
-            { by: 'ratingCount', direction: 'desc' },
-            { by: 'rating', direction: 'desc' },
-        ],
-        pageSize: limit,
-        facets: [],
+        limit,
         now: context.now,
     }).hits.flatMap((hit) => {
         const product = context.store.products.get(hit.id);
@@ -119,10 +114,10 @@ export const recommend = (
     for (const other of viewedWith(events, sku, session)) take(store.products.get(other));
     const together = items.length;
     // One more than wanted, since the product itself may be among its category's best.
-    for (const best of bestsellers(product.categoryId, wanted + 1, context)) take(best);
+    for (const best of mostRatedIn(product.categoryId, wanted + 1, context)) take(best);
 
     return {
-        source: together > 0 ? 'VIEWED_TOGETHER' : 'CATEGORY_BESTSELLERS',
+        source: together > 0 ? 'VIEWED_TOGETHER' : 'CATEGORY_MOST_RATED',
         category,
         items,
         viewedTogether: together,
