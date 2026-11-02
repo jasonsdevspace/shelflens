@@ -40,7 +40,9 @@ Option B, with option A available at any time.
 - **The Node server is a thin wrapper.** `@shelflens/server` puts the same API behind
   `POST /graphql` with a customer-group header, a body limit, a rate limit and a request id. It
   exists for local runs, for tests that want a real socket, and for the day a hosted demo is
-  wanted. Nothing in the API knows which one it is running under.
+  wanted. Nothing in the API knows which one it is running under. Since
+  [decision 15](0015-one-store-host-for-every-transport.md) it serves the store from the same
+  store host the worker does, so it folds in clicks and takes saved rules as the worker does.
 - **The viewer comes from the request in both.** The server and the worker read the same
   header. The API only ever sees a viewer it was handed.
 

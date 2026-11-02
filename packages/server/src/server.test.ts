@@ -1,11 +1,11 @@
 import type { AddressInfo } from 'node:net';
 
-import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
     createStore,
     createStoreApi,
+    createStoreHost,
     GROUP_HEADER,
     PERSISTED_OPERATIONS,
     VERSION_HEADER,
@@ -153,20 +153,12 @@ describe('rules over HTTP', () => {
     const jacket = catalog.products.find((p) => /jacket/i.test(p.name));
     if (!jacket) throw new Error('expected a jacket');
     const shipped = [{ id: 'shipped', when: { queries: ['jacket'] }, pin: [jacket.sku] }];
-    const built = (saved: readonly Rule[] | undefined) =>
-        createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
-    const shippedStore = built(undefined);
     const host = createServer({
-        api: createStoreApi(shippedStore),
+        host: createStoreHost({
+            source: () => Promise.resolve({ catalog, rules: shipped }),
+            rules: createMemoryRuleStore(),
+        }),
         rateLimitPerMinute: 6,
-        rules: {
-            store: createMemoryRuleStore(),
-            shipped,
-            check: (draft) => {
-                shippedStore.engine.reconfigure({ rules: draft });
-            },
-            build: (saved) => createStoreApi(built(saved)),
-        },
     });
     let hostBase = '';
     beforeAll(async () => {
@@ -216,8 +208,54 @@ describe('rules over HTTP', () => {
         expect(await limited.json()).toEqual({ errors: [{ message: 'too many requests' }] });
     });
 
+    it('folds the clicks posted since in when a visit begins, and not mid-visit', async () => {
+        const folding = createMemoryEventStore();
+        const visited = createServer({
+            host: createStoreHost({
+                source: () => Promise.resolve({ catalog, rules: shipped }),
+                events: folding,
+            }),
+            events: folding,
+        });
+        await new Promise<void>((resolve) => visited.listen(0, resolve));
+        const at = `http://127.0.0.1:${(visited.address() as AddressInfo).port}`;
+        const versionOf = async (query: string) =>
+            (await fetch(`${at}/graphql?op=${STORE}${query}`)).headers.get(VERSION_HEADER) ?? '';
+        try {
+            const first = await versionOf('');
+            const click = (id: string, session: string) => ({
+                id,
+                kind: 'click',
+                at: 1,
+                sku: jacket.sku,
+                session,
+                phrase: 'jacket',
+                position: 3,
+            });
+            const posted = await fetch(`${at}/events`, {
+                method: 'POST',
+                body: JSON.stringify([click('c1', 'a'), click('c2', 'b')]),
+            });
+            expect(posted.status).toBe(204);
+            // A page mid-visit names the version it has, and keeps it.
+            expect(await versionOf(`&v=${encodeURIComponent(first)}`)).toBe(first);
+            // The next visit starts without one, and gets the clicks.
+            const next = await versionOf('');
+            expect(next).not.toBe(first);
+            expect(next).toMatch(/\+clicks\./);
+        } finally {
+            await new Promise<void>((resolve) => visited.close(() => resolve()));
+        }
+    });
+
     it('is refused where the host keeps no rules', async () => {
         expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
+    });
+
+    it('takes a store host or a fixed API, and never both', () => {
+        const either = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [] }) });
+        // @ts-expect-error A server given both could only ignore one of them.
+        expect(() => createServer({ host: either, api })).not.toThrow();
     });
 });
 

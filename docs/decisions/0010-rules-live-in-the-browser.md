@@ -36,7 +36,8 @@ question nobody asks twice, and a kept one would only take the place of a real a
 **The set lives in the browser.** The worker keeps the saved rules in IndexedDB, in a database of
 their own, and answers a `rules` path beside `graphql` and `events`: a `GET` for the set in
 effect and whether it is edited, a `POST` to replace it, a `DELETE` to go back to the shipped
-file. The Node server answers the same path from a store the host supplies. Nothing leaves the
+file. The Node server answers the same path from the same store host, with the saved set kept in
+memory for as long as it runs. Nothing leaves the
 visitor's browser, and a second visitor sees the shipped rules, which is the demo's contract. The
 worker for a visitor's own catalog keeps its rules in a database of its own, so a rule naming one
 of their products can never reach the demo's store and fail its build.
@@ -46,7 +47,8 @@ once it is ready, and answers with the new version in the header the page alread
 rules are fingerprinted into the version, so every key in every layer moves at once, the worker
 drops the other versions' kept answers, and the page empties its memory and makes a new client.
 Nothing is invalidated by name, because the rule the caches already follow for a catalog import
-covers this too.
+covers this too. The new store keeps the index the old one built and only applies the set,
+since [decision 15](0015-one-store-host-for-every-transport.md).
 
 **One rule at a time, in the merchandiser's words.** The form offers a name, the search words,
 what the rule does, and which product or brand, with the weight as three named steps rather than
@@ -61,7 +63,7 @@ is tried, not while the rule is half typed.
   one press away. The tour never describes a store nobody can return to.
 - A preview is an uncached request, so typing into the panel asks the engine on each change. In
   the browser that is the worker, and a search answers in a few milliseconds. The Node server rates the
-  path as it rates its siblings, since a save builds the whole store again.
+  path as it rates its siblings, since every save builds a new store version.
 - The rules path is a plain `POST` outside the schema, like events, and for the same reason: the
   public demo accepts only persisted operations, and a mutation would have to go where it refuses.
 - A saved set is a whole set, not a patch. The host checks the whole thing with the engine before

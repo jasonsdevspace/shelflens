@@ -87,3 +87,12 @@ export {
 export { parseRulesFile } from './rules-file.js';
 export { buildStoreSchema, schemaSource } from './schema.js';
 export { type Signals, signalsOf } from './signals.js';
+export {
+    createStoreHost,
+    type HostedStore,
+    type RulesAnswer,
+    type Startup,
+    type StoreHost,
+    type StoreHostOptions,
+    type StoreSource,
+} from './store-host.js';

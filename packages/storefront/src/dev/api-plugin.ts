@@ -1,14 +1,11 @@
 import { readFileSync } from 'node:fs';
 
-import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
-    createStore,
-    createStoreApi,
+    createStoreHost,
     parseRulesFile,
     routeOf,
-    withResponseCache,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { createHandler } from '@shelflens/server';
@@ -20,8 +17,8 @@ import type { Plugin } from 'vite';
  * In production the service worker answers `/graphql`. A dev server with
  * hot reloading and a service worker fight over the same requests, so in
  * development the same API answers from the dev server instead, through
- * the Node handler the server package already has, over the same catalog
- * and the same rules file the worker ships. The client cannot tell the
+ * the Node handler the server package already has, over the same store
+ * host, catalog and rules file the worker runs. The client cannot tell the
  * difference, which is the point.
  */
 
@@ -38,25 +35,16 @@ export const storeApi = (): Plugin => ({
         const events = createMemoryEventStore();
         const catalog = generateCatalog();
         const shipped = rules();
-        // The store with the rules in effect: the shipped file, or what a
-        // merchandiser saved in this dev session.
-        const built = (saved: readonly Rule[] | undefined) =>
-            createStore({ catalog, rules: saved ?? shipped, rulesEdited: saved !== undefined });
-        const shippedStore = built(undefined);
-        const shippedApi = withResponseCache(createStoreApi(shippedStore, { events }));
+        // The same host the service worker runs, so the dev server ranks as the demo
+        // does: clicks folded in when a visit begins, and rules saved in this session.
         const handle = createHandler({
-            api: shippedApi,
+            host: createStoreHost({
+                source: () => Promise.resolve({ catalog, rules: shipped }),
+                events,
+                rules: createMemoryRuleStore(),
+            }),
             base,
             events,
-            rules: {
-                store: createMemoryRuleStore(),
-                shipped,
-                // Checked on the store already built, which costs a reconfigure, not an index.
-                check: (draft) => {
-                    shippedStore.engine.reconfigure({ rules: draft });
-                },
-                build: (saved) => withResponseCache(createStoreApi(built(saved), { events })),
-            },
         });
         server.middlewares.use((request, response, next) => {
             if (request.url !== undefined && routeOf(request.url, base) !== undefined) {

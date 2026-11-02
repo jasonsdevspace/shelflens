@@ -5,18 +5,16 @@ import {
     type ServerResponse,
 } from 'node:http';
 
-import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     type EventStore,
     GROUP_HEADER,
     PERSISTED_OPERATIONS,
     receiveEvents,
-    receiveRules,
     resolveRequest,
     responseHeaders,
     routeOf,
-    type RuleStore,
     type StoreApi,
+    type StoreHost,
     VERSION_HEADER,
     viewerFromHeader,
 } from '@shelflens/api';
@@ -42,8 +40,27 @@ const BODY_LIMIT_BYTES = 16 * 1024;
 const DRAIN_LIMIT_BYTES = 1024 * 1024;
 const DRAIN_MS = 5_000;
 
-export interface ServerOptions {
-    readonly api: StoreApi;
+/**
+ * What answers: a store host, which folds in the clicks when a visit begins
+ * and builds again when rules are saved, as the service worker's does, or a
+ * fixed `api`, one store that never changes, for a host that keeps no rules
+ * and no clicks. One or the other, never both.
+ */
+export type StoreSupply =
+    | { readonly host: StoreHost; readonly api?: never }
+    | { readonly api: StoreApi; readonly host?: never };
+
+/** The API to answer from now: the host's current store, or the fixed one. */
+const answerFrom = (supply: StoreSupply): (() => Promise<StoreApi>) => {
+    if (supply.host !== undefined) {
+        const { host } = supply;
+        return async () => (await host.current()).api;
+    }
+    const { api } = supply;
+    return () => Promise.resolve(api);
+};
+
+export type ServerOptions = StoreSupply & {
     /** Requests each client may make per minute. */
     readonly rateLimitPerMinute?: number;
     readonly now?: () => Date;
@@ -58,11 +75,6 @@ export interface ServerOptions {
     /** Where to keep the events the storefront sends. Without one, events are refused. */
     readonly events?: EventStore;
     /**
-     * The rules a merchandiser may save, and how the store is built again
-     * with them. Without this, the rules path is refused.
-     */
-    readonly rules?: RulesSupport;
-    /**
      * The pages on other origins that may use the API, as the widget does when
      * it is mounted on a page the store does not serve. Without this, a
      * request from another origin is refused.
@@ -75,7 +87,7 @@ export interface ServerOptions {
      * and the server's own origin is read from the connection.
      */
     readonly trustProxy?: boolean;
-}
+};
 
 /** The paths an outside origin may use. */
 export type OriginPath = 'graphql' | 'events' | 'rules';
@@ -224,16 +236,6 @@ const answeredEarly = (arrival: Arrival, url: string): boolean => {
     return from === 'answered' || from === 'refused';
 };
 
-export interface RulesSupport {
-    readonly store: RuleStore;
-    /** The rules the store ships, in effect when nothing is saved. */
-    readonly shipped: readonly Rule[];
-    /** Refuses a set the engine refuses, in its words. */
-    check(rules: readonly Rule[]): void;
-    /** The API over the store built with this saved set. A reset serves the API the host started with. */
-    build(saved: readonly Rule[]): StoreApi;
-}
-
 /**
  * A fixed window per client: so many requests per minute, then 429.
  *
@@ -348,22 +350,20 @@ export type RequestHandler = (request: IncomingMessage, response: ServerResponse
  * The request handler on its own, for a host that already has a server,
  * such as the storefront's dev server.
  */
-export const createHandler = ({
-    api: initial,
-    rateLimitPerMinute = 600,
-    now = () => new Date(),
-    persisted = PERSISTED_OPERATIONS,
-    persistedOnly = false,
-    maxAgeSeconds,
-    base = '/',
-    events,
-    rules,
-    origins,
-    trustProxy = false,
-}: ServerOptions): RequestHandler => {
-    // Replaced when a merchandiser saves rules, so every request after that
-    // is answered by the store built with them.
-    let api = initial;
+export const createHandler = (options: ServerOptions): RequestHandler => {
+    const {
+        host,
+        rateLimitPerMinute = 600,
+        now = () => new Date(),
+        persisted = PERSISTED_OPERATIONS,
+        persistedOnly = false,
+        maxAgeSeconds,
+        base = '/',
+        events,
+        origins,
+        trustProxy = false,
+    } = options;
+    const apiNow = answerFrom(options);
     const { allow } = createRateLimit(rateLimitPerMinute, now);
 
     const receiveRuleSet = async (
@@ -371,38 +371,30 @@ export const createHandler = ({
         response: ServerResponse,
         requestId: string
     ) => {
-        if (!rules) {
+        if (!host) {
             refuse(response, 404, 'this store keeps no rules', requestId);
             return;
         }
-        // A save builds the whole store again, so the path has the usual allowance.
+        // A save builds the store again, so the path has the usual allowance.
         if (!allow(`rules:${addressOf(request, trustProxy)}`)) {
             tooMany(response, requestId);
             return;
         }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
-        const receipt = await receiveRules({ method: request.method ?? 'GET', body }, rules.store, {
-            shipped: rules.shipped,
-            check: (draft) => rules.check(draft),
-        });
-        if (receipt.status === 200) {
-            send(response, { status: 200, body: receipt.body, requestId });
+        const answer = await host.receiveRules({ method: request.method ?? 'GET', body });
+        if (answer.status === 200) {
+            send(response, { status: 200, body: answer.body, requestId });
             return;
         }
-        if (receipt.status !== 204) {
-            refuse(response, receipt.status, receipt.message ?? 'refused', requestId);
+        if (answer.status !== 204) {
+            refuse(response, answer.status, answer.message ?? 'refused', requestId);
             return;
-        }
-        if (receipt.changed) {
-            // A reset is the store the host started with, built once.
-            const saved = await rules.store.current();
-            api = saved === undefined ? initial : rules.build(saved);
         }
         response.writeHead(204, {
             ...SECURITY_HEADERS,
             'x-request-id': requestId,
-            [VERSION_HEADER]: api.version,
+            ...(answer.version !== undefined && { [VERSION_HEADER]: answer.version }),
         });
         response.end();
     };
@@ -507,6 +499,11 @@ export const createHandler = ({
         }
 
         try {
+            // A request that names no store version is a page's first question,
+            // the start of a visit, so the clicks collected since are folded in
+            // first, as the service worker does when a page loads.
+            if (host && resolved.expected === undefined) await host.refresh();
+            const api = await apiNow();
             const answer = await api.run(resolved.request, resolved.viewer, now());
             send(response, {
                 status: 200,
