@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
 import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
-import { count } from '../format/count.js';
+import { count, formatCount } from '../format/count.js';
 import { formatMoney } from '../format/money.js';
 import type { SearchQuery } from '../generated/operations.js';
 
@@ -61,12 +61,15 @@ const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string =>
 };
 
 /** How many results a choice gives: a number to see, and what it counts to hear. */
-const FacetCount = ({ n }: { readonly n: number }) => (
-    <span className="hint">
-        <span aria-hidden="true">{n}</span>
-        <span className="visually-hidden">{`, ${count(n, 'result', 'results')}`}</span>
-    </span>
-);
+const FacetCount = ({ n }: { readonly n: number }) => {
+    const { locale } = useStoreInfo();
+    return (
+        <span className="hint">
+            <span aria-hidden="true">{formatCount(n, locale)}</span>
+            <span className="visually-hidden">{`, ${count(n, 'result', 'results', locale)}`}</span>
+        </span>
+    );
+};
 
 const Group = ({
     title,
@@ -226,6 +229,7 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
 };
 
 const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: Facet }) => {
+    const { locale } = useStoreInfo();
     if (!('ranges' in facet)) return null;
     const bands = facet.ranges.flatMap((bucket) =>
         bucket.count > 0 && bucket.from !== null ? [{ ...bucket, from: bucket.from }] : []
@@ -255,7 +259,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         onChange={() => choose(bucket.from)}
                     />
                     <span className="facet-label">
-                        {count(bucket.from, 'star', 'stars')} and up
+                        {count(bucket.from, 'star', 'stars', locale)} and up
                     </span>
                     <FacetCount n={bucket.count} />
                 </label>

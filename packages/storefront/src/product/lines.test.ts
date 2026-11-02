@@ -6,22 +6,28 @@ const usd = (amount: number) => ({ amount, currency: 'USD' });
 
 describe('the lines under a product name', () => {
     it('leaves out what a catalog does not have, so no dot leads nowhere', () => {
-        expect(metaLine({ brand: { name: 'Unbranded' }, material: '', rating: null })).toBe(
-            'Unbranded'
-        );
         expect(
-            metaLine({
-                brand: { name: 'Unbranded' },
-                material: ' ',
-                rating: { average: 4.2, count: 1 },
-            })
+            metaLine({ brand: { name: 'Unbranded' }, material: '', rating: null }, 'en-US')
+        ).toBe('Unbranded');
+        expect(
+            metaLine(
+                {
+                    brand: { name: 'Unbranded' },
+                    material: ' ',
+                    rating: { average: 4.2, count: 1 },
+                },
+                'en-US'
+            )
         ).toBe('Unbranded · 4.2 out of 5, from 1 rating');
         expect(
-            metaLine({
-                brand: { name: 'Ridgeback' },
-                material: 'Wool',
-                rating: { average: 4, count: 12 },
-            })
+            metaLine(
+                {
+                    brand: { name: 'Ridgeback' },
+                    material: 'Wool',
+                    rating: { average: 4, count: 12 },
+                },
+                'en-US'
+            )
         ).toBe('Ridgeback · Wool · 4.0 out of 5, from 12 ratings');
     });
 

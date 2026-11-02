@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import { count } from '../format/count.js';
 import { Drawer } from './Drawer.jsx';
 
@@ -16,26 +17,29 @@ export interface FacetDrawerProps {
     readonly children: ReactNode;
 }
 
-export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => (
-    <Drawer
-        opener={
-            <>
-                Filters
-                {active > 0 && (
-                    <>
-                        {/* The badge is the number alone, so it is said in words. */}
-                        <span className="drawer-badge" aria-hidden="true">
-                            {' '}
-                            {active}
-                        </span>
-                        <span className="visually-hidden">, {active} on</span>
-                    </>
-                )}
-            </>
-        }
-        title="Filters"
-        done={`Show ${count(total, 'result', 'results')}`}
-    >
-        {children}
-    </Drawer>
-);
+export const FacetDrawer = ({ active, total, children }: FacetDrawerProps) => {
+    const { locale } = useStoreInfo();
+    return (
+        <Drawer
+            opener={
+                <>
+                    Filters
+                    {active > 0 && (
+                        <>
+                            {/* The badge is the number alone, so it is said in words. */}
+                            <span className="drawer-badge" aria-hidden="true">
+                                {' '}
+                                {active}
+                            </span>
+                            <span className="visually-hidden">, {active} on</span>
+                        </>
+                    )}
+                </>
+            }
+            title="Filters"
+            done={`Show ${count(total, 'result', 'results', locale)}`}
+        >
+            {children}
+        </Drawer>
+    );
+};

@@ -9,7 +9,7 @@ import { cards, catalog, facet, heading, open, settled } from './test/store.jsx'
 describe('browsing', () => {
     it('shows every product in catalog order with the facets beside them', async () => {
         await open();
-        expect(heading()).toHaveTextContent(/^All products, \d+ products$/);
+        expect(heading()).toHaveTextContent(/^All products, [\d,]+ products$/);
         expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveValue('catalog');
         expect(cards()).toHaveLength(24);
         for (const title of ['Category', 'Brand', 'Color', 'Size', 'Price', 'Rating']) {

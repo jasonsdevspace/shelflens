@@ -13,7 +13,7 @@ test('a first visit reaches suggestions, results and a product, with no audit fi
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await expect(search).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /^All products, \d+ products$/
+        /^All products, [\d,]+ products$/
     );
     await audit(page);
 
@@ -49,7 +49,7 @@ test('says whose demo it is before anything else, and follows the theme the port
     await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /^All products, \d+ products$/
+        /^All products, [\d,]+ products$/
     );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
     await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
@@ -111,7 +111,7 @@ test('a catalog that does not download ends the wait, and the store starts on a 
     await alert.getByRole('button', { name: 'Try again' }).click();
     await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /^All products, \d+ products$/
+        /^All products, [\d,]+ products$/
     );
 });
 

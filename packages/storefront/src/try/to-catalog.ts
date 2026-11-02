@@ -8,6 +8,8 @@ import {
     slugify,
 } from '@shelflens/catalog';
 
+import { formatCount } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
@@ -236,7 +238,7 @@ const skuMaker = (used: ReadonlySet<string>) => {
 };
 
 const limitError = (rows: number): string =>
-    `This file has ${rows.toLocaleString('en-US')} rows, and the page reads up to ${CATALOG_ROW_CAP.toLocaleString('en-US')} products.`;
+    `This file has ${formatCount(rows, DEFAULT_LOCALE)} rows, and the page reads up to ${formatCount(CATALOG_ROW_CAP, DEFAULT_LOCALE)} products.`;
 
 /** Rows and a mapping as a catalog, or the reason they cannot be one. */
 export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): LoadResult => {

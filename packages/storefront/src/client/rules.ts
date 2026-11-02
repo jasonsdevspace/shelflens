@@ -1,0 +1,66 @@
+import type { Rule } from '@jasonsdevspace/shelflens';
+
+import { reasonOf } from './reason.js';
+
+/**
+ * The host's rules path: the set it holds, a set to save in its place, and
+ * a request to go back to the store's own.
+ *
+ * Each answer says whether it worked, with the host's reason when it gave
+ * one, so the panel says what to do next in its own words.
+ */
+
+/** The set the host holds, and whether a merchandiser has edited it. */
+export interface RulesBody {
+    readonly rules: readonly Rule[];
+    readonly edited: boolean;
+}
+
+/** What came of a change: done, with the host's answer, or not, with its reason when it gave one. */
+export type Sent =
+    | { readonly ok: true; readonly response: Response }
+    | { readonly ok: false; readonly reason: string | undefined };
+
+const isRule = (rule: unknown): boolean =>
+    typeof rule === 'object' && rule !== null && typeof (rule as { id?: unknown }).id === 'string';
+
+/** Whether a body is what the rules path answers, so a stray page with a 200 is not taken for one. */
+const isRulesBody = (body: unknown): body is RulesBody => {
+    if (typeof body !== 'object' || body === null) return false;
+    const { rules, edited } = body as { rules?: unknown; edited?: unknown };
+    return Array.isArray(rules) && rules.every(isRule) && typeof edited === 'boolean';
+};
+
+/** The rules path, asked once. Nothing comes back when the request itself could not be made. */
+const ask = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
+    try {
+        return await fetch(url, init);
+    } catch {
+        return undefined;
+    }
+};
+
+const sent = async (response: Response | undefined): Promise<Sent> => {
+    if (!response) return { ok: false, reason: undefined };
+    return response.ok ? { ok: true, response } : { ok: false, reason: await reasonOf(response) };
+};
+
+/** The set the host holds, or nothing when it could not be read. */
+export const readRules = async (rulesUrl: string): Promise<RulesBody | undefined> => {
+    const response = await ask(rulesUrl);
+    if (!response?.ok) return undefined;
+    try {
+        const body: unknown = await response.json();
+        return isRulesBody(body) ? body : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+/** Saves a set in place of the one the host holds. */
+export const saveRules = async (rulesUrl: string, rules: readonly Rule[]): Promise<Sent> =>
+    sent(await ask(rulesUrl, { method: 'POST', body: JSON.stringify({ rules }) }));
+
+/** Asks the host for its own rules back. */
+export const discardRules = async (rulesUrl: string): Promise<Sent> =>
+    sent(await ask(rulesUrl, { method: 'DELETE' }));

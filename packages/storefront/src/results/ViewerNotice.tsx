@@ -1,5 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
+import { StatusRegion } from '../app/LiveStatus.jsx';
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { CustomerGroup } from '../client/graphql.js';
 import { count } from '../format/count.js';
 import type { Hit } from './ProductCard.jsx';
@@ -36,8 +38,9 @@ export const ViewerNotice = ({
     readonly heard: boolean;
     readonly onHeard: () => void;
 }) => {
+    const { locale } = useStoreInfo();
     // The line as the last answer for this viewer put it, kept while the next one loads.
-    const fresh = answered && shown && items.length > 0 ? sentence(group, items) : '';
+    const fresh = answered && shown && items.length > 0 ? sentence(group, items, locale) : '';
     const [kept, setKept] = useState({ group, text: fresh });
     if (answered && (kept.group !== group || kept.text !== fresh)) setKept({ group, text: fresh });
     const text = shown && kept.group === group ? kept.text : '';
@@ -60,27 +63,25 @@ export const ViewerNotice = ({
     }, [heard, answered, fresh]);
     return (
         <>
-            <p className="visually-hidden" role="status">
-                {said}
-            </p>
+            <StatusRegion>{said}</StatusRegion>
             {text !== '' && <p className="callout">{text}</p>}
         </>
     );
 };
 
-const sentence = (group: CustomerGroup, items: readonly Hit[]): string =>
-    group === 'member' ? asMember(items) : AS_GUEST;
+const sentence = (group: CustomerGroup, items: readonly Hit[], locale: string): string =>
+    group === 'member' ? asMember(items, locale) : AS_GUEST;
 
 const AS_GUEST =
     'Shopping as a guest: prices are list prices, and products for members only are hidden. Choose "Member" under "Shopping as" to see them.';
 
-const asMember = (items: readonly Hit[]): string => {
+const asMember = (items: readonly Hit[], locale: string): string => {
     const discounted = items.filter((hit) => hit.product.price.memberPrice).length;
     const hidden = items.filter((hit) => hit.product.membersOnly).length;
     const prices =
         discounted === 0
             ? 'every product on this page is at list price'
-            : `${count(discounted, 'product', 'products')} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
+            : `${count(discounted, 'product', 'products', locale)} on this page ${discounted === 1 ? 'has' : 'have'} a member price`;
     const products =
         hidden === 0
             ? 'none are for members only'

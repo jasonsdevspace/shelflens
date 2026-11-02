@@ -9,10 +9,15 @@ import {
 } from 'react';
 
 import { App } from '../App.jsx';
+import { useHeadingFocus } from '../app/focus.js';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
+import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
+import { reasonOf } from '../client/reason.js';
+import { count } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -38,11 +43,6 @@ export interface TryPageProps {
     readonly ready: Promise<void>;
     /** Where this page's API is, under its own path. */
     readonly base: string;
-}
-
-interface Loaded {
-    readonly version: string;
-    readonly products: number;
 }
 
 type Stage =
@@ -80,60 +80,13 @@ type Stage =
           readonly focusRemove?: boolean;
       };
 
-const count = (n: number, one: string, many: string) =>
-    `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
-
-/**
- * Sends a change to the visitor's catalog. The worker refuses one that would
- * discard the visitor's saved rules unless the visitor agreed, and that
- * refusal comes back as `refused` for the page to ask.
- */
-const changeCatalog = async (
-    url: string,
-    init: RequestInit,
-    discardRules: boolean
-): Promise<Response | 'refused'> => {
-    const response = await fetch(discardRules ? `${url}?discard-rules=yes` : url, init);
-    return response.status === 409 ? 'refused' : response;
-};
-
-/** What the worker says is loaded, or nothing. */
-const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
-    const response = await fetch(url);
-    if (response.status === 404) return undefined;
-    if (!response.ok) throw new Error(`the store answered ${response.status}`);
-    return (await response.json()) as Loaded;
-};
-
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {
     const again = `Press "${retry}" to try again.`;
-    let reason: string | undefined;
-    try {
-        const body = (await response.json()) as { errors?: { message?: string }[] };
-        reason = body.errors?.[0]?.message;
-    } catch {
-        reason = undefined;
-    }
+    const reason = await reasonOf(response);
     return reason
         ? `The store could not use these products, since ${reason}. ${again}`
         : `The store could not load these products (error ${response.status}). ${again}`;
-};
-
-/**
- * Moves focus to a stage's heading when it appears because of something the
- * visitor did, so a keyboard or screen reader user is told where they are.
- * Focus moves in the same commit as the heading, as it does for the
- * question and the remove button below, so it never rests on the page
- * between the two.
- * On the page's first load the heading is left alone, as any page's is.
- */
-const useHeadingFocus = (key: string, announce: boolean) => {
-    const heading = useRef<HTMLHeadingElement>(null);
-    useLayoutEffect(() => {
-        if (announce) heading.current?.focus();
-    }, [key, announce]);
-    return heading;
 };
 
 /**
@@ -152,7 +105,8 @@ const Building = ({
     return (
         <section className="try-stage" aria-labelledby="try-building">
             <h1 id="try-building" ref={heading} tabIndex={-1}>
-                Building the store from your {count(products, 'product', 'products')}
+                Building the store from your{' '}
+                {count(products, 'product', 'products', DEFAULT_LOCALE)}
             </h1>
         </section>
     );
@@ -211,7 +165,7 @@ const Chooser = ({
             <p>
                 Load a CSV or JSON file of products, such as an export from your shop, and search it
                 here with suggestions, filters, sorting and a reason for every result. Up to{' '}
-                {count(CATALOG_ROW_CAP, 'product', 'products')}.
+                {count(CATALOG_ROW_CAP, 'product', 'products', DEFAULT_LOCALE)}.
             </p>
             <p className="try-private">
                 Your file is read in this page and kept in this browser. Nothing is uploaded, and
@@ -318,8 +272,8 @@ const Review = ({
                 What is in {name}
             </h1>
             <p>
-                {count(table.rows.length, 'row', 'rows')} and{' '}
-                {count(table.headers.length, 'column', 'columns')}.
+                {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)} and{' '}
+                {count(table.headers.length, 'column', 'columns', DEFAULT_LOCALE)}.
             </p>
             <MappingEditor table={table} mapping={mapping} onChange={onMapping} />
             {result.ok ? (
@@ -327,17 +281,17 @@ const Review = ({
                     <Preview catalog={result.catalog} />
                     {partial ? (
                         <p className="notice" role="status">
-                            Checking all {count(table.rows.length, 'row', 'rows')}.
+                            Checking all {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.
                         </p>
                     ) : (
                         <>
                             <RowNotes
                                 notes={result.skipped}
-                                summary={`${count(result.skipped.length, 'row is', 'rows are')} left out`}
+                                summary={`${count(result.skipped.length, 'row is', 'rows are', DEFAULT_LOCALE)} left out`}
                             />
                             <RowNotes
                                 notes={result.notes}
-                                summary={`${count(result.notes.length, 'row needed', 'rows needed')} a default`}
+                                summary={`${count(result.notes.length, 'row needed', 'rows needed', DEFAULT_LOCALE)} a default`}
                             />
                         </>
                     )}
@@ -457,7 +411,8 @@ const CatalogBar = ({
         <div className="callout try-bar">
             <span>
                 You are searching your own catalog of{' '}
-                {count(loaded.products, 'product', 'products')}, kept in this browser.
+                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, kept in this
+                browser.
             </span>{' '}
             {confirm === true ? (
                 <Ask
@@ -569,7 +524,8 @@ const BeforeStore = ({
 const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
 
 /** The button that searches a whole file, named again by the messages that point to it. */
-const searchLabel = (products: number) => `Search ${count(products, 'product', 'products')}`;
+const searchLabel = (products: number) =>
+    `Search ${count(products, 'product', 'products', DEFAULT_LOCALE)}`;
 
 /** Files up to this many rows are made again on every change, which takes a moment. */
 const QUICK_ROWS = 1000;
@@ -603,7 +559,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     useEffect(() => {
         let live = true;
         ready
-            .then(() => fetchLoaded(catalogUrl))
+            .then(() => readLoaded(catalogUrl))
             .then(
                 (loaded) => {
                     if (live) setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
@@ -695,7 +651,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     setStage({ ...review, problem: await errorOf(response, retry) });
                     return;
                 }
-                const loaded = await fetchLoaded(catalogUrl);
+                const loaded = await readLoaded(catalogUrl);
                 clearSearch(base);
                 setStage(
                     loaded
@@ -723,7 +679,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         const review = stage;
         pending.current = true;
         try {
-            const loaded = await fetchLoaded(catalogUrl);
+            const loaded = await readLoaded(catalogUrl);
             if (!loaded) {
                 // Only the saved rules are left, and searching this file still discards them,
                 // so the question stays.

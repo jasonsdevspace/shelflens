@@ -5,6 +5,8 @@ import { gzipSync } from 'node:zlib';
 
 import { chromium } from '@playwright/test';
 
+import { formatCount } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
 import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { sampleCsv } from '../try/sample.js';
 import type { StartedMessage } from '../worker/handle.js';
@@ -262,7 +264,7 @@ const capReport = (
 ): string => `
 ## A visitor's catalog at the cap
 
-The page at \`try/\` with a file of ${CATALOG_ROW_CAP.toLocaleString('en-US')} products, the cap,
+The page at \`try/\` with a file of ${formatCount(CATALOG_ROW_CAP, DEFAULT_LOCALE)} products, the cap,
 written as the sample is and ${megabytes(fileBytes)} as a CSV. Each run is a fresh
 browser: the file is picked, read and mapped in the page, then search is pressed and the catalog
 goes to the page's own worker, which checks it and builds the store. "Laptop" is the machine as

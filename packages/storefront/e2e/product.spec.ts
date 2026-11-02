@@ -81,7 +81,7 @@ test('a visit that begins on a product offers the store as the way out', async (
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
     await page.getByRole('button', { name: 'Browse all products' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /^All products, \d+ products$/
+        /^All products, [\d,]+ products$/
     );
 });
 

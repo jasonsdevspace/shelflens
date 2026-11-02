@@ -292,6 +292,8 @@ interface Said {
     readonly recent: number;
     /** How many of the store's suggestions are listed. */
     readonly suggested: number;
+    /** The store's locale, which the counts group their digits in. */
+    readonly locale: string;
 }
 
 /** Said when the suggestions fail, with the way on that still works. */
@@ -303,18 +305,28 @@ export const SUGGESTIONS_FAILED = 'Suggestions could not be loaded. You can stil
  * count of none and an error are news too. A clear is said once, whatever else
  * is true.
  */
-const statusOf = ({ notice, open, askable, loading, error, recent, suggested }: Said): string => {
+const statusOf = ({
+    notice,
+    open,
+    askable,
+    loading,
+    error,
+    recent,
+    suggested,
+    locale,
+}: Said): string => {
     if (notice) return notice;
     if (!open) return '';
-    if (!askable) return recent > 0 ? count(recent, 'recent search', 'recent searches') : '';
+    if (!askable)
+        return recent > 0 ? count(recent, 'recent search', 'recent searches', locale) : '';
     // A failure is news before a wait is: nothing is coming.
     if (error) return SUGGESTIONS_FAILED;
     if (loading && suggested === 0) return 'Searching';
-    const recents = count(recent, 'recent search', 'recent searches');
+    const recents = count(recent, 'recent search', 'recent searches', locale);
     if (suggested > 0 && recent > 0) {
-        return `${recents} and ${count(suggested, 'suggestion', 'suggestions')}`;
+        return `${recents} and ${count(suggested, 'suggestion', 'suggestions', locale)}`;
     }
-    if (suggested > 0) return count(suggested, 'suggestion', 'suggestions');
+    if (suggested > 0) return count(suggested, 'suggestion', 'suggestions', locale);
     return recent > 0 ? recents : '0 suggestions';
 };
 
@@ -514,6 +526,7 @@ export const SearchBox = ({
     };
 
     const status = statusOf({
+        locale,
         notice,
         open,
         askable,

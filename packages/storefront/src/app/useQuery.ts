@@ -14,9 +14,11 @@ import type { TypedDocumentString } from '../generated/operations.js';
  * two filters, or between two viewers.
  */
 
-export interface QueryState<Result> {
+export interface QueryState<Result, Variables = unknown> {
     /** The newest answer received, which may be for the variables before these. */
     readonly data: Result | undefined;
+    /** The variables that answer was for, so a caller can tell an earlier answer from this one. */
+    readonly answers: Variables | undefined;
     /** Whether the answer for the current variables is still on its way. */
     readonly loading: boolean;
     readonly error: string | undefined;
@@ -28,12 +30,15 @@ export const useQuery = <Result, Variables>(
     client: GraphQLClient,
     document: TypedDocumentString<Result, Variables>,
     /** The variables, or nothing to ask nothing. */
-    variables: Variables | undefined
-): QueryState<Result> => {
+    variables: Variables | undefined,
+    /** A count the caller raises to ask again, the same variables included. */
+    { asked = 0 }: { readonly asked?: number } = {}
+): QueryState<Result, Variables> => {
     const key = variables === undefined ? undefined : JSON.stringify(variables);
     const [answered, setAnswered] = useState<{
         client: GraphQLClient;
         key: string;
+        variables: Variables;
         data: Result;
     }>();
     const [failed, setFailed] = useState<{ client: GraphQLClient; key: string; message: string }>();
@@ -55,7 +60,13 @@ export const useQuery = <Result, Variables>(
         void latest.current
             .run((signal) => client.query(document, JSON.parse(key) as Variables, { signal }))
             .then((outcome) => {
-                if (!outcome.stale) setAnswered({ client, key, data: outcome.value });
+                if (outcome.stale) return;
+                const variables = JSON.parse(key) as Variables;
+                setAnswered({ client, key, variables, data: outcome.value });
+                // An answer for the question ends a failure of it, however it was asked again.
+                setFailed((before) =>
+                    before?.client === client && before.key === key ? undefined : before
+                );
             })
             .catch((error: unknown) => {
                 setFailed({
@@ -64,10 +75,11 @@ export const useQuery = <Result, Variables>(
                     message: error instanceof Error ? error.message : 'the request failed',
                 });
             });
-    }, [client, document, key, attempt]);
+    }, [client, document, key, attempt, asked]);
 
     return {
         data: key === undefined ? undefined : answered?.data,
+        answers: key === undefined ? undefined : answered?.variables,
         loading: key !== undefined && !current(answered) && !current(failed),
         error: current(failed) ? failed?.message : undefined,
         retry,

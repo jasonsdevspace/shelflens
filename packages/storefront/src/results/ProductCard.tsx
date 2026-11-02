@@ -39,8 +39,8 @@ const matchText = (match: Match): string =>
 type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
 
 /** What the opens did, in the shopper's words: in how many visits, and by how much. */
-const popularityText = ({ clicks, weight }: Popularity): string =>
-    `Opened from the results in ${count(clicks, 'earlier visit', 'earlier visits')}, score raised by ${Math.round((weight - 1) * 100)}%`;
+const popularityText = ({ clicks, weight }: Popularity, locale: string): string =>
+    `Opened from the results in ${count(clicks, 'earlier visit', 'earlier visits', locale)}, score raised by ${Math.round((weight - 1) * 100)}%`;
 
 const effectText = (effect: Effect): string => {
     const weight = effect.weight === null ? '' : ` ${effect.weight}×`;
@@ -57,6 +57,7 @@ const effectText = (effect: Effect): string => {
  * on never shows a bare rank.
  */
 const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
+    const { locale } = useStoreInfo();
     if (!hit.explanation) return null;
     const { matches, rules, popularity } = hit.explanation;
     return (
@@ -74,7 +75,7 @@ const Explanation = ({ rank, hit, phrase }: ExplainProps) => {
                     {effectText(effect)}
                 </li>
             ))}
-            {popularity && <li>{popularityText(popularity)}</li>}
+            {popularity && <li>{popularityText(popularity, locale)}</li>}
             {matches.map((match, index) => (
                 <li key={index}>{matchText(match)}</li>
             ))}
@@ -111,7 +112,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     {product.rating && (
                         <span className="card-rating">
                             {product.rating.average.toFixed(1)} out of 5, from{' '}
-                            {count(product.rating.count, 'rating', 'ratings')}
+                            {count(product.rating.count, 'rating', 'ratings', locale)}
                         </span>
                     )}
                     {!product.inStock && <span className="card-stock">Out of stock</span>}

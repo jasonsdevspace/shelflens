@@ -2,6 +2,8 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
+import { useStoreInfo } from '../app/StoreContext.jsx';
+import { discardRules, readRules, type RulesBody, saveRules } from '../client/rules.js';
 import {
     type Form,
     formOf,
@@ -86,45 +88,10 @@ export interface RulesEditor {
 const NOT_SAVED = 'The rules could not be saved. Try again.';
 const NOT_RESTORED = 'Your rules could not be discarded. Try again.';
 
-interface RulesBody {
-    readonly rules: readonly Rule[];
-    readonly edited: boolean;
-}
-
 interface Loaded extends RulesBody {
     /** The store revision this set is the rules of. Another revision means another set. */
     readonly revision: number;
 }
-
-const isRule = (rule: unknown): boolean =>
-    typeof rule === 'object' && rule !== null && typeof (rule as { id?: unknown }).id === 'string';
-
-/** Whether a body is what the rules path answers, so a stray page with a 200 is not taken for one. */
-const isRulesBody = (body: unknown): body is RulesBody => {
-    if (typeof body !== 'object' || body === null) return false;
-    const { rules, edited } = body as { rules?: unknown; edited?: unknown };
-    return Array.isArray(rules) && rules.every(isRule) && typeof edited === 'boolean';
-};
-
-/** The rules path, asked once. Nothing comes back when the request itself could not be made. */
-const request = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
-    try {
-        return await fetch(url, init);
-    } catch {
-        return undefined;
-    }
-};
-
-const read = async (rulesUrl: string): Promise<RulesBody | undefined> => {
-    const response = await request(rulesUrl);
-    if (!response?.ok) return undefined;
-    try {
-        const body: unknown = await response.json();
-        return isRulesBody(body) ? body : undefined;
-    } catch {
-        return undefined;
-    }
-};
 
 const NOT_READ = 'The rules could not be read. Reload the page and try again.';
 const NOT_YET = 'The rules are being read again. Try again in a moment.';
@@ -159,7 +126,7 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
         }
         const mine = ticket.current + 1;
         ticket.current = mine;
-        void read(rulesUrl).then((next) => {
+        void readRules(rulesUrl).then((next) => {
             if (mine !== ticket.current) return;
             if (next) {
                 setLoaded({ ...next, revision: storeRevision });
@@ -194,6 +161,7 @@ const RuleList = ({
     readonly phrase: string | undefined;
     readonly onPick: (rule: Rule) => void;
 }) => {
+    const { locale } = useStoreInfo();
     const [showAll, setShowAll] = useState(false);
     if (applied === undefined) return null;
     const applying = rules.filter((rule) => applied.includes(rule.id));
@@ -219,7 +187,7 @@ const RuleList = ({
                                 onClick={() => onPick(rule)}
                             >
                                 <span className="rules-rule-name">{rule.name ?? rule.id}</span>
-                                <span className="hint">{summary(rule)}</span>
+                                <span className="hint">{summary(rule, locale)}</span>
                             </button>
                         </li>
                     ))}
@@ -246,7 +214,8 @@ export const DiscardRules = ({
     const [asking, setAsking] = useState(false);
     const [failure, setFailure] = useState<string>();
     const discard = async () => {
-        const failed = await discardRules(rulesUrl);
+        const discarded = await discardRules(rulesUrl);
+        const failed = discarded.ok ? undefined : (discarded.reason ?? NOT_RESTORED);
         setFailure(failed);
         setAsking(false);
         if (failed === undefined) onReset();
@@ -272,18 +241,6 @@ export const DiscardRules = ({
             </button>
         </p>
     );
-};
-
-const failureOf = async (response: Response, otherwise: string): Promise<string> => {
-    const body = (await response.json().catch(() => ({}))) as { errors?: { message: string }[] };
-    return body.errors?.[0]?.message ?? otherwise;
-};
-
-/** Asks the host for its own rules back. Answers with what went wrong, or nothing. */
-const discardRules = async (rulesUrl: string): Promise<string | undefined> => {
-    const response = await request(rulesUrl, { method: 'DELETE' });
-    if (!response) return NOT_RESTORED;
-    return response.ok ? undefined : failureOf(response, NOT_RESTORED);
 };
 
 const versionLine = (response: Response, said: string): string => {
@@ -383,20 +340,13 @@ export const useRulesEditor = ({
             setMessage(failed ? NOT_READ : NOT_YET);
             return;
         }
-        const response = await request(rulesUrl, {
-            method: 'POST',
-            body: JSON.stringify({ rules: set }),
-        });
-        if (!response) {
-            setMessage(NOT_SAVED);
-            return;
-        }
-        if (!response.ok) {
-            setMessage(await failureOf(response, NOT_SAVED));
+        const saved = await saveRules(rulesUrl, set);
+        if (!saved.ok) {
+            setMessage(saved.reason ?? NOT_SAVED);
             return;
         }
         // The host has the set, so the panel does too, without reading it back.
-        accept(set, changed(versionLine(response, said)));
+        accept(set, changed(versionLine(saved.response, said)));
     };
 
     // A failed save puts focus on the first field with a problem, once the

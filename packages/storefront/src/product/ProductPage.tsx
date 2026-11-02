@@ -1,5 +1,6 @@
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
+import { focusIsFree } from '../app/focus.js';
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { type SearchState, serializeSearchState } from '../app/url.js';
@@ -15,7 +16,6 @@ import {
     RecommendationsDocument,
     type RecommendationsQuery,
 } from '../generated/operations.js';
-import { focusIsFree } from '../results/useReturnFocus.js';
 import { Swatch } from '../search/Swatch.jsx';
 import { memberLine, metaLine } from './lines.js';
 import { Rail } from './Rail.jsx';
@@ -221,7 +221,7 @@ const Details = ({
                     <h1 id="product-heading" className="product-name" ref={heading} tabIndex={-1}>
                         {product.name}
                     </h1>
-                    <p className="product-meta">{metaLine(product)}</p>
+                    <p className="product-meta">{metaLine(product, locale)}</p>
                     <p className="product-price">
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </p>
