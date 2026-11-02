@@ -4,6 +4,7 @@ import { type Completions, createCompletions, createStoreEngine } from '@shelfle
 
 import type { EventStore } from './events.js';
 import { fingerprint } from './fingerprint.js';
+import { pricesDiffer } from './prices.js';
 import type { Signals } from './signals.js';
 
 /**
@@ -26,6 +27,10 @@ export interface Store {
     readonly signals: Signals;
     /** Whether the rules are a set a visitor saved rather than the ones the store ships. */
     readonly rulesEdited: boolean;
+    /** Whether a member's price differs from a guest's for anything, so a switch between them means something. */
+    readonly memberPricing: boolean;
+    /** Whether some products are for members only, so a guest may not see everything. */
+    readonly membersOnlyProducts: boolean;
     /** Changes whenever the catalog, the rules or the signals change. */
     readonly version: string;
 }
@@ -95,6 +100,10 @@ export const createStore = ({
         brands: new Map(catalog.brands.map((brand) => [brand.id, brand])),
         signals,
         rulesEdited,
+        memberPricing: catalog.products.some(pricesDiffer),
+        membersOnlyProducts: catalog.products.some(
+            (product) => !product.visibleTo.includes('guest')
+        ),
         version: `${catalog.version}+rules.${rulesVersion}${chosen ? `+clicks.${fingerprint(signals)}` : ''}`,
     };
 };

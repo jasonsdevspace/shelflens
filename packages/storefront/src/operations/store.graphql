@@ -5,6 +5,8 @@ query Store {
         locale
         catalogVersion
         rulesEdited
+        memberPricing
+        membersOnlyProducts
         viewer {
             group
         }

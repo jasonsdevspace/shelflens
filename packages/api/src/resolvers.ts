@@ -10,6 +10,7 @@ import { mostRated, recoverStore, searchStore, type StoreSearchRequest } from '@
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
 import { type HitModel, hitsOf } from './hits.js';
+import { paysLess } from './prices.js';
 import { recommend } from './recommend.js';
 import {
     attributeEnum,
@@ -132,9 +133,7 @@ const whenEmpty = (input: SearchInput, context: Context): NoResultsModel => ({
 });
 
 const priceFor = (product: Product, group: CustomerGroup, currency: string) => {
-    const memberPrice =
-        product.price[group].min < product.price.guest.min ||
-        product.price[group].max < product.price.guest.max;
+    const memberPrice = paysLess(product, group);
     return {
         min: { amount: product.price[group].min, currency },
         max: { amount: product.price[group].max, currency },
@@ -208,6 +207,8 @@ export const resolvers: Resolvers = {
             locale: context.store.catalog.locale,
             catalogVersion: context.store.version,
             rulesEdited: context.store.rulesEdited,
+            memberPricing: context.store.memberPricing,
+            membersOnlyProducts: context.store.membersOnlyProducts,
             viewer: { group: context.viewer.group === 'member' ? 'MEMBER' : 'GUEST' },
         }),
     },

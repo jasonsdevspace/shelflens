@@ -1,4 +1,4 @@
-import { fingerprint } from '@shelflens/api';
+import { contentVersion, fingerprint } from '@shelflens/api';
 import {
     type Brand,
     type Catalog,
@@ -8,7 +8,6 @@ import {
     slugify,
 } from '@shelflens/catalog';
 
-import { contentVersion, hasMemberPrices } from './check.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
@@ -54,8 +53,6 @@ export type LoadResult =
           readonly skipped: readonly RowNote[];
           /** Rows kept with a default where a value did not read. */
           readonly notes: readonly RowNote[];
-          /** Whether any product has a member price that differs from its guest price. */
-          readonly memberPrices: boolean;
       }
     | { readonly ok: false; readonly error: string };
 
@@ -303,6 +300,5 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
         products,
     };
     const catalog: Catalog = { version: contentVersion(parts), seed: 0, locale: 'en-US', ...parts };
-    const memberPrices = hasMemberPrices(products);
-    return { ok: true, catalog, skipped, notes, memberPrices };
+    return { ok: true, catalog, skipped, notes };
 };

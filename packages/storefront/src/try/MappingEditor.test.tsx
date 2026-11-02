@@ -111,3 +111,18 @@ describe('the mapping helpers', () => {
         expect(withSearchOnly({ searchOnly: ['a'] }, 'a', false)).toEqual({});
     });
 });
+
+describe('the preview', () => {
+    it('names a member price where members pay less only at the top of a range, as the store does', () => {
+        const result = toCatalog(TABLE, guessMapping(TABLE), new Date('2026-10-31T00:00:00Z'));
+        if (!result.ok) throw new Error(result.error);
+        const [first, ...rest] = result.catalog.products;
+        if (!first) throw new Error('expected a product');
+        const ranged = {
+            ...first,
+            price: { guest: { min: 5000, max: 6000 }, member: { min: 5000, max: 5500 } },
+        };
+        render(<Preview catalog={{ ...result.catalog, products: [ranged, ...rest] }} />);
+        expect(preview().getAllByRole('listitem')[0]).toHaveTextContent('member price $50 to $55');
+    });
+});

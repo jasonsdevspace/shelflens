@@ -14,7 +14,7 @@ import { PageTop } from './app/PageTop.jsx';
 import { DemoFooter } from './app/Portfolio.jsx';
 import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
-import { storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
+import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
 import { useQuery } from './app/useQuery.js';
 import { type Navigate, useUrlState } from './app/useUrlState.js';
@@ -52,14 +52,6 @@ export interface AppProps {
      * products, so a store over a visitor's catalog leaves it out.
      */
     readonly tour?: boolean;
-    /** Whether the shopper can switch customer group, which changes nothing when every price is the same. */
-    readonly viewerSwitch?: boolean;
-    /**
-     * Whether some products are for members only, so a guest told a product
-     * is not there may be told a member could see it. A visitor's catalog
-     * shows every product to everyone.
-     */
-    readonly membersOnly?: boolean;
     /** Shown above the results, such as what a visitor's catalog is and the way to change it. */
     readonly banner?: ReactNode;
     /** Starts the store again after it did not start. A fresh load of the page unless a test passes its own. */
@@ -177,6 +169,13 @@ const ViewerSwitch = ({
         </select>
     </label>
 );
+
+/**
+ * Whether the shopper may switch between guest and member: only where the
+ * switch changes something the store says it has, a member price or a
+ * product for members only, so a catalog without either offers no switch.
+ */
+const switchesViewer = (info: StoreInfo): boolean => info.memberPricing || info.membersOnlyProducts;
 
 /** The masthead once the store is ready: the search box, the viewer switch and the tour. */
 interface MastheadProps {
@@ -337,7 +336,11 @@ const useStore = (client: GraphQLClient, ready: Promise<void> | 'started') => {
     const categories = useQuery(client, CategoriesDocument, asked);
     const store = useQuery(client, StoreDocument, asked);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
-    const settled = categories.data !== undefined || categories.error !== undefined;
+    // The categories and the store's own facts, which decide the viewer switch, so the
+    // masthead arrives whole rather than with the switch a beat behind it.
+    const settled = [categories, store].every(
+        (query) => query.data !== undefined || query.error !== undefined
+    );
     // Kept once true, so a later client, whose categories are not in yet, never hides the store.
     if (started === 'ready' && settled && !shown) setShown(true);
     useEffect(() => {
@@ -355,8 +358,6 @@ export const App = ({
     rulesUrl,
     ready,
     tour = true,
-    viewerSwitch = true,
-    membersOnly,
     banner,
     retry,
     arrival,
@@ -425,7 +426,7 @@ export const App = ({
                             onTour={touring ? closeTour : openTour}
                             tourButton={tourButton}
                             tour={tour}
-                            viewerSwitch={viewerSwitch}
+                            viewerSwitch={switchesViewer(info)}
                         />
                     )}
                 </PageTop>
@@ -455,8 +456,8 @@ export const App = ({
                             navigate={navigate}
                             direct={direct}
                             group={group}
-                            switchable={viewerSwitch}
-                            membersOnly={membersOnly}
+                            switchable={switchesViewer(info)}
+                            membersOnly={info.membersOnlyProducts}
                         />
                     )}
                     {isReady && state.product === undefined && (

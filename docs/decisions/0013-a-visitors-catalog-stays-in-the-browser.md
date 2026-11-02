@@ -41,14 +41,18 @@ and catalog under names of its own. The demo keeps the names it always had.
 persisted operations and every component rewritten, for a page whose point is that the same
 storefront serves the visitor's products. Mapping onto the existing product shape can be undone
 by deleting the page, and the parts no column feeds get stated defaults: "Unbranded", one
-category, the guest price for members, in stock, and both customer groups. When no member price
-differs, the page hides the group switch rather than show one that changes nothing.
+category, the guest price for members, in stock, and both customer groups. The store says
+whether a member pays less for anything, by the same rule as a product's member price, and
+whether any product is for members only. When neither holds, the page hides the group switch
+rather than show one that changes nothing.
 
 **Read in the page, kept by the worker.** The page needs the rows anyway, to say what it found
 and which column feeds what, so it reads the file, guesses the mapping from the headers and the
 values, and builds the catalog. It sends the catalog to the worker on a `catalog` path, and the
-worker checks it as a server checks a request before keeping the only copy in IndexedDB and
-building a store from it. The worker sets the catalog's version from its content, so a second
+worker checks it with the API's `parseCatalogFile`, as a server checks a request, before keeping
+the only copy in IndexedDB and building a store from it. The check and the cap on a catalog's
+size are the API's, beside its check of a rules file, so the worker takes nothing from the page's
+own folder. The worker sets the catalog's version from its content, so a second
 file can never be answered from what the first one left in a cache, and the same file loaded
 again keeps its answers.
 

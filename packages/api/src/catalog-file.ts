@@ -1,10 +1,11 @@
-import { hashText } from '@shelflens/api';
 import { type Catalog, CUSTOMER_GROUPS, type Product } from '@shelflens/catalog';
 
-import { CATALOG_ROW_CAP } from './limits.js';
+import { hashText } from './fingerprint.js';
 
 /**
- * A catalog the page sends the worker, checked before anything is built.
+ * A catalog file a host is handed, read and checked before anything is
+ * built from it, as `parseRulesFile` reads a rules file. The page for a
+ * visitor's own catalog sends one to its worker.
  *
  * The page made it, but the worker is the one that keeps it and builds a
  * store from it, so it reads it the way a server reads a request: as data
@@ -38,9 +39,12 @@ export const contentVersion = (catalog: Omit<Catalog, 'version' | 'seed' | 'loca
         ])
     )}`;
 
-/** Whether any member pays a different price from a guest, which decides whether a group switch means anything. */
-export const hasMemberPrices = (products: readonly Product[]): boolean =>
-    products.some((product) => product.price.member.min !== product.price.guest.min);
+/**
+ * The most products a visitor's catalog may have: the largest size the
+ * catalog size benchmark found to answer within the popover's budget on a
+ * phone. A test in the storefront holds it to that record.
+ */
+export const CATALOG_ROW_CAP = 10_000;
 
 /** The catalog with its version taken from its content. */
 export const withContentVersion = (catalog: Catalog): Catalog => ({
@@ -187,7 +191,7 @@ const productsProblem = (catalog: Partial<Record<keyof Catalog, unknown>>): stri
 };
 
 /** The catalog, or an error naming the first thing wrong with it. */
-export const checkCatalog = (value: unknown): Catalog => {
+export const parseCatalogFile = (value: unknown): Catalog => {
     if (!value || typeof value !== 'object') throw new Error('the catalog is not an object');
     const catalog = value as Partial<Record<keyof Catalog, unknown>>;
     const problem = headProblem(catalog) ?? productsProblem(catalog);
