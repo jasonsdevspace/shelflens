@@ -12,49 +12,127 @@ import { describe, expect, it } from 'vitest';
 
 const SHEETS = ['styles.css', 'try/try.css', 'widget/widget.css', 'search/searchbox.css'];
 
-/** Each declaration of a property in a sheet, with where it is, comments left out. */
-const declarations = (property: string) =>
-    SHEETS.flatMap((sheet) => {
-        const text = readFileSync(join(__dirname, sheet), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-        return [...text.matchAll(new RegExp(`(?<![-\\w])${property}:\\s*([^;{}]+);`, 'g'))].map(
-            (match) => ({ at: sheet, value: (match[1] ?? '').trim().replace(/\s+/g, ' ') })
-        );
-    });
+/** The search box, whose sizes follow its own text, since it lives on other people's pages too. */
+const RELATIVE = 'search/searchbox.css';
 
-const loose = (property: string, allowed: RegExp) =>
+/** A sheet's text with its comments left out. */
+const sheet = (name: string) =>
+    readFileSync(join(__dirname, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+/** Each declaration of a property in the sheets, with where it is. */
+const declarations = (property: string) =>
+    SHEETS.flatMap((at) =>
+        [...sheet(at).matchAll(new RegExp(`(?<![-\\w])${property}:\\s*([^;{}]+);`, 'g'))].map(
+            (match) => ({ at, value: (match[1] ?? '').trim().replace(/\s+/g, ' ') })
+        )
+    );
+
+/** Every declaration of a property its pattern does not allow, or, in the search box, its relative one. */
+const loose = (property: string, allowed: RegExp, relative?: RegExp) =>
     declarations(property)
-        .filter(({ value }) => !allowed.test(value))
+        .filter(
+            ({ at, value }) =>
+                !(allowed.test(value) || (at === RELATIVE && relative?.test(value) === true))
+        )
         .map(({ at, value }) => `${at}: ${property}: ${value}`);
+
+/** The color names a sheet might reach for instead of a token. */
+const NAMED =
+    /(?<![-\w])(black|white|red|green|blue|gray|grey|silver|yellow|orange|purple|pink|brown|navy|teal|maroon|olive|lime|aqua|cyan|magenta|fuchsia|gold|beige|ivory|tan|crimson|indigo|violet|coral|salmon|khaki|plum|orchid)(?![-\w])/i;
+
+/** Every way of writing a color by value. */
+const BY_VALUE =
+    /#[0-9a-f]{3,8}\b|(?<![-\w])(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix|color)\(/gi;
+
+/** The properties that take a color. */
+const COLORED = [
+    'color',
+    'background',
+    'background-color',
+    'background-image',
+    'border',
+    'border-color',
+    'border-top',
+    'border-bottom',
+    'border-left',
+    'border-right',
+    'outline',
+    'outline-color',
+    'fill',
+    'stroke',
+    'box-shadow',
+    'accent-color',
+    'text-decoration-color',
+    'caret-color',
+];
+
+/** The color roles a block sets from the palette's pairs, with the pairs each one names. */
+const roles = (block: string) =>
+    [...block.matchAll(/--([a-z-]+): ([^;]+);/g)]
+        .map((match) => ({
+            role: match[1] ?? '',
+            pairs: [...(match[2] ?? '').matchAll(/--(?:light|dark)-([a-z-]+)/g)].map(
+                (pair) => pair[1]
+            ),
+        }))
+        .filter(({ pairs }) => pairs.length > 0);
 
 describe('the design tokens', () => {
     it('write the palette once, so no sheet writes a color of its own', () => {
-        const colors = SHEETS.flatMap((sheet) => {
-            const text = readFileSync(join(__dirname, sheet), 'utf8')
-                .replace(/\/\*[\s\S]*?\*\//g, '')
+        const byValue = SHEETS.flatMap((at) =>
+            [
                 // The feature check for light-dark() names two colors to ask whether it is known.
-                .replace('light-dark(#000, #fff)', '');
-            return [...text.matchAll(/#[0-9a-f]{3,8}\b|rgba?\(/gi)].map(
-                (match) => `${sheet}: ${match[0]}`
-            );
-        });
-        expect(colors).toEqual([]);
+                ...sheet(at).replace('light-dark(#000, #fff)', '').matchAll(BY_VALUE),
+            ].map((match) => `${at}: ${match[0]}`)
+        );
+        const named = COLORED.flatMap((property) =>
+            declarations(property)
+                .filter(({ value }) => NAMED.test(value))
+                .map(({ at, value }) => `${at}: ${property}: ${value}`)
+        );
+        expect([...byValue, ...named]).toEqual([]);
+    });
+
+    it('choose every color by name, each role from its own pair, in every list that chooses', () => {
+        const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
+        const pairs = [...tokens.matchAll(/--light-([a-z-]+):/g)].map((match) => match[1] ?? '');
+        for (const name of pairs) expect(tokens, name).toContain(`--dark-${name}:`);
+        const page = sheet('styles.css');
+        const widget = sheet('widget/widget.css');
+        const lists = {
+            'the light page': /:root \{([^}]*)\}/.exec(page)?.[1],
+            'the dark page': /:root\[data-theme='dark'\] \{([^}]*)\}/.exec(page)?.[1],
+            'the widget': /\.shelflens \{([^}]*)\}/.exec(widget)?.[1],
+            'the widget by its scheme': /@supports[^{]*\{\s*\.shelflens \{([^}]*)\}/.exec(
+                widget
+            )?.[1],
+        };
+        for (const [list, block] of Object.entries(lists)) {
+            const set = roles(block ?? '');
+            expect(set.map(({ role }) => role).sort(), list).toEqual([...pairs].sort());
+            for (const { role, pairs: named } of set) {
+                expect(new Set(named), `${list}: --${role}`).toEqual(new Set([role]));
+            }
+        }
     });
 
     it('name every type size, weight and line height', () => {
         expect([
             ...loose(
                 'font-size',
-                /^(var\(--text-[a-z]+\)|max\(var\(--text-body\), 16px\)|[\d.]+em|inherit)$/
+                /^(var\(--text-[a-z]+\)|max\(var\(--text-body\), 16px\)|inherit)$/,
+                /^[\d.]+em$/
             ),
             ...loose('font-weight', /^var\(--weight-[a-z]+\)$/),
             ...loose('line-height', /^var\(--(leading-[a-z]+|space-\d)\)$/),
+            // The widget's frame pins its text, at a size no host's root can scale.
+            ...loose('font', /^(inherit|16px\/var\(--leading-[a-z]+\) system-ui, .*)$/),
         ]).toEqual([]);
     });
 
     it('name every corner and every shadow', () => {
         expect([
-            // The search box's corners follow its own text, as its sizes do.
-            ...loose('border-radius', /^((var\(--radius(-[a-z]+)?\)|0|[\d.]+em)( |$))+$/),
+            ...loose('border-radius', /^((var\(--radius(-[a-z]+)?\)|0)( |$))+$/, /^[\d.]+em$/),
             ...loose('box-shadow', /^(var\(--shadow-raised\)|none)$/),
         ]).toEqual([]);
     });

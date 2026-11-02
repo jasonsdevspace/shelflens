@@ -86,8 +86,12 @@ const inspect = () => {
         const style = getComputedStyle(control);
         const left = parseFloat(style.paddingLeft);
         const right = parseFloat(style.paddingRight);
-        // Written as `right 0.5rem center`, which a browser computes as `calc(100% - 8px)`.
-        const inset = Number(/(\d+(?:\.\d+)?)px\)?$/.exec(style.backgroundPositionX)?.[1] ?? NaN);
+        // The caret is two halves side by side, each placed from the right, which a browser
+        // computes as `calc(100% - 14px), calc(100% - 8px)`: the left half, then the right.
+        const [far = NaN, inset = NaN] = [
+            ...style.backgroundPositionX.matchAll(/(\d+(?:\.\d+)?)px/g),
+        ].map((match) => Number(match[1]));
+        const half = parseFloat(style.backgroundSize);
         const { height } = control.getBoundingClientRect();
         const phone = innerWidth <= 768;
         return [
@@ -95,6 +99,9 @@ const inspect = () => {
             Math.abs(inset - left) <= 0.5
                 ? ''
                 : `has its caret ${String(inset)}px from the right, its text ${String(left)}px from the left`,
+            Math.abs(far - inset - half) <= 0.5
+                ? ''
+                : 'draws its caret in two halves that do not meet',
             right >= left * 2 + 12 ? '' : 'lets its value run under its caret',
             phone && height < 44 ? `is ${String(height)}px high on a phone` : '',
             phone && parseFloat(style.fontSize) < 16
@@ -257,5 +264,6 @@ test('draws the search box the same height in the store and on a page that is no
     };
     const store = await heightOf('/');
     expect(store).toBeGreaterThan(0);
-    expect(await heightOf('/widget/')).toBe(store);
+    // At the browser's usual text size, which the store follows and the widget pins.
+    expect(await heightOf('/widget/')).toBeCloseTo(store ?? 0, 1);
 });

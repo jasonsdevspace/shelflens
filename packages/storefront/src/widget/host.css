@@ -63,11 +63,19 @@
     animation: widget-waiting 0s 0.4s both;
 }
 
-/* With JavaScript off, the line for that shows instead. */
+/*
+ * With JavaScript off, the line for that shows instead. A browser that
+ * knows the scripting feature is told so directly, and one that does not
+ * is told by the line itself, which is markup only when scripts are off.
+ */
 @media (scripting: none) {
     .widget-waiting {
         display: none;
     }
+}
+
+.widget-waiting:has(~ noscript .notice) {
+    display: none;
 }
 
 @keyframes widget-waiting {

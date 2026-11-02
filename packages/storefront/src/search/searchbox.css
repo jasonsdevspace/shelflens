@@ -6,7 +6,8 @@
  * Its sizes are relative to its own text, in em, rather than the tokens'
  * rem, since on a host's page the root's size is the host's. The widget
  * pins its text at 16px, and the store's masthead gives it the page's own
- * size, so the box is the same height in both.
+ * size, so at the browser's usual text size the box is the same height in
+ * both, and in the store it grows with a visitor's larger text.
  */
 
 /* Read by a screen reader, taking no room on the screen. */

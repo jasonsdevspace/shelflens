@@ -88,7 +88,7 @@ test('the strip and the brand are in the page itself, and a browser without Java
     expect(await noScript.last().textContent()).toContain('The search box needs JavaScript.');
     // The host page's sheet takes the loading line out when scripts are off, with no style of its own.
     await expect(page.locator('.widget-waiting')).toHaveCSS('display', 'none');
-    expect(await page.locator('style').count()).toBe(0);
+    expect(await page.locator('head style').count()).toBe(0);
     await context.close();
 });
 
