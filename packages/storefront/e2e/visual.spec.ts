@@ -80,9 +80,18 @@ for (const colorScheme of ['light', 'dark'] as const) {
                 await settle(page, resultsFor(page, 'jacket'));
                 const card = page.getByRole('list', { name: 'Products' }).getByRole('link').first();
                 await card.focus();
-                await expect
-                    .soft(card.locator('xpath=..'))
-                    .toHaveScreenshot(`card-focused-${colorScheme}.png`);
+                // The focus ring is drawn outside the card, so the picture takes in a margin around it.
+                const box = await card.boundingBox();
+                if (!box) throw new Error('the first card has no box to photograph');
+                const margin = 6;
+                await expect.soft(page).toHaveScreenshot(`card-focused-${colorScheme}.png`, {
+                    clip: {
+                        x: box.x - margin,
+                        y: box.y - margin,
+                        width: box.width + margin * 2,
+                        height: box.height + margin * 2,
+                    },
+                });
             }
         );
 
