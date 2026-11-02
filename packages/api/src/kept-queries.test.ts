@@ -44,7 +44,7 @@ describe('a query the API has seen', () => {
         const api = createStoreApi(store);
         const query = `query Broken${String(serial)} { store { nothing } }`;
         const first = await api.run({ query }, guest);
-        expect(first.errors?.[0]?.extensions?.code).toBe('GRAPHQL_VALIDATION_FAILED');
+        expect(first.errors?.[0]?.extensions?.['code']).toBe('GRAPHQL_VALIDATION_FAILED');
         expect(await api.run({ query }, guest)).toEqual(first);
         expect(parsed).toHaveBeenCalledTimes(2);
     });
@@ -75,7 +75,7 @@ describe('a query the API has seen', () => {
         expect((await createStoreApi(store).run({ query }, guest)).errors).toBeUndefined();
         const tight = createStoreApi(store, { limits: { maxDepth: 2, maxFields: 200 } });
         const refused = await tight.run({ query }, guest);
-        expect(refused.errors?.[0]?.extensions?.code).toBe('QUERY_TOO_DEEP');
+        expect(refused.errors?.[0]?.extensions?.['code']).toBe('QUERY_TOO_DEEP');
     });
 
     it('is forgotten once enough newer ones have been kept, and read again', async () => {

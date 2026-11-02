@@ -1,4 +1,8 @@
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import importX from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
@@ -45,10 +49,15 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
+/** The workspace's packages, each with a manifest of its own. */
+const WORKSPACES = readdirSync(new URL('packages/', import.meta.url), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
 /** Code that runs in the browser loads no Node module. */
 const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot load Node.' };
 
-export default tseslint.config(
+export default defineConfig(
     {
         ignores: [
             '**/coverage',
@@ -111,6 +120,11 @@ export default tseslint.config(
             // is what makes a missing case fail the build.
             '@typescript-eslint/switch-exhaustiveness-check': 'error',
         },
+    },
+    {
+        // The script each page runs before its first paint, in the browser.
+        files: ['packages/storefront/theme.js'],
+        languageOptions: { globals: globals.browser },
     },
     {
         // The storefront runs in a browser, and its hooks follow React's rules.
@@ -184,5 +198,38 @@ export default tseslint.config(
                 },
             ],
         },
-    }
+    },
+    // Each package imports only what its own manifest declares, beside the
+    // tools the repository's root provides, so a package never works only
+    // because another one happens to install what it uses. Imports of types
+    // count too, since a type a package needs is a package it needs. What
+    // ships takes only its dependencies, and the tools only its checks.
+    ...WORKSPACES.map((name) => ({
+        files: [`packages/${name}/**/*.{ts,tsx,mjs,js}`],
+        rules: {
+            'import-x/no-extraneous-dependencies': [
+                'error',
+                {
+                    packageDir: [
+                        fileURLToPath(new URL(`packages/${name}/`, import.meta.url)),
+                        fileURLToPath(new URL('./', import.meta.url)),
+                    ],
+                    includeTypes: true,
+                    // A tool the code is checked or built with, never what it ships.
+                    devDependencies: [
+                        '**/*.test.{ts,tsx}',
+                        '**/e2e/**',
+                        '**/smoke/**',
+                        '**/scripts/**',
+                        '**/src/bench/**',
+                        '**/src/dev/**',
+                        '**/src/test/**',
+                        '**/cli.ts',
+                        '**/*.config.{ts,js,mjs}',
+                        '**/vitest.setup.ts',
+                    ],
+                },
+            ],
+        },
+    }))
 );

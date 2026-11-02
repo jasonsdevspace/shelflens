@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig } from 'vite';
 
 /**
  * The widget as one file, beside the page, for a host page to load.
@@ -11,6 +11,8 @@ import { defineConfig } from 'vite';
  * built, so it must not empty it.
  */
 export default defineConfig({
+    // Each workspace package's source, by the condition its exports name.
+    resolve: { conditions: ['source', ...defaultClientConditions] },
     plugins: [react()],
     build: {
         outDir: 'dist',

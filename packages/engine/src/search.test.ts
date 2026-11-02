@@ -15,7 +15,7 @@ const product = (
     attributes: Document['attributes']
 ): Document => ({
     id,
-    text: { name, description, brand: String(attributes.brand ?? '') },
+    text: { name, description, brand: String(attributes['brand'] ?? '') },
     attributes,
 });
 

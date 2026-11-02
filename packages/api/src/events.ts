@@ -85,7 +85,7 @@ type Mutable = { -readonly [Key in keyof StoreEvent]: StoreEvent[Key] };
 
 /** The required fields, or nothing when one is missing or wrong. */
 const parseRequired = (value: Record<string, unknown>): Mutable | undefined => {
-    const id = text(value.id, ID_LIMIT);
+    const id = text(value['id'], ID_LIMIT);
     const { kind, at } = value;
     if (id === undefined || typeof kind !== 'string' || !KINDS.has(kind)) return undefined;
     if (typeof at !== 'number' || !Number.isFinite(at)) return undefined;

@@ -6,8 +6,8 @@ import { generateCatalog } from '@shelflens/catalog';
 import { createServer } from '@shelflens/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { serving } from '../test/serving.js';
 import { createWorkerApi } from '../worker/handle.js';
-import { serving } from '../worker/serving.js';
 
 /*
  * The demo's store answers from the service worker, and `npm run api` from

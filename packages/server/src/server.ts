@@ -314,7 +314,7 @@ const send = (
     { status, body, requestId, headers = JSON_HEADERS }: Reply
 ) => {
     // An answer to another origin already varies on it, and keeps varying on it.
-    const vary = [response.getHeader('vary'), headers.vary]
+    const vary = [response.getHeader('vary'), headers['vary']]
         .filter((value): value is string => typeof value === 'string')
         .join(', ');
     response.writeHead(status, {

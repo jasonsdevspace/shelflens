@@ -11,12 +11,12 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
     testDir: 'e2e',
     fullyParallel: true,
-    forbidOnly: Boolean(process.env.CI),
-    retries: process.env.CI ? 1 : 0,
+    forbidOnly: Boolean(process.env['CI']),
+    retries: process.env['CI'] ? 1 : 0,
     // A test that passes only when run again is flaky, and fails the run by name
     // rather than hiding behind the retry.
-    failOnFlakyTests: Boolean(process.env.CI),
-    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+    failOnFlakyTests: Boolean(process.env['CI']),
+    reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
     use: {
         baseURL: 'http://localhost:4173/',
         trace: 'retain-on-failure',
@@ -42,7 +42,7 @@ export default defineConfig({
             use: { ...devices['Pixel 7'] },
             testMatch: /(^|\/)(phone|widget|try-widget|embed|themes|controls)\.spec\.ts$/,
         },
-        ...(process.env.VISUAL
+        ...(process.env['VISUAL']
             ? [
                   {
                       name: 'visual-desktop',
@@ -63,7 +63,7 @@ export default defineConfig({
         {
             command: 'npx vite preview --port 4173 --strictPort',
             url: 'http://localhost:4173/',
-            reuseExistingServer: !process.env.CI,
+            reuseExistingServer: !process.env['CI'],
             timeout: 30_000,
         },
         {

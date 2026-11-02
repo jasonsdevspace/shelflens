@@ -140,7 +140,7 @@ const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 const shaped = (
     error: GraphQLError
 ): StoreResponse['errors'] extends readonly (infer E)[] | undefined ? E : never => {
-    const code = error.extensions.code;
+    const code = error.extensions['code'];
     const isUserError =
         typeof code === 'string' &&
         ['BAD_USER_INPUT', 'QUERY_TOO_DEEP', 'QUERY_TOO_WIDE'].includes(code);

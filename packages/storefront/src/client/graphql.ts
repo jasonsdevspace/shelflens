@@ -109,7 +109,7 @@ interface Envelope<Result> {
 const nameOf = <Result, Variables>(
     document: TypedDocumentString<Result, Variables>
 ): string | undefined => {
-    const hash: unknown = document.__meta__?.hash;
+    const hash: unknown = document.__meta__?.['hash'];
     return typeof hash === 'string' ? hash : undefined;
 };
 

@@ -24,12 +24,12 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
  * `ORIGIN_PATHS=graphql,events` says which paths they may use. `OWN_ORIGIN`
  * names the store's own page when a proxy in front rewrites the host.
  */
-const port = Number(process.env.PORT ?? 8080);
-const products = Number(process.env.PRODUCTS ?? 2000);
+const port = Number(process.env['PORT'] ?? 8080);
+const products = Number(process.env['PRODUCTS'] ?? 2000);
 const rules =
-    process.env.RULES === undefined
+    process.env['RULES'] === undefined
         ? []
-        : parseRulesFile(JSON.parse(readFileSync(process.env.RULES, 'utf8')));
+        : parseRulesFile(JSON.parse(readFileSync(process.env['RULES'], 'utf8')));
 const listed = (name: string): readonly string[] =>
     (process.env[name] ?? '')
         .split(',')
@@ -50,7 +50,8 @@ const originPaths = listed('ORIGIN_PATHS').map((path) => {
         throw new Error(`ORIGIN_PATHS holds a path the store has not got: ${path}`);
     return path;
 });
-const own = process.env.OWN_ORIGIN === undefined ? undefined : asOrigin(process.env.OWN_ORIGIN);
+const own =
+    process.env['OWN_ORIGIN'] === undefined ? undefined : asOrigin(process.env['OWN_ORIGIN']);
 const origins: OriginsSupport | undefined =
     allowedOrigins.length > 0
         ? {
@@ -71,9 +72,9 @@ const host = createStoreHost({
 });
 const server = createServer({
     host,
-    persistedOnly: process.env.PERSISTED_ONLY === 'true',
+    persistedOnly: process.env['PERSISTED_ONLY'] === 'true',
     // Only behind a proxy that sets the forwarded headers, which a client could otherwise forge.
-    trustProxy: process.env.TRUST_PROXY === 'true',
+    trustProxy: process.env['TRUST_PROXY'] === 'true',
     events,
     ...(origins && { origins }),
 });

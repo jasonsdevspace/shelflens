@@ -26,7 +26,7 @@ describe('the persisted operations', () => {
     it('name every document the page has, by the hash of the text the API holds', () => {
         expect(documents.length).toBeGreaterThan(0);
         for (const [name, document] of documents) {
-            const hash: unknown = document.__meta__?.hash;
+            const hash: unknown = document.__meta__?.['hash'];
             expect(typeof hash, name).toBe('string');
             const text = PERSISTED_OPERATIONS[hash as string] ?? '';
             expect(createHash('sha256').update(text).digest('hex'), name).toBe(hash);

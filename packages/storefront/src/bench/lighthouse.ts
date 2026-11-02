@@ -50,7 +50,7 @@ interface Measure {
 }
 
 const measureOf = (report: Report): Measure => ({
-    performance: report.categories.performance?.score ?? 0,
+    performance: report.categories['performance']?.score ?? 0,
     paint: report.audits['largest-contentful-paint']?.numericValue ?? Number.POSITIVE_INFINITY,
     shift: report.audits['cumulative-layout-shift']?.numericValue ?? Number.POSITIVE_INFINITY,
 });
@@ -80,7 +80,7 @@ const describe = ({ performance, paint, shift }: Measure): string =>
 
 /** The accessibility audits that did not pass, named, so a failure says what to fix. */
 const findingsOf = (report: Report): readonly string[] =>
-    (report.categories.accessibility?.auditRefs ?? []).flatMap((ref) => {
+    (report.categories['accessibility']?.auditRefs ?? []).flatMap((ref) => {
         const audit = report.audits[ref.id];
         return audit?.score !== null && audit !== undefined && audit.score < 1 ? [audit.id] : [];
     });
@@ -101,7 +101,7 @@ const auditAccessibility = async (
         await page.goto(`${origin}${path}`);
         if (ready) await ready(page);
         const report = await run(`${origin}${path}`, 'accessibility', true);
-        const score = Math.round((report.categories.accessibility?.score ?? 0) * 100);
+        const score = Math.round((report.categories['accessibility']?.score ?? 0) * 100);
         const findings = findingsOf(report);
         const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
         console.log(`${path}: accessibility ${String(score)}${detail}`);

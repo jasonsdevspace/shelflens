@@ -97,7 +97,7 @@ const CategoryFacet = ({
     });
     if (next.length === 0) return null;
     return (
-        <Group title={TITLES.category ?? 'Category'}>
+        <Group title={TITLES['category'] ?? 'Category'}>
             <ul className="facet-links">
                 {next.map(({ category, n }) => (
                     <li key={category.id}>

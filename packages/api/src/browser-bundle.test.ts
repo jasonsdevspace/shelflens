@@ -25,11 +25,8 @@ describe('the API in a browser', () => {
             minify: true,
             write: false,
             logLevel: 'silent',
-            alias: {
-                '@shelflens/catalog': './packages/catalog/src/index.ts',
-                '@jasonsdevspace/shelflens': './packages/engine/src/index.ts',
-                '@shelflens/search': './packages/search/src/index.ts',
-            },
+            // Each workspace package's source, by the condition its exports name.
+            conditions: ['source'],
         });
         const [output] = result.outputFiles;
         expect(output).toBeDefined();

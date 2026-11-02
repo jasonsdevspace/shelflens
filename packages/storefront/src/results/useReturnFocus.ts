@@ -27,7 +27,7 @@ export const useReturnFocus = (
         if (sku === undefined || !settled) return;
         if (focusIsFree()) {
             const links = container.current?.querySelectorAll<HTMLElement>('.card-link') ?? [];
-            const card = [...links].find((link) => link.dataset.sku === sku);
+            const card = [...links].find((link) => link.dataset['sku'] === sku);
             (card ?? headingIn(container))?.focus({ preventScroll: !card });
         }
         onDone();
