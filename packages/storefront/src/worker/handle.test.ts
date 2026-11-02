@@ -185,11 +185,12 @@ describe('the API inside the worker', () => {
 });
 
 /**
- * A store of answers that matches as the Cache API does: by the URL, then by
- * each request header the kept answer names in its `vary`, and never for a
- * `vary` of `*`. Nothing about the viewer is built into it, so an answer the
- * worker keeps without varying on the viewer is served to every viewer, as
- * a browser would serve it.
+ * A store of answers that matches as the Cache API does: a GET, by the URL,
+ * then by each request header the kept answer names in its `vary`. It
+ * refuses to keep an answer that varies on everything, and deletes only the
+ * answers the request it is given would match. Nothing about the viewer is
+ * built into it, so an answer the worker keeps without varying on the
+ * viewer is served to every viewer, as a browser would serve it.
  */
 const createAnswerStore = () => {
     const kept: { request: Request; response: Response }[] = [];
@@ -201,11 +202,11 @@ const createAnswerStore = () => {
         if (names.includes('*')) return true;
         return names.some((name) => keptRequest.headers.get(name) !== request.headers.get(name));
     };
-    const find = (request: Request) =>
-        kept.findIndex(
-            (entry) =>
-                entry.request.url === request.url && !varies(entry.request, entry.response, request)
-        );
+    const matching = (entry: (typeof kept)[number], request: Request) =>
+        request.method === 'GET' &&
+        entry.request.url === request.url &&
+        !varies(entry.request, entry.response, request);
+    const find = (request: Request) => kept.findIndex((entry) => matching(entry, request));
     let matched = 0;
     const store: AnswerStore = {
         match: (request) => {
@@ -214,6 +215,10 @@ const createAnswerStore = () => {
             return Promise.resolve(found?.response.clone());
         },
         put: (request, response) => {
+            const vary = (response.headers.get('vary') ?? '').split(',');
+            if (vary.some((name) => name.trim() === '*')) {
+                return Promise.reject(new TypeError('an answer that varies on everything'));
+            }
             const at = find(request);
             if (at === -1) kept.push({ request, response });
             else kept[at] = { request, response };
@@ -222,11 +227,7 @@ const createAnswerStore = () => {
         keys: () => Promise.resolve(kept.map((entry) => entry.request)),
         delete: (request) => {
             const before = kept.length;
-            kept.splice(
-                0,
-                kept.length,
-                ...kept.filter((entry) => entry.request.url !== request.url)
-            );
+            kept.splice(0, kept.length, ...kept.filter((entry) => !matching(entry, request)));
             return Promise.resolve(kept.length < before);
         },
     };
@@ -258,8 +259,10 @@ describe('the answers the worker keeps', () => {
         const first = await api.handle(persisted({ op: STORE, v: version }));
         expect(first?.headers.get('cache-control')).toBe('public, max-age=300');
         expect(size()).toBe(1);
+        const firstBody: unknown = await first?.clone().json();
         const again = await api.handle(persisted({ op: STORE, v: version }));
         expect(matches()).toBe(1);
+        expect(await again?.clone().json()).toEqual(firstBody);
         expect(await groupOf(again)).toBe('GUEST');
         // The kept answer varies on the viewer, so a member is never served the guest's,
         // and a guest after the member is still served the guest's.
@@ -527,16 +530,7 @@ describe('rules in the worker', () => {
     });
 
     it('drops every answer kept under the old version when a set is saved', async () => {
-        const kept = new Map<string, Response>();
-        const answers: AnswerStore = {
-            match: (request) => Promise.resolve(kept.get(request.url)),
-            put: (request, response) => {
-                kept.set(request.url, response);
-                return Promise.resolve();
-            },
-            keys: () => Promise.resolve([...kept.keys()].map((url) => new Request(url))),
-            delete: (request) => Promise.resolve(kept.delete(request.url)),
-        };
+        const { store: answers, size } = createAnswerStore();
         const api = createWorkerApi({
             catalogUrl: 'catalog.json',
             base: BASE,
@@ -547,10 +541,12 @@ describe('rules in the worker', () => {
         const first = await api.handle(persisted({ op: STORE }));
         const current = first?.headers.get(VERSION_HEADER) ?? '';
         await api.handle(persisted({ op: STORE, v: current }));
-        expect(kept.size).toBe(1);
+        await api.handle(persisted({ op: STORE, v: current }, { [GROUP_HEADER]: 'member' }));
+        expect(size()).toBe(2);
         await api.handle(
             rulesRequest('POST', { rules: [{ id: 'mine', pin: [catalog.products[0]?.sku] }] })
         );
-        expect(kept.size).toBe(0);
+        // Every viewer's answer goes, not only the one a plain request would match.
+        expect(size()).toBe(0);
     });
 });

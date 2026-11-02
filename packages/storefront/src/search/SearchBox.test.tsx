@@ -46,8 +46,9 @@ const suggestionsFor = (phrase: string): Suggestions => ({
 /**
  * A network that holds each request until the test answers it. A request
  * the page aborts is refused, as fetch refuses it, unless `late` is set:
- * then the answer still arrives, as one already on its way does in a real
- * browser, so the page itself has to set it aside.
+ * then the answer arrives anyway, as it would by any path that does not
+ * honor the abort, so what keeps it off the page is the page's own check
+ * that an answer is for the newest phrase.
  */
 const createNetwork = ({ late = false }: { readonly late?: boolean } = {}) => {
     const pending: Pending[] = [];

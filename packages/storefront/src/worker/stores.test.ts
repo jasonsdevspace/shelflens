@@ -44,6 +44,21 @@ describe.each(EVENT_STORES)('an event store %s', (_where, create) => {
         expect((await store.all()).map((event) => event.id)).toEqual(['a', 'b']);
     });
 
+    it('keeps the first copy of an id, however it is sent again', async () => {
+        const store = create(10);
+        await store.append([view('a', 1), { ...view('a', 99), sku: 'SL-other' }]);
+        await store.append([{ ...view('a', 50), sku: 'SL-later' }, view('b', 2)]);
+        expect(await store.all()).toEqual([view('a', 1), view('b', 2)]);
+    });
+
+    it('orders events given at the same time by their id, and trims them in that order', async () => {
+        const store = create(2);
+        await store.append([view('z', 5), view('a', 5)]);
+        expect((await store.all()).map((event) => event.id)).toEqual(['a', 'z']);
+        await store.append([view('m', 6)]);
+        expect((await store.all()).map((event) => event.id)).toEqual(['z', 'm']);
+    });
+
     it('gives its events back oldest first, by the time the page gave them', async () => {
         const store = create(10);
         await store.append([view('late', 30), view('early', 10)]);

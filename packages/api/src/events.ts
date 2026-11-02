@@ -161,7 +161,8 @@ export const createMemoryEventStore = ({
                 ids.add(event.id);
                 events.push(event);
             }
-            events.sort((a, b) => a.at - b.at);
+            // By time, then by id as IndexedDB orders equal times, so both hosts keep the same.
+            events.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
             if (events.length > limit) {
                 for (const gone of events.slice(0, events.length - limit)) ids.delete(gone.id);
                 events = events.slice(events.length - limit);

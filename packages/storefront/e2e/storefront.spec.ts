@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
 
 /*
  * A cold first visit, through the service worker.
@@ -96,6 +96,17 @@ interface ShippedCatalog {
     }[];
 }
 
+/** A product only members may see, and one members pay less for, from the catalog the demo ships. */
+const membersAndDiscount = async (request: APIRequestContext) => {
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    const discounted = catalog.products.find(
+        (p) => p.visibleTo.length === 2 && p.price.member.min < p.price.guest.min
+    );
+    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    return { membersOnly, discounted };
+};
+
 const amount = (text: string | null) =>
     Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
 
@@ -122,10 +133,7 @@ test('a member sees the product guests cannot, and pays less, from the same page
     page,
     request,
 }) => {
-    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
-    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
-    const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
-    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    const { membersOnly, discounted } = await membersAndDiscount(request);
 
     await page.goto(`/?product=${membersOnly.sku}`);
     await expect(page.getByText(/There is no product/)).toBeVisible();
@@ -154,36 +162,38 @@ test('a guest after a member sees the guest price and no product for members onl
     page,
     request,
 }) => {
-    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
-    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
-    const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
-    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    const { membersOnly, discounted } = await membersAndDiscount(request);
     const viewer = page.getByRole('combobox', { name: 'Shopping as' });
     const price = page.locator('.product-price');
+    // Within the page, as a link does, so the viewer chosen stays chosen.
+    const open = (sku: string) =>
+        page.evaluate((path) => {
+            window.history.pushState(null, '', path);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        }, `/?product=${sku}`);
+    const asGuest = discounted.price.guest.min / 100;
 
-    // The guest's price, as a baseline, before any member answer is kept anywhere.
-    await page.goto(`/?product=${discounted.sku}`);
-    await expect(price).toBeVisible();
-    const asGuest = amount(await price.textContent());
-
-    // A member looks first, so their answers are kept in the page, the worker and the browser.
+    // A member looks first: the products are first asked for as a member, so the
+    // member's answers are the ones the page and the worker keep.
+    await page.goto('/');
     await viewer.selectOption('member');
+    await open(discounted.sku);
     await expect.poll(async () => amount(await price.textContent())).toBeLessThan(asGuest);
-    await page.goto(`/?product=${membersOnly.sku}`);
-    await viewer.selectOption('member');
+    await open(membersOnly.sku);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(membersOnly.name);
 
-    // Then a guest, in the same page, is never served what the member was.
+    // Then a guest in the same page, whose answers nothing has kept yet, so each is
+    // asked of the worker, which must not hand over the member's.
     await viewer.selectOption('guest');
     await expect(page.getByText(/There is no product/)).toBeVisible();
-    await page.goto(`/?product=${discounted.sku}`);
+    await open(discounted.sku);
     await expect.poll(async () => amount(await price.textContent())).toBe(asGuest);
 
-    // And after a reload, with only the worker's and the browser's kept answers left.
+    // And after a reload, with only what the worker kept left.
     await page.reload();
     await expect(viewer).toHaveValue('guest');
     await expect.poll(async () => amount(await price.textContent())).toBe(asGuest);
-    await page.goto(`/?product=${membersOnly.sku}`);
+    await open(membersOnly.sku);
     await expect(page.getByText(/There is no product/)).toBeVisible();
 });
 
