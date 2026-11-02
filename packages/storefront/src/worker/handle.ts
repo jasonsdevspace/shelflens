@@ -2,6 +2,7 @@ import {
     createStoreHost,
     type EventStore,
     type HostedStore,
+    INTERNAL_MESSAGE,
     parseCatalogFile,
     parseRulesFile,
     PERSISTED_OPERATIONS,
@@ -412,6 +413,23 @@ export const createWorkerApi = ({
         return response;
     };
 
+    /** The answer to a request on one of the worker's routes, or nothing for any other. */
+    const answerRoute = async (request: Request): Promise<Response | undefined> => {
+        const route = routeOf(request.url, base, served);
+        if (route === 'catalog' && catalogs) return receiveCatalog(catalogs, request);
+        if (route === 'events') return receive(request);
+        if (route === 'rules') {
+            return receiveRuleSet(request).catch((error: unknown) => {
+                if (error instanceof NoCatalogError) return noCatalog();
+                throw error;
+            });
+        }
+        if (route !== 'graphql' || (request.method !== 'GET' && request.method !== 'POST')) {
+            return undefined;
+        }
+        return query(request);
+    };
+
     return {
         warm: async () => {
             try {
@@ -424,19 +442,13 @@ export const createWorkerApi = ({
         },
         refresh: () => host.refresh(),
         handle: async (request) => {
-            const route = routeOf(request.url, base, served);
-            if (route === 'catalog' && catalogs) return receiveCatalog(catalogs, request);
-            if (route === 'events') return receive(request);
-            if (route === 'rules') {
-                return receiveRuleSet(request).catch((error: unknown) => {
-                    if (error instanceof NoCatalogError) return noCatalog();
-                    throw error;
-                });
+            try {
+                return await answerRoute(request);
+            } catch (error) {
+                // As the Node server does: a failure that is ours, in the API's shape, never its reason.
+                console.error('the worker could not answer', request.url, error);
+                return json(500, { errors: [{ message: INTERNAL_MESSAGE }] });
             }
-            if (route !== 'graphql' || (request.method !== 'GET' && request.method !== 'POST')) {
-                return undefined;
-            }
-            return query(request);
         },
     };
 };

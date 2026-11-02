@@ -5,6 +5,7 @@ import {
     createStore,
     GPC_HEADER,
     GROUP_HEADER,
+    INTERNAL_MESSAGE,
     PERSISTED_OPERATIONS,
     VERSION_HEADER,
 } from '@shelflens/api';
@@ -307,6 +308,23 @@ describe('events inside the worker', () => {
             headers,
             body: JSON.stringify([{ id: 'e1', kind: 'search', at: 1, phrase: 'jacket' }]),
         });
+
+    it('answers a failure of its own with a 500 in the API’s shape, as the server does, never its reason', async () => {
+        const broken = {
+            ...createMemoryEventStore(),
+            append: () => Promise.reject(new Error('the database is gone')),
+        };
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: servingCatalog(),
+            events: broken,
+        });
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const answer = await api.handle(batch());
+        expect(answer?.status).toBe(500);
+        expect(await answer?.json()).toEqual({ errors: [{ message: INTERNAL_MESSAGE }] });
+    });
 
     it('keeps a posted batch in the store it was given, and nothing under Global Privacy Control', async () => {
         const events = createMemoryEventStore();
