@@ -1,15 +1,15 @@
 import {
     EngineError,
     type Facet,
-    type Hit,
     type Recovery,
     type SearchResult,
 } from '@jasonsdevspace/shelflens';
 import type { Category, CustomerGroup, Product } from '@shelflens/catalog';
-import { recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
+import { mostRated, recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { Resolvers, SearchInput } from './generated/schema.js';
+import { type HitModel, hitsOf } from './hits.js';
 import { recommend } from './recommend.js';
 import {
     attributeEnum,
@@ -31,11 +31,8 @@ import {
  * request set, and never from an argument.
  */
 
-/** A hit paired with its product, which the hit's id names. */
-export interface HitModel {
-    readonly hit: Hit;
-    readonly product: Product;
-}
+// The schema's generated types name the hit model here, where the resolvers live.
+export type { HitModel } from './hits.js';
 
 export interface SearchResultModel {
     readonly result: SearchResult;
@@ -71,12 +68,6 @@ const RAIL_DEFAULT = 6;
 const railLimit = (limit: number | null | undefined): number => limit ?? RAIL_DEFAULT;
 /** A browsed category is a place, not a filter the shopper chose, so it is never offered up. */
 const FIXED_ATTRIBUTES = ['category'];
-
-const hitsOf = (result: SearchResult, context: Context): HitModel[] =>
-    result.hits.flatMap((hit) => {
-        const product = context.store.products.get(hit.id);
-        return product ? [{ hit, product }] : [];
-    });
 
 /** The engine's refusal of a request, reported as the caller's mistake. */
 const asUserError = (error: unknown): never => {
@@ -118,15 +109,10 @@ const POPULAR_CANDIDATES = 50;
 const popularFor = (input: SearchInput, context: Context): Product[] => {
     const { signals } = context.store;
     const chosen = Object.keys(signals).length > 0;
-    const result = searchStore(context.store.engine, {
+    const result = mostRated(context.store.engine, {
         group: context.viewer.group,
         filters: (input.filters ?? []).filter((f) => f.attribute === 'CATEGORY').map(toFilter),
-        sort: [
-            { by: 'ratingCount', direction: 'desc' },
-            { by: 'rating', direction: 'desc' },
-        ],
-        pageSize: chosen ? POPULAR_CANDIDATES : POPULAR,
-        facets: [],
+        limit: chosen ? POPULAR_CANDIDATES : POPULAR,
         now: context.now,
     });
     const products = hitsOf(result, context).map((hit) => hit.product);
