@@ -1,6 +1,6 @@
 {
-    "recordedAt": "2026-11-02T04:42:25.459Z",
-    "commit": "9327e47",
+    "recordedAt": "2026-11-02T04:51:20.857Z",
+    "commit": "3e91942",
     "environment": {
         "node": "v24.3.0",
         "cpu": "Apple M2 Max",
@@ -15,9 +15,9 @@
     },
     "index": {
         "terms": 305,
-        "buildMs": 1992,
-        "documentsPerSecond": 50213,
-        "heapMb": 91
+        "buildMs": 1928,
+        "documentsPerSecond": 51878,
+        "heapMb": 89
     },
     "queries": [
         {
@@ -27,9 +27,9 @@
                 "prefixLastTerm": true
             },
             "total": 61666,
-            "p50": 33.94,
-            "p95": 40.48,
-            "p99": 89.77
+            "p50": 34.25,
+            "p95": 40.69,
+            "p99": 94.25
         },
         {
             "name": "one common word",
@@ -38,8 +38,8 @@
             },
             "total": 5627,
             "p50": 1.49,
-            "p95": 7.09,
-            "p99": 7.64
+            "p95": 7.08,
+            "p99": 7.9
         },
         {
             "name": "two words",
@@ -47,9 +47,9 @@
                 "query": "navy blue hoodie"
             },
             "total": 375,
-            "p50": 15.81,
-            "p95": 18,
-            "p99": 91.84
+            "p50": 15.78,
+            "p95": 18.14,
+            "p99": 90.33
         },
         {
             "name": "a synonym",
@@ -57,9 +57,9 @@
                 "query": "trainers"
             },
             "total": 10449,
-            "p50": 3.24,
-            "p95": 8.88,
-            "p99": 9.53
+            "p50": 3.33,
+            "p95": 9,
+            "p99": 9.41
         },
         {
             "name": "a typo, so the fuzzy pass runs",
@@ -67,9 +67,9 @@
                 "query": "sneakr"
             },
             "total": 8310,
-            "p50": 2.61,
-            "p95": 7.81,
-            "p99": 8.19
+            "p50": 2.63,
+            "p95": 7.77,
+            "p99": 8.92
         },
         {
             "name": "browse a category by position",
@@ -88,9 +88,9 @@
                 ]
             },
             "total": 33566,
-            "p50": 26.78,
-            "p95": 30.11,
-            "p99": 33.28
+            "p50": 24.64,
+            "p95": 27.26,
+            "p99": 27.81
         },
         {
             "name": "a word with two filters",
@@ -111,9 +111,9 @@
                 ]
             },
             "total": 304,
-            "p50": 2.4,
-            "p95": 7.82,
-            "p99": 8.53
+            "p50": 2.18,
+            "p95": 6.82,
+            "p99": 7.06
         },
         {
             "name": "everything, page fifty",
@@ -121,9 +121,9 @@
                 "page": 50
             },
             "total": 99999,
-            "p50": 19.96,
-            "p95": 21.88,
-            "p99": 22.86
+            "p50": 18.12,
+            "p95": 20.14,
+            "p99": 21.73
         }
     ]
 }

@@ -13,17 +13,17 @@ answer within 50 ms at the 95th percentile and the store starts within
 
 | Recorded   | Commit    | Machine                | Node    |
 | ---------- | --------- | ---------------------- | ------- |
-| 2026-11-02 | `9327e47` | Apple M2 Max, 12 cores | v24.3.0 |
+| 2026-11-02 | `3e91942` | Apple M2 Max, 12 cores | v24.3.0 |
 
 Each time is shown as measured on the laptop and then slowed for a phone, which is the number held
 to the budget.
 
 | Products | Catalog (uncompressed) | Start     | On a phone | Suggest p95 | On a phone | Search p95 | On a phone | Fits a phone |
 | -------- | ---------------------- | --------- | ---------- | ----------- | ---------- | ---------- | ---------- | ------------ |
-| 2000     | 3.6 MB                 | 70.67 ms  | 282.68 ms  | 0.8 ms      | 3.2 ms     | 0.41 ms    | 1.64 ms    | yes          |
-| 5000     | 8.9 MB                 | 131.07 ms | 524.28 ms  | 1.77 ms     | 7.08 ms    | 0.64 ms    | 2.56 ms    | yes          |
-| 10000    | 17.8 MB                | 274.88 ms | 1099.52 ms | 3.41 ms     | 13.64 ms   | 1.01 ms    | 4.04 ms    | yes          |
-| 25000    | 44.7 MB                | 701.56 ms | 2806.24 ms | 9.39 ms     | 37.56 ms   | 2.36 ms    | 9.44 ms    | no           |
+| 2000     | 3.6 MB                 | 72.59 ms  | 290.36 ms  | 0.79 ms     | 3.16 ms    | 0.42 ms    | 1.68 ms    | yes          |
+| 5000     | 8.9 MB                 | 130.37 ms | 521.48 ms  | 1.77 ms     | 7.08 ms    | 0.63 ms    | 2.52 ms    | yes          |
+| 10000    | 17.8 MB                | 258.41 ms | 1033.64 ms | 3.42 ms     | 13.68 ms   | 1 ms       | 4 ms       | yes          |
+| 25000    | 44.7 MB                | 654.6 ms  | 2618.4 ms  | 9.32 ms     | 37.28 ms   | 2.34 ms    | 9.36 ms    | no           |
 
 The largest size that fits, with every smaller one fitting too, is 10000 products,
 and that is the cap on a visitor's catalog.

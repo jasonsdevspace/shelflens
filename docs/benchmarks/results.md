@@ -6,7 +6,7 @@ what does not.
 
 | Recorded   | Commit    | Machine                | Node    |
 | ---------- | --------- | ---------------------- | ------- |
-| 2026-11-02 | `9327e47` | Apple M2 Max, 12 cores | v24.3.0 |
+| 2026-11-02 | `3e91942` | Apple M2 Max, 12 cores | v24.3.0 |
 
 ## The catalog
 
@@ -16,7 +16,7 @@ what does not.
 
 | Terms | Build time | Documents per second | Heap used |
 | ----- | ---------- | -------------------- | --------- |
-| 305   | 1992 ms    | 50,213               | 91 MB     |
+| 305   | 1928 ms    | 51,878               | 89 MB     |
 
 ## Queries
 
@@ -30,11 +30,11 @@ rather than of words, carry over.
 
 | Query                           | Results | p50   | p95   | p99   |
 | ------------------------------- | ------- | ----- | ----- | ----- |
-| search as you type, two letters | 61,666  | 33.94 | 40.48 | 89.77 |
-| one common word                 | 5,627   | 1.49  | 7.09  | 7.64  |
-| two words                       | 375     | 15.81 | 18    | 91.84 |
-| a synonym                       | 10,449  | 3.24  | 8.88  | 9.53  |
-| a typo, so the fuzzy pass runs  | 8,310   | 2.61  | 7.81  | 8.19  |
-| browse a category by position   | 33,566  | 26.78 | 30.11 | 33.28 |
-| a word with two filters         | 304     | 2.4   | 7.82  | 8.53  |
-| everything, page fifty          | 99,999  | 19.96 | 21.88 | 22.86 |
+| search as you type, two letters | 61,666  | 34.25 | 40.69 | 94.25 |
+| one common word                 | 5,627   | 1.49  | 7.08  | 7.9   |
+| two words                       | 375     | 15.78 | 18.14 | 90.33 |
+| a synonym                       | 10,449  | 3.33  | 9     | 9.41  |
+| a typo, so the fuzzy pass runs  | 8,310   | 2.63  | 7.77  | 8.92  |
+| browse a category by position   | 33,566  | 24.64 | 27.26 | 27.81 |
+| a word with two filters         | 304     | 2.18  | 6.82  | 7.06  |
+| everything, page fifty          | 99,999  | 18.12 | 20.14 | 21.73 |

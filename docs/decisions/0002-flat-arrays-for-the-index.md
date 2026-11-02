@@ -53,9 +53,9 @@ before and after.
   opens its row in the term's list and later ones add to it, where each document's rows used to
   be assembled in a map of their own and copied in. Each field's text is normalized once for its
   terms and its word count, where it was normalized twice.
-- **Facets count by code.** Each keyword value has a small integer code, assigned when the index
-  is built, and a facet counts into an array by code. [Record 4](0004-facets-count-past-their-own-filter.md)
-  has the rest.
+- **Facets count by code.** Each keyword value has a small integer code, assigned when the index is
+  built, and a facet counts into an array by code. [Record
+  4](0004-facets-count-past-their-own-filter.md) has the rest.
 - **Only the top of the matches is ordered.** A page needs the results up to its last one, and
   when that is fewer than half the matches they are kept in a heap rather than every match being
   sorted. Every sort ends on the id rank, so the order is total and the heap gives exactly what a
@@ -64,22 +64,26 @@ before and after.
   signal reaches leaves the scores alone without visiting a candidate. Signals are looked up by
   document number, set out once when the engine is configured, rather than by id per candidate.
 
+Both columns were measured the same day, on the same machine and the same generated catalog, the
+first at `9327e47` with 0.3.0 and the second at the commit [results.md](../benchmarks/results.md)
+names.
+
 |                                         | 0.3.0  | 0.4.0 |
 | --------------------------------------- | ------ | ----- |
-| Index memory, 100,000 products          | 84 MB  | 91 MB |
-| Two-letter prefix with every facet, p50 | 93 ms  | 34 ms |
-| Two-letter prefix, p99                  | 176 ms | 90 ms |
-| Browse a category by position, p50      | 71 ms  | 27 ms |
-| Browse everything with every facet, p50 | 90 ms  | 20 ms |
-| Index build time                        | 2.4 s  | 2.0 s |
+| Index memory, 100,000 products          | 84 MB  | 89 MB |
+| Two-letter prefix with every facet, p50 | 101 ms | 34 ms |
+| Two-letter prefix, p99                  | 149 ms | 94 ms |
+| Browse a category by position, p50      | 82 ms  | 25 ms |
+| Browse everything with every facet, p50 | 100 ms | 18 ms |
+| Index build time                        | 2.3 s  | 1.9 s |
 
-The seven megabytes are the codes, one integer for every value of every keyword attribute on
-every document.
+The five megabytes are the codes, one integer for every value of every faceted keyword attribute
+on every document.
 
 ## Consequences
 
 - Index build was a third slower, from assembling each document's rows before appending them.
-  Since 0.4.0 the rows are appended in place, and the build takes 2.0 seconds, against 1.8 for
+  Since 0.4.0 the rows are appended in place, and the build takes 1.9 seconds, against 1.8 for
   the objects. It is paid once at startup.
 - The code is less idiomatic in places: row-major count arrays and a binary search to find a
   document in a posting list. Each is explained where it sits.
