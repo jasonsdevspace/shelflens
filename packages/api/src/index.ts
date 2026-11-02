@@ -13,18 +13,17 @@ export {
     type EventKind,
     type EventStore,
     GPC_HEADER,
-    isEventsPath,
     parseEventBatch,
     receiveEvents,
-    routeOf,
     type StoreEvent,
 } from './events.js';
 export { createStoreApi, type StoreApi } from './execute.js';
 export { fingerprint } from './fingerprint.js';
 export { PERSISTED_OPERATIONS } from './generated/persisted.js';
-export { isApiPath, resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
+export { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
 export { paysLess } from './prices.js';
 export { touch, trimOldest } from './recent.js';
-export { createMemoryRuleStore, isRulesPath, receiveRules, type RuleStore } from './rules.js';
+export { type Route, routeOf, STORE_ROUTES } from './routes.js';
+export { createMemoryRuleStore, receiveRules, type RuleStore } from './rules.js';
 export { parseRulesFile } from './rules-file.js';
 export { createStoreHost, type HostedStore, type Startup, type StoreHost } from './store-host.js';

@@ -53,6 +53,7 @@ const node = createServer({
         events: nodeEvents,
     }),
     events: nodeEvents,
+    allowFullQueries: true,
 });
 let nodeBase = '';
 

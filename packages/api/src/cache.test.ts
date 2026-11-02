@@ -7,6 +7,9 @@ import { createStore, type Viewer, viewerFromHeader } from './context.js';
 import { createStoreApi, type StoreResponse } from './execute.js';
 import { canonical, fingerprint } from './fingerprint.js';
 
+/** When every request in this file arrives. */
+const NOW = new Date('2026-11-01T12:00:00Z');
+
 /*
  * The cache key, and the cache built on it.
  *
@@ -50,16 +53,16 @@ describe('the cache key', () => {
         const safe = withResponseCache(api);
 
         const priced = { query: PRODUCT, variables: { sku: discounted.sku } };
-        const memberPrice = price(await leaky.run(priced, member));
-        expect(price(await leaky.run(priced, guest))).toBe(memberPrice);
-        expect(price(await safe.run(priced, member))).toBe(memberPrice);
-        expect(price(await safe.run(priced, guest))).toBeGreaterThan(memberPrice);
+        const memberPrice = price(await leaky.run(priced, member, NOW));
+        expect(price(await leaky.run(priced, guest, NOW))).toBe(memberPrice);
+        expect(price(await safe.run(priced, member, NOW))).toBe(memberPrice);
+        expect(price(await safe.run(priced, guest, NOW))).toBeGreaterThan(memberPrice);
 
         const hidden = { query: PRODUCT, variables: { sku: membersOnly.sku } };
-        expect(product(await leaky.run(hidden, member))).not.toBeNull();
-        expect(product(await leaky.run(hidden, guest))).not.toBeNull();
-        expect(product(await safe.run(hidden, member))).not.toBeNull();
-        expect(product(await safe.run(hidden, guest))).toBeNull();
+        expect(product(await leaky.run(hidden, member, NOW))).not.toBeNull();
+        expect(product(await leaky.run(hidden, guest, NOW))).not.toBeNull();
+        expect(product(await safe.run(hidden, member, NOW))).not.toBeNull();
+        expect(product(await safe.run(hidden, guest, NOW))).toBeNull();
     });
 
     it('is one key for one request, however it is spelled', () => {
@@ -102,7 +105,7 @@ describe('the cache key', () => {
     it('lets an invalid query reach the API for its error response', async () => {
         const cached = withResponseCache(api);
         const unterminated = { query: '{ search(input: { phrase: "boot }' };
-        await expect(cached.run(unterminated, guest)).resolves.toMatchObject({
+        await expect(cached.run(unterminated, guest, NOW)).resolves.toMatchObject({
             errors: [{ extensions: { code: 'GRAPHQL_PARSE_FAILED' } }],
         });
     });
@@ -202,11 +205,11 @@ describe('the response cache', () => {
 
     it('answers the second identical request from memory', async () => {
         const cached = withResponseCache(api);
-        const first = await cached.run(request, guest);
-        const second = await cached.run(request, guest);
+        const first = await cached.run(request, guest, NOW);
+        const second = await cached.run(request, guest, NOW);
         expect(second).toEqual(first);
         expect(cached.cache).toMatchObject({ hits: 1, misses: 1, size: 1 });
-        await cached.run(request, member);
+        await cached.run(request, member, NOW);
         expect(cached.cache).toMatchObject({ hits: 1, misses: 2, size: 2 });
     });
 
@@ -232,7 +235,7 @@ describe('the response cache', () => {
         expect(cached.cache).toMatchObject({ hits: 1, misses: 2 });
         expect(clocks.map((clock) => clock.getTime())).toEqual([0, 1000]);
 
-        void withResponseCache(stub).run(request, guest);
+        void withResponseCache(stub).run(request, guest, NOW);
         expect(clocks[2]?.getTime()).toBeGreaterThan(0);
     });
 
@@ -291,18 +294,18 @@ describe('the response cache', () => {
         const cached = withResponseCache(api);
         const sku = catalog.products[0]?.sku ?? '';
         const rail = { query: `{ recommendations(sku: "${sku}") { source } }` };
-        const first = await cached.run(rail, guest);
+        const first = await cached.run(rail, guest, NOW);
         expect(first.extensions).toEqual({ volatile: true });
-        await cached.run(rail, guest);
+        await cached.run(rail, guest, NOW);
         expect(cached.cache).toMatchObject({ hits: 0, misses: 2, size: 0 });
     });
 
     it('does not keep an answer with errors', async () => {
         const cached = withResponseCache(api);
         const broken = { query: '{ nothing }' };
-        expect((await cached.run(broken, guest)).errors).toBeDefined();
+        expect((await cached.run(broken, guest, NOW)).errors).toBeDefined();
         expect(cached.cache.size).toBe(0);
-        await cached.run(broken, guest);
+        await cached.run(broken, guest, NOW);
         expect(cached.cache.misses).toBe(2);
     });
 });

@@ -1,7 +1,7 @@
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { describe, expect, it } from 'vitest';
 
-import { createMemoryRuleStore, isRulesPath, receiveRules, type RulesHost } from './rules.js';
+import { createMemoryRuleStore, receiveRules, type RulesHost } from './rules.js';
 
 /*
  * The rules path: a read says what is in effect and whether it was
@@ -70,11 +70,5 @@ describe('the rules path', () => {
         expect((await receiveRules(post('nonsense'), store, host())).status).toBe(400);
         expect((await receiveRules(post({ rules: [{}] }), store, host())).status).toBe(400);
         expect((await receiveRules({ method: 'PUT' }, store, host())).status).toBe(405);
-    });
-
-    it('is rules under the base, and nothing else', () => {
-        expect(isRulesPath('/rules')).toBe(true);
-        expect(isRulesPath('https://example.test/shelflens/rules', '/shelflens/')).toBe(true);
-        expect(isRulesPath('/rules', '/shelflens/')).toBe(false);
     });
 });

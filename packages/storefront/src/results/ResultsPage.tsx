@@ -37,6 +37,7 @@ import { Facets } from './Facets.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
+import { toRuleInput } from './rule-input.js';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
@@ -227,7 +228,10 @@ const useResults = (
     // The two documents answer the same shape under different names, which is
     // all the hook needs, and more than the generated types say in one breath.
     const document = (previewing ? PreviewDocument : SearchDocument) as Asked;
-    const variables = previewing ? { ...input, rules: draft } : input;
+    // The draft is the engine's own rules, sent as the schema's RuleInput.
+    const variables: SearchQueryVariables | PreviewQueryVariables = previewing
+        ? { ...input, rules: draft.map(toRuleInput) }
+        : input;
     const { data, loading, error, retry } = useQuery(client, document, variables);
     const result = data && ('preview' in data ? data.preview : data.search);
     // Whether the result is the answer to this request, rather than one before it.

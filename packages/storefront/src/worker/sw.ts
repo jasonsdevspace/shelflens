@@ -1,10 +1,10 @@
 /// <reference lib="webworker" />
 
-import { routeOf } from '@shelflens/api';
+import { type Route, routeOf, STORE_ROUTES } from '@shelflens/api';
 
 import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
-import { createWorkerApi, isCatalogPath, type StartedMessage } from './handle.js';
+import { createWorkerApi, type StartedMessage } from './handle.js';
 import { CLAIM_MESSAGE, VISIT_MESSAGE, VISITED_MESSAGE } from './register.js';
 import { createIndexedDbRuleStore } from './rule-db.js';
 import { storageFor, storeKindOf } from './storage.js';
@@ -28,6 +28,8 @@ declare const self: ServiceWorkerGlobalScope;
 const kind = storeKindOf(self.location.href);
 const names = storageFor(kind);
 const base = new URL(self.registration.scope).pathname;
+// The worker of a visitor's catalog also takes the catalog the page hands it.
+const served: readonly Route[] = kind === 'try' ? [...STORE_ROUTES, 'catalog'] : STORE_ROUTES;
 
 const events = createIndexedDbEventStore({ name: names.events });
 
@@ -83,9 +85,6 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const ours =
-        routeOf(request.url, base) !== undefined ||
-        (kind === 'try' && isCatalogPath(request.url, base));
-    if (!ours) return;
+    if (routeOf(request.url, base, served) === undefined) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

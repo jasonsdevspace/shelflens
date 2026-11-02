@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GROUP_HEADER } from './context.js';
-import { isApiPath, resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
+import { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
 
 /*
  * What a request over HTTP means, and what its answer may be cached as.
@@ -65,15 +65,16 @@ describe('a persisted operation', () => {
 });
 
 describe('a full query', () => {
-    it('is a POST with the query text, unless the host accepts persisted operations only', () => {
+    it('is a POST with the query text where the host takes them, and refused where it does not say so', () => {
         const body = JSON.stringify({ query: '{ store { name } }', variables: { a: 1 } });
-        expect(resolveRequest(http('POST', '/graphql', body), { persisted })).toMatchObject({
+        expect(
+            resolveRequest(http('POST', '/graphql', body), { persisted, allowFullQueries: true })
+        ).toMatchObject({
             kind: 'request',
             request: { query: '{ store { name } }', variables: { a: 1 } },
         });
-        expect(
-            resolveRequest(http('POST', '/graphql', body), { persisted, persistedOnly: true })
-        ).toEqual({
+        // A host that says nothing runs only the persisted operations.
+        expect(resolveRequest(http('POST', '/graphql', body), { persisted })).toEqual({
             kind: 'refused',
             status: 400,
             message: 'this store accepts persisted operations only',
@@ -81,16 +82,22 @@ describe('a full query', () => {
     });
 
     it('is refused without a JSON body or a query in it', () => {
-        expect(resolveRequest(http('POST', '/graphql', '{ not json'), { persisted })).toMatchObject(
-            { kind: 'refused', status: 400, message: 'the request body is not JSON' }
-        );
-        expect(resolveRequest(http('POST', '/graphql'), { persisted })).toMatchObject({
+        expect(
+            resolveRequest(http('POST', '/graphql', '{ not json'), {
+                persisted,
+                allowFullQueries: true,
+            })
+        ).toMatchObject({ kind: 'refused', status: 400, message: 'the request body is not JSON' });
+        expect(
+            resolveRequest(http('POST', '/graphql'), { persisted, allowFullQueries: true })
+        ).toMatchObject({
             kind: 'refused',
             status: 400,
         });
         expect(
             resolveRequest(http('POST', '/graphql', JSON.stringify({ variables: {} })), {
                 persisted,
+                allowFullQueries: true,
             })
         ).toMatchObject({ kind: 'refused', status: 400, message: 'the request needs a query' });
     });
@@ -107,15 +114,6 @@ describe('any request', () => {
             kind: 'refused',
             status: 405,
         });
-    });
-
-    it('is for the API by its path under the base the host serves from', () => {
-        expect(isApiPath('/graphql?op=1')).toBe(true);
-        expect(isApiPath('https://example.test/shelflens/graphql', '/shelflens/')).toBe(true);
-        expect(isApiPath('https://example.test/shelflens/graphql')).toBe(false);
-        expect(isApiPath('/anything/graphql')).toBe(false);
-        expect(isApiPath('/shelflens/')).toBe(false);
-        expect(isApiPath('/graphql/extra')).toBe(false);
     });
 });
 

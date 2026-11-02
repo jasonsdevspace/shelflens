@@ -48,7 +48,8 @@ describe('rows to a catalog', () => {
                 query: `{ search(input: { phrase: "bag" }) { total items { product { name } }
                     facets { attribute ... on ValueFacet { buckets { value count } } } } }`,
             },
-            viewerFromHeader(undefined)
+            viewerFromHeader(undefined),
+            NOW
         );
         expect(response.errors).toBeUndefined();
         const search = (
@@ -63,7 +64,8 @@ describe('rows to a catalog', () => {
         // The sample has member prices, so the store over it offers the viewer switch.
         const store = await api.run(
             { query: '{ store { memberPricing membersOnlyProducts } }' },
-            viewerFromHeader(undefined)
+            viewerFromHeader(undefined),
+            NOW
         );
         expect(store.data).toEqual({
             store: { memberPricing: true, membersOnlyProducts: false },

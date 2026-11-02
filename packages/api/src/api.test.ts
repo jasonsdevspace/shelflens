@@ -6,6 +6,9 @@ import { createStore, viewerFromHeader } from './context.js';
 import { createMemoryEventStore } from './events.js';
 import { createStoreApi, type StoreApi, type StoreResponse } from './execute.js';
 
+/** When every request in this file arrives. */
+const NOW = new Date('2026-11-01T12:00:00Z');
+
 /*
  * The API as a client sees it: a query in, data or errors out.
  *
@@ -36,7 +39,7 @@ const guest = viewerFromHeader(undefined);
 const member = viewerFromHeader('member');
 
 const run = (query: string, variables?: Record<string, unknown>, viewer = guest) =>
-    api.run({ query, ...(variables && { variables }) }, viewer);
+    api.run({ query, ...(variables && { variables }) }, viewer, NOW);
 
 /* The shape of each answer is asserted by the test that reads it, so the data is left loose. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,7 +232,8 @@ describe('a merchandiser\u2019s preview', () => {
                 query: `query ($input: SearchInput!) { search(input: $input) { ${SELECTION} } }`,
                 variables: { input },
             },
-            guest
+            guest,
+            NOW
         );
         expect(data(previewed).preview).toEqual(data(searched).search);
         expect(data(previewed).preview.items[0].product.sku).toBe(b.sku);
@@ -298,7 +302,7 @@ describe('a merchandiser\u2019s preview', () => {
     it('says whether the rules in effect were saved by a visitor', async () => {
         expect(data(await run('{ store { rulesEdited } }')).store.rulesEdited).toBe(false);
         const edited = createStoreApi(createStore({ catalog, rules: [], rulesEdited: true }));
-        const answer = await edited.run({ query: '{ store { rulesEdited } }' }, guest);
+        const answer = await edited.run({ query: '{ store { rulesEdited } }' }, guest, NOW);
         expect(data(answer).store.rulesEdited).toBe(true);
     });
 });
@@ -322,7 +326,8 @@ describe('what shoppers clicked', () => {
         const nudged = data(
             await clicked.run(
                 { query: RESULTS, variables: { input: { phrase: 'jacket', pageSize: 5 } } },
-                guest
+                guest,
+                NOW
             )
         ).search;
         expect(nudged.items[0].product.sku).toBe(pinned);
@@ -356,7 +361,7 @@ describe('what shoppers clicked', () => {
         const before = data(await run(query, hopeless)).search.noResults.popular;
         const [least] = [...before].sort((a: Loose, b: Loose) => a.rating.count - b.rating.count);
         const clicked = createStoreApi(createStore({ catalog, signals: { [least.sku]: 3 } }));
-        const after = data(await clicked.run({ query, variables: hopeless }, guest)).search
+        const after = data(await clicked.run({ query, variables: hopeless }, guest, NOW)).search
             .noResults.popular;
         expect(after[0].sku).toBe(least.sku);
         expect(after.slice(1).map((p: Loose) => p.sku)).toEqual(
@@ -371,7 +376,8 @@ describe('the viewer', () => {
             data(
                 await createStoreApi(createStore({ catalog: { ...catalog, products } })).run(
                     { query: '{ store { memberPricing membersOnlyProducts } }' },
-                    guest
+                    guest,
+                    NOW
                 )
             ).store;
         const listed = catalog.products.map((p) => ({
@@ -488,7 +494,8 @@ describe('recommendations', () => {
                         query: `query ($sku: ID!) { recommendations(sku: $sku, limit: 6) { source items { sku } } }`,
                         variables: { sku: product.sku },
                     },
-                    viewer
+                    viewer,
+                    NOW
                 )
             ).recommendations;
             const search = data(
@@ -504,7 +511,8 @@ describe('recommendations', () => {
                             },
                         },
                     },
-                    viewer
+                    viewer,
+                    NOW
                 )
             ).search;
             expect(search.total).toBe(0);
@@ -532,7 +540,8 @@ describe('recommendations', () => {
                     }`,
                     variables: { sku: b.sku, ...(session && { session }) },
                 },
-                guest
+                guest,
+                NOW
             );
         const cold = await ask();
         expect(cold.extensions).toEqual({ volatile: true });
@@ -631,7 +640,8 @@ describe('what a request may not do', () => {
         const broken = createStoreApi(createStore({ catalog: { ...catalog, brands: [] } }));
         const response = await broken.run(
             { query: `{ product(sku: "${catalog.products[0]?.sku}") { brand { name } } }` },
-            guest
+            guest,
+            NOW
         );
         expect(response.errors).toEqual([
             {

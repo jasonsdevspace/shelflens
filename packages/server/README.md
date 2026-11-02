@@ -4,7 +4,7 @@ The API over HTTP, for local runs and for any host that cannot run a service wor
 
 Three paths, `/graphql`, `/events` and `/rules`, and `GET /health`. A persisted operation is a `GET` naming one of the
 storefront's operations by hash, with its variables and the store version it expects in the
-URL. A full query is a `POST`, refused when `persistedOnly` is set, as the public demo does. The
+URL. A full query is a `POST`, refused unless `allowFullQueries` is set, which the public demo never does. The
 customer group arrives in the `shelflens-customer-group` header, standing in for the session a
 real store would have. Each answer says what may be cached: `public` for its age under the
 version that answered it, varying on the group, and `no-store` otherwise. Each response carries
@@ -13,7 +13,7 @@ per minute before a 429, counted in memory, which is the right trade for one ins
 wrong one for a fleet.
 
 ```bash
-npm run api
+FULL_QUERIES=true npm run api
 curl localhost:8080/graphql --header 'content-type: application/json' \
   --header 'shelflens-customer-group: member' \
   --data '{ "query": "{ store { name catalogVersion } }" }'
@@ -33,8 +33,8 @@ development is built and refreshed as the worker's is in production. `createServ
 `node:http`. Either takes a `host`, or a fixed `api` for a store that never changes, which
 answers `/rules` with a 404.
 
-`PORT` and `PRODUCTS` set the port and the size of the generated catalog. `PERSISTED_ONLY=true`
-refuses full queries. Behind one proxy that adds `x-forwarded-for` and sets `x-forwarded-proto`, `TRUST_PROXY=true` lets the rate limit count the address the proxy added, the last in the list, and the server read its own scheme from the proxy. Without it both headers are ignored, since any client can send them, so a server behind a proxy that ends TLS needs it, or `OWN_ORIGIN`, for its own page to be its own.
+`PORT` and `PRODUCTS` set the port and the size of the generated catalog. `FULL_QUERIES=true`
+takes full queries as well as the persisted operations, which are all it runs otherwise. Behind one proxy that adds `x-forwarded-for` and sets `x-forwarded-proto`, `TRUST_PROXY=true` lets the rate limit count the address the proxy added, the last in the list, and the server read its own scheme from the proxy. Without it both headers are ignored, since any client can send them, so a server behind a proxy that ends TLS needs it, or `OWN_ORIGIN`, for its own page to be its own.
 
 Every answer says its JSON is only JSON and loads nothing, and a refusal or a failure is never
 kept by a cache. A body past 16 KB is answered with a 413, and the connection closes after it.

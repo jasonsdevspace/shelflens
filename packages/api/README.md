@@ -22,7 +22,7 @@ answer it over `@shelflens/search`.
   its answer may be cached as, so the Node server and the service worker cannot disagree. A
   persisted operation is a `GET` naming one of the storefront's operations by hash, from the
   manifest `npm run codegen` writes, with its variables and the version it expects in the URL.
-  A full query is a `POST`, which a host may refuse. An answer is cacheable only under the version
+  A full query is a `POST`, refused unless a host takes them. An answer is cacheable only under the version
   that answered it, and the viewer is a header the cache varies on.
 - **A query is read once.** The schema is built once, since it describes the store's shape and
   not one store's contents, and each query that validates is kept, by its text, the most recently
@@ -52,7 +52,9 @@ const host = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [
 const { api } = await host.current();
 const response = await api.run(
     { query: '{ search(input: { phrase: "boot" }) { total } }' },
-    viewerFromHeader(request.headers.get('shelflens-customer-group'))
+    viewerFromHeader(request.headers.get('shelflens-customer-group')),
+    // When the request arrived, which a rule with a window reads.
+    new Date()
 );
 ```
 
