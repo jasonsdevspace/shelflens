@@ -181,7 +181,9 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
-        expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
+        // The question takes focus once it is on the page, in the effect after it renders.
+        const keep = await screen.findByRole('button', { name: 'Keep my products' });
+        await waitFor(() => expect(keep).toHaveFocus());
         expect(screen.getByText(/Searching this file replaces your products/)).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Keep my products' }));
         await screen.findByText(/your own catalog of 200 products/);
@@ -248,7 +250,9 @@ describe('the page for a visitor’s own catalog', () => {
             return undefined;
         };
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
+        // The question takes focus once it is on the page, in the effect after it renders.
+        const keep = await screen.findByRole('button', { name: 'Keep my products' });
+        await waitFor(() => expect(keep).toHaveFocus());
         await userEvent.dblClick(screen.getByRole('button', { name: 'Yes, remove them' }));
         expect(await chooser()).toBeInTheDocument();
         expect(removals).toBe(1);
