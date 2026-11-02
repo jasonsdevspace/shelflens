@@ -1,6 +1,19 @@
 # Changelog
 
-The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0, Release 1.1 is 1.1.0, and Release 2 is 1.2.0 and 2.0.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes.
+The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0, Release 1.1 is 1.1.0, Release 2 is 1.2.0 and 2.0.0, and Release 2.1 is 2.1.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes.
+
+## 2.1.0
+
+Release 2.1: the same store, faster, with one design throughout and the docs to match.
+
+- **Faster on a large catalog.** The store runs engine 0.4.0, which answers the widest searches of a hundred thousand products in about a third of the time, with the same results.
+- **One look for every control.** Every dropdown has the same caret, every control the same focus ring, and every button an edge you can see in both themes. The one action a view asks for is a filled button, and an action that reads as text is always underlined. On a phone each dropdown and button is a thumb's size, and a dropdown's text no longer makes the page zoom.
+- **Counts read as numbers.** A count of a thousand or more is grouped, as in "1,999 products".
+- **Your own products on a phone.** A long column name in your file no longer widens the page past the screen.
+- **Suggestions recover.** If suggestions fail to load, coming back to the same words asks again.
+- **Clearer when something fails.** A failure inside the store says so in the page's own words, rather than as a network error.
+- **The same search box everywhere.** The search box is the same height on another site's page as in the store.
+- **For developers.** The Node server runs only the storefront's own operations unless `FULL_QUERIES=true`, and the schema's `Store.catalogVersion` is now `Store.version`.
 
 ## 2.0.0
 
