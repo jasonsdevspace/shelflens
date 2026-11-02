@@ -398,6 +398,7 @@ export const App = ({
             <StoreProvider value={info}>
                 <PageTop
                     home="./"
+                    waiting={!isReady}
                     onHome={(event) => {
                         event.preventDefault();
                         navigate(fresh);

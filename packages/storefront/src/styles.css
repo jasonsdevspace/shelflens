@@ -129,6 +129,28 @@ body {
     border-bottom: 1px solid var(--line);
 }
 
+/*
+ * The room the search box, the switches and the category links take once
+ * the store is ready, kept while the masthead holds the brand alone, so the
+ * page below does not move when they arrive. One row on a wide screen,
+ * three on a phone, and a fourth on a narrow one.
+ */
+.masthead.is-waiting {
+    min-height: 6.65rem;
+}
+
+@media (max-width: 48rem) {
+    .masthead.is-waiting {
+        min-height: 9.55rem;
+    }
+}
+
+@media (max-width: 24rem) {
+    .masthead.is-waiting {
+        min-height: 12.35rem;
+    }
+}
+
 .brand {
     font-weight: 700;
     font-size: 1.25rem;
@@ -140,6 +162,11 @@ body {
     padding: 1rem;
     max-width: var(--column);
     margin: 0 auto;
+    /*
+     * At least a screen tall, so the footer starts below the fold and the
+     * answer arriving above it never moves it on screen.
+     */
+    min-height: 100dvh;
 }
 
 .notice {

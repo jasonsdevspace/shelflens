@@ -52,7 +52,10 @@
                 </ul>
                 <div id="host-app"></div>
                 <h2>What a store adds to its page</h2>
-                <pre><code>&lt;div id="shelflens-search"&gt;&lt;/div&gt;
+                <pre
+                    tabindex="0"
+                    aria-label="The snippet a store adds"
+                ><code>&lt;div id="shelflens-search"&gt;&lt;/div&gt;
 &lt;script type="module"&gt;
     import { mountShelfLens } from 'https://your-store.example/widget.js';
     mountShelfLens(document.getElementById('shelflens-search'), {

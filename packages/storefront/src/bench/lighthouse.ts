@@ -1,13 +1,17 @@
-import { chromium, type Page } from '@playwright/test';
+import { chromium } from '@playwright/test';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
-import { SAMPLE_FILE, SAMPLE_PRODUCTS, sampleCsv } from '../try/sample.js';
+import { PAGES } from './pages.js';
 import { startPreview } from './preview.js';
 
 /**
- * Lighthouse's accessibility audit over the built demo, which must score
- * a hundred on every page it checks.
+ * Lighthouse over the built demo, as a phone on a slow network loads it.
+ * Every page it checks must score a hundred for accessibility and at least
+ * ninety for performance, paint its largest content within the time a
+ * visit counts as good, and shift its layout no more than that either.
+ * The bytes of script each page carries are held to their budgets by
+ * `npm run budget`, over the same build.
  *
  *   npm run lighthouse
  *
@@ -23,52 +27,44 @@ import { startPreview } from './preview.js';
  */
 
 const PORT = 4176;
-/** A store page is ready once the worker answers and the search box appears. */
-const storeReady = (page: Page) =>
-    page.getByRole('combobox', { name: 'Search the store' }).waitFor();
 
-/** The page for a visitor's catalog is ready once it asks for a file. */
-const chooserReady = (page: Page) =>
-    page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
+/** The lowest performance score a page may have. */
+const PERFORMANCE = 0.9;
+/** The largest paint, in milliseconds, within which a visit counts as good. */
+const LARGEST_PAINT_MS = 2500;
+/** The layout shift past which a visit no longer counts as good. */
+const LAYOUT_SHIFT = 0.1;
 
-/** Loads the sample file through the page, as a visitor would, made here rather than read from the build. */
-const loadSample = async (page: Page, origin: string) => {
-    await page.goto(`${origin}/try/`);
-    await page.getByLabel('Choose a file').setInputFiles({
-        name: SAMPLE_FILE,
-        mimeType: 'text/csv',
-        buffer: Buffer.from(sampleCsv()),
+type Report = NonNullable<Awaited<ReturnType<typeof lighthouse>>>['lhr'];
+
+/** A page's scores and measures in one line, with the accessibility audits that did not pass. */
+const summary = (report: Report): string => {
+    const audits = report.audits;
+    const score = (name: string) => Math.round((report.categories[name]?.score ?? 0) * 100);
+    const paint = Math.round(audits['largest-contentful-paint']?.numericValue ?? 0);
+    const shift = (audits['cumulative-layout-shift']?.numericValue ?? 0).toFixed(3);
+    const findings = (report.categories.accessibility?.auditRefs ?? []).flatMap((ref) => {
+        const audit = audits[ref.id];
+        return audit?.score !== null && audit !== undefined && audit.score < 1 ? [audit.id] : [];
     });
-    await page.getByRole('button', { name: `Search ${SAMPLE_PRODUCTS} products` }).click();
-    await page.getByText(`your own catalog of ${SAMPLE_PRODUCTS} products`).waitFor();
+    const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
+    return `accessibility ${String(score('accessibility'))}, performance ${String(score('performance'))}, largest paint ${String(paint)} ms, layout shift ${shift}${detail}`;
 };
 
-/** A search has answered once its results heading appears. */
-const resultsReady = (query: string) => (page: Page) =>
-    page.getByRole('heading', { level: 1, name: `results for "${query}"` }).waitFor();
-
-/**
- * Each page audited, what to do first when there is something, and what to
- * wait for before the audit. Storage is kept from one page to the next, so
- * the empty page for a visitor's catalog comes before the one that loads a
- * file into it.
- */
-const PAGES: readonly {
-    readonly path: string;
-    readonly prepare?: (page: Page, origin: string) => Promise<void>;
-    readonly ready?: (page: Page) => Promise<void>;
-}[] = [
-    { path: '/', ready: storeReady },
-    { path: '/?q=jacket&explain=1', ready: storeReady },
-    { path: '/?category=shoes', ready: storeReady },
-    { path: '/?product=SL-00001', ready: storeReady },
-    { path: '/about/' },
-    { path: '/widget/', ready: storeReady },
-    { path: '/try/', ready: chooserReady },
-    { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: resultsReady('bag') },
-    { path: '/try/widget/', ready: storeReady },
-];
-
+/** What a page misses of the gate, each in a few words, or nothing when it passes. */
+const missed = (report: Report): readonly string[] => {
+    const value = (id: string) => report.audits[id]?.numericValue ?? Number.POSITIVE_INFINITY;
+    const accessibility = report.categories.accessibility?.score ?? 0;
+    const performance = report.categories.performance?.score ?? 0;
+    return [
+        ...(accessibility < 1 ? [`accessibility ${String(Math.round(accessibility * 100))}`] : []),
+        ...(performance < PERFORMANCE
+            ? [`performance ${String(Math.round(performance * 100))}`]
+            : []),
+        ...(value('largest-contentful-paint') > LARGEST_PAINT_MS ? ['largest paint'] : []),
+        ...(value('cumulative-layout-shift') > LAYOUT_SHIFT ? ['layout shift'] : []),
+    ];
+};
 const main = async () => {
     const preview = await startPreview(PORT);
     const chrome = await launch({
@@ -85,18 +81,16 @@ const main = async () => {
             if (ready) await ready(page);
             const result = await lighthouse(`${preview.origin}${path}`, {
                 port: chrome.port,
-                onlyCategories: ['accessibility'],
+                onlyCategories: ['accessibility', 'performance'],
                 output: 'json',
                 logLevel: 'error',
                 disableStorageReset: true,
             });
-            const score = result?.lhr.categories.accessibility?.score ?? 0;
-            const findings = Object.values(result?.lhr.audits ?? {})
-                .filter((audit) => audit.score !== null && audit.score < 1)
-                .map((audit) => audit.id);
-            const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
-            console.log(`${path}: accessibility ${Math.round(score * 100)}${detail}`);
-            if (score < 1) failures.push(path);
+            if (!result) throw new Error(`Lighthouse returned nothing for ${path}`);
+            const report = result.lhr;
+            console.log(`${path}: ${summary(report)}`);
+            const misses = missed(report);
+            if (misses.length > 0) failures.push(`${path} (${misses.join(', ')})`);
         }
         await browser.close();
     } finally {
@@ -108,7 +102,7 @@ const main = async () => {
         }
     }
     if (failures.length > 0) {
-        throw new Error(`below a hundred for accessibility: ${failures.join(', ')}`);
+        throw new Error(`short of the gate: ${failures.join(', ')}`);
     }
 };
 
