@@ -517,11 +517,6 @@ export type StatsFacet = Facet & {
 
 export type Store = {
     readonly __typename?: 'Store';
-    /**
-     * Changes whenever the catalog or the rules change. Part of every cache key
-     * a client builds, so a stale response can never be served after an update.
-     */
-    readonly catalogVersion: Scalars['String']['output'];
     readonly currency: Scalars['String']['output'];
     readonly locale: Scalars['String']['output'];
     /**
@@ -542,6 +537,12 @@ export type Store = {
      * rather than the ones the store ships. The page says so when they are.
      */
     readonly rulesEdited: Scalars['Boolean']['output'];
+    /**
+     * The store's version, which changes whenever the catalog, the rules or the
+     * clicks folded in change. Part of every cache key a client builds, so a
+     * stale response can never be served after an update.
+     */
+    readonly version: Scalars['String']['output'];
     readonly viewer: Viewer;
 };
 
@@ -1054,13 +1055,13 @@ export type StoreResolvers<
     ContextType = Context,
     ParentType extends ResolversParentTypes['Store'] = ResolversParentTypes['Store'],
 > = {
-    catalogVersion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     locale?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     memberPricing?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     membersOnlyProducts?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     rulesEdited?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    version?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     viewer?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType>;
 };
 

@@ -17,7 +17,7 @@ export {
     receiveEvents,
     type StoreEvent,
 } from './events.js';
-export { createStoreApi, type StoreApi } from './execute.js';
+export { createStoreApi, INTERNAL_MESSAGE, type StoreApi } from './execute.js';
 export { fingerprint } from './fingerprint.js';
 export { PERSISTED_OPERATIONS } from './generated/persisted.js';
 export { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';

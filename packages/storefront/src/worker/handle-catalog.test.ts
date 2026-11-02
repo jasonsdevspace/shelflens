@@ -92,8 +92,7 @@ const UNBUILDABLE: Rule[] = [
 ];
 
 const versionOf = async (response: Response | undefined) =>
-    ((await response?.json()) as { data: { store: { catalogVersion: string } } }).data.store
-        .catalogVersion;
+    ((await response?.json()) as { data: { store: { version: string } } }).data.store.version;
 
 const suggested = async (response: Response | undefined) =>
     (

@@ -205,7 +205,7 @@ export const resolvers: Resolvers = {
             name: context.store.name,
             currency: context.store.catalog.currency,
             locale: context.store.catalog.locale,
-            catalogVersion: context.store.version,
+            version: context.store.version,
             rulesEdited: context.store.rulesEdited,
             memberPricing: context.store.memberPricing,
             membersOnlyProducts: context.store.membersOnlyProducts,

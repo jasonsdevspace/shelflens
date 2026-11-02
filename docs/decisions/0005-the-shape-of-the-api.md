@@ -43,9 +43,9 @@ learns that two price attributes exist.
 makes with the store's locale, so the API never carries a formatted string that one client wanted
 and another has to parse.
 
-**The catalog version is in the schema.** `store.catalogVersion` changes whenever the catalog or
-the rules change, so a client can put it in every cache key. That is what lets a cache be aggressive
-and still never serve a stale price after an update.
+**The store's version is in the schema.** `store.version` changes whenever the catalog, the rules
+or the clicks folded in change, so a client can put it in every cache key. That is what lets a
+cache be aggressive and still never serve a stale price after an update.
 
 **A page past the end is empty, and a page size past the limit is reduced.** Both are stated in
 the schema's descriptions, so a client knows without trying.

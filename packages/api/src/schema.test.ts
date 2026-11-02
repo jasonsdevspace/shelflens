@@ -39,7 +39,7 @@ describe('the schema', () => {
                     }
                     merchandising { applied setAsideBySort }
                 }
-                store { catalogVersion viewer { group } }
+                store { version viewer { group } }
             }
         `);
         expect(validate(schema, document)).toEqual([]);

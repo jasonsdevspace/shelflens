@@ -80,7 +80,7 @@ describe('the API over HTTP', () => {
         const versioned = await fetch(`${demoBase}/graphql?${params.toString()}`);
         expect(versioned.status).toBe(200);
         expect(await versioned.json()).toMatchObject({
-            data: { store: { name: 'ShelfLens', catalogVersion: api.version } },
+            data: { store: { name: 'ShelfLens', version: api.version } },
         });
         expect(versioned.headers.get('cache-control')).toBe('public, max-age=300');
         expect(versioned.headers.get('vary')).toBe(GROUP_HEADER);

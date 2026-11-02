@@ -12,6 +12,14 @@ describe('the reason a host gives', () => {
         ).toBe('no such product');
     });
 
+    it('is nothing for a failure of the host’s own, which says nothing a visitor can act on', async () => {
+        const failed = new Response(
+            JSON.stringify({ errors: [{ message: 'Something went wrong on our side.' }] }),
+            { status: 500 }
+        );
+        expect(await reasonOf(failed)).toBeUndefined();
+    });
+
     it('is nothing when the body is not that shape, has no message, or is not JSON', async () => {
         for (const body of [
             '{"error":"x"}',

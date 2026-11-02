@@ -8,6 +8,7 @@ import {
 import {
     type EventStore,
     GROUP_HEADER,
+    INTERNAL_MESSAGE,
     PERSISTED_OPERATIONS,
     receiveEvents,
     resolveRequest,
@@ -523,9 +524,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
             send(response, {
                 status: 500,
                 body: {
-                    errors: [
-                        { message: 'Something went wrong on our side.', extensions: { requestId } },
-                    ],
+                    errors: [{ message: INTERNAL_MESSAGE, extensions: { requestId } }],
                 },
                 requestId,
             });

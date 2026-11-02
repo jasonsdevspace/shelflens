@@ -135,7 +135,7 @@ export interface StoreApi {
 }
 
 /** What a client is told when a resolver fails for a reason that is ours. */
-const INTERNAL_MESSAGE = 'Something went wrong on our side.';
+export const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 
 /** Keeps a user's mistakes as they are, and replaces everything else. */
 const shaped = (

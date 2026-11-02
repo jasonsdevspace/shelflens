@@ -636,10 +636,11 @@ type Store {
     locale: String!
 
     """
-    Changes whenever the catalog or the rules change. Part of every cache key
-    a client builds, so a stale response can never be served after an update.
+    The store's version, which changes whenever the catalog, the rules or the
+    clicks folded in change. Part of every cache key a client builds, so a
+    stale response can never be served after an update.
     """
-    catalogVersion: String!
+    version: String!
 
     """
     Whether the rules in effect are a set a visitor saved in this browser
