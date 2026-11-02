@@ -5,10 +5,8 @@ import {
     createMemoryEventStore,
     type EventStore,
     GPC_HEADER,
-    isEventsPath,
     parseEventBatch,
     receiveEvents,
-    routeOf,
     type StoreEvent,
 } from './events.js';
 
@@ -155,19 +153,5 @@ describe('the receiver', () => {
             405
         );
         expect(await kept(store)).toEqual([]);
-    });
-});
-
-describe('the events path', () => {
-    it('is events under the base, and nothing else', () => {
-        expect(isEventsPath('/events')).toBe(true);
-        expect(isEventsPath('https://example.test/shelflens/events', '/shelflens/')).toBe(true);
-        expect(isEventsPath('/graphql')).toBe(false);
-        expect(isEventsPath('/events', '/shelflens/')).toBe(false);
-        expect(routeOf('/events')).toBe('events');
-        expect(routeOf('https://example.test/shelflens/graphql?op=x', '/shelflens/')).toBe(
-            'graphql'
-        );
-        expect(routeOf('/shelflens/catalog.json', '/shelflens/')).toBe(undefined);
     });
 });

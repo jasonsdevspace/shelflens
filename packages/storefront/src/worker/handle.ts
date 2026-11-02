@@ -2,15 +2,13 @@ import {
     createStoreHost,
     type EventStore,
     type HostedStore,
-    isApiPath,
-    isEventsPath,
-    isRulesPath,
     parseCatalogFile,
     parseRulesFile,
     PERSISTED_OPERATIONS,
     receiveEvents,
     resolveRequest,
     responseHeaders,
+    routeOf,
     type RuleStore,
     type Startup,
     type StoreApi,
@@ -132,10 +130,6 @@ const fresh = (response: Response, now: Date): boolean => {
 const mayKeep = (response: Response): boolean =>
     (response.headers.get('cache-control') ?? '').startsWith('public');
 
-/** The path the page loads or removes a visitor's catalog on. */
-export const isCatalogPath = (url: string, base = '/'): boolean =>
-    new URL(url, 'http://local').pathname === `${base}catalog`;
-
 /** A store asked to build before it has a catalog to build from. */
 class NoCatalogError extends Error {
     constructor() {
@@ -212,9 +206,6 @@ export const createWorkerApi = ({
         rules,
         onServed: dropOthers,
     });
-
-    const isApiRequest = (request: Request): boolean =>
-        (request.method === 'GET' || request.method === 'POST') && isApiPath(request.url, base);
 
     const receive = async (request: Request): Promise<Response> => {
         if (!events) return json(404, { errors: [{ message: 'this store keeps no events' }] });
@@ -402,6 +393,20 @@ export const createWorkerApi = ({
         );
     };
 
+    /** A query, from the answers kept for its URL when one is fresh, and kept when it may be. */
+    const query = async (request: Request): Promise<Response> => {
+        const kept = request.method === 'GET' && answers ? await answers() : undefined;
+        const held = await kept?.match(request);
+        if (held && fresh(held, new Date())) return held;
+        const response = await answer(request);
+        // Kept only while the store that made it is still the one served, so
+        // an answer that finishes after its catalog was replaced or removed
+        // is not put back among the kept ones.
+        const still = (await host.served())?.api.version === response.headers.get(VERSION_HEADER);
+        if (kept && mayKeep(response) && still) await kept.put(request, response.clone());
+        return response;
+    };
+
     return {
         warm: async () => {
             try {
@@ -414,27 +419,19 @@ export const createWorkerApi = ({
         },
         refresh: () => host.refresh(),
         handle: async (request) => {
-            if (catalogs && isCatalogPath(request.url, base))
-                return receiveCatalog(catalogs, request);
-            if (isEventsPath(request.url, base)) return receive(request);
-            if (isRulesPath(request.url, base)) {
+            const route = routeOf(request.url, base);
+            if (route === 'catalog' && catalogs) return receiveCatalog(catalogs, request);
+            if (route === 'events') return receive(request);
+            if (route === 'rules') {
                 return receiveRuleSet(request).catch((error: unknown) => {
                     if (error instanceof NoCatalogError) return noCatalog();
                     throw error;
                 });
             }
-            if (!isApiRequest(request)) return undefined;
-            const kept = request.method === 'GET' && answers ? await answers() : undefined;
-            const held = await kept?.match(request);
-            if (held && fresh(held, new Date())) return held;
-            const response = await answer(request);
-            // Kept only while the store that made it is still the one served, so
-            // an answer that finishes after its catalog was replaced or removed
-            // is not put back among the kept ones.
-            const still =
-                (await host.served())?.api.version === response.headers.get(VERSION_HEADER);
-            if (kept && mayKeep(response) && still) await kept.put(request, response.clone());
-            return response;
+            if (route !== 'graphql' || (request.method !== 'GET' && request.method !== 'POST')) {
+                return undefined;
+            }
+            return query(request);
         },
     };
 };

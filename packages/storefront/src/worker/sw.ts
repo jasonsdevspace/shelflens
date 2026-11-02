@@ -4,7 +4,7 @@ import { routeOf } from '@shelflens/api';
 
 import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
-import { createWorkerApi, isCatalogPath, type StartedMessage } from './handle.js';
+import { createWorkerApi, type StartedMessage } from './handle.js';
 import { CLAIM_MESSAGE, VISIT_MESSAGE, VISITED_MESSAGE } from './register.js';
 import { createIndexedDbRuleStore } from './rule-db.js';
 import { storageFor, storeKindOf } from './storage.js';
@@ -83,9 +83,9 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const ours =
-        routeOf(request.url, base) !== undefined ||
-        (kind === 'try' && isCatalogPath(request.url, base));
+    const route = routeOf(request.url, base);
+    // Only the worker of a visitor's catalog takes a catalog.
+    const ours = route !== undefined && (route !== 'catalog' || kind === 'try');
     if (!ours) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

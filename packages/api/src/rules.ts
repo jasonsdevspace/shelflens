@@ -44,10 +44,6 @@ export const createMemoryRuleStore = (): RuleStore => {
     };
 };
 
-/** Whether a URL is for the rules: `rules` under the host's base. */
-export const isRulesPath = (url: string, base = '/'): boolean =>
-    new URL(url, 'http://local').pathname === `${base}rules`;
-
 export interface RulesRequest {
     readonly method: string;
     readonly body?: string | undefined;

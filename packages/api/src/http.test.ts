@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GROUP_HEADER } from './context.js';
-import { isApiPath, resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
+import { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
 
 /*
  * What a request over HTTP means, and what its answer may be cached as.
@@ -107,15 +107,6 @@ describe('any request', () => {
             kind: 'refused',
             status: 405,
         });
-    });
-
-    it('is for the API by its path under the base the host serves from', () => {
-        expect(isApiPath('/graphql?op=1')).toBe(true);
-        expect(isApiPath('https://example.test/shelflens/graphql', '/shelflens/')).toBe(true);
-        expect(isApiPath('https://example.test/shelflens/graphql')).toBe(false);
-        expect(isApiPath('/anything/graphql')).toBe(false);
-        expect(isApiPath('/shelflens/')).toBe(false);
-        expect(isApiPath('/graphql/extra')).toBe(false);
     });
 });
 

@@ -89,13 +89,6 @@ const fullRequest = (
     return parsed;
 };
 
-/**
- * Whether a URL is for the API at all: `graphql` under the path the host
- * serves from. The host decides what to do otherwise.
- */
-export const isApiPath = (url: string, base = '/'): boolean =>
-    new URL(url, 'http://local').pathname === `${base}graphql`;
-
 /** What a request means, or why it is refused. */
 export const resolveRequest = (http: HttpRequest, options: HttpOptions): Resolution => {
     const url = new URL(http.url, 'http://local');

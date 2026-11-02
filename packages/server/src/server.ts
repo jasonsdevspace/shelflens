@@ -458,7 +458,9 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         const url = request.url ?? '/';
-        const route = routeOf(url, base);
+        // A visitor's catalog lives in the browser, so the server has no catalog to take.
+        const found = routeOf(url, base);
+        const route = found === 'catalog' ? undefined : found;
         if (answeredEarly({ request, response, route, origins, requestId, trustProxy }, url)) {
             return;
         }
