@@ -1,4 +1,4 @@
-import { cacheKeyOf, GROUP_HEADER, VERSION_HEADER } from '@shelflens/api';
+import { cacheKeyOf, GROUP_HEADER, touch, trimOldest, VERSION_HEADER } from '@shelflens/api';
 
 import type { TypedDocumentString } from '../generated/operations.js';
 
@@ -133,19 +133,17 @@ export const createClient = ({
     const recall = (key: string): unknown => {
         const held = memory.answers.get(key);
         if (!held) return undefined;
-        memory.answers.delete(key);
-        if (now() - held.at >= memory.maxAgeMs) return undefined;
-        memory.answers.set(key, held);
+        if (now() - held.at >= memory.maxAgeMs) {
+            memory.answers.delete(key);
+            return undefined;
+        }
+        touch(memory.answers, key, held);
         return held.data;
     };
 
     const remember = (key: string, data: unknown) => {
         memory.answers.set(key, { data, at: now() });
-        while (memory.answers.size > memory.size) {
-            const oldest = memory.answers.keys().next().value;
-            if (oldest === undefined) break;
-            memory.answers.delete(oldest);
-        }
+        trimOldest(memory.answers, memory.size);
     };
 
     const send = <Result, Variables>(
@@ -189,6 +187,11 @@ export const createClient = ({
         query: async (document, variables, { signal } = {}) => {
             const name = nameOf(document);
             const operation = name ?? document.toString();
+            // A generated document carries only its name. One with neither has
+            // nothing to send, and would share an empty key with every other.
+            if (operation === '') {
+                throw new Error('the document has neither a persisted name nor any text to send');
+            }
             const known = recall(keyOf(operation, variables));
             if (known !== undefined) return known as never;
             const response = await send(document, name, variables, signal);

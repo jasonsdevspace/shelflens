@@ -56,6 +56,11 @@ Option B, with option A available at any time.
   the median on a hundred thousand products and well under a millisecond's worth on the demo's two
   thousand, so the page stays responsive, but a far larger catalog would need the index built off
   the main path and persisted.
+- The worker carries GraphQL so the page need not, and it has a size budget of its own, held by
+  `npm run budget` and the bundle test beside the pages'. It reads each of the page's operations
+  once: the schema is built once and every query that validates is kept, so a store built again
+  for a visit's clicks answers without parsing or validating again. On the demo's catalog that
+  takes a fresh search from about half a millisecond to a fifth.
 - Rate limiting in a worker protects nothing, since the client is the server. It is implemented
   in the Node server where it means something, and the worker does not pretend.
 - Persisted operations work the same way in both: each accepts one of the storefront's

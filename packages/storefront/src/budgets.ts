@@ -4,8 +4,9 @@
  * The popover is the first thing a shopper waits for, so the page that
  * carries it has a size budget the build enforces. React is most of it.
  * Measured at 72 KB compressed when the budget was set, and the page must
- * hold nothing from GraphQL: the operations are generated as strings so
- * no parser or printer is needed in the browser.
+ * hold nothing from GraphQL: the operations are generated as names, the
+ * hash of each one's text, so no parser, printer or query text is needed in
+ * the browser.
  */
 export const BUDGET_BYTES = 100 * 1024;
 
@@ -22,3 +23,19 @@ export const WIDGET_BUDGET_BYTES = 85 * 1024;
  * page loads. Measured at 99 KB compressed when the budget was set.
  */
 export const TRY_BUDGET_BYTES = 115 * 1024;
+
+/**
+ * The service worker, which a visit downloads once and keeps. It carries
+ * the engine, the API with its schema and its persisted operations, and
+ * GraphQL itself, which is the most of it and the reason the pages carry
+ * none. Measured at 74 KB compressed when the budget was set.
+ */
+export const WORKER_BUDGET_BYTES = 85 * 1024;
+
+/**
+ * A sentence only the golden queries hold, which the tests read and nothing
+ * shipped should. The budget check and the bundle test refuse any file with
+ * it, and a test holds it to the golden queries' own text, so rewording them
+ * cannot leave the check looking for nothing.
+ */
+export const FIXTURE_PROBE = 'a two-word product name outranks products matching one word';

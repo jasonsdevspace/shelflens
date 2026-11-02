@@ -156,6 +156,14 @@ describe('the client', () => {
         });
     });
 
+    it('refuses a document with neither a name nor text, and sends nothing', async () => {
+        const fetchImpl = respond(SUGGEST);
+        const client = createClient({ url: '/graphql', fetch: fetchImpl });
+        const empty = new TypedDocumentString<SuggestQuery, SuggestQueryVariables>('');
+        await expect(client.query(empty, variables)).rejects.toThrow('neither a persisted name');
+        expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
     it('remembers nothing of an answer that says it is volatile', async () => {
         const fetchImpl = respond({ ...SUGGEST, extensions: { volatile: true } }, '1');
         const client = createClient({ url: '/graphql', fetch: fetchImpl });
