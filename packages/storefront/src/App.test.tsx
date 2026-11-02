@@ -141,13 +141,12 @@ describe('a store that starts', () => {
                 moved += 50;
             }
             expect(search()).toBeInTheDocument();
+            // Shown once the second was up, and within a step of it, so it was that wait.
             expect(moved).toBeGreaterThanOrEqual(REVEAL_WITHIN_MS);
+            expect(moved).toBeLessThanOrEqual(REVEAL_WITHIN_MS + 50);
         } finally {
             vi.useRealTimers();
         }
-        expect(
-            await screen.findByRole('combobox', { name: 'Search the store' })
-        ).toBeInTheDocument();
         expect(screen.queryByRole('navigation', { name: 'Categories' })).not.toBeInTheDocument();
     });
 
@@ -907,7 +906,9 @@ describe('as a member', () => {
         await user.click(await screen.findByRole('button', { name: 'Back to results' }));
         await settled();
         expect(line()?.textContent).toMatch(/^Shopping as a member/);
-        // A timer queued after the notice's own, so the notice has had its turn to speak.
+        // Two timers queued after the page has drawn, so the notice's own, set once its
+        // effect has run, has had its turn to speak whichever way the effect was flushed.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         expect(said()).toBe(0);
         // Switching back says the guest line, with the way to see what it hides.

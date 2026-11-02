@@ -27,12 +27,12 @@ export default defineConfig({
         {
             name: 'desktop',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /phone\.spec\.ts$/,
+            testIgnore: /(^|\/)phone\.spec\.ts$/,
         },
         {
             name: 'phone',
             use: { ...devices['Pixel 7'] },
-            testMatch: /(phone|widget|try-widget|embed|themes)\.spec\.ts$/,
+            testMatch: /(^|\/)(phone|widget|try-widget|embed|themes)\.spec\.ts$/,
         },
     ],
     webServer: [

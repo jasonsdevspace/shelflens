@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test as base } from '@playwright/test';
 
+import { DEFAULT_DB_NAME } from '../src/worker/event-db.js';
+
 /*
  * What the browser tests share: the test itself, which marks the tour seen
  * unless a file asks otherwise, an axe audit that names what it found, and
@@ -29,16 +31,25 @@ export const test = base.extend<{ readonly tourSeen: boolean }>({
  * named in `leaveOut`, with the reason beside the call.
  */
 export const audit = async (page: Page, leaveOut: readonly string[] = []): Promise<void> => {
+    expect(await violationsOf(page, leaveOut)).toEqual([]);
+};
+
+/**
+ * What axe finds on the page as it stands, each as the rule broken and the
+ * elements that break it, for a test that collects them before judging.
+ */
+export const violationsOf = async (
+    page: Page,
+    leaveOut: readonly string[] = []
+): Promise<string[]> => {
     const builder = new AxeBuilder({ page });
     const results = await (
         leaveOut.length > 0 ? builder.disableRules([...leaveOut]) : builder
     ).analyze();
-    expect(
-        results.violations.map(
-            (violation) =>
-                `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`
-        )
-    ).toEqual([]);
+    return results.violations.map(
+        (violation) =>
+            `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`
+    );
 };
 
 /** An event as the worker keeps it, with the fields the tests read. */
@@ -54,7 +65,7 @@ export interface KeptEvent {
  * The events the worker keeps, read from the IndexedDB the page shares
  * with it, oldest first. Nothing when the worker has kept none yet.
  */
-export const keptEvents = (page: Page, database = 'shelflens-events'): Promise<KeptEvent[]> =>
+export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
     page.evaluate(
         (name) =>
             new Promise<KeptEvent[]>((resolve, reject) => {
@@ -78,5 +89,5 @@ export const keptEvents = (page: Page, database = 'shelflens-events'): Promise<K
                     };
                 };
             }),
-        database
+        DEFAULT_DB_NAME
     );

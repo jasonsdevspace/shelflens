@@ -1,7 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
-
 import { PAGES } from '../src/bench/pages.js';
-import { expect, test } from './support.js';
+import { expect, test, violationsOf } from './support.js';
 
 /*
  * Every page Lighthouse audits, audited by axe in the light theme and in
@@ -22,8 +20,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
             await page.goto(`${origin}${path}`);
             if (ready) await ready(page);
             await expect(page.locator('html')).toHaveAttribute('data-theme', colorScheme);
-            const audit = await new AxeBuilder({ page }).analyze();
-            violations.push(...audit.violations.map((violation) => `${path}: ${violation.id}`));
+            violations.push(...(await violationsOf(page)).map((found) => `${path}: ${found}`));
         }
         expect(violations, `axe in the ${colorScheme} theme`).toEqual([]);
     });

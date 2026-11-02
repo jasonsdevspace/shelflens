@@ -306,20 +306,24 @@ test('keeps its place: a search is announced, a product takes focus, and back la
 });
 
 test('browser Back along the rail shows each product from its heading', async ({ page }) => {
-    // Where the focused heading sits once the page has stopped scrolling. The browser's
-    // own restore comes after focus and the product's answer, with no event of its own,
-    // so the page is watched frame by frame until its scroll has held still for twenty.
+    // Where the focused heading sits once the page has settled. The browser's own restore
+    // comes after focus and the product's answer, with no event of its own, so the test
+    // waits for the last thing the page asks for, the rail, and then watches the heading
+    // frame by frame until it has held still for thirty.
     const settledTop = () =>
         page.evaluate(
             () =>
                 new Promise<number>((resolve) => {
-                    let last = window.scrollY;
+                    // The heading's own place, which a scroll and a shift in layout both move.
+                    const top = () => document.activeElement?.getBoundingClientRect().top ?? NaN;
+                    let last = top();
                     let still = 0;
                     const watch = () => {
-                        still = window.scrollY === last ? still + 1 : 0;
-                        last = window.scrollY;
-                        if (still >= 20) {
-                            resolve(document.activeElement?.getBoundingClientRect().top ?? NaN);
+                        const now = top();
+                        still = now === last ? still + 1 : 0;
+                        last = now;
+                        if (still >= 30) {
+                            resolve(now);
                             return;
                         }
                         requestAnimationFrame(watch);
@@ -343,6 +347,7 @@ test('browser Back along the rail shows each product from its heading', async ({
     for (let step = 0; step < 2; step += 1) {
         await page.goBack();
         await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+        await expect(rail.getByRole('link').first()).toBeVisible();
         const top = await settledTop();
         expect(top).toBeGreaterThanOrEqual(0);
         expect(top).toBeLessThan(height);
@@ -553,8 +558,16 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await expect(page.getByText('Previewing a draft')).toBeVisible();
     // The order is read until the preview has moved the product up, since the page
     // can read as settled a moment before the preview's answer has been asked for.
-    await expect.poll(async () => (await order()).indexOf(last)).toBeLessThan(before.indexOf(last));
-    const previewed = await order();
+    // The order kept is the one that passed, a whole list with the product moved up, not
+    // a list read again a moment later or one in the middle of being drawn.
+    let previewed: (string | null)[] = [];
+    await expect
+        .poll(async () => {
+            previewed = await order();
+            const moved = previewed.indexOf(last);
+            return previewed.length === before.length && moved >= 0 && moved < before.indexOf(last);
+        })
+        .toBe(true);
     await expect(page.locator(`.card:has([data-sku="${last}"]) .card-explain`)).toContainText(
         'Pinned to the top by rule'
     );
