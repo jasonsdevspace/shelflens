@@ -1,7 +1,12 @@
 /*
  * The search box and its popover. These rules are the page's, through
  * styles.css, and the widget's, through its own sheet, so the box looks
- * the same wherever it is mounted. They refer only to the color tokens.
+ * the same wherever it is mounted. They refer only to the tokens.
+ *
+ * Its sizes are relative to its own text, in em, rather than the tokens'
+ * rem, since on a host's page the root's size is the host's. The widget
+ * pins its text at 16px, and the store's masthead gives it the page's own
+ * size, so the box is the same height in both.
  */
 
 /* Read by a screen reader, taking no room on the screen. */
@@ -32,6 +37,8 @@
     appearance: none;
     font: inherit;
     font-size: 1em;
+    /* Its own line height, so the box is the same height in the store and inside a host's page. */
+    line-height: var(--leading-tight);
     padding: 0.6em 0.8em;
     border: 1px solid var(--control);
     border-radius: 0.5em;
@@ -62,7 +69,7 @@
     color: var(--fg);
     border: 1px solid var(--line);
     border-radius: 0.5em;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-raised);
     max-height: 70vh;
     overflow-y: auto;
 }
@@ -107,8 +114,8 @@
 
 .searchbox-heading,
 .searchbox-group-title {
-    font-size: 0.8em;
-    font-weight: 600;
+    font-size: 0.85em;
+    font-weight: var(--weight-strong);
     letter-spacing: 0.02em;
     text-transform: uppercase;
     color: var(--muted);
@@ -154,7 +161,7 @@ li[role='group'] + li[role='group'] {
 }
 
 .searchbox-option-query {
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 }
 
 .searchbox-option-query + .searchbox-option-product {
@@ -186,5 +193,5 @@ li[role='group'] + li[role='group'] {
 
 /* The page's swatch edge, which a CSS rule sets over the drawing's own. */
 .swatch rect {
-    stroke: var(--swatch-edge, rgba(0, 0, 0, 0.12));
+    stroke: var(--swatch-edge);
 }

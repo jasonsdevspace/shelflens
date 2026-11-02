@@ -31,6 +31,12 @@ the page.
   says, and the browser test does it from a second origin.
   [Decision record 12](../../docs/decisions/0012-the-widget-keeps-its-own-tree.md) has the
   choices.
+- **One set of tokens.** `src/tokens.css` names the design's values once: the palette, each
+  color as its light and dark pair, the type sizes, weights and line heights, the spacing steps,
+  the corners, one raised shadow, one scrim and the focus ring. The page picks each color by the
+  saved theme and the widget by its host's color scheme, both by name. A test holds every sheet
+  to the tokens, and a browser test holds every control on every page to an edge of 3 to 1, the
+  one focus ring and, for a select, its caret, in both themes and on a phone.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

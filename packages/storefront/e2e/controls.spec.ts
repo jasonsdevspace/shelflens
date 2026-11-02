@@ -245,3 +245,17 @@ test('lines the rule form’s text fields up with its selects, and holds its con
     ).toBe(1);
     expect(await page.evaluate(inspect)).toEqual([]);
 });
+
+test('draws the search box the same height in the store and on a page that is not the store’s', async ({
+    page,
+}) => {
+    const heightOf = async (path: string) => {
+        await page.goto(path);
+        const box = page.getByRole('combobox', { name: 'Search the store' });
+        await box.waitFor();
+        return (await box.boundingBox())?.height;
+    };
+    const store = await heightOf('/');
+    expect(store).toBeGreaterThan(0);
+    expect(await heightOf('/widget/')).toBe(store);
+});

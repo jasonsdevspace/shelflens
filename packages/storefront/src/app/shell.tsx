@@ -28,11 +28,9 @@ export const NO_SCRIPT = noScript('ShelfLens');
  * What the widget pages show where the search box goes, until the box
  * covers it. The loading line shows only after a moment, as the store's
  * does, and a browser with JavaScript turned off sees the other line
- * instead, since the style in the head hides the first.
+ * instead, since the host's sheet hides the first when scripts are off.
  */
 export const WIDGET_WAITING = `<p class="notice widget-waiting" role="status">Loading the search box.</p>${noScript('The search box')}`;
-export const WIDGET_NO_SCRIPT_STYLE =
-    '<noscript><style>.widget-waiting { display: none; }</style></noscript>';
 
 /** The page's first screen, without the line for a browser with JavaScript turned off. */
 export const firstScreen = (page: string): string => {

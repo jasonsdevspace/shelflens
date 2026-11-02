@@ -7,6 +7,7 @@ import { createClient, type CustomerGroup } from '../client/graphql.js';
 import { StoreDocument } from '../generated/operations.js';
 import searchbox from '../search/searchbox.css?inline';
 import { SearchBox } from '../search/SearchBox.jsx';
+import tokens from '../tokens.css?inline';
 import frame from './widget.css?inline';
 
 /**
@@ -57,7 +58,7 @@ const Widget = ({ apiUrl, storeUrl, group, onSearch, onPick, placeholder }: Moun
     );
 };
 
-const CSS = `${frame}\n${searchbox}`;
+const CSS = `${tokens}\n${frame}\n${searchbox}`;
 
 /** One constructed sheet, parsed once and shared by every widget on the page, where the browser has them. */
 let shared: CSSStyleSheet | undefined;

@@ -1,28 +1,18 @@
+@import './tokens.css';
 @import './search/searchbox.css';
 
 :root {
     --column: 72rem;
-    --bg: #ffffff;
-    --fg: #1a1a1a;
-    --muted: #5c5c5c;
-    --line: #d9d9d9;
-    --accent: #1f4fd8;
-    --on-accent: #ffffff;
-    --highlight: #eef2fd;
-    /* Borders on the fields a visitor types into or picks from, darker than the lines between things. */
-    --control: #8a8a8a;
-    --warn: #b7472a;
-    /* The edge of a product's swatch, faint on white and lighter on dark, so a dark color keeps its shape. */
-    --swatch-edge: rgba(0, 0, 0, 0.12);
-    /* The one focus ring every control draws, in the accent color. */
-    --ring-width: 2px;
-    --ring-offset: 2px;
-    /* A field a visitor types into or picks from: its height, its text's inset and its corners. */
-    --field-height: 2.25rem;
-    --field-inline: 0.5rem;
-    --field-radius: 0.375rem;
-    /* A select's caret, drawn in the muted text color. An image cannot read a token, so each theme names its own. */
-    --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235c5c5c' stroke-width='1.75'/%3E%3C/svg%3E");
+    --bg: var(--light-bg);
+    --fg: var(--light-fg);
+    --muted: var(--light-muted);
+    --line: var(--light-line);
+    --accent: var(--light-accent);
+    --on-accent: var(--light-on-accent);
+    --highlight: var(--light-highlight);
+    --control: var(--light-control);
+    --warn: var(--light-warn);
+    --swatch-edge: var(--light-swatch-edge);
     color-scheme: light;
     font-family:
         system-ui,
@@ -38,17 +28,16 @@
  * so this page and jasonsdevspace.com switch together.
  */
 :root[data-theme='dark'] {
-    --bg: #121212;
-    --fg: #f0f0f0;
-    --muted: #a5a5a5;
-    --line: #3a3a3a;
-    --accent: #8fb0ff;
-    --on-accent: #121212;
-    --highlight: #1e2a4a;
-    --control: #6e6e6e;
-    --warn: #e8795a;
-    --swatch-edge: #6e6e6e;
-    --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a5a5a5' stroke-width='1.75'/%3E%3C/svg%3E");
+    --bg: var(--dark-bg);
+    --fg: var(--dark-fg);
+    --muted: var(--dark-muted);
+    --line: var(--dark-line);
+    --accent: var(--dark-accent);
+    --on-accent: var(--dark-on-accent);
+    --highlight: var(--dark-highlight);
+    --control: var(--dark-control);
+    --warn: var(--dark-warn);
+    --swatch-edge: var(--dark-swatch-edge);
     color-scheme: dark;
 }
 
@@ -93,6 +82,14 @@ body {
     color: var(--fg);
 }
 
+/* Every heading takes one weight, whatever its size. */
+h1,
+h2,
+h3,
+h4 {
+    font-weight: var(--weight-strong);
+}
+
 /* Whose demo this is, above the masthead: two links, one line, scrolls away. */
 /*
  * The strip and the masthead keep their borders across the whole viewport
@@ -100,8 +97,9 @@ body {
  * one column from the first line to the footer.
  */
 .portfolio,
-.masthead {
-    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + 1rem);
+.masthead,
+.colophon {
+    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + var(--space-4));
 }
 
 .portfolio {
@@ -109,9 +107,9 @@ body {
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 0 1rem;
+    gap: 0 var(--space-4);
     border-bottom: 1px solid var(--line);
-    font-size: 0.9rem;
+    font-size: var(--text-small);
 }
 
 /* The whole row height is the target, not the one line of small text. */
@@ -133,13 +131,13 @@ body {
     color: var(--fg);
 }
 
+/* The footer's rule runs the width of the page, as the header's do, with its text in the column. */
 .colophon {
-    max-width: var(--column);
-    margin: 2rem auto 0;
-    padding: 1rem;
+    margin-top: var(--space-6);
+    padding-block: var(--space-4);
     border-top: 1px solid var(--line);
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: var(--text-small);
 }
 
 .colophon p {
@@ -150,8 +148,8 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
-    padding-block: 1rem;
+    gap: var(--space-4);
+    padding-block: var(--space-4);
     border-bottom: 1px solid var(--line);
 }
 
@@ -178,14 +176,14 @@ body {
 }
 
 .brand {
-    font-weight: 700;
-    font-size: 1.25rem;
+    font-weight: var(--weight-mark);
+    font-size: var(--text-title);
     color: inherit;
     text-decoration: none;
 }
 
 .content {
-    padding: 1rem;
+    padding: var(--space-4);
     max-width: var(--column);
     margin: 0 auto;
 }
@@ -219,7 +217,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-3);
 }
 
 /* A store that did not start offers to try again, in the look of the page's other buttons. */
@@ -227,7 +225,7 @@ body {
     font: inherit;
     padding: 0.4rem 0.9rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
@@ -235,12 +233,12 @@ body {
 /* The results list. */
 
 .results-heading {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--text-title);
+    font-weight: var(--weight-strong);
 }
 
 .results-note {
-    font-weight: 400;
+    font-weight: var(--weight-normal);
     color: var(--muted);
 }
 
@@ -249,7 +247,7 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .result-text {
@@ -258,7 +256,7 @@ body {
 }
 
 .result-meta {
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
     color: var(--muted);
 }
 
@@ -267,22 +265,22 @@ body {
 .masthead {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .masthead-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 .tour-open {
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
@@ -294,44 +292,44 @@ body {
 
 .tour {
     position: fixed;
-    right: 1rem;
-    bottom: 1rem;
+    right: var(--space-4);
+    bottom: var(--space-4);
     z-index: 5;
     width: min(24rem, calc(100vw - 2rem));
-    padding: 1rem;
+    padding: var(--space-4);
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--line);
-    border-radius: 0.5rem;
-    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.15);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-raised);
 }
 
 .tour-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 .tour-count {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
     color: var(--muted);
 }
 
 .tour-title {
-    margin: 0.5rem 0 0.25rem;
-    font-size: 1.05rem;
+    margin: var(--space-2) 0 var(--space-1);
+    font-size: var(--text-body);
 }
 
 .tour-body {
-    margin: 0 0 0.5rem;
-    font-size: 0.95rem;
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-small);
 }
 
 .tour-test {
-    margin: 0 0 0.75rem;
-    font-size: 0.8rem;
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-caption);
     color: var(--muted);
     overflow-wrap: anywhere;
 }
@@ -339,7 +337,7 @@ body {
 .tour-nav {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .tour-try {
@@ -347,11 +345,11 @@ body {
     margin-right: auto;
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: var(--text-small);
+    font-weight: var(--weight-medium);
     text-decoration: none;
 }
 
@@ -363,10 +361,10 @@ body {
 .tour-close,
 .tour-step {
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
@@ -378,16 +376,16 @@ body {
 .viewer {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     margin-left: auto;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     color: var(--muted);
 }
 
 .category-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem 1rem;
+    gap: var(--space-1) var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -396,7 +394,7 @@ body {
 .category-link {
     color: var(--muted);
     text-decoration: none;
-    padding: 0.25rem 0;
+    padding: var(--space-1) 0;
     border-bottom: 2px solid transparent;
 }
 
@@ -415,19 +413,19 @@ body {
 .results-layout {
     display: grid;
     grid-template-columns: 14rem minmax(0, 1fr);
-    gap: 2rem;
+    gap: var(--space-6);
     align-items: start;
 }
 
 /* The column keeps up with the results and scrolls on its own when it is taller than the screen. */
 .results-side {
     position: sticky;
-    top: 1rem;
+    top: var(--space-4);
     max-height: calc(100dvh - 2rem);
     overflow-y: auto;
     /* A scrolling box clips what spills past its edge, so the focus ring gets room inside it. */
-    padding: 0.25rem;
-    margin: -0.25rem;
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
 }
 
 /* Nothing found: no facets to show, so the results take the whole width. */
@@ -457,18 +455,18 @@ body {
 
 .facets {
     display: grid;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 /* The rest of a long list, a click away, in the same voice as the clear button. */
 .facet-more {
     justify-self: start;
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     color: var(--accent);
     background: none;
     border: none;
-    padding: 0.25rem 0;
+    padding: var(--space-1) 0;
 }
 
 .facet-more:hover,
@@ -479,7 +477,7 @@ body {
 .facets-clear {
     justify-self: start;
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     color: var(--accent);
     background: none;
     border: none;
@@ -492,21 +490,21 @@ body {
     padding: 0;
     border: none;
     display: grid;
-    gap: 0.25rem;
+    gap: var(--space-1);
 }
 
 .facet-title {
-    font-weight: 600;
+    font-weight: var(--weight-strong);
     padding: 0;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-1);
 }
 
 .facet-option {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     min-height: 1.5rem;
-    font-size: 0.95rem;
+    font-size: var(--text-small);
 }
 
 .facet-label {
@@ -515,7 +513,7 @@ body {
 
 .facet-count {
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
 }
 
 .facet-links {
@@ -523,17 +521,17 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.25rem;
+    gap: var(--space-1);
 }
 
 .facet-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     width: 100%;
     min-height: 1.5rem;
     font: inherit;
-    font-size: 0.95rem;
+    font-size: var(--text-small);
     text-align: left;
     color: var(--accent);
     background: none;
@@ -547,22 +545,22 @@ body {
 }
 
 .crumbs {
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     color: var(--muted);
 }
 
 .crumb-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: var(--space-1);
     list-style: none;
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
     padding: 0;
 }
 
 .crumb-list li + li::before {
     content: '/';
-    margin-right: 0.25rem;
+    margin-right: var(--space-1);
 }
 
 .crumb-list a {
@@ -579,8 +577,8 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
+    gap: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-4);
 }
 
 .results-heading {
@@ -590,8 +588,8 @@ body {
 .sort {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
+    gap: var(--space-2);
+    font-size: var(--text-small);
 }
 
 /*
@@ -603,10 +601,10 @@ body {
 .select,
 .rules-input {
     min-height: var(--field-height);
-    padding: 0.25rem var(--field-inline);
+    padding: var(--space-1) var(--field-inline);
     font: inherit;
     border: 1px solid var(--control);
-    border-radius: var(--field-radius);
+    border-radius: var(--radius);
     background-color: var(--bg);
     color: var(--fg);
 }
@@ -615,7 +613,7 @@ body {
     .select,
     .rules-input {
         min-height: 2.75rem;
-        font-size: max(1rem, 16px);
+        font-size: max(var(--text-body), 16px);
     }
 }
 
@@ -631,12 +629,17 @@ body {
     appearance: none;
     max-width: 100%;
     /* The text's inset, then room for the caret and the same inset again beyond it. */
-    padding-inline-end: calc(var(--field-inline) * 2 + 0.75rem);
+    padding-inline-end: calc(var(--field-inline) * 2 + var(--space-3));
     text-overflow: ellipsis;
-    background-image: var(--caret);
+    /* The caret, two halves of a triangle in the muted text color, its right point the text's inset from the edge. */
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
     background-repeat: no-repeat;
-    background-position: right var(--field-inline) center;
-    background-size: 0.75rem 0.5rem;
+    background-position:
+        right calc(var(--field-inline) + 0.375rem) center,
+        right var(--field-inline) center;
+    background-size: 0.375rem 0.375rem;
 }
 
 @media (forced-colors: active) {
@@ -653,7 +656,7 @@ body {
     padding: 0;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 /*
@@ -669,13 +672,13 @@ body {
 
 .card-link {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
     flex: 1 1 auto;
-    padding: 0.75rem;
+    padding: var(--space-3);
     color: inherit;
     text-decoration: none;
     border: 1px solid var(--line);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-large);
 }
 
 .card-link:hover,
@@ -687,36 +690,36 @@ body {
 .card-text {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: var(--space-1);
     min-width: 0;
 }
 
 .card-name {
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 }
 
 .card-meta,
 .card-rating {
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
     color: var(--muted);
 }
 
 .card-stock,
 .product-stock {
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
     color: var(--warn);
 }
 
 /* What the viewer switch changed, on the card and the product: the difference, not the membership. */
 .card-member,
 .product-member {
-    font-size: 0.85rem;
+    font-size: var(--text-caption);
     color: var(--accent);
 }
 
 .product-member,
 .product-stock {
-    margin: 0.25rem 0 0;
+    margin: var(--space-1) 0 0;
 }
 
 /*
@@ -732,13 +735,13 @@ body {
 .card-explain {
     flex: 1 1 auto;
     margin: 0;
-    padding: 0.5rem 0.75rem 0.75rem;
+    padding: var(--space-2) var(--space-3) var(--space-3);
     list-style: none;
-    font-size: 0.8rem;
+    font-size: var(--text-caption);
     color: var(--muted);
     border: 1px solid var(--line);
     border-top: 0;
-    border-radius: 0 0 0.5rem 0.5rem;
+    border-radius: 0 0 var(--radius-large) var(--radius-large);
 }
 
 /* What a rule did is the line a merchandiser looks for, so it reads in the foreground. */
@@ -747,7 +750,7 @@ body {
 }
 
 .card-explain li + li {
-    margin-top: 0.2rem;
+    margin-top: var(--space-1);
 }
 
 /* The rank is the answer to "where did it land", so it reads in the foreground. */
@@ -757,10 +760,10 @@ body {
 
 .explain-toggle {
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
@@ -771,13 +774,13 @@ body {
 }
 
 .no-results-heading {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 1.5rem 0 0.75rem;
+    font-size: var(--text-lead);
+    font-weight: var(--weight-strong);
+    margin: var(--space-5) 0 var(--space-3);
 }
 
 .no-results-offer {
-    margin: 0.5rem 0;
+    margin: var(--space-2) 0;
 }
 
 /* The ways forward from nothing found, in the page's one accent. */
@@ -786,24 +789,24 @@ body {
 }
 
 .results-aside {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
     padding: 0.6rem 0.8rem;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     background: var(--highlight);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
 }
 
 .pagination {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
 }
 
 .page-list {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-1);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -814,7 +817,7 @@ body {
     font: inherit;
     padding: 0.35rem 0.7rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
@@ -832,7 +835,7 @@ body {
 
 .page-status {
     margin-left: auto;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     color: var(--muted);
 }
 
@@ -841,36 +844,36 @@ body {
 /* The way back is a button like the page's other buttons, not a bare link among them. */
 .back {
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--control);
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
     background: var(--bg);
     color: var(--fg);
 }
 
 .rail {
-    margin-top: 2rem;
+    margin-top: var(--space-6);
 }
 
 .product-head {
     display: flex;
-    gap: 1.5rem;
+    gap: var(--space-5);
     align-items: flex-start;
-    margin: 1rem 0;
+    margin: var(--space-4) 0;
 }
 
 .product-crumbs,
 .product-meta {
     color: var(--muted);
-    margin: 0 0 0.25rem;
+    margin: 0 0 var(--space-1);
 }
 
 .product-name {
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.2;
-    margin: 0 0 0.25rem;
+    font-size: var(--text-display);
+    font-weight: var(--weight-strong);
+    line-height: var(--leading-tight);
+    margin: 0 0 var(--space-1);
 }
 
 /*
@@ -886,13 +889,13 @@ body {
 /* With no product to show, the line is the page's message, in the text's own color. */
 .product > .notice.is-answer {
     color: var(--fg);
-    margin: 0 0 0.75rem;
+    margin: 0 0 var(--space-3);
 }
 
 .product-price {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0.5rem 0 0;
+    font-size: var(--text-title);
+    font-weight: var(--weight-strong);
+    margin: var(--space-2) 0 0;
 }
 
 .product-description {
@@ -900,19 +903,19 @@ body {
 }
 
 .product-subheading {
-    font-size: 1rem;
-    margin: 1.5rem 0 0.5rem;
+    font-size: var(--text-body);
+    margin: var(--space-5) 0 var(--space-2);
 }
 
 .variants {
     border-collapse: collapse;
-    font-size: 0.95rem;
+    font-size: var(--text-small);
 }
 
 .variants th,
 .variants td {
     text-align: left;
-    padding: 0.4rem 1rem 0.4rem 0;
+    padding: 0.4rem var(--space-4) 0.4rem 0;
     border-bottom: 1px solid var(--line);
 }
 
@@ -920,11 +923,11 @@ body {
     /* The swatch above the product's name, so the name has the width of the page. */
     .product-head {
         flex-direction: column;
-        gap: 0.75rem;
+        gap: var(--space-3);
     }
 
     .product-name {
-        font-size: 1.5rem;
+        font-size: var(--text-heading);
     }
 
     /* The heading on a line of its own, then the buttons together under it. */
@@ -938,19 +941,19 @@ body {
         bottom: 0;
         left: 0;
         width: auto;
-        border-radius: 0.5rem 0.5rem 0 0;
+        border-radius: var(--radius-large) var(--radius-large) 0 0;
         max-height: 50dvh;
         overflow: auto;
     }
 
     /* The last cards and the pagination can still scroll above the tour. */
     .content.has-tour {
-        padding-bottom: calc(50dvh + 1rem);
+        padding-bottom: calc(50dvh + var(--space-4));
     }
 
     .results-layout {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: var(--space-4);
     }
 
     /* Brand, viewer and tour on one row, the search box on a row of its own below. */
@@ -969,22 +972,22 @@ body {
 
 .drawer-open {
     font: inherit;
-    padding: 0.5rem 0.9rem;
+    padding: var(--space-2) 0.9rem;
     border: 1px solid var(--control);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-large);
     background: var(--bg);
     color: var(--fg);
 }
 
 /* Beside the toolbar's other buttons, the drawer's button takes their size. */
 .results-toolbar .drawer-open {
-    font-size: 0.9rem;
+    font-size: var(--text-small);
     padding: 0.3rem 0.6rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius);
 }
 
 .drawer-badge {
-    font-weight: 600;
+    font-weight: var(--weight-strong);
     color: var(--accent);
 }
 
@@ -992,7 +995,7 @@ body {
     position: fixed;
     inset: 0;
     z-index: 20;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--scrim);
 }
 
 .drawer-panel {
@@ -1007,7 +1010,7 @@ body {
     background: var(--bg);
     /* An edge as well as the shadow, which cannot show against a dark backdrop. */
     border-right: 1px solid var(--line);
-    box-shadow: 0 0 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-raised);
 }
 
 .drawer-panel[hidden] {
@@ -1018,20 +1021,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
+    padding: var(--space-4);
     border-bottom: 1px solid var(--line);
 }
 
 .drawer-title {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: var(--text-lead);
 }
 
 /* The first stop in the drawer, as big as a thumb, as its rows are. */
 .drawer-close {
     font: inherit;
     min-height: 2.75rem;
-    padding: 0.5rem;
+    padding: var(--space-2);
     color: var(--accent);
     background: none;
     border: none;
@@ -1041,7 +1044,7 @@ body {
 .drawer-body {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: var(--space-4);
 }
 
 /* Rows a thumb can hit. */
@@ -1051,14 +1054,14 @@ body {
 }
 
 .drawer-done {
-    margin: 1rem;
-    padding: 0.75rem;
+    margin: var(--space-4);
+    padding: var(--space-3);
     font: inherit;
-    font-weight: 600;
+    font-weight: var(--weight-strong);
     color: var(--on-accent);
     background: var(--accent);
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-large);
 }
 
 /*
@@ -1067,55 +1070,55 @@ body {
  */
 .skip {
     position: absolute;
-    left: 1rem;
+    left: var(--space-4);
     top: -10rem;
-    padding: 0.5rem 0.9rem;
-    border-radius: 0.375rem;
+    padding: var(--space-2) 0.9rem;
+    border-radius: var(--radius);
     background: var(--accent);
     color: var(--on-accent);
     z-index: 10;
 }
 
 .skip:focus-visible {
-    top: 1rem;
+    top: var(--space-4);
 }
 
 .about {
     max-width: 42rem;
-    line-height: 1.55;
+    line-height: var(--leading-body);
 }
 
 .about h1 {
-    margin: 1rem 0 0.5rem;
-    font-size: 1.75rem;
-    font-weight: 600;
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-display);
+    font-weight: var(--weight-strong);
 }
 
 .about-pitch {
-    margin: 0 0 1rem;
-    font-size: 1.1rem;
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-lead);
 }
 
 .about section {
-    margin-top: 2rem;
-    padding-block: 2rem 0;
+    margin-top: var(--space-6);
+    padding-block: var(--space-6) 0;
     border-top: 1px solid var(--line);
 }
 
 .about h2 {
-    margin: 0 0 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 600;
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-title);
+    font-weight: var(--weight-strong);
 }
 
 .about h3 {
-    margin: 1.5rem 0 0.25rem;
-    font-size: 1rem;
-    font-weight: 600;
+    margin: var(--space-5) 0 var(--space-1);
+    font-size: var(--text-body);
+    font-weight: var(--weight-strong);
 }
 
 .about p {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
 }
 
 .about p:last-child {
@@ -1133,7 +1136,7 @@ body {
 }
 
 .about code {
-    font-size: 0.9rem;
+    font-size: var(--text-small);
 }
 
 .about-where {
@@ -1141,8 +1144,8 @@ body {
 }
 
 .eyebrow {
-    margin: 0 0 0.25rem;
-    font-size: 0.85rem;
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-caption);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
 }
@@ -1150,18 +1153,18 @@ body {
 /* The steps stack, one under the next, with the arrow between them saying so. */
 .flow {
     list-style: none;
-    margin: 1rem 0;
+    margin: var(--space-4) 0;
     padding: 0;
     display: grid;
-    gap: 1.5rem;
+    gap: var(--space-5);
 }
 
 .flow li {
     position: relative;
-    padding: 0.75rem 1rem;
+    padding: var(--space-3) var(--space-4);
     border: 1px solid var(--line);
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
+    border-radius: var(--radius-large);
+    font-size: var(--text-small);
 }
 
 .flow li + li::before {
@@ -1169,26 +1172,27 @@ body {
     position: absolute;
     left: 0;
     right: 0;
-    top: -1.5rem;
-    height: 1.5rem;
-    line-height: 1.5rem;
+    top: calc(-1 * var(--space-5));
+    /* The arrow fills the gap between two steps, and its line is the gap's height, so it sits in the middle. */
+    height: var(--space-5);
+    line-height: var(--space-5);
     text-align: center;
     color: var(--control);
 }
 
 .flow strong {
     display: block;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 }
 
 .flow-note {
     display: block;
-    margin-top: 0.25rem;
+    margin-top: var(--space-1);
     color: var(--muted);
 }
 
 .about .tour-try {
-    padding: 0.5rem 0.9rem;
+    padding: var(--space-2) 0.9rem;
 }
 
 /*
@@ -1198,7 +1202,7 @@ body {
  */
 .rules {
     display: grid;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 .rules-list {
@@ -1206,43 +1210,43 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .rules-rule {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.1rem;
+    gap: var(--space-1);
 }
 
 /* The panel's heading is the size of the filter titles beside it, below the page's own heading. */
 .rules-title {
-    margin: 0 0 0.25rem;
-    font-size: 1rem;
-    font-weight: 600;
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-body);
+    font-weight: var(--weight-strong);
 }
 
 .rules-rule-name {
-    font-weight: 600;
+    font-weight: var(--weight-strong);
 }
 
 .rules-form {
     display: grid;
-    gap: 0.75rem;
+    gap: var(--space-3);
 }
 
 .rules-field {
     display: grid;
-    gap: 0.25rem;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     border: none;
-    font-size: 0.95rem;
+    font-size: var(--text-small);
 }
 
 .rules-field > label,
 .rules-field > legend {
-    font-weight: 600;
+    font-weight: var(--weight-strong);
     padding: 0;
 }
 
@@ -1253,23 +1257,23 @@ body {
 
 .rules-choice {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-2);
     align-items: baseline;
-    font-size: 0.95rem;
+    font-size: var(--text-small);
 }
 
 .rules-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    gap: var(--space-2) var(--space-4);
     align-items: center;
 }
 
 .rules-save {
     margin: 0;
-    padding: 0.5rem 0.9rem;
+    padding: var(--space-2) 0.9rem;
 }
 
 .rules-notice {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
 }
