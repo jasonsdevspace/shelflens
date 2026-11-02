@@ -99,7 +99,7 @@ export const createStoreHost = ({
     let store: Promise<HostedStore> | undefined;
     /**
      * The last store built, held apart from `store` so a change in its turn
-     * compares with it and builds over it without waiting on a build queued
+     * compares with it and builds over it without awaiting a build queued
      * behind that same turn.
      */
     let last: HostedStore | undefined;
