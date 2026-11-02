@@ -13,6 +13,8 @@ import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
+import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
+import { reasonOf } from '../client/reason.js';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -38,11 +40,6 @@ export interface TryPageProps {
     readonly ready: Promise<void>;
     /** Where this page's API is, under its own path. */
     readonly base: string;
-}
-
-interface Loaded {
-    readonly version: string;
-    readonly products: number;
 }
 
 type Stage =
@@ -83,38 +80,10 @@ type Stage =
 const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
-/**
- * Sends a change to the visitor's catalog. The worker refuses one that would
- * discard the visitor's saved rules unless the visitor agreed, and that
- * refusal comes back as `refused` for the page to ask.
- */
-const changeCatalog = async (
-    url: string,
-    init: RequestInit,
-    discardRules: boolean
-): Promise<Response | 'refused'> => {
-    const response = await fetch(discardRules ? `${url}?discard-rules=yes` : url, init);
-    return response.status === 409 ? 'refused' : response;
-};
-
-/** What the worker says is loaded, or nothing. */
-const fetchLoaded = async (url: string): Promise<Loaded | undefined> => {
-    const response = await fetch(url);
-    if (response.status === 404) return undefined;
-    if (!response.ok) throw new Error(`the store answered ${response.status}`);
-    return (await response.json()) as Loaded;
-};
-
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {
     const again = `Press "${retry}" to try again.`;
-    let reason: string | undefined;
-    try {
-        const body = (await response.json()) as { errors?: { message?: string }[] };
-        reason = body.errors?.[0]?.message;
-    } catch {
-        reason = undefined;
-    }
+    const reason = await reasonOf(response);
     return reason
         ? `The store could not use these products, since ${reason}. ${again}`
         : `The store could not load these products (error ${response.status}). ${again}`;
@@ -603,7 +572,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     useEffect(() => {
         let live = true;
         ready
-            .then(() => fetchLoaded(catalogUrl))
+            .then(() => readLoaded(catalogUrl))
             .then(
                 (loaded) => {
                     if (live) setStage(loaded ? { kind: 'searching', loaded } : { kind: 'choose' });
@@ -695,7 +664,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     setStage({ ...review, problem: await errorOf(response, retry) });
                     return;
                 }
-                const loaded = await fetchLoaded(catalogUrl);
+                const loaded = await readLoaded(catalogUrl);
                 clearSearch(base);
                 setStage(
                     loaded
@@ -723,7 +692,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         const review = stage;
         pending.current = true;
         try {
-            const loaded = await fetchLoaded(catalogUrl);
+            const loaded = await readLoaded(catalogUrl);
             if (!loaded) {
                 // Only the saved rules are left, and searching this file still discards them,
                 // so the question stays.
