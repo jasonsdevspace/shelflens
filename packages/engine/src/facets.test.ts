@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildIndex } from './index-builder.js';
 import { createEngine } from './search.js';
 import { type Document, type EngineConfig, EngineError, type Facet } from './types.js';
 
@@ -170,5 +171,56 @@ describe('counts after a selection', () => {
                 { value: 'Blue', count: 1 },
             ],
         });
+    });
+});
+
+describe('keyword counts', () => {
+    const mixed = createEngine(
+        [
+            shoe('m1', 'Northwind', ['Red', 'Red', 'Black'], 5000),
+            { id: 'm2', text: { name: 'm2' }, attributes: { brand: 'Ostara', color: 'Red' } },
+            { id: 'm3', text: { name: 'm3' }, attributes: { brand: 'Ostara' } },
+        ],
+        {
+            ...config,
+            facets: {
+                color: { kind: 'keyword', attribute: 'color' },
+                price: { kind: 'keyword', attribute: 'price' },
+            },
+        }
+    );
+
+    it('count a value a document carries twice once, beside one carried alone', () => {
+        const { facets } = mixed.search({ facets: ['color'] });
+        expect(facet(facets, 'color')).toMatchObject({
+            buckets: [
+                { kind: 'value', value: 'Red', count: 2 },
+                { kind: 'value', value: 'Black', count: 1 },
+            ],
+        });
+    });
+
+    it('count nothing on an attribute that holds no words', () => {
+        const { facets } = mixed.search({ facets: ['price'] });
+        expect(facet(facets, 'price')).toMatchObject({ kind: 'keyword', buckets: [] });
+    });
+});
+
+describe('keyword counts, one search after another', () => {
+    it('start from nothing each time, whatever the search before counted', () => {
+        const narrow = () => engine.search({ query: 'ostara', facets: ['brand'] }).facets;
+        const first = narrow();
+        engine.search({ facets: ['brand'] });
+        expect(narrow()).toEqual(first);
+        expect(facet(first, 'brand')).toMatchObject({ buckets: [{ value: 'Ostara', count: 2 }] });
+    });
+
+    it('code only the attributes a keyword facet counts', () => {
+        // A keyword attribute kept for filtering, with no facet counting it.
+        const index = buildIndex(documents, {
+            ...config,
+            attributes: { ...config.attributes, material: 'keyword' },
+        });
+        expect([...index.keywords.keys()].sort()).toEqual(['brand', 'color']);
     });
 });

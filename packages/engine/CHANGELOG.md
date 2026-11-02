@@ -4,6 +4,28 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.4.0
+
+The same results as 0.3.0, for less work, and on an older Node.
+
+- **Node 22 or later.** `engines.node` is `>=22`, where it was `>=24`, and the packed engine is
+  tested on Node 22.0.0 before each release.
+- **Faster wide searches.** On a hundred thousand products, a two-letter prefix with every facet
+  takes about a third of the time it did at the median, and browsing everything under a fifth.
+  Facets count keyword values by a code per value rather than by string, a page orders only the
+  matches up to its last result rather than all of them, and a search no rule or signal touches
+  leaves the scores alone.
+- **Faster indexing.** Postings are appended in place and each text is normalized once, so a
+  hundred thousand products index in about five sixths of the time.
+- **A little more memory.** The index holds each value of a faceted keyword attribute as a code,
+  about five megabytes more at a hundred thousand products.
+
+On the same Node, every search returns what it did in 0.3.0, in the same order with the same
+scores, facets and explanations. One order is now settled where it was not: a score that is not a
+number, as a boost of `Infinity` on a score of zero gives, sorts last either way, where 0.3.0 left
+its place to the sort. Accent folding uses the Unicode data of the Node it runs on, so on Node 22
+a rare character may fold as that Node's data says.
+
 ## 0.3.0
 
 Two changes to how a search is ordered, so a sort only reorders what relevance would show.

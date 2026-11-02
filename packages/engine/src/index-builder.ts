@@ -1,4 +1,4 @@
-import { tokenize, wordCount } from './normalize.js';
+import { analyze } from './normalize.js';
 import {
     type AttributeKind,
     type AttributeValue,
@@ -20,6 +20,10 @@ import {
  * benchmark put its index of a hundred thousand products at a gigabyte of
  * heap. A posting here is one number in a document array and one small
  * integer per field in a count array beside it.
+ *
+ * Each keyword attribute a facet counts is also held as small integer codes, one per
+ * distinct value, so a facet counts into an array by code rather than into
+ * a map by string.
  */
 
 export interface PostingList {
@@ -27,6 +31,17 @@ export interface PostingList {
     readonly docs: Int32Array;
     /** Occurrences by field, row-major: `counts[i * fields + field]` for `docs[i]`. */
     readonly counts: Uint16Array;
+}
+
+/**
+ * A keyword attribute's values as codes: `values[code]` is the string, and
+ * a document's codes are `codes[starts[doc]]` up to `codes[starts[doc + 1]]`,
+ * each value once, however many times the document carries it.
+ */
+export interface KeywordCodes {
+    readonly values: readonly string[];
+    readonly starts: Int32Array;
+    readonly codes: Int32Array;
 }
 
 export interface Index {
@@ -42,6 +57,8 @@ export interface Index {
     readonly averageLength: readonly number[];
     /** Attribute values by document, one column per configured attribute. */
     readonly columns: ReadonlyMap<string, readonly (AttributeValue | undefined)[]>;
+    /** The values of every keyword attribute a keyword facet counts, as codes. */
+    readonly keywords: ReadonlyMap<string, KeywordCodes>;
     /** Each document's position in id order, for breaking ties the same way every time. */
     readonly idRank: Int32Array;
 }
@@ -71,6 +88,49 @@ interface Draft {
     readonly docs: number[];
     readonly counts: number[];
 }
+
+export const isList = (value: AttributeValue | undefined): value is readonly string[] =>
+    Array.isArray(value);
+
+/** The codes of one keyword column, each document's values once each. */
+const codeColumn = (column: readonly (AttributeValue | undefined)[]): KeywordCodes => {
+    const byValue = new Map<string, number>();
+    const values: string[] = [];
+    const starts = new Int32Array(column.length + 1);
+    const codes: number[] = [];
+    const add = (value: string, from: number) => {
+        let code = byValue.get(value);
+        if (code === undefined) {
+            code = values.length;
+            byValue.set(value, code);
+            values.push(value);
+        }
+        // A document's values are few, so a scan back is cheaper than a Set.
+        if (codes.indexOf(code, from) === -1) codes.push(code);
+    };
+    column.forEach((value, doc) => {
+        const from = codes.length;
+        if (typeof value === 'string') add(value, from);
+        else if (isList(value)) for (const item of value) add(item, from);
+        starts[doc + 1] = codes.length;
+    });
+    return { values, starts, codes: Int32Array.from(codes) };
+};
+
+const buildKeywords = (
+    columns: ReadonlyMap<string, readonly (AttributeValue | undefined)[]>,
+    config: EngineConfig
+): Map<string, KeywordCodes> => {
+    const keywords = new Map<string, KeywordCodes>();
+    for (const facet of Object.values(config.facets ?? {})) {
+        const column = columns.get(facet.attribute);
+        if (facet.kind !== 'keyword' || !column || keywords.has(facet.attribute)) continue;
+        if (config.attributes[facet.attribute] === 'keyword') {
+            keywords.set(facet.attribute, codeColumn(column));
+        }
+    }
+    return keywords;
+};
 
 const buildColumns = (
     documents: readonly Document[],
@@ -106,34 +166,30 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
     const totals = fieldNames.map(() => 0);
 
     documents.forEach((document, doc) => {
-        // Occurrences of each term in this document, by field, before they
-        // are appended to the term's posting list in one row.
-        const rows = new Map<string, number[]>();
         fieldNames.forEach((field, f) => {
-            const text = document.text[field] ?? '';
-            const words = wordCount(text);
+            const { terms, words } = analyze(document.text[field] ?? '');
             (lengths[f] as Uint16Array)[doc] = words;
             totals[f] = (totals[f] ?? 0) + words;
-            for (const term of tokenize(text)) {
-                let row = rows.get(term);
-                if (!row) {
-                    row = new Array<number>(fields).fill(0);
-                    rows.set(term, row);
+            for (const term of terms) {
+                let draft = drafts.get(term);
+                if (!draft) {
+                    draft = { docs: [], counts: [] };
+                    drafts.set(term, draft);
                 }
-                row[f] = (row[f] ?? 0) + 1;
+                // The first occurrence of a term in a document opens its row,
+                // a count per field, and every later one adds to that row.
+                const row = draft.docs.length - 1;
+                if (draft.docs[row] !== doc) {
+                    draft.docs.push(doc);
+                    for (let i = 0; i < fields; i += 1) draft.counts.push(0);
+                }
+                const at = (draft.docs.length - 1) * fields + f;
+                draft.counts[at] = (draft.counts[at] ?? 0) + 1;
             }
         });
-        for (const [term, row] of rows) {
-            let draft = drafts.get(term);
-            if (!draft) {
-                draft = { docs: [], counts: [] };
-                drafts.set(term, draft);
-            }
-            draft.docs.push(doc);
-            draft.counts.push(...row);
-        }
     });
 
+    const columns = buildColumns(documents, config);
     const postings = new Map<string, PostingList>();
     for (const [term, draft] of drafts) {
         postings.set(term, {
@@ -160,7 +216,8 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
         averageLength: totals.map((total) =>
             documents.length === 0 ? 0 : total / documents.length
         ),
-        columns: buildColumns(documents, config),
+        columns,
+        keywords: buildKeywords(columns, config),
         idRank: rankByIdOrder(documents),
     };
 };

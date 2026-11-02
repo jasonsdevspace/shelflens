@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { foldAccents, normalize, stem, tokenize, wordCount } from './normalize.js';
+import { analyze, foldAccents, normalize, stem, tokenize, wordCount } from './normalize.js';
 
 describe('foldAccents', () => {
     it('strips accents and leaves the letters', () => {
@@ -82,5 +82,19 @@ describe('wordCount', () => {
     it('ignores punctuation and empty input', () => {
         expect(wordCount('Harbor & Pine, size 28!')).toBe(4);
         expect(wordCount(' - ')).toBe(0);
+    });
+});
+
+describe('analyze', () => {
+    it('gives the terms and the word count the two passes give, from one', () => {
+        for (const text of [
+            "Men's Everyday T-Shirt",
+            'Café Racer',
+            ' - ',
+            '',
+            'Harbor & Pine, 28!',
+        ]) {
+            expect(analyze(text)).toEqual({ terms: tokenize(text), words: wordCount(text) });
+        }
     });
 });

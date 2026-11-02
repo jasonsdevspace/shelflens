@@ -51,8 +51,10 @@ package that fails on its floor is never published, and the demo is never deploy
 - The engine's tests compare the smoke script's list of exports with the source, so a new export
   cannot ship unchecked. They also hold the language edition the engine compiles against to what
   its lowest Node runs, which reaches code the smoke script's searches never run.
-- The floor is 24, the same major the project builds on, so the job runs on 24.0.0 where CI
-  otherwise runs the newest 24. Lowering the floor is a change to `engines.node` that this job then proves.
+- The floor was 24, the same major the project builds on. Since engine 0.4.0 it is 22, the oldest
+  Node still maintained, so the job runs on 22.0.0 while CI otherwise runs the newest 24. Nothing
+  in the engine needed a newer Node, and the change was one line in `engines.node` that this job
+  then proved.
 - The smoke script tests a build made from the same commit as the published one, not the
   published bytes themselves.
 - Behavior that depends on the Node release, such as Unicode data behind accent folding, is

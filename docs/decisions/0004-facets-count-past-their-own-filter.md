@@ -33,13 +33,23 @@ Option B, computed on the fly.
   ones, so the facets describe exactly the list the shopper is looking at.
 - **Keyword values are counted once per document**, however many times a document carries the
   same value.
+- **Keyword values are counted by code.** When the index is built, each distinct value of a keyword
+  attribute a facet counts gets a small integer code, and each document's values are held as codes,
+  each one once. A facet counts into an array indexed by code, held between searches, and reads back
+  and clears only the codes its matches carried, so a narrow query costs what its matches cost
+  however many distinct values the attribute has. Only the reported buckets turn their codes back
+  into values. Counting by string meant a map lookup and an update per value per candidate, which on
+  a wide query was most of the facets' cost.
 
 ## Consequences
 
-- On the benchmark catalog, counting eight facets over a hundred thousand candidates is about half
-  of a wide query's time, roughly 45 of 93 milliseconds. On the demo catalog it is not
-  measurable. If a catalog needed it, option C is the step up, and the facet interface would not
-  change.
+- On the benchmark catalog, counting eight facets over a hundred thousand candidates was about
+  half of a wide query's time, roughly 45 of 93 milliseconds, while values were counted by string.
+  Counted by code, a browse of everything with every facet takes 18 milliseconds in all. On the
+  demo catalog it is not measurable. If a catalog needed more, option C is the step up, and the
+  facet interface would not change.
+- The codes cost memory: one integer for each value of each faceted keyword attribute on each
+  document, about five megabytes on the benchmark catalog.
 - A range facet counts each document into every band it falls in, so overlapping bands such as
   "4 and up" and "3 and up" both count a product rated 4.5. That is a feature of the config, not
   a quirk.
@@ -50,4 +60,7 @@ Option B, computed on the fly.
 - A test selects "Red" and asserts the color facet still counts Blue and Black, then adds a brand
   filter and asserts the color facet narrows. Removing the own-filter exemption fails it.
 - The exclusive upper bound of a range, and the cap on keyword values.
+- A document carrying the same value twice counts once beside a document carrying it alone, and a
+  keyword facet on an attribute that holds no words counts nothing. A narrow search counted after
+  a wide one counts as it did before it, and an attribute no keyword facet counts is not coded.
 - The benchmark reports every query with every facet counted.
