@@ -12,16 +12,15 @@ import { serving } from '../worker/serving.js';
  * The store the App tests run against, and what they share. Each file of
  * them imports this, which registers the hooks below in that file.
  *
- * The storefront end to end, in a document, over the real API.
- *
- * Nothing is mocked but the network: fetch is routed to the same worker
- * handler the service worker runs, over a generated catalog. So the facet
- * counts, the sort fallbacks and the pages are the real ones, and a test
- * here fails when the API and the page disagree.
+ * The storefront end to end, in a document, over the real API. Nothing is
+ * mocked but the network: fetch is routed to the same worker handler the
+ * service worker runs, over a generated catalog. So the facet counts, the
+ * sort fallbacks and the pages are the real ones, and a test over this
+ * store fails when the API and the page disagree.
  */
 
 export const catalog = generateCatalog({ seed: 42, products: 300 });
-export const jackets = catalog.products.filter((p) => /jacket/i.test(p.name));
+const jackets = catalog.products.filter((p) => /jacket/i.test(p.name));
 const lastJacket = jackets[jackets.length - 1];
 if (!lastJacket) throw new Error('expected a jacket in the catalog');
 /** The jacket the one rule pins. */
@@ -86,7 +85,7 @@ export const heading = () => screen.getByRole('heading', { level: 1 });
 export const cards = () =>
     within(screen.getByRole('list', { name: 'Products' })).getAllByRole('link');
 export const facet = (title: string) => screen.getByRole('group', { name: title });
-export const amount = (text: string | null | undefined) =>
+const amount = (text: string | null | undefined) =>
     Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
 export const shownPrice = () => amount(document.querySelector('.product-price')?.textContent);
 export const shopAs = (user: ReturnType<typeof userEvent.setup>, group: 'guest' | 'member') =>

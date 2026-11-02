@@ -15,7 +15,7 @@ describe('on a phone', () => {
             removeEventListener: () => {},
         }));
     };
-    // The stub outlives restoreAllMocks, and the tests after these are not on a phone.
+    // The stub outlives restoreAllMocks, so each test starts with no phone until it asks for one.
     afterEach(() => {
         vi.stubGlobal('matchMedia', undefined);
     });

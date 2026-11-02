@@ -44,7 +44,8 @@ export default defineConfig({
         ],
         coverage: {
             include: ['packages/*/src/**/*.{ts,tsx}'],
-            exclude: ['**/*.test.{ts,tsx}', '**/cli.ts', '**/generated/**'],
+            // The harness the App tests share is test code, not the product's.
+            exclude: ['**/*.test.{ts,tsx}', '**/cli.ts', '**/generated/**', '**/src/test/**'],
         },
     },
 });

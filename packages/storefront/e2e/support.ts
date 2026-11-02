@@ -5,8 +5,12 @@ import { DEFAULT_DB_NAME } from '../src/worker/event-db.js';
 
 /*
  * What the browser tests share: the test itself, which marks the tour seen
- * unless a file asks otherwise, an axe audit that names what it found, and
- * a reader for the events the worker keeps.
+ * unless a file asks otherwise, an axe audit that names what it found, a
+ * reader for the events the worker keeps, and the catalog the demo ships.
+ *
+ * Nothing in these tests is mocked. The page registers the worker, the
+ * worker fetches the catalog and builds the store, and every request is
+ * answered inside the browser, from the production build.
  */
 
 export { expect };
@@ -110,17 +114,6 @@ export interface ShippedCatalog {
     }[];
 }
 
-/** A product only members may see, and one members pay less for, from the catalog the demo ships. */
-export const membersAndDiscount = async (request: APIRequestContext) => {
-    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
-    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
-    const discounted = catalog.products.find(
-        (p) => p.visibleTo.length === 2 && p.price.member.min < p.price.guest.min
-    );
-    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
-    return { membersOnly, discounted };
-};
-
-/** The first amount in a line of text, as a number of dollars. */
-export const amount = (text: string | null) =>
-    Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
+/** The catalog the demo ships, read from the built site as a page reads it. */
+export const shippedCatalog = async (request: APIRequestContext): Promise<ShippedCatalog> =>
+    (await (await request.get('/catalog.json')).json()) as ShippedCatalog;

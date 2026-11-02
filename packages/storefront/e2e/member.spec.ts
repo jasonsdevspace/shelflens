@@ -1,12 +1,27 @@
-import { amount, audit, expect, membersAndDiscount, test } from './support.js';
+import type { APIRequestContext } from '@playwright/test';
+
+import { audit, expect, shippedCatalog, test } from './support.js';
 
 /*
  * What the viewer switch changes, and that a guest after a member is never served the member’s answer.
- *
- * Nothing is mocked. The page registers the worker, the worker fetches the
- * catalog and builds the store, and every request is answered inside the
- * browser. Each page is audited with axe as a shopper sees it.
  */
+
+/** A product only members may see, and one members pay less for, from the catalog the demo ships. */
+const membersAndDiscount = async (request: APIRequestContext) => {
+    const catalog = await shippedCatalog(request);
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    const discounted = catalog.products.find(
+        (p) => p.visibleTo.length === 2 && p.price.member.min < p.price.guest.min
+    );
+    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    return { membersOnly, discounted };
+};
+
+/** The first amount in a line of text, as a number of dollars. */
+
+/** The first amount in a line of text, as a number of dollars. */
+const amount = (text: string | null) =>
+    Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
 
 test('a member sees the product guests cannot, and pays less, from the same page', async ({
     page,

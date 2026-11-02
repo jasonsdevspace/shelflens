@@ -2,10 +2,6 @@ import { audit, expect, test } from './support.js';
 
 /*
  * Finding things: a category, every sort, a search that finds nothing, what was searched before, and the named operations the browser may keep.
- *
- * Nothing is mocked. The page registers the worker, the worker fetches the
- * catalog and builds the store, and every request is answered inside the
- * browser. Each page is audited with axe as a shopper sees it.
  */
 
 test('browsing a category sorts by position, and a facet narrows the results in the URL', async ({

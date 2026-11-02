@@ -1,10 +1,10 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { cards, catalog, facet, heading, open, settled } from './test/store.jsx';
 
-/* Finding things: browsing, narrowing, counting, paging, searching, a search that finds nothing, and what was searched before. */
+/* Finding things: browsing, narrowing, counting, paging, searching, a search that finds nothing, what was searched before, and where focus is and what is said as the results change. */
 
 describe('browsing', () => {
     it('shows every product in catalog order with the facets beside them', async () => {
@@ -387,5 +387,102 @@ describe('what was searched before', () => {
         await user.click(box);
         expect(box).toHaveAttribute('aria-expanded', 'false');
         expect(localStorage.getItem('shelflens.recent')).toBeNull();
+    });
+});
+
+describe('keeping place on the results', () => {
+    it('keeps a ticked filter in its group, checked, when nothing else in the group matches', async () => {
+        await open('?color=Nowhere');
+        const nowhere = within(facet('Color')).getByRole('checkbox', { name: /Nowhere/ });
+        expect(nowhere).toBeChecked();
+        // The answer gave it no count, so none is made up.
+        expect(nowhere.parentElement?.querySelector('.facet-count')).toBeNull();
+    });
+
+    it('moves focus to the new page heading after Next, and says the page', async () => {
+        const user = await open();
+        await user.click(screen.getByRole('button', { name: 'Next' }));
+        await waitFor(() => expect(heading()).toHaveFocus());
+        await waitFor(() =>
+            expect(
+                screen
+                    .getAllByRole('status')
+                    .some((status) => /page 2 of \d+/.test(status.textContent))
+            ).toBe(true)
+        );
+    });
+
+    it('leaves focus alone after a click that never took it, as Safari does', async () => {
+        await open();
+        const box = within(facet('Brand')).getAllByRole('checkbox')[0];
+        if (!box) throw new Error('expected a brand');
+        // A click with no focus, as Safari gives a checkbox.
+        fireEvent.click(box);
+        await waitFor(() => expect(window.location.search).toContain('brand='));
+        await settled();
+        expect(document.activeElement).toBe(document.body);
+    });
+
+    it("keeps focus on the current page's number when it is pressed again", async () => {
+        const user = await open();
+        const current = screen.getByRole('button', { name: 'Page 1' });
+        await user.click(current);
+        expect(current).toHaveFocus();
+    });
+
+    it('skips the filter column to the results heading, leaving the address alone', async () => {
+        const user = await open('?q=jacket');
+        const before = window.location.href;
+        await user.click(screen.getByRole('link', { name: 'Skip to results' }));
+        expect(heading()).toHaveFocus();
+        expect(window.location.href).toBe(before);
+    });
+
+    it('keeps the explain switch on a page with nothing found while explain mode is on', async () => {
+        await open('?q=jacket&price=0-1&explain=1');
+        await settled();
+        expect(screen.getByRole('button', { name: 'Explain ranking' })).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
+        expect(screen.queryByRole('combobox', { name: 'Sort by' })).toBeNull();
+    });
+
+    it('says when a page is past the last, and links to the last page', async () => {
+        const user = await open('?page=999');
+        const link = await screen.findByRole('link', { name: /Go to page \d+/ });
+        expect(screen.getByText(/Page 999 is past the last page of results/)).toBeInTheDocument();
+        await user.click(link);
+        await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    });
+});
+
+describe('saying what changed', () => {
+    const announced = () =>
+        screen
+            .getAllByRole('status')
+            .map((region) => region.textContent)
+            .join('|');
+
+    it('announces the results once they land, after a search and after a filter', async () => {
+        const user = await open('?q=jacket');
+        await settled();
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
+        const [brand] = within(facet('Brand')).getAllByRole('checkbox');
+        if (!brand) throw new Error('expected a brand');
+        await user.click(brand);
+        await settled();
+        await waitFor(() => expect(announced()).toContain(heading().textContent));
+    });
+
+    it('keeps focus in the search box after Enter, and says nothing about suggestions', async () => {
+        const user = await open();
+        const box = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.type(box, 'jacket{Enter}');
+        await settled();
+        expect(heading()).toHaveTextContent('results for "jacket"');
+        expect(box).toHaveFocus();
+        expect(box).toHaveValue('jacket');
+        expect(document.querySelector('.searchbox-status')?.textContent).toBe('');
     });
 });

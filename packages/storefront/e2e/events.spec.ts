@@ -2,10 +2,6 @@ import { audit, expect, keptEvents, test } from './support.js';
 
 /*
  * What the shopper does reaches the worker, outlives the page, and lifts what was clicked on the next visit.
- *
- * Nothing is mocked. The page registers the worker, the worker fetches the
- * catalog and builds the store, and every request is answered inside the
- * browser. Each page is audited with axe as a shopper sees it.
  */
 
 test('what the shopper did reaches the worker, through a beacon, and outlives the page', async ({

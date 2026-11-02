@@ -1,11 +1,7 @@
-import { audit, expect, type ShippedCatalog, test } from './support.js';
+import { audit, expect, shippedCatalog, test } from './support.js';
 
 /*
  * A product over its results: focus, the way back, the rail, and the shape of the page.
- *
- * Nothing is mocked. The page registers the worker, the worker fetches the
- * catalog and builds the store, and every request is answered inside the
- * browser. Each page is audited with axe as a shopper sees it.
  */
 
 test('keeps its place: a search is announced, a product takes focus, and back lands on its card', async ({
@@ -115,7 +111,7 @@ test('the product page holds its shape: a name without a ring, the stock with th
     page,
     request,
 }) => {
-    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const catalog = await shippedCatalog(request);
     const everyone = catalog.products.filter((p) => p.visibleTo.length === 2);
     const soldOut = everyone.find((p) => p.variants.every((v) => !v.inStock));
     const long = [...everyone].sort((a, b) => b.variants.length - a.variants.length)[0];

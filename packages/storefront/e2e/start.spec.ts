@@ -4,10 +4,6 @@ import { audit, expect, test } from './support.js';
 
 /*
  * A first visit and the page around the store: the worker taking over, the frame drawn before the script, a catalog that does not download, the pointer, and the explainer beside it.
- *
- * Nothing is mocked. The page registers the worker, the worker fetches the
- * catalog and builds the store, and every request is answered inside the
- * browser. Each page is audited with axe as a shopper sees it.
  */
 
 test('a first visit reaches suggestions, results and a product, with no audit findings', async ({
