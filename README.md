@@ -18,6 +18,22 @@ is a small, complete example of how I approach that kind of problem: measure, wr
 would have caught the mistake, then fix it. It is built only from public documentation of how
 such systems behave, with its own names and its own schema.
 
+## How the parts fit
+
+Follow one keystroke. The search box waits for typing to pause, then asks for suggestions
+through the same query hook as every other question the page asks. The page's GraphQL client
+looks in its memory under the one cache key, and otherwise sends the operation's persisted name,
+the hash of its text, in a `GET` with the variables and the store version it last saw. On the
+demo the service worker answers it: one `routeOf` says which of its paths the request names, an
+answer kept in the Cache API under that URL is served while it is fresh, and otherwise the store
+host's API runs the query, read once and kept, through the resolvers. They turn it into the
+engine's request through the search package, which knows the catalog's fields, facets, synonyms
+and customer groups, and the engine matches the words, ranks them, applies the merchandising
+rules and the bounded nudge from what shoppers chose, counts the facets and returns the page.
+The answer comes back with the store version in a header, the client keeps it, and the box shows
+it only if it is still the newest request. The Node server answers the same request through the
+same store host over HTTP.
+
 ## Two minutes with the demo
 
 Each step is a link into the live storefront. The "Tour" button at the top of the page walks all
@@ -80,7 +96,7 @@ version, and the tour's stops name them.
 | The URL is the page, and a value it cannot read is ignored                                                                                                   | `packages/storefront/src/app/url.test.ts`                                                                              |
 | Paging never shows a product twice or skips one                                                                                                              | `packages/engine/src/search.test.ts`                                                                                   |
 | A page past the end is empty, a page size past the limit is reduced, pins beyond the page still lead                                                         | `packages/engine/src/search.test.ts`, `rules.test.ts`                                                                  |
-| Pins and boosts disappear under a sort, and the page says so                                                                                                 | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.merchandising.test.tsx`                              |
+| A sort sets aside pins, boosts and buries but keeps hides, and the page says so                                                                              | `packages/engine/src/rules.test.ts`, `packages/storefront/src/App.merchandising.test.tsx`                              |
 | A rule written in the page is previewed before it is saved, and saved as a new store version                                                                 | `packages/storefront/src/results/RulesPanel.test.tsx`, `packages/storefront/src/worker/handle.test.ts`                 |
 | The widget keeps its look under a host page's CSS, opens its list over the host's z-index and out of its clipping, and leaves the host's own React counting  | `packages/storefront/src/widget/widget.test.tsx`, `packages/storefront/e2e/widget.spec.ts`                             |
 | A malformed request is a validation error with a code, never a 500                                                                                           | `packages/api/src/api.test.ts`, `http.test.ts`                                                                         |
@@ -89,7 +105,7 @@ version, and the tour's stops name them.
 | The rail beside a product is never the product itself, and says which of it was viewed together and which is the category's most rated                       | `packages/api/src/recommend.test.ts`, `packages/storefront/src/App.product.test.tsx`                                   |
 | Telemetry never blocks the page, counts a twice delivered batch once, carries nothing personal, and stops under Global Privacy Control                       | `packages/storefront/src/events/collector.test.ts`, `packages/api/src/events.test.ts`                                  |
 
-Three product additions carry the rest of the story. **The rail** beside a product and **the
+Four product additions carry the rest of the story. **The rail** beside a product and **the
 nudge** in ranking are built from what this browser viewed and clicked, kept in the browser and
 nowhere else, which is all the intelligence the ranking here has. The rail's heading says plainly
 when it is showing the category's most rated instead, and the nudge is a capped multiplier that
@@ -129,21 +145,26 @@ without its filters, each only if it finds something.
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
   second served locally, with the worker spending 38 ms downloading the catalog and the rules and
-  55 ms building the store. The catalog ships at 333 KB compressed, the page at 90 KB, the worker
-  at 72 KB. [The record](docs/benchmarks/cold-visit.md).
-- **Budgets and audits, in CI.** The catalog stays under 400 KB compressed, the API bundled for a
-  browser under 90 KB, and the page under 100 KB with nothing from GraphQL in it, or the build
-  fails. The storefront runs in a real browser on a desktop and a phone profile with an
-  accessibility audit of every page it reaches, and Lighthouse scores a hundred for accessibility
-  on the home page, a results page in explain mode, a category, a product, the explainer, the
-  widget's host page, and the page for a visitor's own catalog, both empty and with a file
-  loaded, and the widget on a store's page over that file.
+  50 ms building the store. The catalog ships at 332 KB compressed, the page at 93 KB, the worker
+  at 74 KB. [The record](docs/benchmarks/cold-visit.md).
+- **Budgets and audits, in CI.** Compressed, the catalog stays under 400 KB, the API bundled for a
+  browser under 90 KB, the page under 100 KB, the page for a visitor's own catalog under 115 KB,
+  the widget under 85 KB and the service worker under 85 KB, with nothing from GraphQL in a page
+  or the widget and no test fixture in anything shipped, or the build fails. The storefront runs
+  in a real browser on a desktop and a phone profile with an accessibility audit of every page it
+  reaches, and every control's edge, focus ring and caret are held to the design in both themes.
+  Lighthouse must score a hundred for accessibility, and at least ninety for performance with the
+  largest paint inside two and a half seconds and almost no layout shift on a first visit, on the
+  home page, a results page in explain mode, a category, a product, the explainer, the widget's
+  host page, and the page for a visitor's own catalog, both empty and with a file loaded, and the
+  widget on a store's page over that file.
 
 ## Decisions
 
 Each choice with a real alternative is a record in [docs/decisions](docs/decisions), written when
 it was made, with the option rejected, what the choice costs, and the test or measurement behind
-it. Each has been read again against the code as shipped.
+it. Every record is read again against the code before each release, and amended where the code
+has moved on.
 
 1. [An engine of our own, rather than a library](docs/decisions/0001-an-engine-of-our-own.md)
 2. [Flat arrays for the index](docs/decisions/0002-flat-arrays-for-the-index.md)
@@ -239,21 +260,26 @@ merchandising is `packages/storefront/public/rules.json`, validated when the sto
 ```
 packages/
 ├── engine/      the search engine, published as @jasonsdevspace/shelflens
-│   └── src/     normalize, index-builder, match, edits, synonyms, filters, facets, rules, search
+│   └── src/     normalize, index-builder, match, edits, synonyms, filters, facets, rules, order,
+│                search
 ├── catalog/     the generator, its vocabulary and its types
 ├── search/      documents, the store config, customer groups, golden queries, the benchmark
-├── api/         the schema, its generated types, the resolvers, the cache key, the shape over HTTP,
-│                and the events receiver
+├── api/         the schema, its generated types, the resolvers, the store host, the routes, the
+│                cache key, the shape over HTTP, and the events and rules receivers
 ├── server/      the API behind HTTP, with a rate limit and a request id
 └── storefront/  the demo page, and theme.js, the script both pages run before their first paint
     ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
-    └── src/     app (the URL as state, categories, the store context), client (the GraphQL
-                 client, its memory and the latest-request helper), search (the popover),
-                 results (facets, sort, pages, explain mode, nothing), product, format (money
-                 in the store's locale), events (the collector), tour, worker (the API as a
-                 service worker, and the events it keeps), dev (the API inside the dev
-                 server), bench (the measurements and the audit), operations, generated
+    └── src/     tokens.css (the design's named values), styles.css, app (the URL as state,
+                 categories, the store context, the first screen, focus and the live status),
+                 client (the GraphQL client, its memory, the latest-request helper, and the
+                 rules and catalog clients), search (the popover), results (facets, sort,
+                 pages, explain mode, nothing, the rules panel), product, format (money and
+                 counts in the store's locale), events (the collector), tour, try (a visitor's
+                 own catalog), widget (the search box for other pages), worker (the API as a
+                 service worker, and the events, rules and catalog it keeps), dev (the API
+                 inside the dev server), bench (the measurements and the audit), operations,
+                 generated
 docs/
 ├── benchmarks/  the recorded measurements
 └── decisions/   the decision records
@@ -263,9 +289,9 @@ docs/
 
 The behavior modeled here, search as you type with a two-character minimum, exact search before a
 fuzzy pass that allows one edit per word, synonyms, facet buckets of several kinds, merchandising
-rules that apply only under relevance sort, and results that vary by customer group, follows what
-a widely used commerce platform documents publicly for its search service. The implementation,
-the names and the schema are this project's own.
+rules whose pins, boosts and buries apply only under relevance sort, and results that vary by
+customer group, follows what a widely used commerce platform documents publicly for its search
+service. The implementation, the names and the schema are this project's own.
 
 ## License
 
