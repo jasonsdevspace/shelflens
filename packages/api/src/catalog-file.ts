@@ -73,9 +73,9 @@ const variantProblem = (variant: unknown): string | undefined => {
     if (!['sku', 'color', 'size'].every((field) => isString(variant[field]))) {
         return 'has a variant without its sku, color and size';
     }
-    if (!isWhole(variant.price) || !isWhole(variant.memberPrice))
+    if (!isWhole(variant['price']) || !isWhole(variant['memberPrice']))
         return 'has a variant without its prices';
-    if (typeof variant.inStock !== 'boolean')
+    if (typeof variant['inStock'] !== 'boolean')
         return 'has a variant that does not say whether it is in stock';
     return undefined;
 };
@@ -94,24 +94,24 @@ const LIST_FIELDS = ['categoryPath', 'colors', 'sizes', 'tags', 'visibleTo'] as 
 
 /** What is wrong with a product's prices, rating and position, or undefined. */
 const numbersProblem = (product: Record<string, unknown>): string | undefined => {
-    const price = product.price as { guest?: unknown; member?: unknown } | null;
+    const price = product['price'] as { guest?: unknown; member?: unknown } | null;
     if (!price || !isRange(price.guest) || !isRange(price.member)) {
         return 'has no price for each group';
     }
-    const rating = product.rating as { average?: unknown; count?: unknown } | null;
+    const rating = product['rating'] as { average?: unknown; count?: unknown } | null;
     if (!rating || typeof rating.average !== 'number' || !isWhole(rating.count)) {
         return 'has no rating';
     }
-    return isWhole(product.position) ? undefined : 'has no position';
+    return isWhole(product['position']) ? undefined : 'has no position';
 };
 
 /** What is wrong with who may see a product and what can be bought, or undefined. */
 const offerProblem = (product: Record<string, unknown>): string | undefined => {
-    const visibleTo = product.visibleTo as string[];
+    const visibleTo = product['visibleTo'] as string[];
     if (visibleTo.length === 0 || !visibleTo.every((group) => GROUPS.has(group))) {
         return 'is visible to a group the store does not have, or to none';
     }
-    const variants = product.variants;
+    const variants = product['variants'];
     if (!Array.isArray(variants) || variants.length === 0) return 'has no variants';
     for (const variant of variants) {
         const problem = variantProblem(variant);
@@ -144,16 +144,16 @@ const headProblem = (catalog: Partial<Record<keyof Catalog, unknown>>): string |
     }
     if (
         !(catalog.brands as unknown[]).every(
-            (brand) => isObject(brand) && isString(brand.id) && isString(brand.name)
+            (brand) => isObject(brand) && isString(brand['id']) && isString(brand['name'])
         )
     ) {
         return 'the catalog has a brand without its id and name';
     }
     const categoryOk = (category: unknown) =>
         isObject(category) &&
-        isString(category.id) &&
-        isString(category.name) &&
-        isStrings(category.path);
+        isString(category['id']) &&
+        isString(category['name']) &&
+        isStrings(category['path']);
     if (!(catalog.categories as unknown[]).every(categoryOk)) {
         return 'the catalog has a category without its id, name and path';
     }

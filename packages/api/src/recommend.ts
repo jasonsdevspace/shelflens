@@ -21,7 +21,7 @@ import { hitsOf } from './hits.js';
  * opened a second expects the first beside it now, not after a reload.
  */
 
-export type RecommendationSource = 'VIEWED_TOGETHER' | 'CATEGORY_MOST_RATED';
+type RecommendationSource = 'VIEWED_TOGETHER' | 'CATEGORY_MOST_RATED';
 
 export interface RecommendationsModel {
     readonly source: RecommendationSource;
@@ -39,7 +39,7 @@ export interface RecommendationRequest {
 }
 
 /** The most a rail may ask for. */
-export const RECOMMENDATION_LIMIT = 12;
+const RECOMMENDATION_LIMIT = 12;
 
 interface Seen {
     count: number;

@@ -13,7 +13,7 @@ import type { MappedField, Mapping } from './mapping.js';
  * store is built.
  */
 
-export const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
+const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
     name: 'Name',
     price: 'Price',
     description: 'Description',

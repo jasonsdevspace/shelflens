@@ -16,7 +16,7 @@ import { round } from './record.js';
  * with its facets is measured as well, since Enter asks for that.
  */
 
-export interface Timing {
+interface Timing {
     readonly samples: number;
     readonly p50Ms: number;
     readonly p95Ms: number;

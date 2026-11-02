@@ -1,8 +1,9 @@
 import { fileURLToPath } from 'node:url';
 
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig } from 'vite';
 
+import { SOURCE_CONDITION } from '../../source-condition.js';
 import { storeApi } from './src/dev/api-plugin.js';
 import { pageShell } from './src/dev/shell-plugin.js';
 import { themeScript } from './src/dev/theme-plugin.js';
@@ -18,8 +19,10 @@ import { themeScript } from './src/dev/theme-plugin.js';
  * Pages, and the root locally.
  */
 export default defineConfig({
-    base: process.env.BASE_PATH ?? '/',
+    base: process.env['BASE_PATH'] ?? '/',
     plugins: [react(), storeApi(), themeScript(), pageShell()],
+    // Each workspace package's source, by the condition its exports name.
+    resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
     // The preview serves the built files as GitHub Pages does, to any origin, so a page
     // on another origin can load the widget's file from it in the browser test.
     preview: { cors: true },

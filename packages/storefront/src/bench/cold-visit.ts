@@ -32,8 +32,8 @@ import { PHONE_SLOWDOWN } from './sizes.js';
  */
 
 const PORT = 4175;
-const RUNS = Number(process.env.RUNS ?? 5);
-const CAP_RUNS = Number(process.env.CAP_RUNS ?? 3);
+const RUNS = Number(process.env['RUNS'] ?? 5);
+const CAP_RUNS = Number(process.env['CAP_RUNS'] ?? 3);
 const OUT = 'docs/benchmarks/cold-visit';
 
 interface Run {

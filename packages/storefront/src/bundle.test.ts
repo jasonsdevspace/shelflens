@@ -7,6 +7,7 @@ import { GOLDEN_CASES } from '@shelflens/search';
 import { build, type Plugin } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 
+import { SOURCE_CONDITION } from '../../../source-condition.js';
 import {
     BUDGET_BYTES,
     FIXTURE_PROBE,
@@ -52,12 +53,8 @@ const bundled = async (entry: string) => {
             'import.meta.env.DEV': 'false',
             'process.env.NODE_ENV': '"production"',
         },
-        alias: {
-            '@shelflens/catalog': './packages/catalog/src/index.ts',
-            '@jasonsdevspace/shelflens': './packages/engine/src/index.ts',
-            '@shelflens/search': './packages/search/src/index.ts',
-            '@shelflens/api': './packages/api/src/index.ts',
-        },
+        // Each workspace package's source, by the condition its exports name.
+        conditions: [SOURCE_CONDITION],
         absWorkingDir: new URL('../../..', import.meta.url).pathname,
     });
     const [output] = result.outputFiles;

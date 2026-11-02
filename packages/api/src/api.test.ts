@@ -40,7 +40,7 @@ const run = (query: string, variables?: Record<string, unknown>, viewer = guest)
 
 /* The shape of each answer is asserted by the test that reads it, so the data is left loose. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Loose = Record<string, any>;
+type Loose = any;
 
 const data = (response: StoreResponse): Loose => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
@@ -586,7 +586,7 @@ describe('suggestions', () => {
 
 describe('what a request may not do', () => {
     const errors = (response: StoreResponse) =>
-        (response.errors ?? []).map((e) => [e.extensions?.code, e.message]);
+        (response.errors ?? []).map((e) => [e.extensions?.['code'], e.message]);
 
     it('refuses an unknown attribute at validation', async () => {
         const response = await run(RESULTS, {

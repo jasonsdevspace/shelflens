@@ -20,7 +20,7 @@ export interface RailProps {
     readonly navigate: Navigate;
 }
 
-export const RAIL_HEADING_ID = 'rail-heading';
+const RAIL_HEADING_ID = 'rail-heading';
 
 /**
  * The source says whether anything was viewed with the product, and the

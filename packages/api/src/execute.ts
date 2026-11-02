@@ -49,14 +49,14 @@ export interface StoreResponse {
     };
 }
 
-export interface Limits {
+interface Limits {
     /** How deeply fields may nest. The results page needs six. */
     readonly maxDepth: number;
     /** How many fields one query may select, aliases included. */
     readonly maxFields: number;
 }
 
-export const DEFAULT_LIMITS: Limits = { maxDepth: 8, maxFields: 200 };
+const DEFAULT_LIMITS: Limits = { maxDepth: 8, maxFields: 200 };
 
 /** Attaches the resolvers to the schema the SDL built, field by field. */
 const attach = (schema: GraphQLSchema, map: Resolvers): GraphQLSchema => {
@@ -140,7 +140,7 @@ const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 const shaped = (
     error: GraphQLError
 ): StoreResponse['errors'] extends readonly (infer E)[] | undefined ? E : never => {
-    const code = error.extensions.code;
+    const code = error.extensions['code'];
     const isUserError =
         typeof code === 'string' &&
         ['BAD_USER_INPUT', 'QUERY_TOO_DEEP', 'QUERY_TOO_WIDE'].includes(code);

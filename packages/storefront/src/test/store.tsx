@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, expect, vi } from 'vitest';
 
 import { App } from '../App.jsx';
 import { createWorkerApi } from '../worker/handle.js';
-import { serving } from '../worker/serving.js';
+import { serving } from './serving.js';
 
 /*
  * The store the App tests run against, and what they share. Each file of

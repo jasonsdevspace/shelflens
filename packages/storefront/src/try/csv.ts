@@ -97,7 +97,7 @@ const readPlain = (state: ReadState, char: string, separator: string) => {
 };
 
 /** Every record in the text, each as its fields, with quotes undone. */
-export const readRecords = (text: string, separator: string): string[][] => {
+const readRecords = (text: string, separator: string): string[][] => {
     const state: ReadState = { records: [], record: [], field: '', quoted: false };
     let i = 0;
     while (i < text.length) {

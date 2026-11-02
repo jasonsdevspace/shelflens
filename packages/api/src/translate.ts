@@ -44,7 +44,7 @@ const ATTRIBUTE_NAMES = new Map(
     Object.entries(ATTRIBUTES).map(([enumValue, name]) => [name, enumValue as FilterAttribute])
 );
 
-export const attributeName = (attribute: FilterAttribute): string => ATTRIBUTES[attribute];
+const attributeName = (attribute: FilterAttribute): string => ATTRIBUTES[attribute];
 
 /** The schema's name for an engine attribute. */
 export const attributeEnum = (name: string): FilterAttribute | undefined =>
@@ -158,7 +158,7 @@ const ROUTES: Readonly<Record<MatchKind, MatchRoute>> = {
     fuzzy: 'CORRECTED',
 };
 
-export const fromKind = (kind: MatchKind): MatchRoute => ROUTES[kind];
+const fromKind = (kind: MatchKind): MatchRoute => ROUTES[kind];
 
 /** The schema's view of why a hit ranked where it did. */
 export const explanationOf = (hit: Hit) => ({

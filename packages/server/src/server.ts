@@ -46,7 +46,7 @@ const DRAIN_MS = 5_000;
  * fixed `api`, one store that never changes, for a host that keeps no rules
  * and no clicks. One or the other, never both.
  */
-export type StoreSupply =
+type StoreSupply =
     | { readonly host: StoreHost; readonly api?: never }
     | { readonly api: StoreApi; readonly host?: never };
 
@@ -314,7 +314,7 @@ const send = (
     { status, body, requestId, headers = JSON_HEADERS }: Reply
 ) => {
     // An answer to another origin already varies on it, and keeps varying on it.
-    const vary = [response.getHeader('vary'), headers.vary]
+    const vary = [response.getHeader('vary'), headers['vary']]
         .filter((value): value is string => typeof value === 'string')
         .join(', ');
     response.writeHead(status, {

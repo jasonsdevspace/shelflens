@@ -23,7 +23,7 @@ describe('documents', () => {
     it('leaves the rating out of an unrated product', () => {
         const unrated = catalog.products.findIndex((product) => product.rating.count === 0);
         expect(unrated).toBeGreaterThanOrEqual(0);
-        expect(toDocuments(catalog)[unrated]?.attributes.rating).toBeUndefined();
+        expect(toDocuments(catalog)[unrated]?.attributes['rating']).toBeUndefined();
     });
 });
 

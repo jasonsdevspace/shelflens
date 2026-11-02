@@ -72,7 +72,7 @@ const FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /** A phrase as the store keeps it: lower case, one space between words, capped. */
-export const foldPhrase = (phrase: string): string =>
+const foldPhrase = (phrase: string): string =>
     phrase.toLowerCase().trim().split(/\s+/).join(' ').slice(0, PHRASE_LIMIT);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -85,7 +85,7 @@ type Mutable = { -readonly [Key in keyof StoreEvent]: StoreEvent[Key] };
 
 /** The required fields, or nothing when one is missing or wrong. */
 const parseRequired = (value: Record<string, unknown>): Mutable | undefined => {
-    const id = text(value.id, ID_LIMIT);
+    const id = text(value['id'], ID_LIMIT);
     const { kind, at } = value;
     if (id === undefined || typeof kind !== 'string' || !KINDS.has(kind)) return undefined;
     if (typeof at !== 'number' || !Number.isFinite(at)) return undefined;

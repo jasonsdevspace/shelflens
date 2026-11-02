@@ -30,7 +30,7 @@ const storeBase = (here: Location): string => new URL('../', here.href).pathname
  * visitor's own products or a host page for the widget. Following one of those
  * leaves the store's tour for the reader's first visit to the store.
  */
-export const intoStore = (link: HTMLAnchorElement, here: Location): boolean =>
+const intoStore = (link: HTMLAnchorElement, here: Location): boolean =>
     link.origin === here.origin && link.pathname === storeBase(here);
 
 export const quietTourOnStoreLinks = (root: ParentNode, here: Location): void => {

@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig } from 'vite';
+
+import { SOURCE_CONDITION } from '../../source-condition.js';
 
 /**
  * The service worker as one file, beside the page it serves.
@@ -8,6 +10,8 @@ import { defineConfig } from 'vite';
  * output directory after the page has been built, so it must not empty it.
  */
 export default defineConfig({
+    // Each workspace package's source, by the condition its exports name.
+    resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
     build: {
         outDir: 'dist',
         emptyOutDir: false,

@@ -76,8 +76,7 @@ const slug = (text: string): string =>
         .replace(/^-|-$/g, '') || 'rule';
 
 /** An id made once from the name, with a short tail so two rules with one name stay apart. */
-export const newId = (name: string): string =>
-    `${slug(name)}-${Math.random().toString(36).slice(2, 6)}`;
+const newId = (name: string): string => `${slug(name)}-${Math.random().toString(36).slice(2, 6)}`;
 
 export const fresh = (phrase: string | undefined): Form => ({
     id: newId(phrase ?? 'rule'),
@@ -148,7 +147,7 @@ export const keptLine = (kept: Kept): string | undefined => {
         : undefined;
 };
 
-export const wordsOf = (form: Form): string[] =>
+const wordsOf = (form: Form): string[] =>
     form.words
         .split(',')
         .map((word) => word.trim())

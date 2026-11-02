@@ -26,7 +26,7 @@ const SUGGEST = { data: { suggest: { queries: [], products: [] } } };
 const STORE = { data: { store: {} } };
 const variables = { phrase: 'tr', limit: 5 };
 const nameOf = (document: { __meta__?: Record<string, unknown> | undefined }) =>
-    document.__meta__?.hash as string;
+    document.__meta__?.['hash'] as string;
 
 /** The URL a fetch was given, as text. */
 const urlOf = (input: RequestInfo | URL | undefined): string => {

@@ -19,7 +19,7 @@ export interface StoreInfo {
 }
 
 /** Until the store answers: its own currency and locale, and nothing a switch would change. */
-export const DEFAULT_STORE_INFO: StoreInfo = {
+const DEFAULT_STORE_INFO: StoreInfo = {
     currency: 'USD',
     locale: DEFAULT_LOCALE,
     memberPricing: false,

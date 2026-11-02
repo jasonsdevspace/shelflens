@@ -3,6 +3,8 @@ import { gzipSync } from 'node:zlib';
 import { build } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 
+import { SOURCE_CONDITION } from '../../../source-condition.js';
+
 /*
  * The API has to run in a service worker, which has no Node and no file
  * system. Bundling it for a browser is the proof: an import of anything
@@ -25,11 +27,8 @@ describe('the API in a browser', () => {
             minify: true,
             write: false,
             logLevel: 'silent',
-            alias: {
-                '@shelflens/catalog': './packages/catalog/src/index.ts',
-                '@jasonsdevspace/shelflens': './packages/engine/src/index.ts',
-                '@shelflens/search': './packages/search/src/index.ts',
-            },
+            // Each workspace package's source, by the condition its exports name.
+            conditions: [SOURCE_CONDITION],
         });
         const [output] = result.outputFiles;
         expect(output).toBeDefined();

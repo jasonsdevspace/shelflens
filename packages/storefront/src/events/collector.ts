@@ -62,7 +62,7 @@ export interface CollectorOptions {
 }
 
 export const PAUSE_MS = 2_000;
-export const QUEUE_LIMIT = 200;
+const QUEUE_LIMIT = 200;
 
 const beacon = (url: string, body: string): boolean => {
     if (typeof navigator === 'undefined' || typeof navigator.sendBeacon !== 'function')

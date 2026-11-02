@@ -83,8 +83,6 @@ export interface RulesEditor {
     readonly reset: () => void;
 }
 
-export { STEPS } from './rule-form.js';
-
 const NOT_SAVED = 'The rules could not be saved. Try again.';
 const NOT_RESTORED = 'Your rules could not be discarded. Try again.';
 

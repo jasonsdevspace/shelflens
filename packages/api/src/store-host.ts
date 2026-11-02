@@ -30,7 +30,7 @@ import { signalsOf } from './signals.js';
  */
 
 /** What a store is built from before anything is saved: the catalog and the rules it ships with. */
-export interface StoreSource {
+interface StoreSource {
     readonly catalog: Catalog;
     readonly rules: readonly Rule[];
 }
@@ -62,7 +62,7 @@ export interface Startup {
 }
 
 /** What a request on the rules path is answered with, and the store version after a change. */
-export type RulesAnswer = RulesReceipt & { readonly version?: string };
+type RulesAnswer = RulesReceipt & { readonly version?: string };
 
 export interface StoreHost {
     /** The store being served, built the first time anything asks. */

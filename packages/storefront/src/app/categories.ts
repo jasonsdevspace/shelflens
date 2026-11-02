@@ -5,8 +5,6 @@ export type Category = CategoriesQuery['categories'][number];
 
 export type CategoryTree = ReadonlyMap<string, Category>;
 
-export const EMPTY_TREE: CategoryTree = new Map();
-
 export const treeOf = (categories: readonly Category[] | undefined): CategoryTree =>
     new Map((categories ?? []).map((category) => [category.id, category]));
 

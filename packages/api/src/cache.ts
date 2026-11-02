@@ -27,7 +27,7 @@ export interface ResponseCacheOptions {
     readonly maxAgeMs?: number;
 }
 
-export interface ResponseCache {
+interface ResponseCache {
     readonly size: number;
     readonly hits: number;
     readonly misses: number;

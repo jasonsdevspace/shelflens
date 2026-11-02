@@ -38,14 +38,14 @@ export const VISIT_MESSAGE = { type: 'shelflens:visit' } as const;
 export const VISITED_MESSAGE = { type: 'shelflens:visited' } as const;
 
 /** How long a page waits for that answer before searching anyway. */
-export const VISIT_TIMEOUT_MS = 3000;
+const VISIT_TIMEOUT_MS = 3000;
 
 /**
  * How long a first visit waits for the store before saying it did not
  * start. The slowest phone connection measured had the store ready in about
  * ten seconds, so this leaves room for one slower still.
  */
-export const START_TIMEOUT_MS = 30_000;
+const START_TIMEOUT_MS = 30_000;
 
 /** The browser cannot run the store, so trying again in it will not help. */
 export class WorkerUnsupported extends Error {

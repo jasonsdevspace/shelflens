@@ -2,7 +2,8 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "types": [],
-        "noEmit": true
+        "noEmit": true,
+        "customConditions": ["@shelflens/source"]
     },
     "include": ["src"]
 }

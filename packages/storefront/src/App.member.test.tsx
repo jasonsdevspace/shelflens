@@ -134,7 +134,7 @@ describe('as a member', () => {
             const body = (await response.json()) as {
                 data: { store: Record<string, unknown> };
             };
-            body.data.store.membersOnlyProducts = false;
+            body.data.store['membersOnlyProducts'] = false;
             const headers = new Headers(response.headers);
             headers.delete('content-length');
             return new Response(JSON.stringify(body), { status: response.status, headers });

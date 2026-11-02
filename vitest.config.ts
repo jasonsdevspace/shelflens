@@ -1,21 +1,13 @@
-import { fileURLToPath } from 'node:url';
-
+import { defaultClientConditions, defaultServerConditions } from 'vite';
 import { defineConfig } from 'vitest/config';
 
-const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+import { SOURCE_CONDITION } from './source-condition.js';
 
 export default defineConfig({
-    // Workspace packages resolve to their sources, so a test never depends
-    // on a build having run first.
-    resolve: {
-        alias: {
-            '@shelflens/catalog': here('./packages/catalog/src/index.ts'),
-            '@jasonsdevspace/shelflens': here('./packages/engine/src/index.ts'),
-            '@shelflens/search': here('./packages/search/src/index.ts'),
-            '@shelflens/api': here('./packages/api/src/index.ts'),
-            '@shelflens/server': here('./packages/server/src/index.ts'),
-        },
-    },
+    // Workspace packages resolve to their sources, by the condition each one's
+    // exports name, so a test never depends on a build having run first.
+    resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
+    ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },
     test: {
         // The storefront's tests need a document. Everything else runs in Node.
         projects: [

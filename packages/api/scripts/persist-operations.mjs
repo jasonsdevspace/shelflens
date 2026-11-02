@@ -67,7 +67,7 @@ export const nameOperations = (source) => {
  *
  * @param {ReadonlyMap<string, string>} manifest
  */
-export const manifestModule = (manifest) =>
+const manifestModule = (manifest) =>
     [
         '// Generated from the storefront operations by scripts/persist-operations.mjs. Edit the operations, not this.',
         'export const PERSISTED_OPERATIONS: Readonly<Record<string, string>> = {',

@@ -16,7 +16,7 @@ import { round } from './record.js';
  * a fourfold slowdown, the one Lighthouse applies to the processor when it
  * audits for mobile, with answers held at the 95th percentile.
  */
-export const SIZES = [2000, 5000, 10_000, 25_000] as const;
+const SIZES = [2000, 5000, 10_000, 25_000] as const;
 export const SUGGEST_BUDGET_MS = 50;
 export const START_BUDGET_MS = 2000;
 export const PHONE_SLOWDOWN = 4;

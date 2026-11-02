@@ -11,8 +11,8 @@ import {
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
+import { serving } from '../test/serving.js';
 import { type AnswerStore, createWorkerApi } from './handle.js';
-import { serving } from './serving.js';
 
 const catalog = generateCatalog({ seed: 42, products: 200 });
 const version = createStore({ catalog }).version;

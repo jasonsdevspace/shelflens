@@ -24,7 +24,7 @@ export interface BenchOptions {
     readonly iterations: number;
 }
 
-export interface QueryTiming {
+interface QueryTiming {
     readonly name: string;
     readonly request: Omit<StoreSearchRequest, 'group'>;
     readonly total: number;
@@ -50,7 +50,7 @@ export interface BenchResult {
 }
 
 /** The shapes of request a storefront sends, from cheapest to most demanding. */
-export const BENCH_QUERIES: readonly {
+const BENCH_QUERIES: readonly {
     name: string;
     request: Omit<StoreSearchRequest, 'group'>;
 }[] = [

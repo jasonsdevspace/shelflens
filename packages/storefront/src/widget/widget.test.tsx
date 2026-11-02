@@ -2,8 +2,8 @@ import { generateCatalog } from '@shelflens/catalog';
 import { fireEvent, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { serving } from '../test/serving.js';
 import { createWorkerApi } from '../worker/handle.js';
-import { serving } from '../worker/serving.js';
 import { mountShelfLens } from './index.jsx';
 
 /*
