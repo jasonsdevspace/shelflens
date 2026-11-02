@@ -140,7 +140,7 @@ const BrandField = ({
     <Field id={`${id}-brand`} label="Brand" line={under(tried, problems.brand, '')}>
         <select
             id={`${id}-brand`}
-            className="sort-select"
+            className="select"
             value={form.brand}
             aria-invalid={tried && problems.brand ? true : undefined}
             aria-describedby={`${id}-brand-line`}
@@ -166,7 +166,7 @@ const WeightField = ({
         <Field id={`${id}-step`} label="How much">
             <select
                 id={`${id}-step`}
-                className="sort-select"
+                className="select"
                 value={form.step}
                 onChange={(event) => onChange({ ...form, step: Number(event.target.value) })}
             >
@@ -242,7 +242,7 @@ export const RuleForm = (props: RuleFormProps) => {
                 <Field id={`${id}-target`} label="On">
                     <select
                         id={`${id}-target`}
-                        className="sort-select"
+                        className="select"
                         value={form.target}
                         onChange={(event) =>
                             onChange({ ...form, target: event.target.value as Target })

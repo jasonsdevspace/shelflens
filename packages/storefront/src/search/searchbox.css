@@ -40,8 +40,8 @@
 }
 
 .searchbox-input:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    outline: var(--ring-width) solid var(--accent);
+    outline-offset: var(--ring-offset);
 }
 
 /*
@@ -137,8 +137,8 @@ li[role='group'] + li[role='group'] {
 }
 
 .searchbox-clear:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    outline: var(--ring-width) solid var(--accent);
+    outline-offset: var(--ring-offset);
 }
 
 .searchbox-option {

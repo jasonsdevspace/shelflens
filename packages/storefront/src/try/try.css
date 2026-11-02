@@ -72,8 +72,8 @@
 }
 
 .try-pick:focus-within {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: var(--ring-width) solid var(--accent);
+    outline-offset: var(--ring-offset);
 }
 
 .try-link {
@@ -94,20 +94,16 @@
 .try-field {
     display: grid;
     gap: 0.25rem;
+    min-width: 0;
 }
 
 .try-field label {
     color: var(--muted);
 }
 
-.try-mapping select {
-    min-height: 2.25rem;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--control);
-    border-radius: 0.25rem;
-    background: var(--bg);
-    color: var(--fg);
-    font: inherit;
+/* A long column name in a visitor's file stops at its column's edge rather than widening the page. */
+.try-field .select {
+    width: 100%;
 }
 
 .try-search-only {

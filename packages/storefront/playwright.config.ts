@@ -40,7 +40,7 @@ export default defineConfig({
         {
             name: 'phone',
             use: { ...devices['Pixel 7'] },
-            testMatch: /(^|\/)(phone|widget|try-widget|embed|themes)\.spec\.ts$/,
+            testMatch: /(^|\/)(phone|widget|try-widget|embed|themes|controls)\.spec\.ts$/,
         },
         ...(process.env.VISUAL
             ? [

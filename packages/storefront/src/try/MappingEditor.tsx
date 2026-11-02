@@ -91,6 +91,7 @@ export const MappingEditor = ({
                     <div key={field} className="try-field">
                         <label htmlFor={`${id}-${field}`}>{FIELD_LABELS[field]}</label>
                         <select
+                            className="select"
                             id={`${id}-${field}`}
                             value={mapping[field] ?? ''}
                             onChange={(event) =>
