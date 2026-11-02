@@ -95,6 +95,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
             await settle(page);
             await page.getByRole('button', { name: 'Filters' }).click();
             await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible();
+            // The tap leaves the pointer over a row, so it is moved off before the picture.
+            await page.mouse.move(0, 0);
             await settle(page);
             await expect(page.locator('.drawer-panel')).toHaveScreenshot(
                 `drawer-${colorScheme}.png`

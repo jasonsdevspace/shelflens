@@ -42,7 +42,10 @@ export const destinationOf = (folder, file) => {
 
 const collect = () => {
     if (!existsSync(RESULTS)) return;
-    for (const folder of readdirSync(RESULTS)) {
+    // The results hold a folder per test, beside a file or two of Playwright's own.
+    for (const entry of readdirSync(RESULTS, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const folder = entry.name;
         for (const file of readdirSync(join(RESULTS, folder))) {
             const destination = destinationOf(folder, file);
             if (destination) cpSync(join(RESULTS, folder, file), destination);
