@@ -18,9 +18,9 @@ thing rather than a mock. A worker has no Node, no file system and a download bu
 talks to in production. The demo would depend on it being up.
 
 **B. The API in a service worker.** The same resolvers over the same engine, answering `fetch`
-requests for `graphql` under the site's path from inside the page. The storefront makes real network
-requests and gets real responses, so every network behavior stays real: stale responses, debounce,
-caching by key. Only the hop to a server is missing.
+requests for `graphql`, `events` and `rules` under the site's path from inside the page. The
+storefront makes real network requests and gets real responses, so every network behavior stays
+real: stale responses, debounce, caching by key. Only the hop to a server is missing.
 
 **C. Call the engine directly from the storefront.** No GraphQL at all in the demo. Fastest to
 build, and the schema, the contract the whole storefront is written against, would never be
@@ -37,21 +37,21 @@ Option B, with option A available at any time.
 - **It is small enough to download.** The GraphQL reference library's execution core is 43 KB
   compressed, and the engine, the store search and the catalog together are 11 KB. The test
   keeps the whole API under 90 KB compressed.
-- **The Node server is a thin wrapper.** `@shelflens/server` puts the same API behind
-  `POST /graphql` with a customer-group header, a body limit, a rate limit and a request id. It
-  exists for local runs, for tests that want a real socket, and for the day a hosted demo is
-  wanted. Nothing in the API knows which one it is running under. Since
-  [decision 15](0015-one-store-host-for-every-transport.md) it serves the store from the same
-  store host the worker does, so it folds in clicks and takes saved rules as the worker does.
+- **The Node server is a thin wrapper.** `@shelflens/server` puts the same API behind `/graphql`,
+  with a customer-group header, a body limit, a rate limit and a request id. It exists for local
+  runs, for tests that want a real socket, and for a widget on another origin. Nothing in the API
+  knows which one it is running under. It serves the store from the same store host the worker does
+  ([decision 15](0015-one-store-host-for-every-transport.md)), so it folds in clicks and takes
+  saved rules as the worker does.
 - **The viewer comes from the request in both.** The server and the worker read the same
   header. The API only ever sees a viewer it was handed.
 
 ## Consequences
 
-- The demo's index is built in the worker from the shipped catalog on first load, which is why
-  the catalog has a size budget and the index has a benchmark. The cold first visit is measured
-  in `docs/benchmarks/cold-visit.md`: on the demo catalog the worker spends about 38 ms
-  downloading the catalog and the rules and 55 ms building the store, served locally.
+- The demo's index is built in the worker from the shipped catalog on first load, which is why the
+  catalog has a size budget and the index has a benchmark. The cold first visit is measured in
+  `docs/benchmarks/cold-visit.md`: on the demo catalog the worker spends about 38 ms downloading
+  the catalog and the rules and 50 ms building the store, served locally.
 - A worker is one JavaScript thread. The engine's wide queries cost about a thirtieth of a second at
   the median on a hundred thousand products and well under a millisecond's worth on the demo's two
   thousand, so the page stays responsive, but a far larger catalog would need the index built off
@@ -63,9 +63,10 @@ Option B, with option A available at any time.
   takes a fresh search from about half a millisecond to a fifth.
 - Rate limiting in a worker protects nothing, since the client is the server. It is implemented
   in the Node server where it means something, and the worker does not pretend.
-- Persisted operations work the same way in both: each accepts one of the storefront's
-  operations by the hash of its text, and the demo accepts nothing else, so nothing a browser can
-  send runs a query the storefront did not ship. Record 8 describes the caches built on that.
+- Persisted operations work the same way on every host: each accepts one of the storefront's
+  operations by the hash of its text and refuses full query text unless the host sets
+  `allowFullQueries`, which the demo never does. So nothing a browser can send runs a query the
+  storefront did not ship. Record 8 describes the caches built on that.
 - A host page for the widget under the worker's scope registers the worker as the store's page
   does, and the widget never does: it is handed the API's address and knows nothing about which
   host answers. A page on another origin is answered by the Node server, which the host runs with

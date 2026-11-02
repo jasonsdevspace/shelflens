@@ -117,11 +117,12 @@ pinned or buried takes no signal at all, so the crowd never moves what a merchan
 hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
 new counts over the same index.
 
-Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins
-still apply under a sort scoped to the rule's own filter, which is how a category's merchandising
-survives its position sort. A hide says what may be shown rather than where, so it holds under
-every sort. A rule whose pins, boosts or buries are set aside by the sort is reported in the
-result, so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
+Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins still
+apply under a sort scoped to the rule's own filter, which is how a category's merchandising
+survives its position sort, though a boost or a bury in that rule does nothing there and the rule
+is reported as applied. A hide says what may be shown rather than where, so it holds under every
+sort. A rule whose pins, boosts or buries are set aside by the sort is reported in the result, so a
+page can say that sorting by price switched the merchandising off. Every effect a rule has on a
 result is recorded on that hit, alongside its matches, for explain mode.
 
 ## Where it comes from

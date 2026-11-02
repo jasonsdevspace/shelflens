@@ -6,21 +6,21 @@
 
 The storefront talks to the search through GraphQL, and the schema is the contract: the popover,
 the results page and the explain mode are written against it, and the types on both sides are
-generated from it. Getting it wrong costs every milestone after this one, so it is written and
-reviewed before any resolver exists.
+generated from it. Getting it wrong costs everything built on it, so it was written and reviewed
+before any resolver existed.
 
 The schema follows what a product search API has to do, with the project's own names. Nothing is
 copied from any vendor's schema.
 
 ## The decisions in it
 
-**The viewer comes from the request, not the query.** A customer group changes prices and, for
-some products, the catalog. If a query could name a group, any caller could ask for any group's
-prices. The group is read from the request, the way a session would be, and `store.viewer`
-reports it. Every price in a response is the viewer's price, and there is no other price to ask
-for. Since Release 1.1 a price carries `memberPrice`, whether the viewer pays below list, and a
-product carries `membersOnly`. Both describe the viewer's own view: a guest never receives either
-as true, and neither names what another group would see.
+**The viewer comes from the request, not the query.** A customer group changes prices and, for some
+products, the catalog. If a query could name a group, any caller could ask for any group's prices.
+The group is read from the request, the way a session would be, and `store.viewer` reports it.
+Every price in a response is the viewer's price. The one exception is `listPrice`, which shows a
+member what a guest pays, since the list price is public. A price carries `memberPrice`, whether
+the viewer pays below list, and a product carries `membersOnly`. Both describe the viewer's own
+view: a guest never receives either as true, and neither names what a member would see.
 
 **Facets are an interface with three types, not a union and not one flat type.** A keyword
 facet has value buckets, a range facet has banded buckets, and a stats facet has bounds. One flat
@@ -52,9 +52,10 @@ the schema's descriptions, so a client knows without trying.
 
 **Nothing is an answer with a shape.** `SearchResult.noResults` is null unless the search found
 nothing, and then carries what would find something: a spelling, a shorter phrase with its own
-result, what the same phrase finds without its filters, and the most rated products. The recovery is
-a few searches run once when the field is asked for. The shorter phrase's own result and the popular
-products are each resolved only when a client selects them.
+result, what the same phrase finds without its filters, and popular products, the most clicked
+among the most rated the viewer may see in the category. The recovery is a few searches run once
+when the field is asked for. The shorter phrase's own result and the popular products are each
+resolved only when a client selects them.
 
 **Explanations are part of the hit.** `SearchHit.explanation` carries each matched word, its
 route and its score, and each rule that touched the result. Explain mode is the same search with
@@ -67,8 +68,8 @@ asked, so a results page pays for them only while a reviewer is looking.
   sees, rather than a string a client could pass and get nothing for.
 - Three facet types means three fragments in a client that wants buckets. The generated types
   make that mechanical.
-- The suggest query returns products as search hits, with explanations, so the popover can show
-  why a suggestion appeared with no second shape to learn.
+- The suggest query returns products as search hits, so a client can ask why a suggestion appeared
+  with no second shape to learn. The storefront's popover asks only for the product.
 
 ## How it is tested
 

@@ -4,13 +4,13 @@
 
 ## Context
 
-The engine takes any documents, but the demo only ever searches the catalog the project
-generates, so the package's reach has to be taken on trust. Release 2 ends with a page at `try/`
-where a visitor loads a file of their own products and searches it in the same storefront. Three
-things constrain it. The demo at the site's root has to keep working exactly as it does, its
-worker, caches, rules and deep links included, whatever a visitor loads. Nothing a visitor loads
-may leave their browser, since there is no server and the page says there is none. And the
-storefront, its schema and its persisted operations are built for one shape of product.
+The engine takes any documents, but the demo only ever searches the catalog the project generates,
+so the package's reach has to be taken on trust. A page at `try/` lets a visitor load a file of
+their own products and search it in the same storefront. Three things constrain it. The demo at the
+site's root has to keep working exactly as it does, its worker, caches, rules and deep links
+included, whatever a visitor loads. Nothing a visitor loads may leave their browser, since there is
+no server and the page says there is none. And the storefront, its schema and its persisted
+operations are built for one shape of product.
 
 ## Options
 

@@ -181,6 +181,8 @@ has moved on.
 13. [A visitor's catalog stays in the browser, in a store of its own](docs/decisions/0013-a-visitors-catalog-stays-in-the-browser.md)
 14. [The engine is proven on the Node it declares, as a user installs it](docs/decisions/0014-the-engine-is-proven-on-the-node-it-declares.md)
 15. [One store host for every transport](docs/decisions/0015-one-store-host-for-every-transport.md)
+16. [The first screen is in the page, drawn by the components the script uses](docs/decisions/0016-the-first-screen-is-in-the-page.md)
+17. [A sort sets aside what rules do to the order, and the page says so](docs/decisions/0017-a-sort-sets-aside-what-rules-do-to-the-order.md)
 
 ## Dev setup
 

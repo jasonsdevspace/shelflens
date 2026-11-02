@@ -90,8 +90,8 @@ on every document.
 - Typed arrays live in array buffers outside the JavaScript heap, which `heapUsed` does not
   count. The benchmark adds both. Without that, the new index reported twelve megabytes, which
   was not true.
-- Facet counting was most of a wide query until 0.4.0 counted by code. Record 4 describes what
-  it costs now and what the next step would be if a catalog needed it.
+- Facet counting was most of a wide query until 0.4.0 counted by code. [Record
+  4](0004-facets-count-past-their-own-filter.md) describes what it costs now.
 
 ## How it is tested
 

@@ -5,13 +5,14 @@
 ## Context
 
 The store is served three ways: by the service worker in a visitor's browser, by the Node server
-behind `npm run api`, and by the dev server while the storefront is built. Each one made its
-store its own way. The worker built the store from the catalog, the rules saved in IndexedDB and
-the clicks it kept, and built it again when a visit began after new clicks or a set of rules was
-saved. The Node server and the dev server built one store at start and kept the events posted to
-them without ever ranking by them. The dev server built the whole store again on a save, by code
-of its own, and the Node server had no rules path at all. A change to how clicks nudge ranking could be tested in the browser and never
-reach the server, and a test against the server proved nothing about the store a visitor gets.
+behind `npm run api`, and by the dev server while the storefront is built. Each one made its store
+its own way. The worker built the store from the catalog, the rules saved in IndexedDB and the
+clicks it kept, and built it again when a visit began after new clicks or a set of rules was saved.
+The Node server and the dev server built one store at start and kept the events posted to them
+without ever ranking by them. The dev server built the whole store again on a save, by code of its
+own, and the Node server had no rules path at all. A change to how clicks nudge ranking could be
+tested in the browser and never reach the server, and a test against the server proved nothing
+about the store a visitor gets.
 
 A save was also costly where it worked. The worker built the whole store again for a new set of
 rules, the index included, though the catalog had not changed.
@@ -64,3 +65,22 @@ to a third of a second.
 - A fixed API is still accepted, for a store that never changes and for tests that want one.
 - The host's rules for building again are tested once, in the API package, rather than in each
   transport.
+
+## How it is tested
+
+- `packages/api/src/store-host.test.ts`: the host builds once however many ask, builds again on a
+  saved set over the index it has, refuses a set the engine refuses and keeps the store it has,
+  folds new clicks in when a visit begins and does nothing when there are none, lands a visit and a
+  save in the order asked, lands a save before a change asked after it, reads its source again once
+  cleared, and says it keeps no rules when it was given nowhere to keep them. It keeps the store it
+  has when a new source cannot be built, when a visit cannot build again, and when the host cannot
+  tidy up after a build, and a request during a change is answered rather than kept waiting.
+- `packages/server/src/server.test.ts`: clicks posted over a real socket rank on the next visit and
+  not mid-visit, `/rules` answers 404 where the host keeps none, and the server takes a host or a
+  fixed API, never both.
+- `packages/storefront/src/dev/hosts-agree.test.ts`: the same batch of clicks sent to the worker
+  and to the Node server nudges the same products by the same amount on the next visit to each.
+- `packages/storefront/src/worker/handle-catalog.test.ts`: a visitor's catalog is loaded, replaced
+  and removed, a file just loaded is built from the one in hand without being read back, a catalog
+  that cannot be built leaves the last one serving with its rules, and a load and a removal that
+  arrive together end in agreement.

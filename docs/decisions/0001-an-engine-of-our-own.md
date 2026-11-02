@@ -28,10 +28,12 @@ testable, and every mistake is ours to find.
 
 Option B.
 
-- **The interesting decisions live in the matching.** Exact before fuzzy, phrase synonyms scored
-  per typed word, one normalization for catalog and query, disjunctive facet counts and rules that
-  know about the sort are each a decision record in this folder. None of them could be made inside
-  a library.
+- **The interesting decisions live in the matching.** Phrase synonyms scored per typed word
+  ([record 3](0003-synonyms-rewrite-phrases.md)), facet counts that skip their own filter ([record
+  4](0004-facets-count-past-their-own-filter.md)) and rules that give way to a sort ([record
+  17](0017-a-sort-sets-aside-what-rules-do-to-the-order.md)) each have a record here, beside exact
+  matches ranked before fuzzy ones and one normalization for catalog and query. None of them could
+  be made inside a library.
 - **Explanations need the scores.** Explain mode shows which word matched which indexed term, in
   which field, by which route, for how much. That is the engine's internal state, and it is kept
   on every hit because the engine is ours.
@@ -42,9 +44,9 @@ Option B.
 
 - An engine to own, with its tests. The golden queries guard the behavior and the benchmark
   guards the cost, so a change that makes either worse fails the build.
-- The first version was slow and heavy, which record 2 describes. A library would have been
-  tuned already. Measuring and fixing it was part of the work, and the before-and-after is on the
-  record.
+- The first version was slow and heavy, which [record 2](0002-flat-arrays-for-the-index.md)
+  describes. A library would have been tuned already. Measuring and fixing it was part of the work,
+  and the before-and-after is on the record.
 - The vocabulary of a generated catalog is small, so the benchmark understates the fuzzy pass,
   which compares the query against every term of a similar length. On a real catalog that pass
   would need a smarter candidate set, such as a trigram or deletion index, before it was fast.

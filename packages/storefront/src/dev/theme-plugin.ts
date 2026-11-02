@@ -24,8 +24,7 @@ const CHARSET = '<meta charset="UTF-8" />';
 /**
  * The policy for a page. The widget's host pages also allow inline styles:
  * the widget falls back to a style element in its shadow root where a
- * browser cannot share one stylesheet across roots, and the pages hide the
- * waiting line with a style for a browser without JavaScript.
+ * browser cannot share one stylesheet across roots.
  */
 const policyFor = (script: string, widget: boolean): string =>
     [
