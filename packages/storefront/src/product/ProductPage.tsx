@@ -1,5 +1,6 @@
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 
+import { focusIsFree } from '../app/focus.js';
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { type SearchState, serializeSearchState } from '../app/url.js';
@@ -15,7 +16,6 @@ import {
     RecommendationsDocument,
     type RecommendationsQuery,
 } from '../generated/operations.js';
-import { focusIsFree } from '../results/useReturnFocus.js';
 import { Swatch } from '../search/Swatch.jsx';
 import { memberLine, metaLine } from './lines.js';
 import { Rail } from './Rail.jsx';

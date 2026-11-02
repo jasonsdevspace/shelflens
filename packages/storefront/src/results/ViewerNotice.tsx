@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
+import { StatusRegion } from '../app/LiveStatus.jsx';
 import type { CustomerGroup } from '../client/graphql.js';
 import { count } from '../format/count.js';
 import type { Hit } from './ProductCard.jsx';
@@ -60,9 +61,7 @@ export const ViewerNotice = ({
     }, [heard, answered, fresh]);
     return (
         <>
-            <p className="visually-hidden" role="status">
-                {said}
-            </p>
+            <StatusRegion>{said}</StatusRegion>
             {text !== '' && <p className="callout">{text}</p>}
         </>
     );

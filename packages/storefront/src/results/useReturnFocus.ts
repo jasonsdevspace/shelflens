@@ -1,10 +1,6 @@
 import { type RefObject, useEffect, useRef } from 'react';
 
-/** Whether nothing holds focus, so the page may put it somewhere without taking it from the visitor. */
-export const focusIsFree = (): boolean => {
-    const active = document.activeElement;
-    return active === null || active === document.body;
-};
+import { focusIsFree } from '../app/focus.js';
 
 const headingIn = (container: RefObject<HTMLElement | null>) =>
     container.current?.querySelector<HTMLElement>('.results-heading');

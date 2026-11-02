@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { App } from '../App.jsx';
+import { useHeadingFocus } from '../app/focus.js';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
@@ -87,22 +88,6 @@ const errorOf = async (response: Response, retry: string): Promise<string> => {
     return reason
         ? `The store could not use these products, since ${reason}. ${again}`
         : `The store could not load these products (error ${response.status}). ${again}`;
-};
-
-/**
- * Moves focus to a stage's heading when it appears because of something the
- * visitor did, so a keyboard or screen reader user is told where they are.
- * Focus moves in the same commit as the heading, as it does for the
- * question and the remove button below, so it never rests on the page
- * between the two.
- * On the page's first load the heading is left alone, as any page's is.
- */
-const useHeadingFocus = (key: string, announce: boolean) => {
-    const heading = useRef<HTMLHeadingElement>(null);
-    useLayoutEffect(() => {
-        if (announce) heading.current?.focus();
-    }, [key, announce]);
-    return heading;
 };
 
 /**

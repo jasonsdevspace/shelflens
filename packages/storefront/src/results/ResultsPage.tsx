@@ -2,6 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
+import { LiveStatus } from '../app/LiveStatus.jsx';
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { StateLink } from '../app/StateLink.jsx';
 import {
@@ -155,25 +156,6 @@ const FacetColumn = ({
             {children}
         </aside>
     );
-
-/**
- * The results heading again, for a screen reader. A live region announces
- * what changes in it, not what it was created with, so the line is empty
- * on its first render and filled a moment later, and it stays mounted
- * through loading so each landed answer is a change.
- */
-const LiveStatus = ({ text }: { readonly text: string }) => {
-    const [shown, setShown] = useState('');
-    useEffect(() => {
-        const timer = setTimeout(() => setShown(text), 0);
-        return () => clearTimeout(timer);
-    }, [text]);
-    return (
-        <p className="visually-hidden" role="status">
-            {shown}
-        </p>
-    );
-};
 
 /** What the status line says: the heading once an answer has landed, nothing while one is coming. */
 const announcement = (
