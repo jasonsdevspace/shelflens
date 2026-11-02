@@ -167,12 +167,18 @@ export const createWorkerApi = ({
     rules,
     forgetEvents,
 }: WorkerApiOptions): WorkerApi => {
+    /**
+     * The visitor's catalog as last read or loaded, so a file just loaded is
+     * built from the catalog in hand rather than read back from IndexedDB.
+     */
+    let inHand: Catalog | undefined;
+
     /** The catalog to build from: the visitor's, when there is a store of them, or the site's. */
     const catalogNow = async (): Promise<Catalog> => {
         if (catalogs) {
-            const kept = await catalogs.current();
-            if (!kept) throw new NoCatalogError();
-            return kept;
+            inHand ??= await catalogs.current();
+            if (!inHand) throw new NoCatalogError();
+            return inHand;
         }
         if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
         return fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog');
@@ -256,6 +262,7 @@ export const createWorkerApi = ({
         host.change(async (): Promise<typeof KEEPS_RULES | undefined> => {
             if (await discardsRules(discard)) return KEEPS_RULES;
             await held.clear();
+            inHand = undefined;
             await rules?.reset();
             await forgetEvents?.();
             host.clear();
@@ -275,12 +282,16 @@ export const createWorkerApi = ({
         options: { timing: { buildMs: number }; discard: boolean }
     ) =>
         host.change(async (rebuild): Promise<HostedStore | string | typeof KEEPS_RULES> => {
-            const [previous, previousRules] = await Promise.all([held.current(), rules?.current()]);
+            const [previous, previousRules] = await Promise.all([
+                inHand ?? held.current(),
+                rules?.current(),
+            ]);
             // The same file again names the same products, so its rules and clicks still hold.
             const same = previous?.version === catalog.version;
             if (!same && (await discardsRules(options.discard))) return KEEPS_RULES;
             const began = performance.now();
             await held.replace(catalog);
+            inHand = catalog;
             if (!same) {
                 await rules?.reset();
                 await forgetEvents?.();
@@ -291,9 +302,12 @@ export const createWorkerApi = ({
                 options.timing.buildMs = performance.now() - began;
                 return built;
             } catch (error) {
+                // Back in hand first, so the next build is from the last catalog that
+                // worked even if putting it back in the database fails.
+                inHand = previous;
+                host.forgetSource();
                 await (previous ? held.replace(previous) : held.clear());
                 if (previousRules) await rules?.replace(previousRules);
-                host.forgetSource();
                 const reason = error instanceof Error ? error.message : 'it could not be read';
                 return `the catalog could not be built: ${reason}`;
             }
@@ -313,7 +327,9 @@ export const createWorkerApi = ({
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
-            const kept = await held.current();
+            // The catalog in hand, so what this says is loaded is what the store is built from.
+            inHand ??= await held.current();
+            const kept = inHand;
             if (!kept) return noCatalog();
             return json(200, { version: kept.version, products: kept.products.length });
         }
