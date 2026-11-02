@@ -57,7 +57,7 @@ describe('the API inside the worker', () => {
         const second = await api.handle(persisted({ op: STORE }, { [GROUP_HEADER]: 'member' }));
 
         expect(await first?.json()).toMatchObject({
-            data: { store: { name: 'ShelfLens', version: version } },
+            data: { store: { name: 'ShelfLens', version } },
         });
         expect(first?.headers.get(VERSION_HEADER)).toBe(version);
         expect(await second?.json()).toMatchObject({
@@ -277,6 +277,26 @@ describe('the answers the worker keeps', () => {
         expect(size()).toBe(2);
     });
 
+    it('still answers when the answer cannot be kept, as when the browser’s storage is full', async () => {
+        const { store } = createAnswerStore();
+        const full: AnswerStore = {
+            ...store,
+            put: () =>
+                Promise.reject(new DOMException('the storage is full', 'QuotaExceededError')),
+        };
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const answer = await withStore(full).handle(persisted({ op: STORE, v: version }));
+            expect(answer?.status).toBe(200);
+            expect(logged).toHaveBeenCalledWith(
+                'an answer could not be kept',
+                expect.any(DOMException)
+            );
+        } finally {
+            logged.mockRestore();
+        }
+    });
+
     it('drops an answer past its age, and every answer for another version', async () => {
         const { store, has, seed } = createAnswerStore();
         const url = `https://example.test${BASE}graphql?${new URLSearchParams({ op: STORE, v: version })}`;
@@ -320,10 +340,23 @@ describe('events inside the worker', () => {
             fetch: servingCatalog(),
             events: broken,
         });
-        vi.spyOn(console, 'error').mockImplementation(() => undefined);
-        const answer = await api.handle(batch());
-        expect(answer?.status).toBe(500);
-        expect(await answer?.json()).toEqual({ errors: [{ message: INTERNAL_MESSAGE }] });
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const answer = await api.handle(batch());
+            expect(answer?.status).toBe(500);
+            const body = (await answer?.json()) as {
+                errors: { message: string; extensions: { requestId: string } }[];
+            };
+            const [error] = body.errors;
+            expect(error?.message).toBe(INTERNAL_MESSAGE);
+            // The id in the answer is the one the console names, beside the path and the reason.
+            expect(logged).toHaveBeenCalledWith(
+                `request ${error?.extensions.requestId ?? ''} to /shelflens/events failed`,
+                expect.objectContaining({ message: 'the database is gone' })
+            );
+        } finally {
+            logged.mockRestore();
+        }
     });
 
     it('keeps a posted batch in the store it was given, and nothing under Global Privacy Control', async () => {

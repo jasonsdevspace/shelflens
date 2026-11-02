@@ -409,7 +409,12 @@ export const createWorkerApi = ({
         // an answer that finishes after its catalog was replaced or removed
         // is not put back among the kept ones.
         const still = (await host.served())?.api.version === response.headers.get(VERSION_HEADER);
-        if (kept && mayKeep(response) && still) await kept.put(request, response.clone());
+        if (kept && mayKeep(response) && still) {
+            // An answer that cannot be kept, as when the browser's storage is full, is still the answer.
+            await kept.put(request, response.clone()).catch((error: unknown) => {
+                console.error('an answer could not be kept', error);
+            });
+        }
         return response;
     };
 
@@ -418,12 +423,7 @@ export const createWorkerApi = ({
         const route = routeOf(request.url, base, served);
         if (route === 'catalog' && catalogs) return receiveCatalog(catalogs, request);
         if (route === 'events') return receive(request);
-        if (route === 'rules') {
-            return receiveRuleSet(request).catch((error: unknown) => {
-                if (error instanceof NoCatalogError) return noCatalog();
-                throw error;
-            });
-        }
+        if (route === 'rules') return receiveRuleSet(request);
         if (route !== 'graphql' || (request.method !== 'GET' && request.method !== 'POST')) {
             return undefined;
         }
@@ -445,9 +445,19 @@ export const createWorkerApi = ({
             try {
                 return await answerRoute(request);
             } catch (error) {
-                // As the Node server does: a failure that is ours, in the API's shape, never its reason.
-                console.error('the worker could not answer', request.url, error);
-                return json(500, { errors: [{ message: INTERNAL_MESSAGE }] });
+                // A visitor's page with nothing loaded has nothing to answer from, on any route.
+                if (error instanceof NoCatalogError) return noCatalog();
+                // As the Node server does: a failure that is ours, in the API's shape, with an id
+                // to quote, and the reason kept to the console. The path is logged, never the
+                // query, whose variables hold what the visitor typed.
+                const requestId = crypto.randomUUID();
+                console.error(
+                    `request ${requestId} to ${new URL(request.url).pathname} failed`,
+                    error
+                );
+                return json(500, {
+                    errors: [{ message: INTERNAL_MESSAGE, extensions: { requestId } }],
+                });
             }
         },
     };
