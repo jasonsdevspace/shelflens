@@ -12,6 +12,12 @@ export {
     type CacheKeyParts,
 } from './cache-key.js';
 export {
+    CATALOG_ROW_CAP,
+    contentVersion,
+    parseCatalogFile,
+    withContentVersion,
+} from './catalog-file.js';
+export {
     type Answer,
     type Context,
     createStore,

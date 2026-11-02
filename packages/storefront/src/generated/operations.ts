@@ -619,6 +619,8 @@ export type StoreQuery = {
         readonly locale: string;
         readonly catalogVersion: string;
         readonly rulesEdited: boolean;
+        readonly memberPricing: boolean;
+        readonly membersOnlyProducts: boolean;
         readonly viewer: { readonly group: CustomerGroup };
     };
 };
@@ -1150,13 +1152,15 @@ export const StoreDocument = new TypedDocumentString(
     locale
     catalogVersion
     rulesEdited
+    memberPricing
+    membersOnlyProducts
     viewer {
       group
     }
   }
 }
     `,
-    { hash: 'af560856a9c26e64ee20e289269a3236179615f05e9c0a945dac0576e2570e3f' }
+    { hash: '4274cfc7f70814237ca1a63c6bcc4169fc957eff449aebc3af97534f4c030a61' }
 ) as unknown as TypedDocumentString<StoreQuery, StoreQueryVariables>;
 export const SuggestDocument = new TypedDocumentString(
     `

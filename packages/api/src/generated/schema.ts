@@ -524,6 +524,17 @@ export type Store = {
     readonly catalogVersion: Scalars['String']['output'];
     readonly currency: Scalars['String']['output'];
     readonly locale: Scalars['String']['output'];
+    /**
+     * Whether a member pays less than a guest for any product, at its lowest
+     * price or its highest. Without it, switching between them changes nothing.
+     * The same rule as a product's memberPrice.
+     */
+    readonly memberPricing: Scalars['Boolean']['output'];
+    /**
+     * Whether some products are for members only, so a guest may be told a
+     * product is not there that a member would see.
+     */
+    readonly membersOnlyProducts: Scalars['Boolean']['output'];
     readonly name: Scalars['String']['output'];
     /**
      * Whether the rules in effect are a set a visitor saved in this browser
@@ -1045,6 +1056,8 @@ export type StoreResolvers<
     catalogVersion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     locale?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    memberPricing?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    membersOnlyProducts?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     rulesEdited?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     viewer?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType>;

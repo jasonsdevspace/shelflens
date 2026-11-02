@@ -7,6 +7,7 @@ import {
     isApiPath,
     isEventsPath,
     isRulesPath,
+    parseCatalogFile,
     parseRulesFile,
     PERSISTED_OPERATIONS,
     receiveEvents,
@@ -19,11 +20,11 @@ import {
     type Store,
     type StoreApi,
     VERSION_HEADER,
+    withContentVersion,
     withResponseCache,
 } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
-import { checkCatalog, hasMemberPrices, withContentVersion } from '../try/check.js';
 import type { CatalogStore } from './catalog-db.js';
 
 /**
@@ -441,11 +442,7 @@ export const createWorkerApi = ({
         if (request.method === 'GET') {
             const kept = await held.current();
             if (!kept) return noCatalog();
-            return json(200, {
-                version: kept.version,
-                products: kept.products.length,
-                memberPrices: hasMemberPrices(kept.products),
-            });
+            return json(200, { version: kept.version, products: kept.products.length });
         }
         // A change that would discard the visitor's saved rules is refused
         // unless the request says the visitor agreed, so the page asks then.
@@ -467,7 +464,7 @@ export const createWorkerApi = ({
         const began = performance.now();
         let catalog: Catalog;
         try {
-            catalog = withContentVersion(checkCatalog(JSON.parse(body)));
+            catalog = withContentVersion(parseCatalogFile(JSON.parse(body)));
         } catch (error) {
             return json(400, {
                 errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],

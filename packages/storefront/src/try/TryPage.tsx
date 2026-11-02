@@ -35,7 +35,6 @@ export interface TryPageProps {
 interface Loaded {
     readonly version: string;
     readonly products: number;
-    readonly memberPrices: boolean;
 }
 
 type Stage =
@@ -834,9 +833,6 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 rulesUrl={`${base}rules`}
                 ready="started"
                 tour={false}
-                viewerSwitch={stage.loaded.memberPrices}
-                // Every product in a visitor's catalog is for everyone.
-                membersOnly={false}
                 arrival={stage.arrival}
                 banner={
                     <CatalogBar

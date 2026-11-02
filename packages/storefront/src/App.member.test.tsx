@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { App } from './App.jsx';
+import { StoreDocument } from './generated/operations.js';
 import { cards, catalog, open, settled, shopAs, shownPrice } from './test/store.jsx';
 
 /* What the viewer switch changes, for a guest and for a member. */
@@ -122,6 +123,21 @@ describe('as a member', () => {
     });
 
     it('tells a guest nothing about members where no product is for members only', async () => {
+        // The store's own answer, with the one fact a visitor's catalog differs in.
+        const op = `op=${String(StoreDocument.__meta__?.['hash'])}`;
+        const served = globalThis.fetch;
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            const response = await served(input, init);
+            if (!new Request(input, init).url.includes(op)) return response;
+            const body = (await response.json()) as {
+                data: { store: Record<string, unknown> };
+            };
+            body.data.store.membersOnlyProducts = false;
+            return new Response(JSON.stringify(body), {
+                status: response.status,
+                headers: response.headers,
+            });
+        });
         window.history.replaceState(null, '', '/?product=NOPE-1');
         render(
             <App
@@ -129,7 +145,6 @@ describe('as a member', () => {
                 eventsUrl="http://store.test/events"
                 rulesUrl="http://store.test/rules"
                 ready={Promise.resolve()}
-                membersOnly={false}
             />
         );
         const notice = await screen.findByRole('region', { name: /^There is no product NOPE-1/ });

@@ -1,17 +1,10 @@
 // @vitest-environment node
-import type { Catalog } from '@shelflens/catalog';
+import { type Catalog, generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
-import { checkCatalog, contentVersion, withContentVersion } from './check.js';
-import { parseCsv } from './csv.js';
-import { guessMapping } from './mapping.js';
-import { sampleCsv } from './sample.js';
-import { toCatalog } from './to-catalog.js';
+import { contentVersion, parseCatalogFile, withContentVersion } from './catalog-file.js';
 
-const table = parseCsv(sampleCsv());
-const result = toCatalog(table, guessMapping(table), new Date('2026-10-31T00:00:00Z'));
-if (!result.ok) throw new Error(result.error);
-const SAMPLE: Catalog = result.catalog;
+const SAMPLE: Catalog = withContentVersion(generateCatalog({ seed: 7, products: 40 }));
 const [first] = SAMPLE.products;
 if (!first) throw new Error('expected a product');
 
@@ -20,9 +13,9 @@ const withProduct = (change: Record<string, unknown>): unknown => ({
     products: [{ ...first, ...change }, ...SAMPLE.products.slice(1)],
 });
 
-describe('checking a catalog the page sends', () => {
-    it('accepts a catalog made from a visitor’s file', () => {
-        expect(checkCatalog(SAMPLE)).toBe(SAMPLE);
+describe('reading a catalog file', () => {
+    it('accepts a whole catalog', () => {
+        expect(parseCatalogFile(SAMPLE)).toBe(SAMPLE);
     });
 
     it.each([
@@ -63,12 +56,12 @@ describe('checking a catalog the page sends', () => {
             'the catalog has no currency code',
         ],
     ])('refuses %s, saying what is wrong', (_, catalog, reason) => {
-        expect(() => checkCatalog(catalog)).toThrow(reason);
+        expect(() => parseCatalogFile(catalog)).toThrow(reason);
     });
 
     it('refuses a sku on two products', () => {
         const repeated = { ...SAMPLE, products: [first, first] };
-        expect(() => checkCatalog(repeated)).toThrow(
+        expect(() => parseCatalogFile(repeated)).toThrow(
             `the sku ${first.sku} is on more than one product`
         );
     });

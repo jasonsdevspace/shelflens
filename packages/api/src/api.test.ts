@@ -366,6 +366,37 @@ describe('what shoppers clicked', () => {
 });
 
 describe('the viewer', () => {
+    it('says whether members pay less and see more, by the same rule as a product', async () => {
+        const ask = async (products: typeof catalog.products) =>
+            data(
+                await createStoreApi(createStore({ catalog: { ...catalog, products } })).run(
+                    { query: '{ store { memberPricing membersOnlyProducts } }' },
+                    guest
+                )
+            ).store;
+        const listed = catalog.products.map((p) => ({
+            ...p,
+            visibleTo: ['guest', 'member'] as typeof p.visibleTo,
+            price: { ...p.price, member: p.price.guest },
+        }));
+        expect(await ask(listed)).toEqual({ memberPricing: false, membersOnlyProducts: false });
+        // A member who pays less only on the larger sizes still has a member price.
+        const [first, ...rest] = listed;
+        if (!first) throw new Error('expected a product');
+        const onlyAtTheTop = {
+            ...first,
+            price: {
+                guest: { min: 5000, max: 6000 },
+                member: { min: 5000, max: 5500 },
+            },
+        };
+        expect(await ask([onlyAtTheTop, ...rest])).toEqual({
+            memberPricing: true,
+            membersOnlyProducts: false,
+        });
+        expect(await ask(catalog.products)).toMatchObject({ membersOnlyProducts: true });
+    });
+
     const discounted = catalog.products.find((p) => p.price.member.min < p.price.guest.min);
     const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
 

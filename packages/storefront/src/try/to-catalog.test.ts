@@ -1,5 +1,11 @@
 // @vitest-environment node
-import { createStore, createStoreApi, viewerFromHeader } from '@shelflens/api';
+import {
+    contentVersion,
+    createStore,
+    createStoreApi,
+    parseCatalogFile,
+    viewerFromHeader,
+} from '@shelflens/api';
 import { describe, expect, it } from 'vitest';
 
 import { parseCsv, type Table } from './csv.js';
@@ -35,8 +41,7 @@ describe('rows to a catalog', () => {
 
     it('builds a store that answers a search, a filter count and a member price from the sample', async () => {
         const table = parseCsv(sampleCsv());
-        const { catalog, memberPrices } = loaded(toCatalog(table, guessMapping(table), NOW));
-        expect(memberPrices).toBe(true);
+        const { catalog } = loaded(toCatalog(table, guessMapping(table), NOW));
         const api = createStoreApi(createStore({ catalog }));
         const response = await api.run(
             {
@@ -87,8 +92,10 @@ describe('rows to a catalog', () => {
         ]);
     });
 
-    it('reports no member prices when every member pays the guest price', () => {
-        expect(one('name,price\nBoot,1\n').memberPrices).toBe(false);
+    it('makes a catalog the API reads as it stands, versioned by its content', () => {
+        const { catalog } = one('name,price,cat\nBoot,1,Shoes\nHat,2,Shoes\n');
+        expect(parseCatalogFile(catalog)).toBe(catalog);
+        expect(catalog.version).toBe(contentVersion(catalog));
     });
 
     it('builds every level of a category path, with each level knowing its parent', () => {

@@ -647,6 +647,19 @@ type Store {
     """
     rulesEdited: Boolean!
 
+    """
+    Whether a member pays less than a guest for any product, at its lowest
+    price or its highest. Without it, switching between them changes nothing.
+    The same rule as a product's memberPrice.
+    """
+    memberPricing: Boolean!
+
+    """
+    Whether some products are for members only, so a guest may be told a
+    product is not there that a member would see.
+    """
+    membersOnlyProducts: Boolean!
+
     viewer: Viewer!
 }
 
