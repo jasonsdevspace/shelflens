@@ -8,7 +8,7 @@ import { vi } from 'vitest';
  */
 
 /** The URL a fetch was asked for, as text. */
-export const urlOf = (input: RequestInfo | URL): string =>
+const urlOf = (input: RequestInfo | URL): string =>
     typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
 export const serving = (catalog: Catalog, rules: unknown = { rules: [] }) =>

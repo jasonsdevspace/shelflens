@@ -19,9 +19,9 @@ import { SuggestDocument, type SuggestQuery } from '../generated/operations.js';
 export const DEBOUNCE_MS = 100;
 
 /** Below this many characters nothing is asked, matching the documented minimum. */
-export const MIN_CHARACTERS = 2;
+const MIN_CHARACTERS = 2;
 
-export const SUGGESTION_LIMIT = 5;
+const SUGGESTION_LIMIT = 5;
 
 export type Suggestions = SuggestQuery['suggest'];
 

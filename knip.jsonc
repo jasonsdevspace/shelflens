@@ -1,0 +1,44 @@
+{
+    // Nothing is exported that nothing uses. Run in verify and in CI as `npm run exports`.
+    //
+    // Each workspace names the files something runs directly. The private
+    // packages' entries count, so an export no other package imports is
+    // found, and the published engine's entry is its public API, so it does not.
+    // The build configs map each package's dist back to its source, so this
+    // runs before anything is built.
+    "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
+    // Written by codegen in full, whatever the operations use.
+    "ignore": ["**/src/generated/**"],
+    "ignoreIssues": {
+        // Read by Vite, which loads each config's default export.
+        "packages/storefront/vite*.config.ts": ["exports"],
+        // Loaded by the shell plugin through Vite, by path, so no import names it.
+        "packages/storefront/src/app/shell.tsx": ["exports"],
+    },
+    "workspaces": {
+        ".": { "entry": ["scripts/*.mjs"] },
+        "packages/engine": { "entry": ["smoke/**/*.{ts,mjs}"] },
+        "packages/api": { "includeEntryExports": true, "entry": ["scripts/*.mjs"] },
+        "packages/catalog": { "includeEntryExports": true, "entry": ["src/cli.ts"] },
+        "packages/search": { "includeEntryExports": true, "entry": ["src/bench-cli.ts"] },
+        "packages/server": { "includeEntryExports": true, "entry": ["src/main.ts"] },
+        "packages/storefront": {
+            "includeEntryExports": true,
+            // Its configs load the dev server's plugins from built packages, so
+            // the pages, the widget and the worker are named here instead.
+            "vite": false,
+            "entry": [
+                "src/main.tsx",
+                "src/about.ts",
+                "src/try/main.tsx",
+                "src/widget/demo.tsx",
+                "src/widget/index.tsx",
+                "src/worker/sw.ts",
+                "src/try/cli.ts",
+                "src/bench/*.ts",
+                "e2e/**/*.ts",
+                "vite*.config.ts",
+            ],
+        },
+    },
+}

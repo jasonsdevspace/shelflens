@@ -55,6 +55,9 @@ jobs:
             - name: Node version check
               run: npm run node-check
 
+            - name: Unused exports
+              run: npm run exports
+
             - name: Test
               run: npm run test:run
 

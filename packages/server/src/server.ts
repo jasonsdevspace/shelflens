@@ -46,7 +46,7 @@ const DRAIN_MS = 5_000;
  * fixed `api`, one store that never changes, for a host that keeps no rules
  * and no clicks. One or the other, never both.
  */
-export type StoreSupply =
+type StoreSupply =
     | { readonly host: StoreHost; readonly api?: never }
     | { readonly api: StoreApi; readonly host?: never };
 

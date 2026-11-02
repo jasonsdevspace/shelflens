@@ -27,7 +27,7 @@ const CHARSET = '<meta charset="UTF-8" />';
  * browser cannot share one stylesheet across roots, and the pages hide the
  * waiting line with a style for a browser without JavaScript.
  */
-export const policyFor = (script: string, widget: boolean): string =>
+const policyFor = (script: string, widget: boolean): string =>
     [
         "default-src 'self'",
         `script-src 'self' 'sha256-${createHash('sha256').update(script).digest('base64')}'`,

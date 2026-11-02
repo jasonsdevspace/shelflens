@@ -17,7 +17,7 @@ import type { SearchQuery } from '../generated/operations.js';
  * over a different set of results.
  */
 
-export type Facet = SearchQuery['search']['facets'][number];
+type Facet = SearchQuery['search']['facets'][number];
 
 export interface FacetsProps {
     readonly facets: readonly Facet[];

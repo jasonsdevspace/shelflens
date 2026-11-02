@@ -49,7 +49,7 @@ export const cacheKeyOf = ({
         operation,
     ]);
 
-export interface CacheKeyInput {
+interface CacheKeyInput {
     readonly version: string;
     readonly viewer: Viewer;
     readonly request: StoreRequest;

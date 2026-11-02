@@ -72,7 +72,7 @@ const FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /** A phrase as the store keeps it: lower case, one space between words, capped. */
-export const foldPhrase = (phrase: string): string =>
+const foldPhrase = (phrase: string): string =>
     phrase.toLowerCase().trim().split(/\s+/).join(' ').slice(0, PHRASE_LIMIT);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

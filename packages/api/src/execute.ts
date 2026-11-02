@@ -49,14 +49,14 @@ export interface StoreResponse {
     };
 }
 
-export interface Limits {
+interface Limits {
     /** How deeply fields may nest. The results page needs six. */
     readonly maxDepth: number;
     /** How many fields one query may select, aliases included. */
     readonly maxFields: number;
 }
 
-export const DEFAULT_LIMITS: Limits = { maxDepth: 8, maxFields: 200 };
+const DEFAULT_LIMITS: Limits = { maxDepth: 8, maxFields: 200 };
 
 /** Attaches the resolvers to the schema the SDL built, field by field. */
 const attach = (schema: GraphQLSchema, map: Resolvers): GraphQLSchema => {

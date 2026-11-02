@@ -20,7 +20,7 @@ export interface Stop {
 }
 
 /** The one product only members may see. The generator always makes it the eighth. */
-export const MEMBERS_ONLY_SKU = 'SL-00008';
+const MEMBERS_ONLY_SKU = 'SL-00008';
 
 export const STOPS: readonly Stop[] = [
     {

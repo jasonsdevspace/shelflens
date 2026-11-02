@@ -15,9 +15,9 @@ export const GITHUB_PROFILE_URL = 'https://github.com/jasonsdevspace';
 export const REPO_URL = 'https://github.com/jasonsdevspace/shelflens';
 export const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 /** The explainer, beside the demo wherever the demo is served from. */
-export const ABOUT_URL = `${import.meta.env.BASE_URL}about/`;
+const ABOUT_URL = `${import.meta.env.BASE_URL}about/`;
 /** The page where a visitor searches a file of their own products. */
-export const TRY_URL = `${import.meta.env.BASE_URL}try/`;
+const TRY_URL = `${import.meta.env.BASE_URL}try/`;
 
 export const PortfolioStrip = () => (
     <nav className="portfolio" aria-label="Portfolio">

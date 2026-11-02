@@ -15,7 +15,7 @@ export interface ProductCardProps {
     readonly explain?: ExplainProps | undefined;
 }
 
-export interface ExplainProps {
+interface ExplainProps {
     readonly rank: number;
     readonly hit: Hit;
     /** Whether a phrase was typed, so "did not match it" means something. */

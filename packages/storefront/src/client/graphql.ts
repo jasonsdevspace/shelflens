@@ -66,7 +66,7 @@ export interface ClientOptions {
     readonly now?: () => number;
 }
 
-export interface QueryOptions {
+interface QueryOptions {
     readonly signal?: AbortSignal;
 }
 

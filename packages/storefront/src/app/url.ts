@@ -41,7 +41,7 @@ export interface SearchState {
 
 export const EMPTY_STATE: SearchState = { brand: [], color: [], size: [], page: 1 };
 
-export const PAGE_SIZE = 24;
+const PAGE_SIZE = 24;
 
 /** The sort each key means, and how the schema spells it. */
 export const SORTS: Readonly<

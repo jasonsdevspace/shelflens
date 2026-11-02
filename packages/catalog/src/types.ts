@@ -53,7 +53,7 @@ export interface PriceRange {
     readonly max: number;
 }
 
-export interface Rating {
+interface Rating {
     /** One decimal place, from 1 to 5. Zero when nobody has rated it yet. */
     readonly average: number;
     readonly count: number;

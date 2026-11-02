@@ -37,7 +37,7 @@ export interface RulePlan {
     readonly setAsideBySort: readonly string[];
 }
 
-export interface PlannedAdjustment {
+interface PlannedAdjustment {
     readonly ruleId: string;
     readonly action: 'boost' | 'bury';
     readonly adjustment: RuleAdjustment;

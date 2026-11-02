@@ -23,10 +23,7 @@ export const priceAttribute = (group: CustomerGroup): string => `price.${group}`
 const categoryNames = (product: Product, categories: ReadonlyMap<string, Category>): string =>
     product.categoryPath.map((id) => categories.get(id)?.name ?? id).join(' ');
 
-export const toDocument = (
-    product: Product,
-    categories: ReadonlyMap<string, Category>
-): Document => ({
+const toDocument = (product: Product, categories: ReadonlyMap<string, Category>): Document => ({
     id: product.sku,
     text: {
         name: product.name,

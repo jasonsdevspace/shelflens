@@ -46,7 +46,7 @@ const forMembers = ({
     group === 'guest' && switchable === true && membersOnly !== false ? FOR_MEMBERS : undefined;
 
 /** How many products stand beside one. */
-export const RAIL_SIZE = 6;
+const RAIL_SIZE = 6;
 
 export interface ProductPageProps {
     readonly client: GraphQLClient;

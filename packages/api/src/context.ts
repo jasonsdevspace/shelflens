@@ -40,7 +40,7 @@ export interface Viewer {
 }
 
 /** What a request's resolvers say about the answer as a whole. */
-export interface Answer {
+interface Answer {
     /**
      * The answer depends on something the cache key does not see, such as
      * the events collected so far, so no layer may keep it.

@@ -9,7 +9,7 @@
  * longer current is reported as stale so the caller drops it.
  */
 
-export type Outcome<T> = { readonly stale: true } | { readonly stale: false; readonly value: T };
+type Outcome<T> = { readonly stale: true } | { readonly stale: false; readonly value: T };
 
 export interface Latest {
     run<T>(task: (signal: AbortSignal) => Promise<T>): Promise<Outcome<T>>;
