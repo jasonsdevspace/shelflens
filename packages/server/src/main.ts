@@ -78,13 +78,14 @@ const server = createServer({
     ...(origins && { origins }),
 });
 
+// The store is built before the port is taken, so a rules file the catalog cannot
+// satisfy stops the server here rather than failing every request after it.
+const { api } = await host.current();
 server.listen(port, () => {
-    void host.current().then(({ api }) => {
-        console.log(
-            `listening on ${port}, ${products} products, ${rules.length} rules, store ${api.version}` +
-                (origins ? `, open to ${origins.allowed.join(' ')}` : '')
-        );
-    });
+    console.log(
+        `listening on ${port}, ${products} products, ${rules.length} rules, store ${api.version}` +
+            (origins ? `, open to ${origins.allowed.join(' ')}` : '')
+    );
 });
 
 const shutdown = () => {

@@ -96,13 +96,78 @@ describe('a store host', () => {
         expect(last.api.version).toMatch(/\+clicks\./);
     });
 
-    it('reads its source again once told to forget it', async () => {
+    it('reads its source again once cleared', async () => {
         const { host, source } = hostWith();
         await host.current();
-        host.forget();
+        host.clear();
         expect(await host.served()).toBeUndefined();
         await host.current();
         expect(source).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers a request during a change that builds again, rather than waiting on it', async () => {
+        const { host } = hostWith();
+        const first = await host.current();
+        let asked: Promise<unknown> | undefined;
+        const changed = host.change(async (rebuild) => {
+            host.clear();
+            // A request arrives while the change is still building.
+            asked = host.current();
+            return rebuild();
+        });
+        const settled = await Promise.race([
+            Promise.all([changed, changed.then(() => asked)]).then(() => 'settled'),
+            new Promise((resolve) => setTimeout(() => resolve('stuck'), 2000)),
+        ]);
+        expect(settled).toBe('settled');
+        expect((await host.current()).model.products).not.toBe(first.model.products);
+    });
+
+    it('keeps serving the store it has when a new source cannot be built', async () => {
+        const { host, source } = hostWith();
+        const first = await host.current();
+        source.mockImplementationOnce(() => Promise.reject(new Error('not a catalog')));
+        await host.change(async (rebuild) => {
+            host.forgetSource();
+            await expect(rebuild()).rejects.toThrow('not a catalog');
+        });
+        expect(await host.current()).toBe(first);
+    });
+
+    it('keeps the store it built when the host cannot tidy up after it', async () => {
+        const host = createStoreHost({
+            source: () => Promise.resolve({ catalog, rules: shipped }),
+            onServed: () => Promise.reject(new Error('the cache is gone')),
+        });
+        await expect(host.current()).resolves.toBeDefined();
+    });
+
+    it('keeps the store it has, and says nothing changed, when a visit cannot build again', async () => {
+        const { host, events, rules } = hostWith();
+        const first = await host.current();
+        await events.append([click('c1', jacket.sku, 'a')]);
+        vi.spyOn(rules, 'current').mockRejectedValueOnce(new Error('the database is closed'));
+        expect(await host.refresh()).toBe(false);
+        expect(await host.current()).toBe(first);
+    });
+
+    it('lands a save before a change asked after it, so a reset of the rules is not undone', async () => {
+        const { host, rules } = hostWith();
+        await host.current();
+        const replace = rules.replace.bind(rules);
+        vi.spyOn(rules, 'replace').mockImplementation(async (set) => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            await replace(set);
+        });
+        const saved = host.receiveRules({
+            method: 'POST',
+            body: JSON.stringify({ rules: [{ id: 'mine', pin: [jacket.sku] }] }),
+        });
+        const reset = host.change(async () => {
+            await rules.reset();
+        });
+        await Promise.all([saved, reset]);
+        expect(await rules.current()).toBeUndefined();
     });
 
     it('says it keeps no rules when it was given nowhere to keep them', async () => {

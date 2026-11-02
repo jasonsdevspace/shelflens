@@ -98,9 +98,6 @@ export interface AnswerStore {
     delete(request: Request): Promise<boolean>;
 }
 
-/** How long starting the store took, for the cold visit measurement. */
-export type { Startup };
-
 /** What the worker tells the page once it is in charge of it. */
 export interface StartedMessage extends Startup {
     readonly type: 'shelflens:started';
@@ -261,7 +258,7 @@ export const createWorkerApi = ({
             await held.clear();
             await rules?.reset();
             await forgetEvents?.();
-            host.forget();
+            host.clear();
             await dropOthers(undefined);
             return undefined;
         });
@@ -288,7 +285,7 @@ export const createWorkerApi = ({
                 await rules?.reset();
                 await forgetEvents?.();
             }
-            host.forget();
+            host.forgetSource();
             try {
                 const built = await rebuild();
                 options.timing.buildMs = performance.now() - began;
@@ -296,7 +293,7 @@ export const createWorkerApi = ({
             } catch (error) {
                 await (previous ? held.replace(previous) : held.clear());
                 if (previousRules) await rules?.replace(previousRules);
-                host.forget();
+                host.forgetSource();
                 const reason = error instanceof Error ? error.message : 'it could not be read';
                 return `the catalog could not be built: ${reason}`;
             }

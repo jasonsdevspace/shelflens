@@ -7,7 +7,7 @@ import type { EventStore } from './events.js';
 import { createStoreApi, type StoreApi } from './execute.js';
 import { fingerprint } from './fingerprint.js';
 import { receiveRules, type RulesReceipt, type RulesRequest, type RuleStore } from './rules.js';
-import { type Signals, signalsOf } from './signals.js';
+import { signalsOf } from './signals.js';
 
 /**
  * The store as every host serves it: the service worker, the Node server
@@ -78,8 +78,13 @@ export interface StoreHost {
      * host's own changes such as loading a new catalog.
      */
     change<T>(task: (rebuild: () => Promise<HostedStore>) => Promise<T>): Promise<T>;
-    /** Forgets the source and the store, so the next build reads the source again. */
-    forget(): void;
+    /**
+     * Forgets the source, so the next build reads it again. The store being
+     * served keeps answering until one built from the new source replaces it.
+     */
+    forgetSource(): void;
+    /** Forgets the source and the store, for a source that is gone. */
+    clear(): void;
     /** How long the first build took. */
     startup(): Startup;
 }
@@ -90,7 +95,14 @@ export const createStoreHost = ({
     rules,
     onServed,
 }: StoreHostOptions): StoreHost => {
+    /** The store being served or being built first, for a request to wait on. */
     let store: Promise<HostedStore> | undefined;
+    /**
+     * The last store built, held apart from `store` so a change in its turn
+     * compares with it and builds over it without waiting on a build queued
+     * behind that same turn.
+     */
+    let last: HostedStore | undefined;
     let read: Promise<StoreSource> | undefined;
     let timing: Startup = { downloadMs: 0, buildMs: 0 };
 
@@ -102,65 +114,68 @@ export const createStoreHost = ({
         return read;
     };
 
-    /** How often each product was clicked, from everything collected so far. */
-    const clicks = async (): Promise<Signals> => signalsOf(events ? await events.all() : []);
-
-    /** What a build is made from, read together so the two are from one moment. */
+    /** What a build is made from, read together so the clicks and the rules are from one moment. */
     const inputs = async () => {
-        const [signals, saved] = await Promise.all([clicks(), rules?.current()]);
-        return { signals, saved };
+        const [kept, saved, { catalog, rules: shipped }] = await Promise.all([
+            events?.all() ?? [],
+            rules?.current(),
+            sourceNow(),
+        ]);
+        return { signals: signalsOf(kept), saved, catalog, shipped };
     };
+
+    /** What a store is made from, in the form two stores are compared by. */
+    const fromOf = ({ signals, saved, catalog }: Awaited<ReturnType<typeof inputs>>) => ({
+        clicks: fingerprint(signals),
+        rules: JSON.stringify(saved ?? null),
+        catalog: catalog.version,
+    });
 
     const served = async (): Promise<HostedStore | undefined> =>
         store ? store.catch(() => undefined) : undefined;
 
-    /** A store from the source, the rules in effect and these clicks, over the last index when it can. */
-    const build = async (
-        signals: Signals,
-        saved: readonly Rule[] | undefined,
-        basis: Store | undefined
-    ): Promise<HostedStore> => {
-        const began = performance.now();
-        const { catalog, rules: shipped } = await sourceNow();
-        const downloaded = performance.now();
+    /**
+     * Tells the host a store is the one served. A host that fails to tidy up
+     * after it, as when the worker cannot reach its cache, has a store that
+     * still answers, so the failure does not fail the build.
+     */
+    const announce = async (next: HostedStore) => {
+        await onServed?.(next.api).catch(() => undefined);
+    };
+
+    /** A store from these inputs, over the last index when the catalog is the same. */
+    const build = (now: Awaited<ReturnType<typeof inputs>>): HostedStore => {
+        const { signals, saved, catalog, shipped } = now;
         const model = createStore({
             catalog,
             rules: saved ?? shipped,
             rulesEdited: saved !== undefined,
             signals,
-            basis,
+            basis: last?.model,
         });
         const api = withResponseCache(createStoreApi(model, { events }));
-        if (!basis)
-            timing = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
-        return {
-            api,
-            model,
-            from: {
-                clicks: fingerprint(signals),
-                rules: JSON.stringify(saved ?? null),
-                catalog: catalog.version,
-            },
-        };
+        return { api, model, from: fromOf(now) };
     };
 
     /**
      * Builds again, unless the store being served was made from the same
-     * clicks, rules and catalog, as when a visit and a save arrive together.
+     * clicks, rules and catalog, and says whether it did. Run only in a turn.
      */
-    const buildAgain = async (): Promise<HostedStore> => {
-        const { signals, saved } = await inputs();
-        const { catalog } = await sourceNow();
-        const current = await served();
-        const same =
-            current?.from.clicks === fingerprint(signals) &&
-            current.from.rules === JSON.stringify(saved ?? null) &&
-            current.from.catalog === catalog.version;
-        if (same) return current;
-        const next = await build(signals, saved, current?.model);
+    const buildAgain = async (): Promise<{ store: HostedStore; built: boolean }> => {
+        const now = await inputs();
+        const from = fromOf(now);
+        if (
+            last?.from.clicks === from.clicks &&
+            last.from.rules === from.rules &&
+            last.from.catalog === from.catalog
+        ) {
+            return { store: last, built: false };
+        }
+        const next = build(now);
+        last = next;
         store = Promise.resolve(next);
-        await onServed?.(next.api);
-        return next;
+        await announce(next);
+        return { store: next, built: true };
     };
 
     // One change to the store at a time, in the order asked.
@@ -171,14 +186,23 @@ export const createStoreHost = ({
         return next;
     };
 
+    /** The last store built, or the first one built now. Run only in a turn. */
+    const ensure = async (): Promise<HostedStore> => {
+        if (last) return last;
+        const began = performance.now();
+        const now = await inputs();
+        const downloaded = performance.now();
+        const built = build(now);
+        timing = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
+        last = built;
+        store = Promise.resolve(built);
+        await announce(built);
+        return built;
+    };
+
     const current = (): Promise<HostedStore> => {
         if (store) return store;
-        const first = serially(async () => {
-            const { signals, saved } = await inputs();
-            const built = await build(signals, saved, undefined);
-            await onServed?.(built.api);
-            return built;
-        });
+        const first = serially(ensure);
         store = first;
         // The next request tries again rather than remembering the failure,
         // unless something already put another store in its place.
@@ -195,34 +219,42 @@ export const createStoreHost = ({
             // A store still being built was built from the clicks as they were a
             // moment ago, which is as fresh as a visit needs.
             if (store === undefined) return false;
-            const now = await served();
-            if (fingerprint(await clicks()) === now?.from.clicks) return false;
             // The old store keeps answering until the new one is ready, and stays
             // if the new one cannot be built.
-            await serially(buildAgain);
-            return true;
+            return serially(buildAgain).then(
+                ({ built }) => built,
+                () => false
+            );
         },
         receiveRules: async (request) => {
             if (!rules)
                 return { status: 404, message: 'this store keeps no rules', changed: false };
-            const now = await current();
-            const { rules: shipped } = await sourceNow();
-            const receipt = await receiveRules(request, rules, {
-                shipped,
-                // The engine's own check, the same one a preview runs, so a set
-                // that previews is a set that saves.
-                check: (draft) => {
-                    now.model.engine.reconfigure({ rules: draft });
-                },
+            // In its turn from the moment it is asked, so a save cannot land after a
+            // change asked later, such as a new catalog that resets the rules.
+            return serially(async (): Promise<RulesAnswer> => {
+                const now = await ensure();
+                const { rules: shipped } = await sourceNow();
+                const receipt = await receiveRules(request, rules, {
+                    shipped,
+                    // The engine's own check, the same one a preview runs, so a set
+                    // that previews is a set that saves.
+                    check: (draft) => {
+                        now.model.engine.reconfigure({ rules: draft });
+                    },
+                });
+                if (receipt.status !== 204) return receipt;
+                const after = receipt.changed ? (await buildAgain()).store : now;
+                return { ...receipt, version: after.api.version };
             });
-            if (receipt.status !== 204) return receipt;
-            const after = receipt.changed ? await serially(buildAgain) : now;
-            return { ...receipt, version: after.api.version };
         },
-        change: (task) => serially(() => task(buildAgain)),
-        forget: () => {
+        change: (task) => serially(() => task(async () => (await buildAgain()).store)),
+        forgetSource: () => {
+            read = undefined;
+        },
+        clear: () => {
             read = undefined;
             store = undefined;
+            last = undefined;
         },
         startup: () => timing,
     };

@@ -40,15 +40,27 @@ const BODY_LIMIT_BYTES = 16 * 1024;
 const DRAIN_LIMIT_BYTES = 1024 * 1024;
 const DRAIN_MS = 5_000;
 
-export interface ServerOptions {
-    /**
-     * The store host every request is answered from, which folds in the
-     * clicks when a visit begins and builds again when rules are saved, as
-     * the service worker's does. A fixed `api` serves one store that never
-     * changes, for a host that keeps no rules and no clicks.
-     */
-    readonly host?: StoreHost;
-    readonly api?: StoreApi;
+/**
+ * What answers: a store host, which folds in the clicks when a visit begins
+ * and builds again when rules are saved, as the service worker's does, or a
+ * fixed `api`, one store that never changes, for a host that keeps no rules
+ * and no clicks. One or the other, never both.
+ */
+export type StoreSupply =
+    | { readonly host: StoreHost; readonly api?: never }
+    | { readonly api: StoreApi; readonly host?: never };
+
+/** The API to answer from now: the host's current store, or the fixed one. */
+const answerFrom = (supply: StoreSupply): (() => Promise<StoreApi>) => {
+    if (supply.host !== undefined) {
+        const { host } = supply;
+        return async () => (await host.current()).api;
+    }
+    const { api } = supply;
+    return () => Promise.resolve(api);
+};
+
+export type ServerOptions = StoreSupply & {
     /** Requests each client may make per minute. */
     readonly rateLimitPerMinute?: number;
     readonly now?: () => Date;
@@ -75,7 +87,7 @@ export interface ServerOptions {
      * and the server's own origin is read from the connection.
      */
     readonly trustProxy?: boolean;
-}
+};
 
 /** The paths an outside origin may use. */
 export type OriginPath = 'graphql' | 'events' | 'rules';
@@ -338,26 +350,20 @@ export type RequestHandler = (request: IncomingMessage, response: ServerResponse
  * The request handler on its own, for a host that already has a server,
  * such as the storefront's dev server.
  */
-export const createHandler = ({
-    host,
-    api: fixed,
-    rateLimitPerMinute = 600,
-    now = () => new Date(),
-    persisted = PERSISTED_OPERATIONS,
-    persistedOnly = false,
-    maxAgeSeconds,
-    base = '/',
-    events,
-    origins,
-    trustProxy = false,
-}: ServerOptions): RequestHandler => {
-    if (!host && !fixed) throw new Error('the server needs a store host or an API to serve');
-    /** The API to answer from now: the host's current store, or the fixed one. */
-    const apiNow = async (): Promise<StoreApi> => {
-        if (host) return (await host.current()).api;
-        if (fixed) return fixed;
-        throw new Error('the server has no store to serve');
-    };
+export const createHandler = (options: ServerOptions): RequestHandler => {
+    const {
+        host,
+        rateLimitPerMinute = 600,
+        now = () => new Date(),
+        persisted = PERSISTED_OPERATIONS,
+        persistedOnly = false,
+        maxAgeSeconds,
+        base = '/',
+        events,
+        origins,
+        trustProxy = false,
+    } = options;
+    const apiNow = answerFrom(options);
     const { allow } = createRateLimit(rateLimitPerMinute, now);
 
     const receiveRuleSet = async (

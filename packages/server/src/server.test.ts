@@ -251,6 +251,12 @@ describe('rules over HTTP', () => {
     it('is refused where the host keeps no rules', async () => {
         expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
     });
+
+    it('takes a store host or a fixed API, and never both', () => {
+        const either = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [] }) });
+        // @ts-expect-error A server given both could only ignore one of them.
+        expect(() => createServer({ host: either, api })).not.toThrow();
+    });
 });
 
 describe('a page on another origin', () => {
