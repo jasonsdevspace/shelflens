@@ -34,10 +34,10 @@
     left: 0;
     right: 0;
     z-index: 9999;
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     background: #ffd166;
     color: #1a1a1a;
-    font-weight: 600;
+    font-weight: var(--weight-strong);
     text-align: center;
 }
 .host-clip {
@@ -45,14 +45,14 @@
     cursor: crosshair;
     height: 6rem;
     border: 1px solid var(--line);
-    border-radius: 0.5rem;
-    padding: 1rem;
+    border-radius: var(--radius-large);
+    padding: var(--space-4);
 }
 .host-counter {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
     align-items: center;
-    margin-top: 1rem;
+    margin-top: var(--space-4);
 }
 
 /*
@@ -61,6 +61,21 @@
  */
 .widget-waiting {
     animation: widget-waiting 0s 0.4s both;
+}
+
+/*
+ * With JavaScript off, the line for that shows instead. A browser that
+ * knows the scripting feature is told so directly, and one that does not
+ * is told by the line itself, which is markup only when scripts are off.
+ */
+@media (scripting: none) {
+    .widget-waiting {
+        display: none;
+    }
+}
+
+.widget-waiting:has(~ noscript .notice) {
+    display: none;
 }
 
 @keyframes widget-waiting {
@@ -72,8 +87,8 @@
 /* The snippet a store adds, scrolling within itself on a narrow screen. */
 .host pre {
     overflow-x: auto;
-    padding: 1rem;
+    padding: var(--space-4);
     border: 1px solid var(--line);
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+    border-radius: var(--radius-large);
+    font-size: var(--text-caption);
 }

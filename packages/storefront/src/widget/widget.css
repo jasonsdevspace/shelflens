@@ -3,30 +3,29 @@
  * stop at the root, but inherited properties do not, so the container pins
  * the font, at a size no host's root font size can scale, the color, and
  * the cursor, so a cursor the host sets does not show over the widget.
- * The tokens follow the host's color-scheme, which is the one standard
+ * The colors follow the host's color-scheme, which is the one standard
  * property a host sets to theme the widget, and the store's own theme script
- * sets it on the demo's host page. A custom property takes any value, so the
- * scheme-aware tokens sit behind a feature check, with the light values for
- * a browser that does not know light-dark().
+ * sets it on the demo's host page. Each is chosen by name from the pairs in
+ * the tokens. A custom property takes any value, so the choice by scheme
+ * sits behind a feature check, with the light one for a browser that does
+ * not know light-dark().
  */
 .shelflens {
-    --bg: #ffffff;
-    --fg: #1a1a1a;
-    --muted: #5c5c5c;
-    --line: #d9d9d9;
-    --accent: #1f4fd8;
-    --on-accent: #ffffff;
-    --highlight: #eef2fd;
-    --control: #8a8a8a;
-    --warn: #b7472a;
-    --swatch-edge: rgba(0, 0, 0, 0.12);
-    --ring-width: 2px;
-    --ring-offset: 2px;
+    --bg: var(--light-bg);
+    --fg: var(--light-fg);
+    --muted: var(--light-muted);
+    --line: var(--light-line);
+    --accent: var(--light-accent);
+    --on-accent: var(--light-on-accent);
+    --highlight: var(--light-highlight);
+    --control: var(--light-control);
+    --warn: var(--light-warn);
+    --swatch-edge: var(--light-swatch-edge);
     display: block;
     position: relative;
     isolation: isolate;
     font:
-        16px/1.4 system-ui,
+        16px/var(--leading-body) system-ui,
         -apple-system,
         'Segoe UI',
         Roboto,
@@ -39,16 +38,16 @@
 
 @supports (color: light-dark(#000, #fff)) {
     .shelflens {
-        --bg: light-dark(#ffffff, #121212);
-        --fg: light-dark(#1a1a1a, #f0f0f0);
-        --muted: light-dark(#5c5c5c, #a5a5a5);
-        --line: light-dark(#d9d9d9, #3a3a3a);
-        --accent: light-dark(#1f4fd8, #8fb0ff);
-        --on-accent: light-dark(#ffffff, #121212);
-        --highlight: light-dark(#eef2fd, #1e2a4a);
-        --control: light-dark(#8a8a8a, #6e6e6e);
-        --warn: light-dark(#b7472a, #e8795a);
-        --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
+        --bg: light-dark(var(--light-bg), var(--dark-bg));
+        --fg: light-dark(var(--light-fg), var(--dark-fg));
+        --muted: light-dark(var(--light-muted), var(--dark-muted));
+        --line: light-dark(var(--light-line), var(--dark-line));
+        --accent: light-dark(var(--light-accent), var(--dark-accent));
+        --on-accent: light-dark(var(--light-on-accent), var(--dark-on-accent));
+        --highlight: light-dark(var(--light-highlight), var(--dark-highlight));
+        --control: light-dark(var(--light-control), var(--dark-control));
+        --warn: light-dark(var(--light-warn), var(--dark-warn));
+        --swatch-edge: light-dark(var(--light-swatch-edge), var(--dark-swatch-edge));
     }
 }
 
