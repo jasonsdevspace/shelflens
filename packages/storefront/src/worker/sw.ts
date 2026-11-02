@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { routeOf } from '@shelflens/api';
+import { type Route, routeOf, STORE_ROUTES } from '@shelflens/api';
 
 import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
@@ -28,6 +28,8 @@ declare const self: ServiceWorkerGlobalScope;
 const kind = storeKindOf(self.location.href);
 const names = storageFor(kind);
 const base = new URL(self.registration.scope).pathname;
+// The worker of a visitor's catalog also takes the catalog the page hands it.
+const served: readonly Route[] = kind === 'try' ? [...STORE_ROUTES, 'catalog'] : STORE_ROUTES;
 
 const events = createIndexedDbEventStore({ name: names.events });
 
@@ -83,9 +85,6 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const route = routeOf(request.url, base);
-    // Only the worker of a visitor's catalog takes a catalog.
-    const ours = route !== undefined && (route !== 'catalog' || kind === 'try');
-    if (!ours) return;
+    if (routeOf(request.url, base, served) === undefined) return;
     event.respondWith(api.handle(request).then((response) => response ?? fetch(request)));
 });

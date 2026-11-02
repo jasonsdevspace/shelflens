@@ -66,7 +66,7 @@ export type ServerOptions = StoreSupply & {
     readonly now?: () => Date;
     /** The operations a client may name. The storefront's, unless told otherwise. */
     readonly persisted?: Readonly<Record<string, string>>;
-    /** Take full query text as well as the persisted operations. Refused unless set, as the public demo does. */
+    /** Take full query text as well as the persisted operations. Refused unless set, and the public demo never sets it. */
     readonly allowFullQueries?: boolean;
     /** How long a cacheable answer may be served, in seconds. */
     readonly maxAgeSeconds?: number;
@@ -458,9 +458,8 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         const url = request.url ?? '/';
-        // A visitor's catalog lives in the browser, so the server has no catalog to take.
-        const found = routeOf(url, base);
-        const route = found === 'catalog' ? undefined : found;
+        // A visitor's catalog lives in the browser, so the server takes none.
+        const route = routeOf(url, base);
         if (answeredEarly({ request, response, route, origins, requestId, trustProxy }, url)) {
             return;
         }

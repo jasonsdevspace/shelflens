@@ -13,12 +13,12 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
 /**
  * Runs the API locally over the default catalog.
  *
- *   npm run api
+ *   FULL_QUERIES=true npm run api
  *   curl localhost:8080/graphql --header 'content-type: application/json' \
  *     --data '{ "query": "{ store { name catalogVersion } }" }'
  *
  * `FULL_QUERIES=true` takes full queries as well as the persisted operations,
- * which are all the server runs otherwise, as the public demo does.
+ * which are all the server runs otherwise, as the public demo runs.
  * `RULES=path` loads merchandising rules from a JSON file, validated here.
  * `ORIGINS=https://a.example,https://b.example` lets pages on those origins
  * use the API, as the widget does on a page the store does not serve, and

@@ -8,9 +8,11 @@ import {
     receiveEvents,
     resolveRequest,
     responseHeaders,
+    type Route,
     routeOf,
     type RuleStore,
     type Startup,
+    STORE_ROUTES,
     type StoreApi,
     VERSION_HEADER,
     withContentVersion,
@@ -72,7 +74,7 @@ export interface WorkerApiOptions {
     /** The path the site is served under, where `graphql` is answered. */
     readonly base?: string;
     readonly fetch?: typeof fetch;
-    /** Take full query text as well as the persisted operations. Refused unless set, as the demo does. */
+    /** Take full query text as well as the persisted operations. Refused unless set, and the demo never sets it. */
     readonly allowFullQueries?: boolean;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
@@ -393,6 +395,9 @@ export const createWorkerApi = ({
         );
     };
 
+    /** The routes this worker answers: a visitor's catalog too, where it keeps one. */
+    const served: readonly Route[] = catalogs ? [...STORE_ROUTES, 'catalog'] : STORE_ROUTES;
+
     /** A query, from the answers kept for its URL when one is fresh, and kept when it may be. */
     const query = async (request: Request): Promise<Response> => {
         const kept = request.method === 'GET' && answers ? await answers() : undefined;
@@ -419,7 +424,7 @@ export const createWorkerApi = ({
         },
         refresh: () => host.refresh(),
         handle: async (request) => {
-            const route = routeOf(request.url, base);
+            const route = routeOf(request.url, base, served);
             if (route === 'catalog' && catalogs) return receiveCatalog(catalogs, request);
             if (route === 'events') return receive(request);
             if (route === 'rules') {

@@ -47,9 +47,8 @@ export const storeApi = (): Plugin => ({
             events,
         });
         server.middlewares.use((request, response, next) => {
-            const route = request.url === undefined ? undefined : routeOf(request.url, base);
             // The dev server answers as the Node server does, so a visitor's catalog is the worker's.
-            if (route !== undefined && route !== 'catalog') {
+            if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
                 void handle(request, response);
             } else {
                 next();

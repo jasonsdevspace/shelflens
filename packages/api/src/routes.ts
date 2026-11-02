@@ -2,16 +2,27 @@
  * The paths a host answers, under the base it is served from.
  *
  * Every host asks this once for each request: the Node server, the dev
- * server and the service worker. Each then answers the routes it serves.
- * The worker of a visitor's catalog also takes a catalog on its own path,
- * which the other hosts leave alone.
+ * server and the service worker, each naming the routes it serves, so none
+ * has a route to filter back out. Only the worker of a visitor's catalog
+ * serves the catalog, which it is handed on a path of its own.
  */
 export type Route = 'graphql' | 'events' | 'rules' | 'catalog';
 
-const ROUTES: readonly Route[] = ['graphql', 'events', 'rules', 'catalog'];
+/** What every host serves: the API, the events it collects, and the rules it keeps. */
+type StoreRoute = Exclude<Route, 'catalog'>;
 
-/** Which route a URL names under the base, parsing it once, or nothing. */
-export const routeOf = (url: string, base = '/'): Route | undefined => {
+export const STORE_ROUTES: readonly StoreRoute[] = ['graphql', 'events', 'rules'];
+
+/**
+ * Which of the routes a host serves a URL names under its base, parsing it
+ * once, or nothing. The answer is one of the routes the host named, so a
+ * host that serves no catalog is never handed one.
+ */
+export const routeOf = <Served extends Route = StoreRoute>(
+    url: string,
+    base = '/',
+    served: readonly Served[] = STORE_ROUTES as readonly Served[]
+): Served | undefined => {
     const { pathname } = new URL(url, 'http://local');
-    return ROUTES.find((route) => pathname === `${base}${route}`);
+    return served.find((route) => pathname === `${base}${route}`);
 };

@@ -23,7 +23,7 @@ export { PERSISTED_OPERATIONS } from './generated/persisted.js';
 export { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
 export { paysLess } from './prices.js';
 export { touch, trimOldest } from './recent.js';
-export { routeOf } from './routes.js';
+export { type Route, routeOf, STORE_ROUTES } from './routes.js';
 export { createMemoryRuleStore, receiveRules, type RuleStore } from './rules.js';
 export { parseRulesFile } from './rules-file.js';
 export { createStoreHost, type HostedStore, type Startup, type StoreHost } from './store-host.js';

@@ -52,7 +52,9 @@ const host = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [
 const { api } = await host.current();
 const response = await api.run(
     { query: '{ search(input: { phrase: "boot" }) { total } }' },
-    viewerFromHeader(request.headers.get('shelflens-customer-group'))
+    viewerFromHeader(request.headers.get('shelflens-customer-group')),
+    // When the request arrived, which a rule with a window reads.
+    new Date()
 );
 ```
 

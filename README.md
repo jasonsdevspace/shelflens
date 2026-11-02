@@ -202,9 +202,11 @@ npm run api
 ```
 
 The first writes a catalog to look at. The next four run the benchmarks and write their results
-to `docs/benchmarks/`. The last serves the API on port 8080, so a query can be sent by hand:
+to `docs/benchmarks/`. The last serves the API on port 8080, which runs only the storefront's own
+operations unless it is told to take a query sent by hand:
 
 ```bash
+FULL_QUERIES=true npm run api
 curl localhost:8080/graphql --header 'content-type: application/json' \
   --header 'shelflens-customer-group: member' \
   --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
