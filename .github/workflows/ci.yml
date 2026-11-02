@@ -74,6 +74,11 @@ jobs:
             - name: Build the storefront
               run: npm run storefront
 
+            # The budgets held over the files the build ships, compressed as a
+            # server sends them, beside the test that measures the source.
+            - name: Budgets on what ships
+              run: npm run budget
+
     # The storefront in a real browser, served as the demo is served, with
     # the service worker answering and axe auditing each page. Desktop and
     # phone, since the facets and the popover lay out differently on each.
@@ -101,9 +106,11 @@ jobs:
             - name: Browser tests
               run: npm run e2e
 
-            # Lighthouse's accessibility audit, which must score a hundred on
-            # each page it checks. Runs against the build the browser tests made.
-            - name: Accessibility audit
+            # Lighthouse as a phone on a slow network loads each page: a hundred
+            # for accessibility, ninety for performance, and a largest paint and a
+            # layout shift a visit counts as good. Runs against the build the
+            # browser tests made.
+            - name: Lighthouse audit
               run: npm run lighthouse
 
             - name: Keep the report when something fails

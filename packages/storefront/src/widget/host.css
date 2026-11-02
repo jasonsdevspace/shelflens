@@ -11,8 +11,13 @@
     font-family: Georgia, serif;
     font-style: italic;
 }
+/* Hostile, not unreadable: the same rust, lighter on the dark theme's page. */
+:root[data-theme='dark'] .host ul li {
+    color: #e0805f;
+}
 .host button {
     background: #ffd166;
+    color: #1a1a1a;
     border: 3px dashed #1a1a1a;
     border-radius: 0;
     font-family: Georgia, serif;

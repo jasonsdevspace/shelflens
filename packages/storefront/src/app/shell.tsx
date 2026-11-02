@@ -10,9 +10,12 @@ import { Preparing } from './Preparing.jsx';
  * same thing again, so nothing moves. Only a browser with JavaScript
  * turned off sees the line that says so.
  */
-const PAGES: Readonly<Record<string, { readonly home: string; readonly main: string }>> = {
-    '/index.html': { home: './', main: 'content' },
-    '/try/index.html': { home: '../', main: 'content try' },
+const PAGES: Readonly<
+    Record<string, { readonly home: string; readonly main: string; readonly waiting: boolean }>
+> = {
+    // The store's masthead fills in once the store is ready, the try page's never does.
+    '/index.html': { home: './', main: 'content', waiting: true },
+    '/try/index.html': { home: '../', main: 'content try', waiting: false },
 };
 
 /** The line for a browser with JavaScript turned off, about the thing that needs it. */
@@ -37,7 +40,7 @@ export const firstScreen = (page: string): string => {
     if (!shell) throw new Error(`no first screen is written for ${page}`);
     return renderToStaticMarkup(
         <>
-            <PageTop home={shell.home} />
+            <PageTop home={shell.home} waiting={shell.waiting} />
             <main className={shell.main}>
                 <Preparing />
             </main>

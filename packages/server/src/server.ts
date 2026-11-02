@@ -38,7 +38,7 @@ import {
 
 const BODY_LIMIT_BYTES = 16 * 1024;
 
-/** How much of a body past the limit is read and dropped after the 413, and for how long. */
+/** How much of a body past the limit is read and dropped before the 413, and for how long. */
 const DRAIN_LIMIT_BYTES = 1024 * 1024;
 const DRAIN_MS = 5_000;
 
@@ -267,24 +267,36 @@ export const createRateLimit = (perMinute: number, now: () => Date) => {
     };
 };
 
+/**
+ * The body of a request, or nothing when it is past the limit. A body past
+ * the limit is read to its end and dropped, so the client has finished
+ * sending before the refusal is written and reads it whole, rather than
+ * having its upload cut off under it. Not without end: a body past the
+ * limit by more than a megabyte, or still arriving after five seconds, has
+ * its connection closed.
+ */
 const readBody = (request: IncomingMessage): Promise<string | undefined> =>
     new Promise((resolve) => {
         let size = 0;
         const chunks: Buffer[] = [];
-        const take = (chunk: Buffer) => {
+        let stop: NodeJS.Timeout | undefined;
+        request.on('data', (chunk: Buffer) => {
             size += chunk.length;
-            if (size > BODY_LIMIT_BYTES) {
-                // Reading stops here, and the connection closes once the refusal is
-                // written, so the client reads a 413 rather than a reset.
-                request.off('data', take);
-                request.pause();
-                resolve(undefined);
+            if (size <= BODY_LIMIT_BYTES) {
+                chunks.push(chunk);
                 return;
             }
-            chunks.push(chunk);
-        };
-        request.on('data', take);
-        request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+            stop ??= setTimeout(() => request.destroy(), DRAIN_MS);
+            if (size > BODY_LIMIT_BYTES + DRAIN_LIMIT_BYTES) request.destroy();
+        });
+        request.on('end', () => {
+            clearTimeout(stop);
+            resolve(size > BODY_LIMIT_BYTES ? undefined : Buffer.concat(chunks).toString('utf8'));
+        });
+        request.on('close', () => {
+            clearTimeout(stop);
+            resolve(undefined);
+        });
         request.on('error', () => resolve(undefined));
     });
 
@@ -411,20 +423,10 @@ export const createHandler = ({
     ): Promise<{ body: string | undefined; refused: boolean }> => {
         if (request.method !== 'POST') return { body: undefined, refused: false };
         const body = await readBody(request);
-        if (body === undefined) {
+        // A request whose body has ended counts as destroyed, so whether the refusal can
+        // still be written is a question for the connection, closed only when cut off.
+        if (body === undefined && !request.socket.destroyed) {
             response.setHeader('connection', 'close');
-            // The rest of the body is read and dropped, so closing does not reset the
-            // connection before the client has read the 413. Not without end, though.
-            response.once('finish', () => {
-                let dropped = 0;
-                const stop = setTimeout(() => request.destroy(), DRAIN_MS);
-                request.on('data', (chunk: Buffer) => {
-                    dropped += chunk.length;
-                    if (dropped > DRAIN_LIMIT_BYTES) request.destroy();
-                });
-                request.once('close', () => clearTimeout(stop));
-                request.resume();
-            });
             refuse(response, 413, 'the request body is too large', requestId);
         }
         return { body, refused: body === undefined };

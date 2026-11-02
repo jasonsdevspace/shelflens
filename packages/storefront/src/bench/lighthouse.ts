@@ -1,73 +1,130 @@
-import { chromium, type Page } from '@playwright/test';
+import { chromium } from '@playwright/test';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
-import { SAMPLE_FILE, SAMPLE_PRODUCTS, sampleCsv } from '../try/sample.js';
+import { PAGES } from './pages.js';
 import { startPreview } from './preview.js';
 
 /**
- * Lighthouse's accessibility audit over the built demo, which must score
- * a hundred on every page it checks.
+ * Lighthouse over the built demo, in two passes.
  *
  *   npm run lighthouse
  *
- * Runs after `npm run storefront` has built the page. One visit first
- * installs the worker and waits for the page to be ready, and the audits
- * keep that storage, so each page Lighthouse loads is answered by a
- * worker already in charge and is the storefront, not its loading state.
- * Each page is checked to be ready before it is audited.
+ * Runs after `npm run storefront` has built the page.
  *
- * The page for a visitor's own catalog is audited twice: empty, as a visitor
- * first finds it, and with the sample file loaded through the page, as a
- * visitor loads one, searching in explain mode.
+ * Accessibility is audited on each page as it is once ready. One visit
+ * first installs the worker and waits for the page, and the audit keeps
+ * that storage, so what Lighthouse reads is the storefront, not its
+ * loading state. The page for a visitor's own catalog is audited empty, as
+ * a visitor first finds it, and with the sample file loaded through the
+ * page, searching in explain mode. Every page must score a hundred.
+ *
+ * Performance is measured on a first visit, as a phone on a slow network
+ * makes it: Lighthouse clears the site's storage before each page, so the
+ * worker installs, the catalog downloads and the store builds while it
+ * watches. Every page must score at least ninety, paint its largest content
+ * within the time a visit counts as good, and shift its layout no more than
+ * that either. One trace on a shared machine can be slow for reasons of its
+ * own, so a page that misses is measured twice more and judged on the
+ * middle of the three. The bytes of script each page carries are held to
+ * their budgets by `npm run budget`, over the same build.
  */
 
 const PORT = 4176;
-/** A store page is ready once the worker answers and the search box appears. */
-const storeReady = (page: Page) =>
-    page.getByRole('combobox', { name: 'Search the store' }).waitFor();
 
-/** The page for a visitor's catalog is ready once it asks for a file. */
-const chooserReady = (page: Page) =>
-    page.getByRole('heading', { level: 1, name: 'Search your own products' }).waitFor();
+/** The lowest performance score a page may have. */
+const PERFORMANCE = 0.9;
+/** The largest paint, in milliseconds, within which a visit counts as good. */
+const LARGEST_PAINT_MS = 2500;
+/** The layout shift past which a visit no longer counts as good. */
+const LAYOUT_SHIFT = 0.1;
+/** How many traces a page that misses is judged on. */
+const TRACES = 3;
 
-/** Loads the sample file through the page, as a visitor would, made here rather than read from the build. */
-const loadSample = async (page: Page, origin: string) => {
-    await page.goto(`${origin}/try/`);
-    await page.getByLabel('Choose a file').setInputFiles({
-        name: SAMPLE_FILE,
-        mimeType: 'text/csv',
-        buffer: Buffer.from(sampleCsv()),
-    });
-    await page.getByRole('button', { name: `Search ${SAMPLE_PRODUCTS} products` }).click();
-    await page.getByText(`your own catalog of ${SAMPLE_PRODUCTS} products`).waitFor();
+type Report = NonNullable<Awaited<ReturnType<typeof lighthouse>>>['lhr'];
+
+interface Measure {
+    readonly performance: number;
+    readonly paint: number;
+    readonly shift: number;
+}
+
+const measureOf = (report: Report): Measure => ({
+    performance: report.categories.performance?.score ?? 0,
+    paint: report.audits['largest-contentful-paint']?.numericValue ?? Number.POSITIVE_INFINITY,
+    shift: report.audits['cumulative-layout-shift']?.numericValue ?? Number.POSITIVE_INFINITY,
+});
+
+/** Each figure's middle value across the traces, so one slow trace does not decide. */
+const middle = (measures: readonly Measure[]): Measure => {
+    const of = (pick: (measure: Measure) => number) => {
+        const sorted = measures.map(pick).sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)] ?? Number.NaN;
+    };
+    return {
+        performance: of((m) => m.performance),
+        paint: of((m) => m.paint),
+        shift: of((m) => m.shift),
+    };
 };
 
-/** A search has answered once its results heading appears. */
-const resultsReady = (query: string) => (page: Page) =>
-    page.getByRole('heading', { level: 1, name: `results for "${query}"` }).waitFor();
-
-/**
- * Each page audited, what to do first when there is something, and what to
- * wait for before the audit. Storage is kept from one page to the next, so
- * the empty page for a visitor's catalog comes before the one that loads a
- * file into it.
- */
-const PAGES: readonly {
-    readonly path: string;
-    readonly prepare?: (page: Page, origin: string) => Promise<void>;
-    readonly ready?: (page: Page) => Promise<void>;
-}[] = [
-    { path: '/', ready: storeReady },
-    { path: '/?q=jacket&explain=1', ready: storeReady },
-    { path: '/?category=shoes', ready: storeReady },
-    { path: '/?product=SL-00001', ready: storeReady },
-    { path: '/about/' },
-    { path: '/widget/', ready: storeReady },
-    { path: '/try/', ready: chooserReady },
-    { path: '/try/?q=bag&explain=1', prepare: loadSample, ready: resultsReady('bag') },
-    { path: '/try/widget/', ready: storeReady },
+/** What a measure misses of the gate, each in a few words, or nothing when it passes. */
+const missed = ({ performance, paint, shift }: Measure): readonly string[] => [
+    ...(performance < PERFORMANCE ? [`performance ${String(Math.round(performance * 100))}`] : []),
+    ...(paint > LARGEST_PAINT_MS ? [`largest paint ${String(Math.round(paint))} ms`] : []),
+    ...(shift > LAYOUT_SHIFT ? [`layout shift ${shift.toFixed(3)}`] : []),
 ];
+
+const describe = ({ performance, paint, shift }: Measure): string =>
+    `performance ${String(Math.round(performance * 100))}, largest paint ${String(Math.round(paint))} ms, layout shift ${shift.toFixed(3)}`;
+
+/** The accessibility audits that did not pass, named, so a failure says what to fix. */
+const findingsOf = (report: Report): readonly string[] =>
+    (report.categories.accessibility?.auditRefs ?? []).flatMap((ref) => {
+        const audit = report.audits[ref.id];
+        return audit?.score !== null && audit !== undefined && audit.score < 1 ? [audit.id] : [];
+    });
+
+type Run = (url: string, category: string, keepStorage: boolean) => Promise<Report>;
+
+/** The first pass: accessibility, on each page as it is once ready. What fails is added to `failures`. */
+const auditAccessibility = async (
+    port: number,
+    origin: string,
+    run: Run,
+    failures: string[]
+): Promise<void> => {
+    const browser = await chromium.connectOverCDP(`http://localhost:${String(port)}`);
+    const page = await browser.newPage();
+    for (const { path, prepare, ready } of PAGES) {
+        if (prepare) await prepare(page, origin);
+        await page.goto(`${origin}${path}`);
+        if (ready) await ready(page);
+        const report = await run(`${origin}${path}`, 'accessibility', true);
+        const score = Math.round((report.categories.accessibility?.score ?? 0) * 100);
+        const findings = findingsOf(report);
+        const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
+        console.log(`${path}: accessibility ${String(score)}${detail}`);
+        if (score < 100) failures.push(`${path} (accessibility ${String(score)})`);
+    }
+    await browser.close();
+};
+
+/** The second pass: performance, on a first visit to each page. What fails is added to `failures`. */
+const measurePerformance = async (origin: string, run: Run, failures: string[]): Promise<void> => {
+    for (const { path } of PAGES) {
+        const url = `${origin}${path}`;
+        const measures = [measureOf(await run(url, 'performance', false))];
+        while (missed(middle(measures)).length > 0 && measures.length < TRACES) {
+            measures.push(measureOf(await run(url, 'performance', false)));
+        }
+        const judged = middle(measures);
+        const traces = measures.length > 1 ? `, the middle of ${String(measures.length)}` : '';
+        console.log(`${path} on a first visit: ${describe(judged)}${traces}`);
+        const misses = missed(judged);
+        if (misses.length > 0) failures.push(`${path} (${misses.join(', ')})`);
+    }
+};
 
 const main = async () => {
     const preview = await startPreview(PORT);
@@ -75,30 +132,21 @@ const main = async () => {
         chromePath: chromium.executablePath(),
         chromeFlags: ['--headless=new', '--no-sandbox'],
     });
+    const run: Run = async (url, category, keepStorage) => {
+        const result = await lighthouse(url, {
+            port: chrome.port,
+            onlyCategories: [category],
+            output: 'json',
+            logLevel: 'error',
+            disableStorageReset: keepStorage,
+        });
+        if (!result) throw new Error(`Lighthouse returned nothing for ${url}`);
+        return result.lhr;
+    };
     const failures: string[] = [];
     try {
-        const browser = await chromium.connectOverCDP(`http://localhost:${chrome.port}`);
-        const page = await browser.newPage();
-        for (const { path, prepare, ready } of PAGES) {
-            if (prepare) await prepare(page, preview.origin);
-            await page.goto(`${preview.origin}${path}`);
-            if (ready) await ready(page);
-            const result = await lighthouse(`${preview.origin}${path}`, {
-                port: chrome.port,
-                onlyCategories: ['accessibility'],
-                output: 'json',
-                logLevel: 'error',
-                disableStorageReset: true,
-            });
-            const score = result?.lhr.categories.accessibility?.score ?? 0;
-            const findings = Object.values(result?.lhr.audits ?? {})
-                .filter((audit) => audit.score !== null && audit.score < 1)
-                .map((audit) => audit.id);
-            const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
-            console.log(`${path}: accessibility ${Math.round(score * 100)}${detail}`);
-            if (score < 1) failures.push(path);
-        }
-        await browser.close();
+        await auditAccessibility(chrome.port, preview.origin, run, failures);
+        await measurePerformance(preview.origin, run, failures);
     } finally {
         preview.stop();
         try {
@@ -108,7 +156,7 @@ const main = async () => {
         }
     }
     if (failures.length > 0) {
-        throw new Error(`below a hundred for accessibility: ${failures.join(', ')}`);
+        throw new Error(`short of the gate: ${failures.join(', ')}`);
     }
 };
 
