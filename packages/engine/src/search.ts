@@ -1,7 +1,7 @@
 import { withinEdits } from './edits.js';
 import { checkFacets, computeFacet } from './facets.js';
 import { checkFilter, matchesFilter } from './filters.js';
-import { attributeOf, buildIndex, type Index } from './index-builder.js';
+import { attributeOf, buildIndex, type Index, isList } from './index-builder.js';
 import { createMatcher, type TermMatcher, type UnitHit, type UnitHits } from './match.js';
 import { tokenize } from './normalize.js';
 import { firstInOrder } from './order.js';
@@ -165,8 +165,6 @@ const applyPlan = (
  */
 const ID_SORT = 'id';
 
-const isList = (value: AttributeValue): value is readonly string[] => Array.isArray(value);
-
 /** A multi-valued attribute sorts by its first value. */
 const compareValues = (a: AttributeValue, b: AttributeValue): number => {
     const left = isList(a) ? (a[0] ?? '') : a;
@@ -175,9 +173,21 @@ const compareValues = (a: AttributeValue, b: AttributeValue): number => {
     return String(left).localeCompare(String(right));
 };
 
-/** Two numbers in the clause's direction, or a tie. */
-const byNumber = (left: number, right: number, direction: number): number | undefined =>
-    left === right ? undefined : (left - right) * direction;
+/**
+ * Two numbers in the clause's direction, or a tie.
+ *
+ * A score that is not a number, as a boost of Infinity on a score of zero
+ * gives, sorts last either way, so the order stays total and a page taken
+ * from the top of the matches is the page a full sort would give.
+ */
+const byNumber = (left: number, right: number, direction: number): number | undefined => {
+    if (left === right) return undefined;
+    if (Number.isNaN(left) || Number.isNaN(right)) {
+        if (Number.isNaN(left) && Number.isNaN(right)) return undefined;
+        return Number.isNaN(left) ? 1 : -1;
+    }
+    return (left - right) * direction;
+};
 
 interface Ordering {
     readonly sort: readonly SortClause[];
@@ -401,10 +411,8 @@ const adjustScores = (
     const rules = new Map<number, RuleEffect[]>();
     const chosen = new Map<number, SignalEffect>();
     const adjusting = plan.adjustments.length > 0;
-    if (!adjusting && plan.pinnedBy.size === 0 && signals === undefined) {
-        return { rules, signals: chosen };
-    }
     const pinning = plan.pinnedBy.size > 0;
+    if (!adjusting && !pinning && signals === undefined) return { rules, signals: chosen };
     candidates.docs.forEach((doc, i) => {
         const id = adjusting || pinning ? (index.documents[doc]?.id ?? '') : '';
         const pinned = pinning ? plan.pinnedBy.get(id) : undefined;

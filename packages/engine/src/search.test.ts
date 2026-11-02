@@ -429,3 +429,26 @@ describe('configuration', () => {
         expect(engine.size).toBe(6);
     });
 });
+
+describe('a page from the top of the matches', () => {
+    it('is the page a full sort gives, even when a score is not a number', () => {
+        // A boost of Infinity on a browse, where every score is zero, makes NaN.
+        const boosted = createEngine(documents, {
+            ...config,
+            rules: [
+                {
+                    id: 'endless',
+                    boost: [{ attribute: { name: 'brand', value: 'Northwind' }, weight: Infinity }],
+                },
+            ],
+        });
+        const sort = [{ by: 'relevance', direction: 'desc' }] as const;
+        const all = boosted.search({ sort, pageSize: 100 }).hits.map((hit) => hit.id);
+        const paged = all.map(
+            (_, i) => boosted.search({ sort, pageSize: 1, page: i + 1 }).hits[0]?.id
+        );
+        expect(paged).toEqual(all);
+        // The one document without a score, the Northwind shoe, sorts last.
+        expect(all.at(-1)).toBe('p1');
+    });
+});

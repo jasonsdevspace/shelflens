@@ -1,4 +1,4 @@
-import type { Index } from './index-builder.js';
+import type { Index, KeywordCodes } from './index-builder.js';
 import {
     type EngineConfig,
     EngineError,
@@ -36,6 +36,45 @@ export interface Counted {
     readonly passes: Uint8Array;
 }
 
+/**
+ * Counts held between searches, one array per coded attribute, always all
+ * zero when no count is running. A search touches only the codes its
+ * matches carry, so a narrow query over an attribute with a hundred
+ * thousand distinct values costs what its matches cost, not the values.
+ */
+const scratch = new WeakMap<KeywordCodes, Int32Array>();
+
+/**
+ * Counted by code, into one array, rather than by string into a map. The
+ * codes hold each document's values once, so a document never counts twice
+ * for the same value.
+ */
+const countCodes = (coded: KeywordCodes, counted: Counted): ValueBucket[] => {
+    let counts = scratch.get(coded);
+    if (!counts) {
+        counts = new Int32Array(coded.values.length);
+        scratch.set(coded, counts);
+    }
+    const touched: number[] = [];
+    const { starts, codes } = coded;
+    for (let i = 0; i < counted.docs.length; i += 1) {
+        if (counted.passes[i] !== 1) continue;
+        const doc = counted.docs[i] ?? 0;
+        const end = starts[doc + 1] ?? 0;
+        for (let k = starts[doc] ?? 0; k < end; k += 1) {
+            const code = codes[k] ?? 0;
+            if (counts[code] === 0) touched.push(code);
+            counts[code] = (counts[code] ?? 0) + 1;
+        }
+    }
+    // Read back and zeroed, so the array is ready for the next count.
+    return touched.map((code): ValueBucket => {
+        const count = counts[code] ?? 0;
+        counts[code] = 0;
+        return { kind: 'value', value: coded.values[code] ?? '', count };
+    });
+};
+
 const keywordFacet = (
     name: string,
     facet: Extract<FacetConfig, { kind: 'keyword' }>,
@@ -43,26 +82,7 @@ const keywordFacet = (
     index: Index
 ): Facet => {
     const coded = index.keywords.get(facet.attribute);
-    const buckets: ValueBucket[] = [];
-    if (coded) {
-        // Counted by code, into one array, rather than by string into a map.
-        // The codes hold each document's values once, so a document never
-        // counts twice for the same value.
-        const counts = new Int32Array(coded.values.length);
-        const { starts, codes } = coded;
-        for (let i = 0; i < counted.docs.length; i += 1) {
-            if (counted.passes[i] !== 1) continue;
-            const doc = counted.docs[i] ?? 0;
-            const end = starts[doc + 1] ?? 0;
-            for (let k = starts[doc] ?? 0; k < end; k += 1) {
-                const code = codes[k] ?? 0;
-                counts[code] = (counts[code] ?? 0) + 1;
-            }
-        }
-        counts.forEach((count, code) => {
-            if (count > 0) buckets.push({ kind: 'value', value: coded.values[code] ?? '', count });
-        });
-    }
+    const buckets: ValueBucket[] = coded ? countCodes(coded, counted) : [];
     buckets.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
     return {
         name,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildIndex } from './index-builder.js';
 import { createEngine } from './search.js';
 import { type Document, type EngineConfig, EngineError, type Facet } from './types.js';
 
@@ -202,5 +203,24 @@ describe('keyword counts', () => {
     it('count nothing on an attribute that holds no words', () => {
         const { facets } = mixed.search({ facets: ['price'] });
         expect(facet(facets, 'price')).toMatchObject({ kind: 'keyword', buckets: [] });
+    });
+});
+
+describe('keyword counts, one search after another', () => {
+    it('start from nothing each time, whatever the search before counted', () => {
+        const narrow = () => engine.search({ query: 'ostara', facets: ['brand'] }).facets;
+        const first = narrow();
+        engine.search({ facets: ['brand'] });
+        expect(narrow()).toEqual(first);
+        expect(facet(first, 'brand')).toMatchObject({ buckets: [{ value: 'Ostara', count: 2 }] });
+    });
+
+    it('code only the attributes a keyword facet counts', () => {
+        // A keyword attribute kept for filtering, with no facet counting it.
+        const index = buildIndex(documents, {
+            ...config,
+            attributes: { ...config.attributes, material: 'keyword' },
+        });
+        expect([...index.keywords.keys()].sort()).toEqual(['brand', 'color']);
     });
 });

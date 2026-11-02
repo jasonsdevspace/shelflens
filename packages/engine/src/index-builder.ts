@@ -21,7 +21,7 @@ import {
  * heap. A posting here is one number in a document array and one small
  * integer per field in a count array beside it.
  *
- * Each keyword attribute is also held as small integer codes, one per
+ * Each keyword attribute a facet counts is also held as small integer codes, one per
  * distinct value, so a facet counts into an array by code rather than into
  * a map by string.
  */
@@ -57,7 +57,7 @@ export interface Index {
     readonly averageLength: readonly number[];
     /** Attribute values by document, one column per configured attribute. */
     readonly columns: ReadonlyMap<string, readonly (AttributeValue | undefined)[]>;
-    /** Every keyword attribute's values as codes, for counting facets. */
+    /** The values of every keyword attribute a keyword facet counts, as codes. */
     readonly keywords: ReadonlyMap<string, KeywordCodes>;
     /** Each document's position in id order, for breaking ties the same way every time. */
     readonly idRank: Int32Array;
@@ -89,7 +89,7 @@ interface Draft {
     readonly counts: number[];
 }
 
-const isList = (value: AttributeValue | undefined): value is readonly string[] =>
+export const isList = (value: AttributeValue | undefined): value is readonly string[] =>
     Array.isArray(value);
 
 /** The codes of one keyword column, each document's values once each. */
@@ -122,8 +122,12 @@ const buildKeywords = (
     config: EngineConfig
 ): Map<string, KeywordCodes> => {
     const keywords = new Map<string, KeywordCodes>();
-    for (const [name, column] of columns) {
-        if (config.attributes[name] === 'keyword') keywords.set(name, codeColumn(column));
+    for (const facet of Object.values(config.facets ?? {})) {
+        const column = columns.get(facet.attribute);
+        if (facet.kind !== 'keyword' || !column || keywords.has(facet.attribute)) continue;
+        if (config.attributes[facet.attribute] === 'keyword') {
+            keywords.set(facet.attribute, codeColumn(column));
+        }
     }
     return keywords;
 };
