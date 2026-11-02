@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, test as base } from '@playwright/test';
+import { type APIRequestContext, expect, type Page, test as base } from '@playwright/test';
 
 import { DEFAULT_DB_NAME } from '../src/worker/event-db.js';
 
@@ -91,3 +91,36 @@ export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
             }),
         DEFAULT_DB_NAME
     );
+
+/** The catalog the demo ships, as much of it as the tests read. */
+export interface ShippedCatalog {
+    readonly products: readonly {
+        readonly sku: string;
+        readonly name: string;
+        readonly visibleTo: readonly string[];
+        readonly variants: readonly {
+            readonly color: string;
+            readonly price: number;
+            readonly inStock: boolean;
+        }[];
+        readonly price: {
+            readonly guest: { readonly min: number };
+            readonly member: { readonly min: number };
+        };
+    }[];
+}
+
+/** A product only members may see, and one members pay less for, from the catalog the demo ships. */
+export const membersAndDiscount = async (request: APIRequestContext) => {
+    const catalog = (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+    const membersOnly = catalog.products.find((p) => p.visibleTo.length === 1);
+    const discounted = catalog.products.find(
+        (p) => p.visibleTo.length === 2 && p.price.member.min < p.price.guest.min
+    );
+    if (!membersOnly || !discounted) throw new Error('expected a hidden and a discounted product');
+    return { membersOnly, discounted };
+};
+
+/** The first amount in a line of text, as a number of dollars. */
+export const amount = (text: string | null) =>
+    Number(/\d+(?:\.\d+)?/.exec((text ?? '').replace(/,/g, ''))?.[0]);
