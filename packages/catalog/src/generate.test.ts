@@ -18,7 +18,7 @@ describe('determinism', () => {
     });
 
     it('names its version after the generator, the seed and the size', () => {
-        expect(catalog.version).toBe('1-42-500');
+        expect(catalog.version).toBe('2-42-500');
     });
 
     it('gives the same random sequence on every call with one seed', () => {

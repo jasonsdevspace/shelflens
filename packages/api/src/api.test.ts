@@ -429,40 +429,52 @@ describe('the viewer', () => {
 
 describe('recommendations', () => {
     it('falls back on the same most rated list the nothing-found page offers', async () => {
-        // With nothing viewed and nothing clicked, both read one list for a category.
+        // With nothing viewed and nothing clicked, both read one list for a category. The
+        // product asked about is the category's least rated, so it is in neither list and
+        // the two cover the same top of it.
         const quiet = createStoreApi(createStore({ catalog }));
-        const product = catalog.products.find((p) => p.visibleTo.length === 2);
+        const byCategory = new Map<string, (typeof catalog.products)[number][]>();
+        for (const p of catalog.products.filter((p) => p.visibleTo.length === 2)) {
+            byCategory.set(p.categoryId, [...(byCategory.get(p.categoryId) ?? []), p]);
+        }
+        const crowded = [...byCategory.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+        expect(crowded.length).toBeGreaterThan(10);
+        const product = [...crowded].sort((a, b) => a.rating.count - b.rating.count)[0];
         if (!product) throw new Error('expected a product every viewer may see');
-        const rail = data(
-            await quiet.run(
-                {
-                    query: `query ($sku: ID!) { recommendations(sku: $sku, limit: 6) { source items { sku } } }`,
-                    variables: { sku: product.sku },
-                },
-                guest
-            )
-        ).recommendations;
-        const nothing = data(
-            await quiet.run(
-                {
-                    query: `query ($input: SearchInput!) { search(input: $input) { noResults { popular { sku } } } }`,
-                    variables: {
-                        input: {
-                            phrase: 'zzqxv',
-                            filters: [{ attribute: 'CATEGORY', match: { eq: product.categoryId } }],
+        for (const viewer of [guest, member]) {
+            const rail = data(
+                await quiet.run(
+                    {
+                        query: `query ($sku: ID!) { recommendations(sku: $sku, limit: 6) { source items { sku } } }`,
+                        variables: { sku: product.sku },
+                    },
+                    viewer
+                )
+            ).recommendations;
+            const search = data(
+                await quiet.run(
+                    {
+                        query: `query ($input: SearchInput!) { search(input: $input) { total noResults { popular { sku } } } }`,
+                        variables: {
+                            input: {
+                                phrase: 'zzqxv',
+                                filters: [
+                                    { attribute: 'CATEGORY', match: { eq: product.categoryId } },
+                                ],
+                            },
                         },
                     },
-                },
-                guest
-            )
-        ).search.noResults;
-        expect(rail.source).toBe('CATEGORY_MOST_RATED');
-        const offered = nothing.popular
-            .map((p: { sku: string }) => p.sku)
-            .filter((sku: string) => sku !== product.sku);
-        expect(rail.items.map((p: { sku: string }) => p.sku)).toEqual(
-            offered.slice(0, rail.items.length)
-        );
+                    viewer
+                )
+            ).search;
+            expect(search.total).toBe(0);
+            expect(rail.source).toBe('CATEGORY_MOST_RATED');
+            const railed = rail.items.map((p: { sku: string }) => p.sku);
+            const offered = search.noResults.popular.map((p: { sku: string }) => p.sku);
+            expect(railed).toHaveLength(6);
+            expect(offered).not.toContain(product.sku);
+            expect(railed).toEqual(offered.slice(0, 6));
+        }
     });
 
     it('answers beside a product from the events the host collected, and says the answer is volatile', async () => {

@@ -3,6 +3,7 @@ import { mostRated } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { StoreEvent } from './events.js';
+import { hitsOf } from './hits.js';
 
 /**
  * What to show beside a product.
@@ -81,15 +82,15 @@ export const viewedWith = (
 
 /** The most rated products the viewer may see in a category. */
 const mostRatedIn = (categoryId: string, limit: number, context: Context): readonly Product[] =>
-    mostRated(context.store.engine, {
-        group: context.viewer.group,
-        filters: [{ attribute: 'category', eq: categoryId }],
-        limit,
-        now: context.now,
-    }).hits.flatMap((hit) => {
-        const product = context.store.products.get(hit.id);
-        return product ? [product] : [];
-    });
+    hitsOf(
+        mostRated(context.store.engine, {
+            group: context.viewer.group,
+            filters: [{ attribute: 'category', eq: categoryId }],
+            limit,
+            now: context.now,
+        }),
+        context
+    ).map(({ product }) => product);
 
 export const recommend = (
     { sku, limit, session }: RecommendationRequest,

@@ -1,80 +1,80 @@
 {
     "recorded": {
-        "date": "2026-10-31",
-        "commit": "36e181d",
+        "date": "2026-11-02",
+        "commit": "0963ca6",
         "machine": "Apple M2 Max, 12 cores",
         "node": "v24.3.0"
     },
     "results": [
         {
             "products": 2000,
-            "catalogBytes": 3732927,
-            "parseMs": 9.25,
-            "buildMs": 71.85,
+            "catalogBytes": 3724620,
+            "parseMs": 8.99,
+            "buildMs": 69.92,
             "suggest": {
                 "samples": 2600,
-                "p50Ms": 0.21,
-                "p95Ms": 0.81,
-                "maxMs": 2.62
+                "p50Ms": 0.2,
+                "p95Ms": 0.79,
+                "maxMs": 3.18
             },
             "search": {
                 "samples": 340,
-                "p50Ms": 0.38,
-                "p95Ms": 0.68,
-                "maxMs": 3.07
+                "p50Ms": 0.33,
+                "p95Ms": 0.47,
+                "maxMs": 1.37
             }
         },
         {
             "products": 5000,
-            "catalogBytes": 9325578,
-            "parseMs": 28.03,
-            "buildMs": 135.15,
+            "catalogBytes": 9304219,
+            "parseMs": 21.71,
+            "buildMs": 127.42,
             "suggest": {
                 "samples": 2600,
-                "p50Ms": 0.29,
-                "p95Ms": 1.78,
-                "maxMs": 5.1
+                "p50Ms": 0.28,
+                "p95Ms": 1.76,
+                "maxMs": 5.46
             },
             "search": {
                 "samples": 340,
-                "p50Ms": 0.42,
-                "p95Ms": 0.88,
-                "maxMs": 5.64
+                "p50Ms": 0.38,
+                "p95Ms": 0.69,
+                "maxMs": 1.55
             }
         },
         {
             "products": 10000,
-            "catalogBytes": 18695573,
-            "parseMs": 46.1,
-            "buildMs": 267.76,
+            "catalogBytes": 18653336,
+            "parseMs": 44.17,
+            "buildMs": 266.15,
             "suggest": {
                 "samples": 2600,
-                "p50Ms": 0.42,
-                "p95Ms": 3.58,
-                "maxMs": 10.51
+                "p50Ms": 0.41,
+                "p95Ms": 3.41,
+                "maxMs": 11.47
             },
             "search": {
                 "samples": 340,
-                "p50Ms": 0.52,
-                "p95Ms": 1.2,
-                "maxMs": 2.06
+                "p50Ms": 0.51,
+                "p95Ms": 1.1,
+                "maxMs": 1.88
             }
         },
         {
             "products": 25000,
-            "catalogBytes": 46956343,
-            "parseMs": 149.94,
-            "buildMs": 664.03,
+            "catalogBytes": 46851641,
+            "parseMs": 146.62,
+            "buildMs": 614.56,
             "suggest": {
                 "samples": 2600,
-                "p50Ms": 0.88,
-                "p95Ms": 9.94,
-                "maxMs": 38.31
+                "p50Ms": 0.82,
+                "p95Ms": 9.52,
+                "maxMs": 32.77
             },
             "search": {
                 "samples": 340,
-                "p50Ms": 0.92,
-                "p95Ms": 2.78,
+                "p50Ms": 0.91,
+                "p95Ms": 2.74,
                 "maxMs": 3.68
             }
         }

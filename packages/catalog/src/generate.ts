@@ -30,7 +30,7 @@ import {
  * Bumped whenever the output for a given seed changes, so a cached index
  * built from an older generator is never mistaken for the current one.
  */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;
 
 export interface GenerateOptions {
     readonly seed?: number;

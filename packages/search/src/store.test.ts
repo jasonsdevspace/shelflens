@@ -2,7 +2,7 @@ import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
 import { toDocuments } from './documents.js';
-import { createStoreEngine, searchStore, SHOPPER_FACETS } from './store.js';
+import { createStoreEngine, mostRated, searchStore, SHOPPER_FACETS } from './store.js';
 
 const catalog = generateCatalog({ seed: 42, products: 500 });
 const engine = createStoreEngine(catalog);
@@ -73,5 +73,39 @@ describe('customer groups', () => {
         const total = (facet: typeof guest) =>
             facet?.kind === 'keyword' ? facet.buckets.reduce((sum, b) => sum + b.count, 0) : 0;
         expect(total(member)).toBe(total(guest) + 1);
+    });
+});
+
+describe('the most rated', () => {
+    const ratingOf = (id: string) => {
+        const product = catalog.products.find((p) => p.sku === id);
+        return [product?.rating.count ?? 0, product?.rating.average ?? 0] as const;
+    };
+
+    it('lists by how many ratings, then by the rating among equals, up to the limit', () => {
+        const { hits } = mostRated(engine, { group: 'member', limit: 12 });
+        expect(hits).toHaveLength(12);
+        const ratings = hits.map((hit) => ratingOf(hit.id));
+        for (let i = 1; i < ratings.length; i += 1) {
+            const [count, average] = ratings[i] ?? [0, 0];
+            const [countBefore, averageBefore] = ratings[i - 1] ?? [0, 0];
+            expect(count <= countBefore).toBe(true);
+            if (count === countBefore) expect(average <= averageBefore).toBe(true);
+        }
+    });
+
+    it('keeps to the place asked for, and never lists what the group may not see', () => {
+        const category = catalog.products[0]?.categoryId ?? '';
+        const { hits } = mostRated(engine, {
+            group: 'guest',
+            filters: [{ attribute: 'category', eq: category }],
+            limit: 50,
+        });
+        expect(hits.length).toBeGreaterThan(0);
+        for (const hit of hits) {
+            const product = catalog.products.find((p) => p.sku === hit.id);
+            expect(product?.categoryId).toBe(category);
+            expect(product?.visibleTo).toContain('guest');
+        }
     });
 });

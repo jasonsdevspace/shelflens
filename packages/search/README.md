@@ -10,6 +10,10 @@ that the engine deliberately knows nothing about.
   different catalog. `searchStore` applies the group in one place: it filters by visibility and
   resolves "price" to the group's own price attribute for filters, sorts and facets, so the rest
   of the system never names a group-specific attribute.
+- **Most rated.** `mostRated` is the one list of the products a group may see with the most
+  ratings, then the highest rated among equals, found through `searchStore` so visibility and
+  rules hold. The rail beside a product falls back on it, and a search that finds nothing offers
+  it, so the two never disagree.
 - **Synonyms.** The catalog's own vocabulary file supplies the words shoppers use for its
   products, with a few equivalents added here.
 - **The golden queries.** `golden.ts` lists what a shopper might type and what the top results
