@@ -52,8 +52,8 @@ Option B, with option A available at any time.
   the catalog has a size budget and the index has a benchmark. The cold first visit is measured
   in `docs/benchmarks/cold-visit.md`: on the demo catalog the worker spends about 38 ms
   downloading the catalog and the rules and 55 ms building the store, served locally.
-- A worker is one JavaScript thread. The engine's wide queries cost about a tenth of a second on a
-  hundred thousand products and well under a millisecond's worth on the demo's two thousand, so
+- A worker is one JavaScript thread. The engine's wide queries cost about a thirtieth of a second
+  on a hundred thousand products and well under a millisecond's worth on the demo's two thousand, so
   the page stays responsive, but a far larger catalog would need the index built off the main
   path and persisted.
 - Rate limiting in a worker protects nothing, since the client is the server. It is implemented

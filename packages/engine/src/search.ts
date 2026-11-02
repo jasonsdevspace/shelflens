@@ -4,6 +4,7 @@ import { checkFilter, matchesFilter } from './filters.js';
 import { attributeOf, buildIndex, type Index } from './index-builder.js';
 import { createMatcher, type TermMatcher, type UnitHit, type UnitHits } from './match.js';
 import { tokenize } from './normalize.js';
+import { firstInOrder } from './order.js';
 import { adjustmentsFor, checkRules, planRules, type RulePlan } from './rules.js';
 import { buildSynonyms } from './synonyms.js';
 import {
@@ -238,9 +239,11 @@ const comparator =
     (a: number, b: number): number => {
         const docA = candidates.docs[a] ?? 0;
         const docB = candidates.docs[b] ?? 0;
-        const pinA = pinRank.get(docA) ?? Infinity;
-        const pinB = pinRank.get(docB) ?? Infinity;
-        if (pinA !== pinB) return pinA - pinB;
+        if (pinRank.size > 0) {
+            const pinA = pinRank.get(docA) ?? Infinity;
+            const pinB = pinRank.get(docB) ?? Infinity;
+            if (pinA !== pinB) return pinA - pinB;
+        }
         for (const clause of sort) {
             const ordered = compareByClause(clause, { index, candidates }, a, b);
             if (ordered !== undefined) return ordered;
@@ -253,24 +256,20 @@ interface Limits {
     readonly maxResults: number;
 }
 
-/**
- * The slice of the sorted positions that make one page.
- *
- * A page past the end is empty rather than an error. The caller asked a
- * well-formed question whose answer is "nothing there".
- */
-const paginate = (sorted: readonly number[], request: SearchRequest, limits: Limits) => {
+/** The page a request asks for, and where in the ordered results it starts and ends. */
+const pageOf = (count: number, request: SearchRequest, limits: Limits) => {
     const pageSize = Math.min(
         Math.max(1, request.pageSize ?? DEFAULT_PAGE_SIZE),
         limits.maxPageSize
     );
     const page = Math.max(1, Math.floor(request.page ?? 1));
-    const reachable = Math.min(sorted.length, limits.maxResults);
-    const totalPages = Math.ceil(reachable / pageSize);
+    const reachable = Math.min(count, limits.maxResults);
     const start = (page - 1) * pageSize;
-    const positions =
-        start >= reachable ? [] : sorted.slice(start, Math.min(start + pageSize, reachable));
-    return { positions, total: sorted.length, page, pageSize, totalPages };
+    return {
+        start,
+        end: Math.min(start + pageSize, reachable),
+        info: { total: count, page, pageSize, totalPages: Math.ceil(reachable / pageSize) },
+    };
 };
 
 /**
@@ -338,6 +337,7 @@ const passing = (
         .filter((filter) => filter.attribute !== except)
         .map((filter) => ({ filter, column: index.columns.get(filter.attribute) }));
     const result = new Uint8Array(candidates.docs.length);
+    if (applicable.length === 0) return result.fill(1);
     candidates.docs.forEach((doc, i) => {
         result[i] = applicable.every(({ filter, column }) => matchesFilter(column?.[doc], filter))
             ? 1
@@ -372,23 +372,44 @@ interface Adjusted {
     readonly signals: ReadonlyMap<number, SignalEffect>;
 }
 
+/** Each document's count of choices, by document number, zero for none. */
+const signalsByDoc = (
+    signals: Readonly<Record<string, number>>,
+    documents: readonly Document[]
+): Float64Array | undefined => {
+    if (Object.keys(signals).length === 0) return undefined;
+    const byDoc = new Float64Array(documents.length);
+    documents.forEach(({ id }, doc) => {
+        const count = Object.hasOwn(signals, id) ? signals[id] : undefined;
+        if (count !== undefined && count > 0) byDoc[doc] = count;
+    });
+    return byDoc;
+};
+
 /**
  * Applies the rules' boosts and buries to the scores, then the signal for
- * a document the rules left alone, and remembers each effect.
+ * a document the rules left alone, and remembers each effect. A search no
+ * rule adjusts and no signal reaches leaves every score as it is, without
+ * looking at a candidate.
  */
 const adjustScores = (
     index: Index,
     candidates: Candidates,
     plan: RulePlan,
-    signals: Readonly<Record<string, number>>
+    signals: Float64Array | undefined
 ): Adjusted => {
     const rules = new Map<number, RuleEffect[]>();
     const chosen = new Map<number, SignalEffect>();
+    const adjusting = plan.adjustments.length > 0;
+    if (!adjusting && plan.pinnedBy.size === 0 && signals === undefined) {
+        return { rules, signals: chosen };
+    }
+    const pinning = plan.pinnedBy.size > 0;
     candidates.docs.forEach((doc, i) => {
-        const id = index.documents[doc]?.id ?? '';
-        const pinnedBy = plan.pinnedBy.get(id);
-        const own: RuleEffect[] = pinnedBy ? [{ ruleId: pinnedBy, action: 'pin' }] : [];
-        if (plan.adjustments.length > 0) {
+        const id = adjusting || pinning ? (index.documents[doc]?.id ?? '') : '';
+        const pinned = pinning ? plan.pinnedBy.get(id) : undefined;
+        const own: RuleEffect[] = pinned ? [{ ruleId: pinned, action: 'pin' }] : [];
+        if (adjusting) {
             const adjusted = adjustmentsFor(plan, id, (name) => attributeOf(index, doc, name));
             candidates.scores[i] = (candidates.scores[i] ?? 0) * adjusted.weight;
             own.push(...adjusted.effects);
@@ -396,13 +417,12 @@ const adjustScores = (
         if (own.length > 0) rules.set(doc, own);
         // A pinned document is placed by the pin, not its score, and a buried one
         // stays where the merchandiser put it, so neither takes the signal.
-        const ruled = own.some((effect) => effect.action === 'pin' || effect.action === 'bury');
-        const count = Object.hasOwn(signals, id) ? signals[id] : undefined;
-        if (!ruled && count !== undefined && count > 0) {
-            const weight = signalWeight(count);
-            candidates.scores[i] = (candidates.scores[i] ?? 0) * weight;
-            chosen.set(doc, { count, weight });
-        }
+        const count = signals?.[doc] ?? 0;
+        if (count === 0) return;
+        if (own.some((effect) => effect.action === 'pin' || effect.action === 'bury')) return;
+        const weight = signalWeight(count);
+        candidates.scores[i] = (candidates.scores[i] ?? 0) * weight;
+        chosen.set(doc, { count, weight });
     });
     return { rules, signals: chosen };
 };
@@ -411,12 +431,12 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const synonyms = buildSynonyms(config.synonyms ?? []);
     const matcher = createMatcher(index, config, synonyms);
     const rules = config.rules ?? [];
-    const signals = config.signals ?? {};
     const limits: Limits = {
         maxPageSize: config.limits?.pageSize ?? MAX_PAGE_SIZE,
         maxResults: config.limits?.results ?? MAX_RESULTS,
     };
     const byId = new Map(index.documents.map((d, doc) => [d.id, doc]));
+    const signals = signalsByDoc(config.signals ?? {}, index.documents);
 
     const search = (request: SearchRequest): SearchResult => {
         const filters = request.filters ?? [];
@@ -445,8 +465,13 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
             kept.length === 0 && candidates.mode !== 'all' ? 'none' : candidates.mode;
 
         const pinRank = new Map(plan.pins.map((id, rank) => [byId.get(id) ?? -1, rank]));
-        kept.sort(comparator({ sort, index, candidates, pinRank }));
-        const { positions, ...pageInfo } = paginate(kept, request, limits);
+        const { start, end, info: pageInfo } = pageOf(kept.length, request, limits);
+        const positions =
+            start >= end
+                ? []
+                : firstInOrder(kept, end, comparator({ sort, index, candidates, pinRank })).slice(
+                      start
+                  );
 
         const hits: Hit[] = positions.map((i) => {
             const doc = candidates.docs[i] ?? 0;

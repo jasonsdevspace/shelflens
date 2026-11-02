@@ -1,6 +1,5 @@
 import type { Index } from './index-builder.js';
 import {
-    type AttributeValue,
     type EngineConfig,
     EngineError,
     type Facet,
@@ -18,9 +17,6 @@ import {
  * each color there would be. A filter on a different attribute, such as a
  * brand, does narrow it, which is what a shopper expects.
  */
-
-const isList = (value: AttributeValue | undefined): value is readonly string[] =>
-    Array.isArray(value);
 
 /** The most values one facet reports. Past this a facet is a list, not a filter. */
 const DEFAULT_MAX_BUCKETS = 100;
@@ -46,28 +42,34 @@ const keywordFacet = (
     counted: Counted,
     index: Index
 ): Facet => {
-    const counts = new Map<string, number>();
-    const count = (value: string) => counts.set(value, (counts.get(value) ?? 0) + 1);
-    const column = index.columns.get(facet.attribute);
-    for (let i = 0; i < counted.docs.length; i += 1) {
-        if (counted.passes[i] !== 1) continue;
-        const value = column?.[counted.docs[i] ?? 0];
-        if (typeof value === 'string') {
-            count(value);
-        } else if (isList(value)) {
-            // A document with several values counts once for each, and
-            // never twice for the same one. The lists are short, so a scan
-            // back is cheaper than a Set per document.
-            value.forEach((item, j) => {
-                if (value.indexOf(item) === j) count(item);
-            });
+    const coded = index.keywords.get(facet.attribute);
+    const buckets: ValueBucket[] = [];
+    if (coded) {
+        // Counted by code, into one array, rather than by string into a map.
+        // The codes hold each document's values once, so a document never
+        // counts twice for the same value.
+        const counts = new Int32Array(coded.values.length);
+        const { starts, codes } = coded;
+        for (let i = 0; i < counted.docs.length; i += 1) {
+            if (counted.passes[i] !== 1) continue;
+            const doc = counted.docs[i] ?? 0;
+            const end = starts[doc + 1] ?? 0;
+            for (let k = starts[doc] ?? 0; k < end; k += 1) {
+                const code = codes[k] ?? 0;
+                counts[code] = (counts[code] ?? 0) + 1;
+            }
         }
+        counts.forEach((count, code) => {
+            if (count > 0) buckets.push({ kind: 'value', value: coded.values[code] ?? '', count });
+        });
     }
-    const buckets: ValueBucket[] = [...counts]
-        .map(([value, count]) => ({ kind: 'value' as const, value, count }))
-        .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
-        .slice(0, facet.maxBuckets ?? DEFAULT_MAX_BUCKETS);
-    return { name, attribute: facet.attribute, kind: 'keyword', buckets };
+    buckets.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+    return {
+        name,
+        attribute: facet.attribute,
+        kind: 'keyword',
+        buckets: buckets.slice(0, facet.maxBuckets ?? DEFAULT_MAX_BUCKETS),
+    };
 };
 
 const rangeFacet = (
@@ -82,11 +84,12 @@ const rangeFacet = (
         if (counted.passes[i] !== 1) continue;
         const value = column?.[counted.docs[i] ?? 0];
         if (typeof value !== 'number') continue;
-        facet.ranges.forEach((range, r) => {
-            const above = range.from === undefined || value >= range.from;
-            const below = range.to === undefined || value < range.to;
-            if (above && below) counts[r] = (counts[r] ?? 0) + 1;
-        });
+        for (let r = 0; r < facet.ranges.length; r += 1) {
+            const { from, to } = facet.ranges[r] ?? {};
+            if ((from === undefined || value >= from) && (to === undefined || value < to)) {
+                counts[r] = (counts[r] ?? 0) + 1;
+            }
+        }
     }
     return {
         name,

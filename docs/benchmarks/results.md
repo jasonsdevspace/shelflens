@@ -6,17 +6,17 @@ what does not.
 
 | Recorded   | Commit    | Machine                | Node    |
 | ---------- | --------- | ---------------------- | ------- |
-| 2026-10-27 | `8512d4a` | Apple M2 Max, 12 cores | v24.3.0 |
+| 2026-11-02 | `9327e47` | Apple M2 Max, 12 cores | v24.3.0 |
 
 ## The catalog
 
-100,000 generated products from seed 7: 179.9 MB as JSON, 16.6 MB compressed.
+100,000 generated products from seed 7: 179.5 MB as JSON, 16.5 MB compressed.
 
 ## Building the index
 
 | Terms | Build time | Documents per second | Heap used |
 | ----- | ---------- | -------------------- | --------- |
-| 306   | 2375 ms    | 42,113               | 84 MB     |
+| 305   | 1992 ms    | 50,213               | 91 MB     |
 
 ## Queries
 
@@ -28,13 +28,13 @@ every indexed term of a similar length, costs far less here than it would on a r
 tens of thousands of distinct words. The other costs, which grow with the number of products
 rather than of words, carry over.
 
-| Query                           | Results | p50   | p95   | p99    |
-| ------------------------------- | ------- | ----- | ----- | ------ |
-| search as you type, two letters | 61,666  | 93.21 | 98.31 | 175.66 |
-| one common word                 | 5,627   | 4.6   | 9.83  | 10.11  |
-| two words                       | 375     | 15.96 | 18.6  | 93.88  |
-| a synonym                       | 10,449  | 9.81  | 15.3  | 16.88  |
-| a typo, so the fuzzy pass runs  | 8,310   | 7.16  | 12.48 | 13.39  |
-| browse a category by position   | 33,566  | 71.29 | 74.71 | 77.53  |
-| a word with two filters         | 304     | 2.9   | 7.51  | 8.11   |
-| everything, page fifty          | 99,999  | 90.12 | 93.61 | 95.79  |
+| Query                           | Results | p50   | p95   | p99   |
+| ------------------------------- | ------- | ----- | ----- | ----- |
+| search as you type, two letters | 61,666  | 33.94 | 40.48 | 89.77 |
+| one common word                 | 5,627   | 1.49  | 7.09  | 7.64  |
+| two words                       | 375     | 15.81 | 18    | 91.84 |
+| a synonym                       | 10,449  | 3.24  | 8.88  | 9.53  |
+| a typo, so the fuzzy pass runs  | 8,310   | 2.61  | 7.81  | 8.19  |
+| browse a category by position   | 33,566  | 26.78 | 30.11 | 33.28 |
+| a word with two filters         | 304     | 2.4   | 7.82  | 8.53  |
+| everything, page fifty          | 99,999  | 19.96 | 21.88 | 22.86 |

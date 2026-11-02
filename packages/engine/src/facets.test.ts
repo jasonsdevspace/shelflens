@@ -172,3 +172,35 @@ describe('counts after a selection', () => {
         });
     });
 });
+
+describe('keyword counts', () => {
+    const mixed = createEngine(
+        [
+            shoe('m1', 'Northwind', ['Red', 'Red', 'Black'], 5000),
+            { id: 'm2', text: { name: 'm2' }, attributes: { brand: 'Ostara', color: 'Red' } },
+            { id: 'm3', text: { name: 'm3' }, attributes: { brand: 'Ostara' } },
+        ],
+        {
+            ...config,
+            facets: {
+                color: { kind: 'keyword', attribute: 'color' },
+                price: { kind: 'keyword', attribute: 'price' },
+            },
+        }
+    );
+
+    it('count a value a document carries twice once, beside one carried alone', () => {
+        const { facets } = mixed.search({ facets: ['color'] });
+        expect(facet(facets, 'color')).toMatchObject({
+            buckets: [
+                { kind: 'value', value: 'Red', count: 2 },
+                { kind: 'value', value: 'Black', count: 1 },
+            ],
+        });
+    });
+
+    it('count nothing on an attribute that holds no words', () => {
+        const { facets } = mixed.search({ facets: ['price'] });
+        expect(facet(facets, 'price')).toMatchObject({ kind: 'keyword', buckets: [] });
+    });
+});

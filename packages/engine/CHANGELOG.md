@@ -4,6 +4,25 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.4.0
+
+The same results as 0.3.0, for less work, and on an older Node.
+
+- **Node 22 or later.** `engines.node` is `>=22`, where it was `>=24`, and the packed engine is
+  tested on Node 22.0.0 before each release.
+- **Faster wide searches.** On a hundred thousand products, a two-letter prefix with every facet
+  takes about a third of the time it did, and browsing everything about a fifth. Facets count
+  keyword values by a code per value rather than by string, a page orders only the matches up to
+  its last result rather than all of them, and a search no rule or signal touches leaves the
+  scores alone.
+- **Faster indexing.** Postings are appended in place and each text is normalized once, so a
+  hundred thousand products index in about five sixths of the time.
+- **A little more memory.** The index holds each keyword value as a code beside its value, about
+  seven megabytes more at a hundred thousand products.
+
+Every search returns what it did in 0.3.0, in the same order with the same scores, facets and
+explanations.
+
 ## 0.3.0
 
 Two changes to how a search is ordered, so a sort only reorders what relevance would show.
