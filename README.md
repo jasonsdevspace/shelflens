@@ -149,22 +149,22 @@ without its filters, each only if it finds something.
   at 74 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** Compressed, the catalog stays under 400 KB, the API bundled for a
   browser under 90 KB, the page under 100 KB, the page for a visitor's own catalog under 115 KB,
-  the widget under 85 KB and the service worker under 85 KB, with nothing from GraphQL in a page
-  or the widget and no test fixture in anything shipped, or the build fails. The storefront runs
-  in a real browser on a desktop and a phone profile with an accessibility audit of every page it
+  the widget under 85 KB and the service worker under 85 KB, with nothing from GraphQL in a page or
+  the widget and no test fixture in anything shipped, or the build fails. The storefront runs in a
+  real browser on a desktop and a phone profile with an accessibility audit of every page it
   reaches, and every control's edge, focus ring and caret are held to the design in both themes.
   Lighthouse must score a hundred for accessibility, and at least ninety for performance with the
-  largest paint inside two and a half seconds and almost no layout shift on a first visit, on the
-  home page, a results page in explain mode, a category, a product, the explainer, the widget's
-  host page, and the page for a visitor's own catalog, both empty and with a file loaded, and the
-  widget on a store's page over that file.
+  largest paint inside two and a half seconds and a layout shift of no more than a tenth on a first
+  visit, on the home page, a results page in explain mode, a category, a product, the explainer,
+  the widget's host page, and the page for a visitor's own catalog, both empty and with a file
+  loaded, and the widget on a store's page over that file.
 
 ## Decisions
 
-Each choice with a real alternative is a record in [docs/decisions](docs/decisions), written when
-it was made, with the option rejected, what the choice costs, and the test or measurement behind
-it. Every record is read again against the code before each release, and amended where the code
-has moved on.
+Each choice with a real alternative is a record in [docs/decisions](docs/decisions), with the
+option rejected, what the choice costs, and the test or measurement behind it. Most were written
+when the choice was made, and records 16 and 17 after the work they describe. Every record is read
+again against the code before each release, and amended where the code has moved on.
 
 1. [An engine of our own, rather than a library](docs/decisions/0001-an-engine-of-our-own.md)
 2. [Flat arrays for the index](docs/decisions/0002-flat-arrays-for-the-index.md)

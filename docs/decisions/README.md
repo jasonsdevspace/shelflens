@@ -1,8 +1,9 @@
 # Decision records
 
 The decisions in this project that had a real alternative, with the option rejected, what the
-choice costs, and the test or measurement behind it. Each was written when the decision was made,
-so the evidence was still fresh.
+choice costs, and the test or measurement behind it. Records 1 to 15 were written when the decision
+was made, so the evidence was still fresh. Records 16 and 17 were written after the work they
+describe, from the code and its tests.
 
 1. [An engine of our own, rather than a library](0001-an-engine-of-our-own.md): the parts a
    library hides are the parts the project exists to show.

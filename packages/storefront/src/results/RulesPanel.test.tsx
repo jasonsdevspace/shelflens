@@ -116,7 +116,7 @@ const Host = ({
             phrase="jacket"
             applied={['featured-jackets']}
             brands={brands}
-            byRelevance
+            setAside={undefined}
             onSortByRelevance={() => undefined}
             {...props}
             products={shown}
@@ -175,7 +175,10 @@ describe('the rules panel', () => {
     });
 
     it('offers the way back to relevance when a sort has set the rules aside', async () => {
-        const { user, onSortByRelevance } = open({ byRelevance: false });
+        const { user, onSortByRelevance } = open({
+            setAside:
+                'The sort \u201cPrice, low to high\u201d sets aside the pins, boosts and buries of the rule featured-jackets.',
+        });
         await user.click(await screen.findByRole('button', { name: 'Sort by relevance' }));
         expect(onSortByRelevance).toHaveBeenCalled();
     });

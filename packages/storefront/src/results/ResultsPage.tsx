@@ -42,6 +42,7 @@ import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { toRuleInput } from './rule-input.js';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
+import { setAsideBySort } from './setAside.js';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
@@ -397,27 +398,13 @@ const Toolbar = ({
     );
 };
 
-/**
- * The rules a sort set aside, by name, and the way back. A sort only
- * reorders, so the pins, boosts and buries give way to it, while a rule's
- * hides still hold.
- */
-const SetAside = ({
-    sortKey,
-    setAside,
-}: {
-    readonly sortKey: SortKey;
-    readonly setAside: readonly string[];
-}) => {
-    const one = setAside.length === 1;
-    return (
-        <p className="callout" role="status">
-            The sort &ldquo;{SORTS[sortKey].label}&rdquo; sets aside the pins, boosts and buries of{' '}
-            {one ? 'the rule' : 'the rules'} {setAside.join(', ')}. Choose &ldquo;Relevance&rdquo;
-            under &ldquo;Sort by&rdquo; to bring {one ? 'it' : 'them'} back.
-        </p>
-    );
-};
+/** The rules a sort set aside, by name, and the way back. */
+const SetAside = ({ said, many }: { readonly said: string; readonly many: boolean }) => (
+    <p className="callout" role="status">
+        {said} Choose &ldquo;Relevance&rdquo; under &ldquo;Sort by&rdquo; to bring{' '}
+        {many ? 'them' : 'it'} back.
+    </p>
+);
 
 /** What the page says over the cards: a preview in progress, and rules a sort set aside. */
 const Notices = ({
@@ -428,17 +415,20 @@ const Notices = ({
     readonly previewing: boolean;
     readonly sortKey: SortKey;
     readonly setAside: readonly string[];
-}) => (
-    <>
-        {previewing && (
-            <p className="callout" role="status">
-                Previewing a draft rule. Shoppers see the saved rules until you press &ldquo;Save
-                rule&rdquo;.
-            </p>
-        )}
-        {setAside.length > 0 && <SetAside sortKey={sortKey} setAside={setAside} />}
-    </>
-);
+}) => {
+    const said = setAsideBySort(sortKey, setAside);
+    return (
+        <>
+            {previewing && (
+                <p className="callout" role="status">
+                    Previewing a draft rule. Shoppers see the saved rules until you press
+                    &ldquo;Save rule&rdquo;.
+                </p>
+            )}
+            {said !== undefined && <SetAside said={said} many={setAside.length > 1} />}
+        </>
+    );
+};
 
 /**
  * The ids of the rules the store applied or set aside, as one array that
@@ -625,7 +615,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                     name: hit.product.name,
                 }))}
                 brands={brandsOf(result)}
-                byRelevance={sortKey === 'relevance'}
+                setAside={setAsideBySort(sortKey, result.merchandising.setAsideBySort)}
                 onSortByRelevance={() => {
                     const { sort: _sort, ...rest } = state;
                     navigate({ ...rest, page: 1 });

@@ -47,8 +47,8 @@ export interface RulesPanelProps {
     readonly products: readonly Named[];
     /** The brands on the results page, which a boost or a bury can name. */
     readonly brands: readonly string[];
-    /** Whether the results are sorted by relevance, where rules apply. */
-    readonly byRelevance: boolean;
+    /** What the page says about the rules the sort set aside, or nothing when it set none aside. */
+    readonly setAside: string | undefined;
     readonly onSortByRelevance: () => void;
 }
 
@@ -407,7 +407,7 @@ export const RulesPanel = ({
     applied,
     products,
     brands,
-    byRelevance,
+    setAside,
     onSortByRelevance,
 }: RulesPanelProps) => {
     const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
@@ -416,9 +416,9 @@ export const RulesPanel = ({
     return (
         <div className="rules">
             <h2 className="rules-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
-            {!byRelevance && (
+            {setAside !== undefined && (
                 <p className="notice">
-                    Sorting sets this search&rsquo;s rules aside.{' '}
+                    {setAside}{' '}
                     <button type="button" className="text-button" onClick={onSortByRelevance}>
                         Sort by relevance
                     </button>

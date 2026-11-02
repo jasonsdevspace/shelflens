@@ -131,6 +131,37 @@ describe('rules and the sort', () => {
         expect(result.rules.applied).toEqual(['shoes-feature']);
     });
 
+    it('keeps a category rule\u2019s pins and hides under its own sort, and says its boosts and buries were set aside', () => {
+        const scoped = createEngine(documents, {
+            ...base,
+            rules: [
+                {
+                    id: 'shoes-mixed',
+                    when: { filter: { attribute: 'category', value: 'shoes' } },
+                    pin: ['p1'],
+                    hide: ['p2'],
+                    boost: [{ ids: ['p3'], weight: 5 }],
+                },
+                {
+                    id: 'shoes-boost',
+                    when: { filter: { attribute: 'category', value: 'shoes' } },
+                    bury: [{ ids: ['p3'], weight: 0.1 }],
+                },
+            ],
+        });
+        const result = scoped.search({
+            filters: [{ attribute: 'category', eq: 'shoes' }],
+            sort: [{ by: 'position', direction: 'asc' }],
+        });
+        // The pin and the hide hold. The boost and the bury leave p3 where its position puts it.
+        expect(result.hits.map((h) => h.id)).toEqual(['p1', 'p3']);
+        expect(result.hits[1]?.rules).toEqual([]);
+        expect(result.rules).toEqual({
+            applied: ['shoes-mixed'],
+            setAsideBySort: ['shoes-mixed', 'shoes-boost'],
+        });
+    });
+
     it('sets a category rule aside under an unrelated sort', () => {
         const result = engine.search({
             filters: [{ attribute: 'category', eq: 'shoes' }],

@@ -43,18 +43,38 @@ const compiledAgainst = (): string[] => {
     return [target, ...(parsed.options.lib ?? [ts.getDefaultLibFileName(parsed.options)])];
 };
 
+/** What the README's section names as members of an export rather than as exports. */
+const MEMBERS = ['search', 'recover', 'reconfigure', 'code'];
+
+/** Every name the engine's entry exports, values and types, as the type checker sees them. */
+const exported = (): string[] => {
+    const entry = fileURLToPath(new URL('../src/index.ts', import.meta.url));
+    const program = ts.createProgram([entry], {
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        noEmit: true,
+    });
+    const checker = program.getTypeChecker();
+    const source = program.getSourceFile(entry);
+    const module = source && checker.getSymbolAtLocation(source);
+    if (!module) throw new Error('the engine entry could not be read');
+    return checker
+        .getExportsOfModule(module)
+        .map((symbol) => symbol.name)
+        .sort();
+};
+
 describe('the published engine', () => {
     it('lists every value it exports in the smoke test', () => {
         expect(Object.keys(engine).sort()).toEqual(VALUE_EXPORTS);
     });
 
-    it('names every value it exports in its README, and every type it exports', () => {
+    it('names in its README exactly what it exports, every value and every type', () => {
         const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
         const section = /## What it exports\n([\s\S]*?)\n## /.exec(readme)?.[1] ?? '';
-        const named = new Set([...section.matchAll(/`(\w+)/g)].map((match) => match[1]));
-        const index = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
-        const types = [...index.matchAll(/type (\w+)/g)].map((match) => match[1]);
-        for (const name of [...VALUE_EXPORTS, ...types]) expect(named, name).toContain(name);
+        const named = new Set([...section.matchAll(/`(\w+)/g)].map((match) => match[1] ?? ''));
+        for (const member of MEMBERS) named.delete(member);
+        expect([...named].sort()).toEqual(exported());
     });
 
     it('names the lowest Node a range admits, down to the patch', () => {

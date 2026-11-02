@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { gitCommit, machine, megabytes, round, today } from './record.js';
+import { megabytes, type Recorded, recorded, recordedTable, round } from './record.js';
 import {
     fitsOnAPhone,
     PHONE_SLOWDOWN,
@@ -37,7 +37,7 @@ const row = (result: SizeResult): string =>
 
 const report = (
     results: readonly SizeResult[],
-    recorded: { date: string; commit: string; machine: string; node: string }
+    recorded: Recorded
 ): string => `# Catalog size benchmark
 
 Run \`npm run bench:sizes\` to reproduce it. The raw results are in
@@ -51,9 +51,7 @@ Lighthouse slows the processor for mobile. A size fits when, slowed, suggestions
 answer within ${SUGGEST_BUDGET_MS} ms at the 95th percentile and the store starts within
 ${START_BUDGET_MS / 1000} seconds, the one wait after loading a file.
 
-| Recorded   | Commit    | Machine                | Node    |
-| ---------- | --------- | ---------------------- | ------- |
-| ${recorded.date} | \`${recorded.commit}\` | ${recorded.machine} | ${recorded.node} |
+${recordedTable(recorded)}
 
 Each time is shown as measured on the laptop and then slowed for a phone, which is the number held
 to the budget.
@@ -80,15 +78,10 @@ const slowed = (ms: number): string => `${round(ms * PHONE_SLOWDOWN)} ms`;
 
 const main = async () => {
     const results = await runSizes(iterations);
-    const recorded = {
-        date: today(),
-        commit: gitCommit(),
-        machine: machine(),
-        node: process.version,
-    };
+    const run = recorded();
     mkdirSync(dirname(values.out), { recursive: true });
-    writeFileSync(values.out, `${JSON.stringify({ recorded, results }, null, 4)}\n`);
-    writeFileSync(values.out.replace(/\.json$/, '.md'), report(results, recorded));
+    writeFileSync(values.out, `${JSON.stringify({ recorded: run, results }, null, 4)}\n`);
+    writeFileSync(values.out.replace(/\.json$/, '.md'), report(results, run));
     console.log(`supported cap ${supportedCap(results)} products`);
 };
 

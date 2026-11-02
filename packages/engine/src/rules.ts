@@ -21,9 +21,10 @@ import {
  * Boosts and buries move products by changing their relevance score, so
  * they mean nothing under any other sort. Pins and hides still apply under
  * a sort scoped to the rule's own filter, which is how a category's
- * merchandising survives its position sort. A rule set aside by the sort
- * is reported, so a page can say that sorting by price switched the
- * merchandising off rather than looking broken.
+ * merchandising survives its position sort, though the rule's boosts and
+ * buries are set aside there. A rule whose pins, boosts or buries the sort
+ * sets aside is reported, so a page can say that sorting by price switched
+ * the merchandising off rather than looking broken.
  */
 
 export interface RulePlan {
@@ -216,6 +217,20 @@ const keepUnderSort = (draft: Draft, rule: Rule): void => {
     if (ordersResults(rule)) draft.setAsideBySort.push(rule.id);
 };
 
+/** Whether the rule moves products by their score, which only relevance reads. */
+const scoresResults = (rule: Rule): boolean =>
+    (rule.boost ?? []).length + (rule.bury ?? []).length > 0;
+
+/**
+ * What a rule reports under the sort scoped to its own filter, which keeps
+ * its pins and hides. Its boosts and buries change a score that sort does
+ * not read, so they are set aside, and a rule with nothing else does nothing.
+ */
+const keepUnderOwnSort = (draft: Draft, rule: Rule): void => {
+    if ((rule.pin ?? []).length + (rule.hide ?? []).length > 0) draft.applied.push(rule.id);
+    if (scoresResults(rule)) draft.setAsideBySort.push(rule.id);
+};
+
 const addEffects = (draft: Draft, rule: Rule, relevance: boolean): void => {
     for (const id of rule.pin ?? []) {
         if (draft.pinnedBy.has(id)) continue;
@@ -253,7 +268,8 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
             keepUnderSort(draft, rule);
             continue;
         }
-        draft.applied.push(rule.id);
+        if (relevance) draft.applied.push(rule.id);
+        else keepUnderOwnSort(draft, rule);
         addEffects(draft, rule, relevance);
     }
     return draft;
