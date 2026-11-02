@@ -381,7 +381,7 @@ const Toolbar = ({
         {(result.total > 0 || state.explain === true) && (
             <button
                 type="button"
-                className="explain-toggle"
+                className="button"
                 aria-pressed={state.explain ?? false}
                 onClick={() => navigate({ ...state, explain: !state.explain })}
             >
@@ -390,7 +390,7 @@ const Toolbar = ({
         )}
         <button
             type="button"
-            className="explain-toggle"
+            className="button"
             aria-pressed={state.rules ?? false}
             onClick={() =>
                 state.rules ? onCloseRules() : navigate({ ...state, rules: true, explain: true })
@@ -416,7 +416,7 @@ const SetAside = ({
 }) => {
     const one = setAside.length === 1;
     return (
-        <p className="results-aside" role="status">
+        <p className="callout" role="status">
             The sort &ldquo;{SORTS[sortKey].label}&rdquo; sets aside the pins, boosts and buries of{' '}
             {one ? 'the rule' : 'the rules'} {setAside.join(', ')}. Choose &ldquo;Relevance&rdquo;
             under &ldquo;Sort by&rdquo; to bring {one ? 'it' : 'them'} back.
@@ -436,7 +436,7 @@ const Notices = ({
 }) => (
     <>
         {previewing && (
-            <p className="results-aside" role="status">
+            <p className="callout" role="status">
                 Previewing a draft rule. Shoppers see the saved rules until you press &ldquo;Save
                 rule&rdquo;.
             </p>

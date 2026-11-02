@@ -62,7 +62,7 @@ const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string =>
 
 /** How many results a choice gives: a number to see, and what it counts to hear. */
 const FacetCount = ({ n }: { readonly n: number }) => (
-    <span className="facet-count">
+    <span className="hint">
         <span aria-hidden="true">{n}</span>
         <span className="visually-hidden">{`, ${count(n, 'result', 'results')}`}</span>
     </span>
@@ -103,7 +103,7 @@ const CategoryFacet = ({
                     <li key={category.id}>
                         <button
                             type="button"
-                            className="facet-link"
+                            className="option-button"
                             onClick={() => onChange({ ...state, category: category.id, page: 1 })}
                         >
                             <span className="facet-label">{category.name}</span>
@@ -172,7 +172,7 @@ const ListFacet = ({
             {listed.length > SHOWN && (
                 <button
                     type="button"
-                    className="facet-more"
+                    className="text-button"
                     aria-expanded={all}
                     aria-controls={id}
                     onClick={fold}
@@ -280,7 +280,7 @@ export const Facets = (props: FacetsProps) => {
             {hasFilters(state) && (
                 <button
                     type="button"
-                    className="facets-clear"
+                    className="text-button"
                     onClick={() => onChange(withoutFilters(state))}
                 >
                     Clear all filters

@@ -19,7 +19,7 @@ export const StartFailure = ({
 }) =>
     kind === 'unsupported' ? (
         <div className="notice standby" role="alert">
-            <h1 className="results-heading">The store could not start in this browser</h1>
+            <h1 className="standby-heading">The store could not start in this browser</h1>
             <p>
                 It runs as a small program the page installs, and this browser did not allow it.
                 Open this page in a regular, non-private window.
@@ -27,9 +27,9 @@ export const StartFailure = ({
         </div>
     ) : (
         <div className="notice standby" role="alert">
-            <h1 className="results-heading">The store could not start</h1>
+            <h1 className="standby-heading">The store could not start</h1>
             <p>Check your connection and try again.</p>
-            <button type="button" className="standby-retry" onClick={retry}>
+            <button type="button" className="button" onClick={retry}>
                 Try again
             </button>
         </div>

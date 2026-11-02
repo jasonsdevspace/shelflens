@@ -316,7 +316,7 @@ export const ProductPage = ({
         navigate(rest);
     };
     const backButton = (
-        <button type="button" className="back" onClick={back}>
+        <button type="button" className="button" onClick={back}>
             {backLabel(state, direct)}
         </button>
     );

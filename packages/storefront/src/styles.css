@@ -203,7 +203,8 @@ h4 {
 }
 
 /* A store that did not start says so as the page's heading, in the text's own color. */
-.standby .results-heading {
+.standby-heading {
+    font-size: var(--text-title);
     color: var(--fg);
 }
 
@@ -218,16 +219,6 @@ h4 {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-}
-
-/* A store that did not start offers to try again, in the look of the page's other buttons. */
-.standby-retry {
-    font: inherit;
-    padding: 0.4rem 0.9rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
 }
 
 /* The results list. */
@@ -273,21 +264,6 @@ h4 {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4);
-}
-
-.tour-open {
-    font: inherit;
-    font-size: var(--text-small);
-    padding: 0.3rem 0.6rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-}
-
-.tour-open[aria-expanded='true'] {
-    background: var(--highlight);
-    border-color: var(--accent);
 }
 
 .tour {
@@ -338,39 +314,6 @@ h4 {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-}
-
-.tour-try {
-    display: inline-block;
-    margin-right: auto;
-    padding: 0.3rem 0.6rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-    font-size: var(--text-small);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-}
-
-.tour-try:hover,
-.tour-try:focus-visible {
-    border-color: var(--accent);
-}
-
-.tour-close,
-.tour-step {
-    font: inherit;
-    font-size: var(--text-small);
-    padding: 0.3rem 0.6rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-}
-
-.tour-step:disabled {
-    color: var(--muted);
 }
 
 .viewer {
@@ -458,31 +401,10 @@ h4 {
     gap: var(--space-4);
 }
 
-/* The rest of a long list, a click away, in the same voice as the clear button. */
-.facet-more {
-    justify-self: start;
-    font: inherit;
+/* Under a list of choices, a text button is the list's size, with a target a finger can find. */
+.facets .text-button {
+    min-height: 1.5rem;
     font-size: var(--text-small);
-    color: var(--accent);
-    background: none;
-    border: none;
-    padding: var(--space-1) 0;
-}
-
-.facet-more:hover,
-.facet-more:focus-visible {
-    text-decoration: underline;
-}
-
-.facets-clear {
-    justify-self: start;
-    font: inherit;
-    font-size: var(--text-small);
-    color: var(--accent);
-    background: none;
-    border: none;
-    padding: 0;
-    text-decoration: underline;
 }
 
 .facet {
@@ -511,7 +433,7 @@ h4 {
     flex: 1;
 }
 
-.facet-count {
+.hint {
     color: var(--muted);
     font-size: var(--text-caption);
 }
@@ -524,7 +446,7 @@ h4 {
     gap: var(--space-1);
 }
 
-.facet-link {
+.option-button {
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -539,8 +461,8 @@ h4 {
     padding: 0;
 }
 
-.facet-link:hover,
-.facet-link:focus-visible {
+.option-button:hover,
+.option-button:focus-visible {
     text-decoration: underline;
 }
 
@@ -648,6 +570,82 @@ h4 {
         padding-inline-end: var(--field-inline);
         background-image: none;
     }
+}
+
+/*
+ * The page's buttons, one look for each kind.
+ *
+ * A .button has an edge in the control color, the field's height and
+ * corners, so it sits level with a select beside it, and a pressed or
+ * open one says so in the accent. A .button-primary is the one action a
+ * view asks for, filled with the accent. A .button-large is for the
+ * action that ends a step, such as showing what a drawer has filtered.
+ *
+ * A .text-button is an action that reads as text, in a sentence or under
+ * a list, in the accent and always underlined, since the accent alone is
+ * too close to the text to mark it.
+ */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--field-height);
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-small);
+    line-height: var(--leading-tight);
+    text-decoration: none;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--control);
+    border-radius: var(--radius);
+}
+
+.button:hover {
+    border-color: var(--accent);
+}
+
+.button[aria-pressed='true'],
+.button[aria-expanded='true'] {
+    background: var(--highlight);
+    border-color: var(--accent);
+}
+
+.button:disabled {
+    color: var(--muted);
+    border-color: var(--line);
+}
+
+.button-primary {
+    font-weight: var(--weight-strong);
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.button-large {
+    min-height: 2.75rem;
+    padding-inline: var(--space-4);
+    font-size: var(--text-body);
+    border-radius: var(--radius-large);
+}
+
+/* A thumb's size on a phone, as the fields are. */
+@media (max-width: 48rem) {
+    .button {
+        min-height: 2.75rem;
+    }
+}
+
+.text-button {
+    justify-self: start;
+    padding: 0;
+    font: inherit;
+    color: var(--accent);
+    background: none;
+    border: none;
+    text-decoration: underline;
 }
 
 .cards {
@@ -758,21 +756,6 @@ h4 {
     color: var(--fg);
 }
 
-.explain-toggle {
-    font: inherit;
-    font-size: var(--text-small);
-    padding: 0.3rem 0.6rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-}
-
-.explain-toggle[aria-pressed='true'] {
-    background: var(--highlight);
-    border-color: var(--accent);
-}
-
 .no-results-heading {
     font-size: var(--text-lead);
     font-weight: var(--weight-strong);
@@ -788,9 +771,10 @@ h4 {
     color: var(--accent);
 }
 
-.results-aside {
+/* A line the page wants seen, such as who is shopping or whose catalog this is, on the highlight. */
+.callout {
     margin: 0 0 var(--space-4);
-    padding: 0.6rem 0.8rem;
+    padding: var(--space-2) var(--space-3);
     font-size: var(--text-small);
     background: var(--highlight);
     border-radius: var(--radius);
@@ -812,20 +796,6 @@ h4 {
     padding: 0;
 }
 
-.page-step,
-.page-number {
-    font: inherit;
-    padding: 0.35rem 0.7rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-}
-
-.page-step:disabled {
-    opacity: 0.5;
-}
-
 .page-number[aria-current='page'] {
     cursor: default;
     background: var(--accent);
@@ -840,17 +810,6 @@ h4 {
 }
 
 /* One product. */
-
-/* The way back is a button like the page's other buttons, not a bare link among them. */
-.back {
-    font: inherit;
-    font-size: var(--text-small);
-    padding: 0.3rem 0.6rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background: var(--bg);
-    color: var(--fg);
-}
 
 .rail {
     margin-top: var(--space-6);
@@ -915,7 +874,7 @@ h4 {
 .variants th,
 .variants td {
     text-align: left;
-    padding: 0.4rem var(--space-4) 0.4rem 0;
+    padding: var(--space-2) var(--space-4) var(--space-2) 0;
     border-bottom: 1px solid var(--line);
 }
 
@@ -969,23 +928,6 @@ h4 {
 }
 
 /* The facets as a drawer, on a phone. */
-
-.drawer-open {
-    font: inherit;
-    padding: var(--space-2) 0.9rem;
-    border: 1px solid var(--control);
-    border-radius: var(--radius-large);
-    background: var(--bg);
-    color: var(--fg);
-}
-
-/* Beside the toolbar's other buttons, the drawer's button takes their size. */
-.results-toolbar .drawer-open {
-    font-size: var(--text-small);
-    padding: 0.3rem 0.6rem;
-    border-radius: var(--radius);
-}
-
 .drawer-badge {
     font-weight: var(--weight-strong);
     color: var(--accent);
@@ -1032,13 +974,8 @@ h4 {
 
 /* The first stop in the drawer, as big as a thumb, as its rows are. */
 .drawer-close {
-    font: inherit;
     min-height: 2.75rem;
-    padding: var(--space-2);
-    color: var(--accent);
-    background: none;
-    border: none;
-    text-decoration: underline;
+    padding-inline: var(--space-2);
 }
 
 .drawer-body {
@@ -1049,30 +986,20 @@ h4 {
 
 /* Rows a thumb can hit. */
 .drawer-body .facet-option,
-.drawer-body .facet-link {
+.drawer-body .option-button {
     min-height: 2.75rem;
 }
 
 .drawer-done {
     margin: var(--space-4);
-    padding: var(--space-3);
-    font: inherit;
-    font-weight: var(--weight-strong);
-    color: var(--on-accent);
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius-large);
 }
 
-/*
- * The explainer at about/: prose at a reading measure, sharing the
- * wordmark's left edge, with the demo's own steps for type and space.
- */
+/* Skip to content, out of sight until it takes focus. */
 .skip {
     position: absolute;
     left: var(--space-4);
     top: -10rem;
-    padding: var(--space-2) 0.9rem;
+    padding: var(--space-2) var(--space-4);
     border-radius: var(--radius);
     background: var(--accent);
     color: var(--on-accent);
@@ -1083,6 +1010,10 @@ h4 {
     top: var(--space-4);
 }
 
+/*
+ * The explainer at about/: prose at a reading measure, sharing the
+ * wordmark's left edge, with the demo's own steps for type and space.
+ */
 .about {
     max-width: 42rem;
     line-height: var(--leading-body);
@@ -1130,7 +1061,7 @@ h4 {
  * both themes. It is too close to the text to mark a link by itself, so the
  * underline stays.
  */
-.about a:not(.tour-try) {
+.about a:not(.button) {
     color: var(--accent);
     text-decoration: underline;
 }
@@ -1191,10 +1122,6 @@ h4 {
     color: var(--muted);
 }
 
-.about .tour-try {
-    padding: var(--space-2) 0.9rem;
-}
-
 /*
  * The merchandiser's rules panel, in the facet column's place. Its heading
  * and its fields are its own, and its other parts still wear the facets'
@@ -1203,6 +1130,11 @@ h4 {
 .rules {
     display: grid;
     gap: var(--space-4);
+}
+
+.rules .text-button {
+    min-height: 1.5rem;
+    font-size: var(--text-small);
 }
 
 .rules-list {
@@ -1267,11 +1199,6 @@ h4 {
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-4);
     align-items: center;
-}
-
-.rules-save {
-    margin: 0;
-    padding: var(--space-2) 0.9rem;
 }
 
 .rules-notice {
