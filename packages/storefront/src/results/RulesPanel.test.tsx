@@ -116,8 +116,7 @@ const Host = ({
             phrase="jacket"
             applied={['featured-jackets']}
             brands={brands}
-            setAside={undefined}
-            onSortByRelevance={() => undefined}
+            setAside={[]}
             {...props}
             products={shown}
         />
@@ -127,8 +126,7 @@ const Host = ({
 const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn();
     const onStoreChanged = vi.fn();
-    const onSortByRelevance = vi.fn();
-    const all = { onSortByRelevance, ...props };
+    const all = props;
     const host = (shown: RulesPanelProps['products'], elsewhere = 0, enabled = true) => (
         <Host
             props={all}
@@ -144,7 +142,6 @@ const open = (props: Partial<RulesPanelProps> = {}) => {
         user: userEvent.setup(),
         onDraft,
         onStoreChanged,
-        onSortByRelevance,
         rerender: (next: RulesPanelProps['products']) => shown.rerender(host(next)),
         /** The store was built again by something other than the panel. */
         storeBuiltAgain: (times: number) => shown.rerender(host(props.products ?? products, times)),
@@ -174,13 +171,19 @@ describe('the rules panel', () => {
         expect(screen.queryByRole('list', { name: 'Rules that apply' })).toBeNull();
     });
 
-    it('offers the way back to relevance when a sort has set the rules aside', async () => {
-        const { user, onSortByRelevance } = open({
-            setAside:
-                'The sort \u201cPrice, low to high\u201d sets aside the pins, boosts and buries of the rule featured-jackets.',
-        });
-        await user.click(await screen.findByRole('button', { name: 'Sort by relevance' }));
-        expect(onSortByRelevance).toHaveBeenCalled();
+    it('marks each rule the sort set aside, and says nothing of the others', async () => {
+        open({ setAside: ['featured-jackets'] });
+        const applying = await screen.findByRole('list', { name: 'Rules that apply' });
+        expect(within(applying).getByRole('button')).toHaveTextContent(
+            /Featured jackets.*Set aside by this sort/
+        );
+        expect(screen.queryByRole('button', { name: 'Sort by relevance' })).toBeNull();
+    });
+
+    it('marks no rule when the sort set none aside', async () => {
+        open();
+        const applying = await screen.findByRole('list', { name: 'Rules that apply' });
+        expect(applying).not.toHaveTextContent('Set aside by this sort');
     });
 
     it('hands up a draft of the whole set as soon as the new rule is sound', async () => {

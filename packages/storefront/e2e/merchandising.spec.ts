@@ -23,9 +23,13 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     const aside = page.getByText(/sets aside the pins, boosts and buries/);
     await expect(aside).toBeVisible();
     await expect(aside).toContainText('featured-jackets');
-    await expect(aside).toContainText('Choose “Relevance” under “Sort by”');
     // The cafe racer sample stays hidden: a hide holds under any sort, and is not set aside.
     await expect(aside).not.toContainText('racer-sample');
+    await audit(page);
+    await page.getByRole('button', { name: 'Sort by relevance' }).click();
+    const sort = page.getByRole('combobox', { name: 'Sort by' });
+    await expect(sort).toHaveValue('relevance');
+    await expect(sort).toBeFocused();
 });
 
 test('the category’s own sort keeps its pins and says the boosts were set aside', async ({
@@ -34,8 +38,10 @@ test('the category’s own sort keeps its pins and says the boosts were set asid
     // The demo's boots rule only boosts a brand, which the category's own order does not read.
     await page.goto('/?q=boots&category=boots&sort=position');
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    const aside = page.getByText(/sets aside the rest of what/);
-    await expect(aside).toContainText('The sort “Featured” keeps a category’s own pins');
+    const aside = page.getByText(/sets aside every other change/);
+    await expect(aside).toContainText(
+        'The sort “Featured” keeps pins only from a category’s own rules.'
+    );
     await expect(aside).toContainText('ridgeback-boots');
     await expect(page.getByText(/sets aside the pins, boosts and buries/)).toHaveCount(0);
     await audit(page);

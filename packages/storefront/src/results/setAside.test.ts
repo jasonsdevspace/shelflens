@@ -16,10 +16,12 @@ describe('what the page says about rules a sort set aside', () => {
         );
     });
 
-    it('keeps a category’s own pins under the category’s sort, and names the rest', () => {
+    it('keeps only a category’s own pins under the category’s sort, and names the rest', () => {
         expect(setAsideBySort('position', ['ridgeback-boots'])).toBe(
-            'The sort “Featured” keeps a category’s own pins, and sets aside the rest of what the rule ridgeback-boots does to the order.'
+            'The sort “Featured” keeps pins only from a category’s own rules. It sets aside every other change the rule ridgeback-boots makes to the order.'
         );
-        expect(setAsideBySort('position', ['a', 'b'])).toContain('the rules a, b do to the order.');
+        expect(setAsideBySort('position', ['a', 'b'])).toContain(
+            'the rules a, b make to the order.'
+        );
     });
 });

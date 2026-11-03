@@ -49,12 +49,13 @@ the merchandiser's order with that category's pins on top.
 The API passes both lists through as `Merchandising.applied` and `Merchandising.setAsideBySort`
 (`packages/api/schema.graphql`). The results page in
 `packages/storefront/src/results/ResultsPage.tsx` shows a line over the cards whenever
-`setAsideBySort` is not empty, naming the sort and the rules it set aside and pointing to
-"Relevance" under "Sort by" to bring them back. Under "Featured" the line says the category's own
-pins are kept and the rest of what those rules do to the order is set aside, since a pin there may
-still hold. The rules panel lists the rules applied and the rules set aside together, each once,
-and says the same line, with a button that sorts by relevance. Both come from `setAsideBySort` in
-`packages/storefront/src/results/setAside.ts`.
+`setAsideBySort` is not empty, naming the sort and the rules it set aside, with a "Sort by
+relevance" button after it that puts focus on Sort by. Under "Featured" the line says pins are kept
+only from a category's own rules and every other change those rules make to the order is set aside,
+since a pin there may still hold. The line is written by `setAsideBySort` in
+`packages/storefront/src/results/setAside.ts`, into a status that is always in the page, so a
+screen reader hears it when a sort brings it. The rules panel lists the rules applied and the rules
+set aside together, each once, and marks each one the sort set aside.
 
 ## Consequences
 
@@ -76,11 +77,13 @@ and says the same line, with a button that sorts by relevance. Both come from `s
 - `packages/api/src/api.test.ts`: a search under relevance reports its pin in `applied` and nothing
   in `setAsideBySort`.
 - `packages/storefront/src/App.merchandising.test.tsx`: the page says when a sort set the
-  merchandising aside. `packages/storefront/src/results/setAside.test.ts` holds the line's wording
-  under a plain sort and under "Featured".
+  merchandising aside, in a status that stays in the page, and its button sorts by relevance and
+  puts focus on Sort by. `packages/storefront/src/results/RulesPanel.test.tsx`: the panel marks
+  each rule the sort set aside, and no other. `packages/storefront/src/results/setAside.test.ts`
+  holds the line's wording under a plain sort and under "Featured".
 - `packages/storefront/e2e/merchandising.spec.ts`: sorting the jackets by price names
-  `featured-jackets` as set aside, points back to "Relevance", and leaves the hidden sample out of
-  the line, since its hide still holds.
+  `featured-jackets` as set aside and leaves the hidden sample out of the line, since its hide
+  still holds, and the button goes back to relevance with focus on Sort by.
 - `packages/storefront/e2e/merchandising.spec.ts`, under "Featured" in the boots category: the line
-  names `ridgeback-boots`, says the category's own pins are kept, and says nothing of pins being
-  set aside.
+  names `ridgeback-boots`, says pins are kept only from a category's own rules, and says nothing of
+  pins being set aside.

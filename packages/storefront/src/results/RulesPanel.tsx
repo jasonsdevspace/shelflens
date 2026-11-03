@@ -47,9 +47,8 @@ export interface RulesPanelProps {
     readonly products: readonly Named[];
     /** The brands on the results page, which a boost or a bury can name. */
     readonly brands: readonly string[];
-    /** What the page says about the rules the sort set aside, or nothing when it set none aside. */
-    readonly setAside: string | undefined;
-    readonly onSortByRelevance: () => void;
+    /** The ids of the rules the sort set aside, each marked so in the list. */
+    readonly setAside: readonly string[];
 }
 
 export interface RulesEditorOptions {
@@ -153,11 +152,13 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
 const RuleList = ({
     rules,
     applied,
+    setAside,
     phrase,
     onPick,
 }: {
     readonly rules: readonly Rule[];
     readonly applied: readonly string[] | undefined;
+    readonly setAside: readonly string[];
     readonly phrase: string | undefined;
     readonly onPick: (rule: Rule) => void;
 }) => {
@@ -188,6 +189,9 @@ const RuleList = ({
                             >
                                 <span className="rules-rule-name">{rule.name ?? rule.id}</span>
                                 <span className="hint">{summary(rule, locale)}</span>
+                                {setAside.includes(rule.id) && (
+                                    <span className="hint">Set aside by this sort</span>
+                                )}
                             </button>
                         </li>
                     ))}
@@ -408,7 +412,6 @@ export const RulesPanel = ({
     products,
     brands,
     setAside,
-    onSortByRelevance,
 }: RulesPanelProps) => {
     const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
         editor;
@@ -416,14 +419,6 @@ export const RulesPanel = ({
     return (
         <div className="rules">
             <h2 className="rules-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
-            {setAside !== undefined && (
-                <p className="notice">
-                    {setAside}{' '}
-                    <button type="button" className="text-button" onClick={onSortByRelevance}>
-                        Sort by relevance
-                    </button>
-                </p>
-            )}
             {message && (
                 <p className="callout" role="status">
                     {message}
@@ -454,6 +449,7 @@ export const RulesPanel = ({
                         <RuleList
                             rules={rules}
                             applied={applied}
+                            setAside={setAside}
                             phrase={phrase}
                             onPick={(rule) => edit(formOf(rule))}
                         />
