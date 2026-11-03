@@ -156,7 +156,7 @@ describe('rows to a catalog', () => {
         expect(result.catalog.products.map((product) => product.name)).toEqual(['Boot']);
         expect(result.skipped).toEqual([
             { label: 'row 3', reason: 'it has no name' },
-            { label: 'row 4', reason: 'its price, "free", is not a price' },
+            { label: 'row 4', reason: 'its price, “free”, is not a price' },
         ]);
     });
 
@@ -172,7 +172,7 @@ describe('rows to a catalog', () => {
         );
         expect(result).toEqual({
             ok: false,
-            error: 'The ID "A" is on row 2 and row 4, and each product needs its own.',
+            error: 'The ID “A” is on row 2 and row 4, and each product needs its own.',
         });
     });
 
@@ -182,7 +182,7 @@ describe('rows to a catalog', () => {
         expect(toCatalog(table, { name: 'name' }, NOW)).toMatchObject({ ok: false });
         expect(toCatalog(parseCsv('name,price\n,1\n'), MINIMAL, NOW)).toMatchObject({
             ok: false,
-            error: 'No row in this file could be read as a product.',
+            error: 'No row in this file could be read as a product. Each one needs a name and a price, so check the columns chosen for “Name” and “Price”.',
         });
     });
 
@@ -244,7 +244,7 @@ describe('rows to a catalog', () => {
     it('names rows by their place in the file when a blank line comes before them', () => {
         const result = one('name,price\nBoot,1\n\nHat,free\n');
         expect(result.skipped).toEqual([
-            { label: 'row 4', reason: 'its price, "free", is not a price' },
+            { label: 'row 4', reason: 'its price, “free”, is not a price' },
         ]);
     });
 
@@ -257,7 +257,7 @@ describe('rows to a catalog', () => {
         expect(result.notes).toEqual([
             {
                 label: 'row 2',
-                reason: 'its member price, "see site", is not a price, so members pay the guest price',
+                reason: 'its member price, “see site”, is not a price, so members pay the guest price',
             },
         ]);
     });
@@ -267,7 +267,7 @@ describe('rows to a catalog', () => {
         expect(comma.map((product) => product.price.guest.min)).toEqual([129_900, 1250]);
         const result = one('name,price\nBoot,9.995\nHat,12.50\n');
         expect(result.skipped).toEqual([
-            { label: 'row 2', reason: 'its price, "9.995", is not a price' },
+            { label: 'row 2', reason: 'its price, “9.995”, is not a price' },
         ]);
     });
 });

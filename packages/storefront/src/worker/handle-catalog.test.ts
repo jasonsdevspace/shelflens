@@ -327,9 +327,9 @@ describe('the worker for a visitor’s own catalog', () => {
         saved = UNBUILDABLE;
         const refused = await api.handle(catalogRequest('PUT', MUGS, true));
         expect(refused?.status).toBe(400);
-        expect(await refused?.json()).toMatchObject({
-            errors: [{ message: expect.stringContaining('the catalog could not be built: ') }],
-        });
+        // The reason alone, which the page says after "since", with nothing wrapped around it.
+        const { errors } = (await refused?.json()) as { errors: { message: string }[] };
+        expect(errors[0]?.message).toMatch(/^rule odd /);
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: LAMPS.version,
             products: 2,

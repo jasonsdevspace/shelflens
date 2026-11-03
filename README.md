@@ -75,7 +75,7 @@ code, the demo carries [a page on how it works](https://jasonsdevspace.com/shelf
 9. [Choose a file of your own products, or press "Try it with a sample of 200 products".](https://jasonsdevspace.com/shelflens/try/)
    The page guesses which column is the name, the price and each filter, and you can correct any
    guess. Then the same storefront searches it, with your own rules, and so does the search box
-   on someone else's page. The file is read in your browser and never uploaded. The cap of ten
+   on a made-up store's page. The file is read in your browser and never uploaded. The cap of ten
    thousand products is the largest catalog that starts within two seconds on a phone, as
    [the benchmark](docs/benchmarks/catalog-size.md) records.
 

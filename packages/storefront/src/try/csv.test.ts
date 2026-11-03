@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { distinctHeaders, parseCsv, separatorOf } from './csv.js';
 
 describe('reading a CSV file', () => {
+    it('names the row where a quote opens and never closes, rather than reading the rest as one field', () => {
+        expect(() => parseCsv('name,price\nBoot,1\n"Hat,2\nCap,3\n')).toThrow(
+            'A quote that opens a field on row 3 is never closed, so the rest of the file would read as one field. Close the quote or take it out, then choose the file again.'
+        );
+        // Counted by row, as the page names rows, though an earlier field spans two lines.
+        expect(() => parseCsv('name,price\n"Two\nlines",1\n"Open,2\n')).toThrow('on row 3 ');
+    });
+
     it('reads a header and its rows', () => {
         expect(parseCsv('name,price\nBoot,$10\nHat,$5\n')).toEqual({
             headers: ['name', 'price'],

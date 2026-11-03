@@ -7,6 +7,7 @@ import { DEFAULT_LOCALE, formatMoney, formatPriceRange } from '../format/money.j
 import { ratingText } from '../format/rating.js';
 import type { Table } from './csv.js';
 import type { MappedField, Mapping } from './mapping.js';
+import { DEFAULT_BRAND, DEFAULT_CATEGORY } from './to-catalog.js';
 
 /**
  * The visitor's say over the guess: which column feeds each part of a
@@ -159,7 +160,10 @@ export const MappingEditor = ({
             <h2>Where each part of a product comes from</h2>
             <p className="notice">
                 These are guesses from your column names and what is in them. Change any that are
-                wrong. Only Name and Price need a column. The rest can stay Not used.
+                wrong. Only &ldquo;Name&rdquo; and &ldquo;Price&rdquo; need a column. A part left
+                &ldquo;Not used&rdquo; gets a default: the brand &ldquo;{DEFAULT_BRAND}&rdquo;, the
+                category &ldquo;{DEFAULT_CATEGORY}&rdquo;, in stock, and members pay the guest
+                price.
             </p>
             <div className="try-mapping">
                 {FIELDS.map((field) => (
@@ -207,6 +211,9 @@ export const MappingEditor = ({
             {others.length > 0 && (
                 <fieldset className="try-search-only">
                     <legend>Also search these columns</legend>
+                    <p className="hint try-search-only-hint">
+                        Words in a ticked column find a product but are not shown on it.
+                    </p>
                     {others.map((header) => (
                         <label key={header}>
                             <input

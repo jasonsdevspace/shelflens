@@ -34,7 +34,7 @@ describe('reading a JSON file', () => {
     });
 
     it('says why a file is not a product list', () => {
-        expect(() => parseJsonTable('{not json')).toThrow('not valid JSON');
+        expect(() => parseJsonTable('{not json')).toThrow('could not be read as JSON');
         expect(() => parseJsonTable('{"count":3}')).toThrow('no list of products');
         expect(() => parseJsonTable('[1,2]')).toThrow('no list of products');
     });

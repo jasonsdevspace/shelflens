@@ -303,7 +303,8 @@ export const createWorkerApi = ({
                 await (previous ? held.replace(previous) : held.clear());
                 if (previousRules) await rules?.replace(previousRules);
                 const reason = error instanceof Error ? error.message : 'it could not be read';
-                return `the catalog could not be built: ${reason}`;
+                // Said after "since" by the page, so it reads as the reason itself.
+                return reason;
             }
         });
     /** The answer to a change refused because it would discard the visitor's saved rules. */

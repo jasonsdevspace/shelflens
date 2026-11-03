@@ -133,7 +133,7 @@ const memberPriceOf = (context: BuildContext, row: readonly string[], price: num
     return memberPrice === undefined
         ? {
               memberPrice: price,
-              note: `its member price, "${memberCell}", is not a price, so members pay the guest price`,
+              note: `its member price, \u201c${memberCell}\u201d, is not a price, so members pay the guest price`,
           }
         : { memberPrice };
 };
@@ -144,7 +144,8 @@ const buildProduct = (row: readonly string[], index: number, context: BuildConte
     if (name === '') return { skipped: 'it has no name' };
     const priceCell = cell(row, mapping.price);
     const price = parseMoney(priceCell, context.decimal);
-    if (price === undefined) return { skipped: `its price, "${priceCell}", is not a price` };
+    if (price === undefined)
+        return { skipped: `its price, \u201c${priceCell}\u201d, is not a price` };
     const { memberPrice, note } = memberPriceOf(context, row, price);
 
     const sku = context.skuFor(row, index);
@@ -208,7 +209,7 @@ const repeatedId = (table: Table, ids: readonly string[]): string | undefined =>
         if (id === '') continue;
         const earlier = first.get(id);
         if (earlier !== undefined) {
-            return `The ID "${id}" is on ${table.labels[earlier] ?? ''} and ${table.labels[index] ?? ''}, and each product needs its own.`;
+            return `The ID \u201c${id}\u201d is on ${table.labels[earlier] ?? ''} and ${table.labels[index] ?? ''}, and each product needs its own.`;
         }
         first.set(id, index);
     }
@@ -239,12 +240,12 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
     if (!mapping.name)
         return {
             ok: false,
-            error: 'Choose the column that holds each product’s name. A column named “name” or “title” is found on its own.',
+            error: 'Choose a column for \u201cName\u201d. A column headed \u201cname\u201d or \u201ctitle\u201d is picked for you.',
         };
     if (!mapping.price)
         return {
             ok: false,
-            error: 'Choose the column that holds each product’s price. A column named “price” is found on its own.',
+            error: 'Choose a column for \u201cPrice\u201d. A column headed \u201cprice\u201d is picked for you.',
         };
 
     const indexes = new Map(table.headers.map((header, index) => [header, index]));
@@ -282,7 +283,10 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
         if (built.note) notes.push({ label, reason: built.note });
     });
     if (products.length === 0) {
-        return { ok: false, error: 'No row in this file could be read as a product.' };
+        return {
+            ok: false,
+            error: 'No row in this file could be read as a product. Each one needs a name and a price, so check the columns chosen for \u201cName\u201d and \u201cPrice\u201d.',
+        };
     }
 
     // The version is the content, so loading a second file can never be

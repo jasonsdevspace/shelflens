@@ -43,6 +43,13 @@ the page.
   says, and the browser test does it from a second origin.
   [Decision record 12](../../docs/decisions/0012-the-widget-keeps-its-own-tree.md) has the
   choices.
+- **Search your own products.** The page at `try/`, in `src/try`, reads a CSV or JSON file of up
+  to 10,000 products in the browser, guesses which column feeds each part of a product, and shows
+  the first products as the store will before the same storefront searches them. Every guess can
+  be corrected, and a file past the cap or not saved as UTF-8 is refused as it is read, with what
+  to do. Nothing is uploaded.
+  [Decision record 13](../../docs/decisions/0013-a-visitors-catalog-stays-in-the-browser.md) has
+  the choices.
 - **One set of tokens.** `src/tokens.css` names the design's values once: the palette, each color as
   its light and dark pair, the type sizes, weights and line heights, the spacing steps, the corners,
   one raised shadow, one scrim and the focus ring. Every bordered button is a `.button`, the one
