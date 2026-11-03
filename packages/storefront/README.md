@@ -128,12 +128,13 @@ the page.
   fresh browser, records when the page was ready to search, how long the worker spent downloading
   the catalog and building the store, and how long the first suggestion took, and writes it to
   [docs/benchmarks](../../docs/benchmarks/cold-visit.md).
-- **Lighthouse audits every page the demo serves.** `npm run lighthouse` runs after the browser
-  tests in CI, over the pages `src/bench/pages.ts` lists: the home page, a results page in explain
-  mode, a category, a product, the explainer, the widget's host page, the page for a visitor's own
-  catalog empty and with the sample loaded, and the widget's host page over that catalog. Each must
-  score a hundred for accessibility, and on a first visit at least ninety for performance, with the
-  largest paint inside two and a half seconds and a layout shift of no more than a tenth.
+- **Lighthouse audits every page the demo serves.** `npm run lighthouse` runs in a CI job of its
+  own, beside the browser tests, over the pages `src/bench/pages.ts` lists: the home page, a results
+  page in explain mode, a category, a product, the explainer, the widget's host page, the page for a
+  visitor's own catalog empty and with the sample loaded, and the widget's host page over that
+  catalog. Each must score a hundred for accessibility, and on a first visit at least ninety for
+  performance, with the largest paint inside two and a half seconds and a layout shift of no more
+  than a tenth.
 - **A real browser in CI.** `npm run e2e` builds the production page, serves it, and runs
   Playwright against it on a desktop and a phone profile with the service worker answering, with
   an axe audit of each page it reaches. Nothing is mocked.

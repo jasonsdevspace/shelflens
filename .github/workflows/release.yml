@@ -26,9 +26,17 @@ on:
 permissions:
     contents: read
 
+# One release run for a tag at a time, so a tag pushed again while its run is
+# still going never publishes beside it. A run waiting is replaced by a newer
+# one for the same tag, which is the one to publish.
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     # The cheap checks first, so a mistyped tag fails in seconds.
     agree:
+        name: Tag, version and changelog
         runs-on: ubuntu-latest
         timeout-minutes: 5
         outputs:
@@ -42,7 +50,7 @@ jobs:
                   persist-credentials: false
                   fetch-depth: 0
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -50,7 +58,7 @@ jobs:
             # The tag names the version, the package declares it, and the
             # changelog explains it. All three have to agree, and the commit
             # has to be on main, so nothing unreviewed is ever released.
-            - name: Check the tag, the version, the changelog and the branch agree
+            - name: Check tag, version, changelog and branch
               id: version
               env:
                   TAG: ${{ github.ref_name }}
@@ -86,6 +94,7 @@ jobs:
     # deploy job asks for the Pages permissions even though it never runs
     # on a tag, so they are granted here or the run fails at startup.
     checks:
+        name: CI
         needs: agree
         uses: ./.github/workflows/ci.yml
         permissions:
@@ -97,9 +106,11 @@ jobs:
     # trusted publishing asks for, so it checks out only the Node version,
     # restores no cache and installs nothing but a pinned npm, without
     # install scripts.
-    # What it publishes is the tarball CI packed and proved on the floor
-    # Node, in a job with no more than read access.
+    # What it publishes is the tarball CI packed and proved on the oldest
+    # supported Node, in a job with no more than read access, and only when
+    # its checksum is the one that job reported.
     publish:
+        name: Stage on npm
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'engine'
         runs-on: ubuntu-latest
@@ -113,6 +124,7 @@ jobs:
         env:
             VERSION: ${{ needs.agree.outputs.version }}
             PRERELEASE: ${{ needs.agree.outputs.prerelease }}
+            SHA256: ${{ needs.checks.outputs.engine-sha256 }}
         steps:
             # The one file the job reads, for the Node the project names. No
             # code is checked out, so none can run.
@@ -123,7 +135,7 @@ jobs:
                   sparse-checkout: .nvmrc
                   sparse-checkout-cone-mode: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -135,7 +147,7 @@ jobs:
             - name: Use a pinned npm
               run: npm install -g --ignore-scripts npm@12.2.1 && npm --version
 
-            - name: Take the packed engine
+            - name: Download the packed engine
               uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
               with:
                   name: engine-package
@@ -155,6 +167,13 @@ jobs:
                       ls "$RUNNER_TEMP/package"
                       exit 1
                   fi
+                  # Any job in the run can replace an artifact, but none can change the
+                  # checksum the oldest Node check reported, so a swapped tarball stops here.
+                  if [ -z "$SHA256" ]; then
+                      echo "the checks reported no checksum for the packed engine"
+                      exit 1
+                  fi
+                  echo "$SHA256  $tarball" | sha256sum -c -
                   tag=latest
                   [ "$PRERELEASE" = "true" ] && tag=next
                   npm stage publish "$tarball" --provenance --access public --tag "$tag"
@@ -163,6 +182,7 @@ jobs:
     # has a page a reader can land on. Left alone if it exists. Its own job,
     # so writing to the repository and publishing to npm never share one.
     engine-release:
+        name: Engine release on GitHub
         needs: [agree, publish]
         runs-on: ubuntu-latest
         timeout-minutes: 5
@@ -192,6 +212,7 @@ jobs:
     # repository's latest release, which stays the engine's, since that is
     # what someone installing the package is looking for.
     storefront:
+        name: Storefront release on GitHub
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'storefront'
         runs-on: ubuntu-latest

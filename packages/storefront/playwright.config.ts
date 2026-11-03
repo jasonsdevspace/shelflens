@@ -13,6 +13,9 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: Boolean(process.env['CI']),
     retries: process.env['CI'] ? 1 : 0,
+    // Playwright takes half the cores unless told, so the browser tests in CI take every core
+    // the runner has. The screenshots keep the default, since each waits for its page to settle.
+    ...(process.env['CI'] && !process.env['VISUAL'] ? { workers: '100%' } : {}),
     // A test that passes only when run again is flaky, and fails the run by name
     // rather than hiding behind the retry.
     failOnFlakyTests: Boolean(process.env['CI']),

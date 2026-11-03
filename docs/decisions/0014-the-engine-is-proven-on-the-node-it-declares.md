@@ -28,7 +28,7 @@ a type check against it on the exact lowest version the range admits.
 
 ## Decision
 
-**The packed package, on the floor.** A `floor` job in CI packs the engine on the build's Node, as
+**The packed package, on the floor.** A job in CI, "Package on oldest Node", packs the engine on the build's Node, as
 the release does, and runs publint, the standard check that a package's exports, types and files
 point at what it ships. It works out the lowest version `engines.node` admits, down to the patch,
 and installs that Node from a file holding the exact version. Given the range itself, setup-node
@@ -62,7 +62,7 @@ package that fails on its floor is never published, and the demo is never deploy
 
 ## How it is tested
 
-- `packages/engine/smoke/consumer.mjs` and `types.ts`, run by the `floor` job.
+- `packages/engine/smoke/consumer.mjs` and `types.ts`, run by the "Package on oldest Node" job.
 - `packages/engine/smoke/package.test.ts`, run with the other tests: the smoke script's export
   list matches the source, a floor is read from each range form the job accepts and refused for
   any other, the engine's own range gives a floor, and the language edition stays within what that
