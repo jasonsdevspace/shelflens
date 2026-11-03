@@ -60,8 +60,8 @@ type Stage =
           readonly result: LoadResult;
           /** Made from the first rows only, while the whole file is made again after a change. */
           readonly partial?: boolean;
-          /** Set once the visitor changes the guess, so each new preview is said. */
-          readonly changed?: boolean;
+          /** What the last change said of a column it moved, said with the preview that follows. */
+          readonly note?: string;
           readonly problem?: string;
           /** Asked first, since this file would replace a catalog the visitor saved rules for. */
           readonly replacing?: boolean;
@@ -255,7 +255,7 @@ const Review = ({
     mapping,
     result,
     partial,
-    changed,
+    note,
     problem,
     replacing,
     back,
@@ -273,12 +273,12 @@ const Review = ({
     readonly mapping: Mapping;
     readonly result: LoadResult;
     readonly partial: boolean;
-    readonly changed: boolean;
+    readonly note?: string | undefined;
     readonly problem?: string | undefined;
     readonly replacing?: boolean | undefined;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
-    readonly onMapping: (mapping: Mapping) => void;
+    readonly onMapping: (mapping: Mapping, note?: string) => void;
     readonly onReplace: () => void;
     readonly onKeepProducts: () => void;
 }) => {
@@ -305,7 +305,7 @@ const Review = ({
             and a wrong one is put right just below. */}
             {result.ok ? (
                 <>
-                    <Preview catalog={result.catalog} changed={changed} />
+                    <Preview catalog={result.catalog} note={note} />
                     {partial ? (
                         <p className="notice" role="status">
                             Checking all {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.
@@ -504,7 +504,7 @@ const BeforeStore = ({
     readonly onSample: () => void;
     readonly onSearch: () => void;
     readonly onAnother: () => void;
-    readonly onMapping: (mapping: Mapping) => void;
+    readonly onMapping: (mapping: Mapping, note?: string) => void;
     readonly onReplace: () => void;
     readonly onKeepProducts: () => void;
 }) => {
@@ -551,7 +551,7 @@ const BeforeStore = ({
                         mapping={stage.mapping}
                         result={stage.result}
                         partial={stage.partial ?? false}
-                        changed={stage.changed ?? false}
+                        note={stage.note}
                         problem={stage.problem}
                         replacing={stage.replacing}
                         back={back}
@@ -840,12 +840,12 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     // file is made again at once. A large one shows its first rows at once and is made
     // again whole once the visitor pauses, so each change stays quick on a phone.
     const onMapping = useCallback(
-        (mapping: Mapping) => {
+        (mapping: Mapping, note?: string) => {
             if (stage.kind !== 'review') return;
-            const { problem: _last, ...review } = stage;
+            const { problem: _last, note: _said, ...review } = stage;
             const quick = stage.table.rows.length <= QUICK_ROWS;
             const result = toCatalog(quick ? stage.table : firstRows(stage.table), mapping);
-            setStage({ ...review, mapping, result, partial: !quick, changed: true });
+            setStage({ ...review, mapping, result, partial: !quick, ...(note && { note }) });
         },
         [stage]
     );

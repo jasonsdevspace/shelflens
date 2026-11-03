@@ -16,20 +16,20 @@ const TABLE = parseCsv(CSV);
 /** The editor and the preview together, as the review shows them. */
 const Harness = () => {
     const [mapping, setMapping] = useState<Mapping>(() => guessMapping(TABLE));
-    const [changed, setChanged] = useState(false);
+    const [note, setNote] = useState<string | undefined>(undefined);
     const result = toCatalog(TABLE, mapping, new Date('2026-10-31T00:00:00Z'));
     return (
         <main>
             <MappingEditor
                 table={TABLE}
                 mapping={mapping}
-                onChange={(next) => {
+                onChange={(next, said) => {
                     setMapping(next);
-                    setChanged(true);
+                    setNote(said);
                 }}
             />
             {result.ok ? (
-                <Preview catalog={result.catalog} changed={changed} />
+                <Preview catalog={result.catalog} note={note} />
             ) : (
                 <p role="alert">{result.error}</p>
             )}
@@ -88,7 +88,13 @@ describe('what each choice says', () => {
         expect(screen.getByLabelText('Brand')).toHaveAccessibleDescription(
             'Its column, Maker, went to Description.'
         );
-        await said('Brand no longer has a column, since Maker went to Description.');
+        // Said with the preview it changed, as one line, so neither cuts the other off.
+        await said(
+            'Brand no longer has a column, since Maker went to Description. Preview updated. The first product is Trail Boot, $100.'
+        );
+        expect(
+            screen.getAllByRole('status').filter((status) => status.textContent !== '')
+        ).toHaveLength(1);
         // The next choice is a new one, so the note goes.
         await userEvent.selectOptions(screen.getByLabelText('Colors'), 'Notes');
         expect(screen.getByLabelText('Brand')).not.toHaveAccessibleDescription();
@@ -106,6 +112,36 @@ describe('the preview', () => {
         expect(preview().getByText('Solid oak with a waxed finish')).toBeInTheDocument();
         expect(preview().getByText('4.5 out of 5, from 12 ratings')).toBeInTheDocument();
         expect(preview().getByText('ID B-1')).toBeInTheDocument();
+    });
+
+    it('says a change to any part the cards show, though the first product keeps its name and price', async () => {
+        render(<Harness />);
+        await userEvent.selectOptions(screen.getByLabelText('Brand'), 'Notes');
+        await said('Preview updated. The first product is Trail Boot, $100.');
+        const first = screen.getAllByRole('status').find((status) => status.textContent !== '');
+        // The same words for another new preview come from a region made anew, so they are said again.
+        await userEvent.selectOptions(screen.getByLabelText('Brand'), 'Maker');
+        await userEvent.selectOptions(screen.getByLabelText('Colors'), 'Notes');
+        await said('Preview updated. The first product is Trail Boot, $100.');
+        expect(screen.getAllByRole('status')).not.toContain(first);
+    });
+
+    it('says nothing when a change leaves the cards as they were', async () => {
+        render(<Harness />);
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Notes' }));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(screen.getAllByRole('status').every((status) => status.textContent === '')).toBe(
+            true
+        );
+    });
+
+    it('cuts a long value by character, so an emoji is never split', () => {
+        const table = parseCsv('name,price\nUltra comfy trail shoes \u{1F45F} red,1\n');
+        expect(samplesOf(table, 'name')).toBe('Ultra comfy trail shoes\u2026');
+        // The emoji is the last character kept, where cutting by code unit would split it.
+        const emoji = parseCsv('name,price\nUltra comfy trail shoe\u{1F45F}\u{1F45F} red,1\n');
+        expect(Array.from(samplesOf(emoji, 'name')).every((char) => char !== '\uFFFD')).toBe(true);
+        expect(samplesOf(emoji, 'name')).toBe('Ultra comfy trail shoe\u{1F45F}\u2026');
     });
 
     it('says nothing of the first guess, and says each preview once the guess is changed', async () => {

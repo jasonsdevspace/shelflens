@@ -1,10 +1,10 @@
 import { paysLess } from '@shelflens/api';
 import type { Catalog, Product } from '@shelflens/catalog';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
-import { count } from '../format/count.js';
 import { DEFAULT_LOCALE, formatMoney, formatPriceRange } from '../format/money.js';
+import { ratingText } from '../format/rating.js';
 import type { Table } from './csv.js';
 import type { MappedField, Mapping } from './mapping.js';
 
@@ -67,6 +67,17 @@ export const withSearchOnly = (mapping: Mapping, header: string, on: boolean): M
     return searchOnly.length > 0 ? { ...mapping, searchOnly } : withoutSearchOnly(mapping);
 };
 
+/** Text cut to so many characters, by character rather than by code unit, so no emoji is split. */
+const cut = (text: string, characters: number): string => {
+    const all = Array.from(text);
+    return all.length > characters
+        ? `${all
+              .slice(0, characters - 1)
+              .join('')
+              .trimEnd()}\u2026`
+        : text;
+};
+
 /** The longest a sample value runs in an option before it is cut. */
 const SAMPLE_CHARACTERS = 24;
 
@@ -80,13 +91,7 @@ export const samplesOf = (table: Table, header: string): string => {
         seen.add(value);
         if (seen.size === 2) break;
     }
-    return [...seen]
-        .map((value) =>
-            value.length > SAMPLE_CHARACTERS
-                ? `${value.slice(0, SAMPLE_CHARACTERS - 1)}\u2026`
-                : value
-        )
-        .join(' and ');
+    return [...seen].map((value) => cut(value, SAMPLE_CHARACTERS)).join(' and ');
 };
 
 /** What an option says: the column, the part it feeds now when that is another, and what it holds. */
@@ -115,16 +120,28 @@ export const MappingEditor = ({
 }: {
     readonly table: Table;
     readonly mapping: Mapping;
-    readonly onChange: (mapping: Mapping) => void;
+    /** The new mapping, with what to say of a column it moved from one part to another. */
+    readonly onChange: (mapping: Mapping, note?: string) => void;
 }) => {
     const id = useId();
     const [moved, setMoved] = useState<Moved | undefined>(undefined);
+    // What each column holds depends on the file alone, so it is found once for it.
+    const samples = useMemo(
+        () => new Map(table.headers.map((header) => [header, samplesOf(table, header)])),
+        [table]
+    );
     const usedFor = (header: string, field: MappedField): MappedField | undefined =>
         FIELDS.find((other) => other !== field && mapping[other] === header);
     const choose = (field: MappedField, header: string) => {
         const from = header === '' ? undefined : usedFor(header, field);
         setMoved(from ? { from, to: field, header } : undefined);
-        onChange(withField(mapping, field, header));
+        // Said with the preview that follows, as one line, so neither cuts the other off.
+        onChange(
+            withField(mapping, field, header),
+            from
+                ? `${FIELD_LABELS[from]} no longer has a column, since ${header} went to ${FIELD_LABELS[field]}.`
+                : undefined
+        );
     };
     const describedBy = (field: MappedField) =>
         [
@@ -174,7 +191,7 @@ export const MappingEditor = ({
                                     {optionText(
                                         header,
                                         usedFor(header, field),
-                                        samplesOf(table, header)
+                                        samples.get(header) ?? ''
                                     )}
                                 </option>
                             ))}
@@ -187,13 +204,6 @@ export const MappingEditor = ({
                     </div>
                 ))}
             </div>
-            <LiveStatus
-                text={
-                    moved
-                        ? `${FIELD_LABELS[moved.from]} no longer has a column, since ${moved.header} went to ${FIELD_LABELS[moved.to]}.`
-                        : ''
-                }
-            />
             {others.length > 0 && (
                 <fieldset className="try-search-only">
                     <legend>Also search these columns</legend>
@@ -256,8 +266,7 @@ const PreviewCard = ({
             )}
             {product.rating.count > 0 && (
                 <span className="notice">
-                    {product.rating.average.toFixed(1)} out of 5, from{' '}
-                    {count(product.rating.count, 'rating', 'ratings', DEFAULT_LOCALE)}
+                    {ratingText(product.rating.average, product.rating.count, DEFAULT_LOCALE)}
                 </span>
             )}
             <span className="notice">ID {product.sku}</span>
@@ -265,40 +274,62 @@ const PreviewCard = ({
     );
 };
 
+/** Each part of a product its preview card shows. */
+const shownOf = (product: Product) => [
+    product.name,
+    product.brand,
+    product.categoryPath,
+    product.price,
+    product.variants[0]?.inStock,
+    product.colors.slice(0, 3),
+    product.sizes.slice(0, 3),
+    product.material,
+    product.description,
+    product.rating,
+    product.sku,
+];
+
 /** The longest a description runs in the preview before it is cut. */
 const EXCERPT_CHARACTERS = 90;
 
-const excerpt = (text: string): string =>
-    text.length > EXCERPT_CHARACTERS
-        ? `${text.slice(0, EXCERPT_CHARACTERS - 1).trimEnd()}\u2026`
-        : text;
+const excerpt = (text: string): string => cut(text, EXCERPT_CHARACTERS);
 
 const WORDS = ['', 'one', 'two', 'three'];
 
 /**
- * The first three products, as the store will show them. Once the visitor
- * has changed the mapping, each new preview is said, so a change is heard
- * as well as seen.
+ * The first three products, as the store will show them. Each time what
+ * they show changes from the first guess, it is said, with any note about
+ * a column that moved, as one line. A change that leaves them as they were,
+ * such as another column searched as words, says nothing.
  */
 export const Preview = ({
     catalog,
-    changed = false,
+    note,
 }: {
     readonly catalog: Catalog;
-    readonly changed?: boolean;
+    /** What to say first, of a column the last change moved from one part to another. */
+    readonly note?: string | undefined;
 }) => {
     const categories = categoryNamesOf(catalog);
     const shown = catalog.products.slice(0, 3);
     const [first] = shown;
+    // What the cards show, so a change to any part of them is a change to say, and a change
+    // they do not show, such as a column searched as words, is not.
+    const shows = JSON.stringify(shown.map(shownOf));
+    const [firstShown] = useState(shows);
+    const said =
+        shows === firstShown || !first
+            ? ''
+            : [
+                  note,
+                  `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency })}.`,
+              ]
+                  .filter((line) => line !== undefined)
+                  .join(' ');
     return (
         <>
-            <LiveStatus
-                text={
-                    changed && first
-                        ? `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency })}.`
-                        : ''
-                }
-            />
+            {/* Made anew for each new preview, so the same words for a new preview are said again. */}
+            <LiveStatus key={shows} text={said} />
             <h2>{`${shown.length === 1 ? 'The first product' : `The first ${WORDS[shown.length] ?? shown.length} products`}, as the store will show them`}</h2>
             <ul className="try-preview" aria-label="Preview">
                 {shown.map((product) => (

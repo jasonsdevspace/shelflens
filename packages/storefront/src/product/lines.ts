@@ -1,5 +1,5 @@
-import { count } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
+import { ratingText } from '../format/rating.js';
 import type { ProductQuery } from '../generated/operations.js';
 
 type Product = NonNullable<ProductQuery['product']>;
@@ -12,8 +12,7 @@ export const metaLine = (
     [
         product.brand.name,
         product.material,
-        product.rating &&
-            `${product.rating.average.toFixed(1)} out of 5, from ${count(product.rating.count, 'rating', 'ratings', locale)}`,
+        product.rating && ratingText(product.rating.average, product.rating.count, locale),
     ]
         .filter((part) => typeof part === 'string' && part.trim() !== '')
         .join(' · ');
