@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RulesPanel, type RulesPanelProps, useRulesEditor } from './RulesPanel.jsx';
+import { onlyUnderRelevance } from './setAside.js';
 
 /*
  * The panel on its own, over the rules path of a small host: the shipped
@@ -317,15 +318,14 @@ describe('the rules panel', () => {
         });
     });
 
-    it('says a boost or a bury in a rule for one category does nothing under that category’s own sort', async () => {
+    it('says under How much that a boost or a bury applies only under relevance', async () => {
         const { user } = open({
             phrase: 'boots',
             applied: ['all-boots'],
             products: [{ sku: 'SL-7', name: 'Mud Boot' }],
         });
         await user.click(await screen.findByRole('button', { name: /all-boots/ }));
-        const said =
-            'Under “Featured”, the category’s own order, a boost does nothing. It applies under “Relevance”, where a search starts.';
+        const said = onlyUnderRelevance('boost');
         expect(screen.queryByText(said)).toBeNull();
         await user.click(screen.getByRole('radio', { name: /^Boost/ }));
         expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
@@ -333,20 +333,20 @@ describe('the rules panel', () => {
         );
         await user.click(screen.getByRole('radio', { name: /^Bury/ }));
         expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
-            said.replace('a boost', 'a bury')
+            onlyUnderRelevance('bury')
         );
-        // A pin holds under the category's own sort, so it is told nothing.
+        // A pin or a hide is not about a score, so it is told nothing.
         await user.click(screen.getByRole('radio', { name: /^Pin/ }));
-        expect(screen.queryByText(/the category’s own order/)).toBeNull();
+        expect(screen.queryByText(/applies only under/)).toBeNull();
     });
 
-    it('says nothing of the category’s own sort to a boost in a rule for no category', async () => {
+    it('says it for a rule with no category filter as well', async () => {
         const { user } = open();
         await user.click(await screen.findByRole('button', { name: /Featured jackets/ }));
         await user.click(screen.getByRole('radio', { name: /^Boost/ }));
-        expect(
-            screen.getByRole('combobox', { name: 'How much' })
-        ).not.toHaveAccessibleDescription();
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            onlyUnderRelevance('boost')
+        );
     });
 
     it('lists what the engine applied, not what the words suggest', async () => {

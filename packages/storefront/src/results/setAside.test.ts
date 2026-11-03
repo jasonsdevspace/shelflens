@@ -2,7 +2,7 @@ import { generateCatalog } from '@shelflens/catalog';
 import { createStoreEngine, searchStore } from '@shelflens/search';
 import { describe, expect, it } from 'vitest';
 
-import { SCOPED_FILTER, setAsideByOwnSort, setAsideBySort } from './setAside.js';
+import { onlyUnderRelevance, setAsideBySort } from './setAside.js';
 
 describe('what the page says about rules a sort set aside', () => {
     it('says nothing when the sort set none aside', () => {
@@ -28,34 +28,38 @@ describe('what the page says about rules a sort set aside', () => {
     });
 });
 
-describe('what the rule form says of a boost under the category’s own sort', () => {
-    it('names the filter the store scopes that sort to, as the store itself reports it', () => {
+describe('what the rule form says of a boost or a bury', () => {
+    it('is what the store does: every sort but relevance sets a boost aside, the category’s own included', () => {
         const store = createStoreEngine(generateCatalog({ seed: 42, products: 50 })).reconfigure({
             rules: [
                 {
-                    id: 'boots-boost',
-                    when: { filter: { attribute: SCOPED_FILTER, value: 'boots' } },
+                    id: 'for-the-category',
+                    when: { filter: { attribute: 'category', value: 'boots' } },
                     boost: [{ attribute: { name: 'brand', value: 'Ridgeback' }, weight: 1.5 }],
+                },
+                {
+                    id: 'for-the-words',
+                    when: { queries: ['boot'] },
+                    bury: [{ attribute: { name: 'brand', value: 'Ridgeback' }, weight: 0.5 }],
                 },
             ],
         });
-        const result = searchStore(store, {
-            group: 'guest',
-            filters: [{ attribute: SCOPED_FILTER, eq: 'boots' }],
-            sort: [{ by: 'position', direction: 'asc' }],
-        });
-        expect(result.sort[0]?.by).toBe('position');
-        expect(result.rules.setAsideBySort).toEqual(['boots-boost']);
+        for (const by of ['position', 'rating'] as const) {
+            const result = searchStore(store, {
+                group: 'guest',
+                query: 'boot',
+                filters: [{ attribute: 'category', eq: 'boots' }],
+                sort: [{ by, direction: 'desc' }],
+            });
+            expect(result.sort[0]?.by, by).toBe(by);
+            expect(result.rules.setAsideBySort, by).toEqual(['for-the-category', 'for-the-words']);
+        }
     });
 
-    it('speaks only to a rule for one category', () => {
-        expect(setAsideByOwnSort({ attribute: 'category' }, 'boost')).toBe(
-            'Under “Featured”, the category’s own order, a boost does nothing. It applies under “Relevance”, where a search starts.'
+    it('says so in the sorts’ own names', () => {
+        expect(onlyUnderRelevance('boost')).toBe(
+            'A boost applies only under “Relevance”, where a search starts. Every other sort sets it aside, “Featured” included.'
         );
-        expect(setAsideByOwnSort({ attribute: 'category' }, 'bury')).toContain(
-            'a bury does nothing'
-        );
-        expect(setAsideByOwnSort({ attribute: 'brand' }, 'boost')).toBeUndefined();
-        expect(setAsideByOwnSort(undefined, 'boost')).toBeUndefined();
+        expect(onlyUnderRelevance('bury')).toContain('A bury applies only under “Relevance”');
     });
 });

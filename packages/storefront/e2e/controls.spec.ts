@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { PAGES } from '../src/bench/pages.js';
-import { expect, test } from './support.js';
+import { expect, rulesPanel, test } from './support.js';
 
 /*
  * Every control on every page, in both themes, on the desktop and the
@@ -227,10 +227,7 @@ test('lines the rule form’s text fields up with its selects, and holds its con
     // The rules open beside the results on a wide screen, and a phone opens them in a drawer.
     await page.goto('/?q=jacket&explain=1&rules=1');
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    if (isMobile) await page.getByRole('button', { name: 'Edit rules' }).tap();
-    const panel = isMobile
-        ? page.getByRole('dialog', { name: 'Rules' })
-        : page.getByRole('complementary', { name: 'Rules' });
+    const panel = await rulesPanel(page, isMobile);
     await panel.getByRole('button', { name: 'Add a rule' }).click();
     await panel.getByRole('textbox', { name: 'Name', exact: true }).waitFor();
     // A boost asks what it is on and how much, so the form holds selects beside its text fields.

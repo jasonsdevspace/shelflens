@@ -117,3 +117,11 @@ export interface ShippedCatalog {
 /** The catalog the demo ships, read from the built site as a page reads it. */
 export const shippedCatalog = async (request: APIRequestContext): Promise<ShippedCatalog> =>
     (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+
+/** The rules panel, opened beside the results on a wide screen, or in its drawer on a phone. */
+export const rulesPanel = async (page: Page, isMobile: boolean) => {
+    if (isMobile) await page.getByRole('button', { name: 'Edit rules' }).tap();
+    return isMobile
+        ? page.getByRole('dialog', { name: 'Rules' })
+        : page.getByRole('complementary', { name: 'Rules' });
+};
