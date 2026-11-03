@@ -45,7 +45,7 @@ describe('the explanation on a card', () => {
         );
         expect(screen.getByText('Boosted 1.5× by rule summer-promo')).toBeInTheDocument();
         expect(screen.getByText('Did not match the search')).toBeInTheDocument();
-        expect(document.querySelector('.card-rating')).toHaveTextContent(
+        expect(document.querySelector('.card-rating .visually-hidden')).toHaveTextContent(
             '5.0 out of 5, from 544 ratings'
         );
     });
@@ -140,5 +140,34 @@ describe('the price on a card', () => {
             </ul>
         );
         expect(screen.getByText('Member price')).toBeInTheDocument();
+    });
+});
+
+describe('the rating on a card', () => {
+    const plain = (rating: CardFragment['rating']) =>
+        render(
+            <ul>
+                <ProductCard
+                    product={{ ...product, rating }}
+                    href="/?product=SL-00001"
+                    onOpen={() => undefined}
+                />
+            </ul>
+        );
+
+    it('shows stars, the average and the count, and says it once in words', () => {
+        plain({ average: 3.7, count: 1993 });
+        const line = document.querySelector('.card-rating');
+        // Seen: the stars, 3.7 and the count. Heard: the sentence, and nothing seen.
+        expect(line?.querySelector('.stars')).toHaveAttribute('aria-hidden', 'true');
+        expect(line).toHaveTextContent('3.7(1,993)3.7 out of 5, from 1,993 ratings');
+        expect(screen.getByRole('link')).toHaveAccessibleName(/3\.7 out of 5, from 1,993 ratings/);
+        expect(screen.getByRole('link')).not.toHaveAccessibleName(/\(1,993\)/);
+    });
+
+    it('says a product with no ratings has none, rather than leaving the line out', () => {
+        plain(null);
+        expect(document.querySelector('.card-rating')).toHaveTextContent('No ratings yet');
+        expect(document.querySelector('.stars')).toBeNull();
     });
 });
