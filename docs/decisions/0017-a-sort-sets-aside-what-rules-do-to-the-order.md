@@ -66,6 +66,10 @@ set aside together, each once, and marks each one the sort set aside.
   says so. The demo's `ridgeback-boots` rule, which boosts a brand when "boots" is searched inside
   the boots category, meets this under "Featured". A merchandiser who wants a product higher in a
   category's own order pins it, or changes its position.
+- Every visitor sees the line, not only one with "Rules" or "Explain ranking" on. A shopper who
+  sorts sees the merchandising give way without first finding "Rules", which is what the tour's
+  stop on rules and sorting asks a visitor to watch. The cost is that a shopper reads rule ids they
+  cannot act on.
 
 ## How it is tested
 
@@ -78,9 +82,10 @@ set aside together, each once, and marks each one the sort set aside.
   in `setAsideBySort`.
 - `packages/storefront/src/App.merchandising.test.tsx`: the page says when a sort set the
   merchandising aside, in a status that stays in the page, and its button sorts by relevance and
-  puts focus on Sort by. `packages/storefront/src/results/RulesPanel.test.tsx`: the panel marks
-  each rule the sort set aside, and no other. `packages/storefront/src/results/setAside.test.ts`
-  holds the line's wording under a plain sort and under "Featured".
+  puts focus on Sort by. The same line shows to a shopper and to a merchandiser with "Rules" and
+  "Explain ranking" on. `packages/storefront/src/results/RulesPanel.test.tsx`: the panel marks each
+  rule the sort set aside, and no other. `packages/storefront/src/results/setAside.test.ts` holds
+  the line's wording under a plain sort and under "Featured".
 - `packages/storefront/e2e/merchandising.spec.ts`: sorting the jackets by price names
   `featured-jackets` as set aside and leaves the hidden sample out of the line, since its hide
   still holds, and the button goes back to relevance with focus on Sort by.

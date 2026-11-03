@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { cards, featured, open, settled } from './test/store.jsx';
@@ -52,6 +52,22 @@ describe('explain mode', () => {
         expect(said).toBeInTheDocument();
         expect(said).toBeEmptyDOMElement();
         expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
+    });
+});
+
+describe('the rules a sort set aside', () => {
+    it('are said to a shopper and to a merchandiser alike', async () => {
+        const line =
+            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket.';
+        for (const search of [
+            '?q=jacket&sort=price-asc',
+            '?q=jacket&sort=price-asc&rules=1&explain=1',
+        ]) {
+            await open(search);
+            await settled();
+            expect(screen.getByText(/sets aside the pins/), search).toHaveTextContent(line);
+            cleanup();
+        }
     });
 });
 
