@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
  * What the workflows promise that only reading them can hold: a name for
  * every job a reviewer sees in the checks, the screenshots taken in the
  * image of the Playwright the tests pin, and an engine published only as
- * the tarball the oldest Node check proved.
+ * the tarball the oldest Node check proved, and a release on GitHub named
+ * for the part of the project it is.
  */
 
 const ROOT = join(import.meta.dirname, '..');
@@ -64,6 +65,15 @@ describe('the workflows', () => {
         expect(publish.indexOf('sha256sum -c -')).toBeGreaterThan(0);
         expect(publish.indexOf('sha256sum -c -')).toBeLessThan(
             publish.indexOf('npm stage publish')
+        );
+    });
+
+    it('name each release on GitHub for the part of the project it is, and the engine for its npm name too', () => {
+        const jobs = jobsOf(read('release.yml'));
+        expect(jobs.get('engine-release')).toContain('"ShelfLens engine $VERSION"');
+        expect(jobs.get('storefront')).toContain('"ShelfLens storefront $VERSION"');
+        expect(jobs.get('engine-release')).toMatch(
+            /NOTES_LEAD: .*`npm install @jasonsdevspace\/shelflens@\$\{\{ needs\.agree\.outputs\.version \}\}`/
         );
     });
 });
