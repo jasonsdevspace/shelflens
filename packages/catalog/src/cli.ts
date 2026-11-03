@@ -9,7 +9,7 @@ import { DEFAULT_PRODUCTS, DEFAULT_SEED, generateCatalog } from './generate.js';
  *
  *   npm run catalog -- --out data/catalog.json
  *   npm run catalog -- --seed 7 --products 100000 --out /tmp/big.json
- *   npm run catalog -- --compact --out packages/storefront/public/catalog.json
+ *   npm run catalog -- --compact --out apps/storefront/public/catalog.json
  *
  * The demo and the tests generate catalogs in memory. This exists for the
  * snapshot the demo ships, and for anyone who wants to look at the data.

@@ -14,14 +14,14 @@ export default defineConfig({
             {
                 extends: true,
                 test: {
-                    name: 'packages',
+                    name: 'node',
                     environment: 'node',
                     include: [
                         'packages/*/src/**/*.test.ts',
                         'packages/engine/smoke/*.test.ts',
+                        'apps/server/src/**/*.test.ts',
                         'scripts/*.test.ts',
                     ],
-                    exclude: ['packages/storefront/**'],
                 },
             },
             {
@@ -29,8 +29,8 @@ export default defineConfig({
                 test: {
                     name: 'storefront',
                     environment: 'jsdom',
-                    include: ['packages/storefront/src/**/*.test.{ts,tsx}'],
-                    setupFiles: ['packages/storefront/vitest.setup.ts'],
+                    include: ['apps/storefront/src/**/*.test.{ts,tsx}'],
+                    setupFiles: ['apps/storefront/vitest.setup.ts'],
                 },
             },
         ],

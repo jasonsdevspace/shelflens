@@ -14,9 +14,16 @@ import { SOURCE_CONDITION } from '../source-condition.js';
  */
 
 const root = join(__dirname, '..');
-const packages = readdirSync(join(root, 'packages'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => join(root, 'packages', entry.name))
+/** Every workspace package, in the folders the root's manifest names: packages/ and apps/. */
+const packages = (
+    JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { workspaces: string[] }
+).workspaces
+    .map((glob) => join(root, glob.replace(/\/\*$/, '')))
+    .flatMap((folder) =>
+        readdirSync(folder, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => join(folder, entry.name))
+    )
     .filter((dir) => existsSync(join(dir, 'package.json')));
 
 /** A tsconfig's compiler options. They are JSON with comments, which are left out before parsing. */

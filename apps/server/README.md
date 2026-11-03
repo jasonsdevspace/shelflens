@@ -34,7 +34,7 @@ development is built and refreshed as the worker's is in production. `createServ
 answers `/rules` with a 404.
 
 `RULES=path` loads the merchandising the server starts with from a JSON file of the shape the demo
-ships in `packages/storefront/public/rules.json`: an object with the rules under `rules`, each with
+ships in `apps/storefront/public/rules.json`: an object with the rules under `rules`, each with
 an `id`. A file of another shape stops the server before it listens, and so does a rule that names a
 product or an attribute the catalog does not have, since the store is built from the catalog and
 the rules before the server takes a request. Without it the server starts

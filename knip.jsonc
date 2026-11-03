@@ -27,9 +27,9 @@
     "ignore": ["**/src/generated/**"],
     "ignoreIssues": {
         // Read by Vite, which loads each config's default export.
-        "packages/storefront/vite*.config.ts": ["exports"],
+        "apps/storefront/vite*.config.ts": ["exports"],
         // Loaded by the shell plugin through Vite, by path, so no import names it.
-        "packages/storefront/src/app/shell.tsx": ["exports"],
+        "apps/storefront/src/app/shell.tsx": ["exports"],
     },
     "workspaces": {
         ".": { "entry": ["scripts/*.mjs"] },
@@ -37,8 +37,8 @@
         "packages/api": { "includeEntryExports": true, "entry": ["scripts/*.mjs"] },
         "packages/catalog": { "includeEntryExports": true, "entry": ["src/cli.ts"] },
         "packages/search": { "includeEntryExports": true, "entry": ["src/bench-cli.ts"] },
-        "packages/server": { "includeEntryExports": true, "entry": ["src/main.ts"] },
-        "packages/storefront": {
+        "apps/server": { "includeEntryExports": true, "entry": ["src/main.ts"] },
+        "apps/storefront": {
             "includeEntryExports": true,
             // Its configs load the dev server's plugins from built packages, so
             // the pages, the widget and the worker are named here instead.

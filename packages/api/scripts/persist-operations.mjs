@@ -81,14 +81,7 @@ const manifestModule = (manifest) =>
 if (isRunDirectly(import.meta.url)) {
     const here = dirname(fileURLToPath(import.meta.url));
     const root = join(here, '..', '..', '..');
-    const operationsPath = join(
-        root,
-        'packages',
-        'storefront',
-        'src',
-        'generated',
-        'operations.ts'
-    );
+    const operationsPath = join(root, 'apps', 'storefront', 'src', 'generated', 'operations.ts');
     const manifestPath = join(root, 'packages', 'api', 'src', 'generated', 'persisted.ts');
     const { named, manifest } = nameOperations(readFileSync(operationsPath, 'utf8'));
     writeFileSync(operationsPath, named);

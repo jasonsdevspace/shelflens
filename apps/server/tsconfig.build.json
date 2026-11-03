@@ -10,10 +10,10 @@
         "outDir": "dist"
     },
     "references": [
-        { "path": "../catalog/tsconfig.build.json" },
-        { "path": "../engine/tsconfig.build.json" },
-        { "path": "../search/tsconfig.build.json" },
-        { "path": "../api/tsconfig.build.json" }
+        { "path": "../../packages/catalog/tsconfig.build.json" },
+        { "path": "../../packages/engine/tsconfig.build.json" },
+        { "path": "../../packages/search/tsconfig.build.json" },
+        { "path": "../../packages/api/tsconfig.build.json" }
     ],
     "include": ["src"],
     "exclude": ["src/**/*.test.ts"]

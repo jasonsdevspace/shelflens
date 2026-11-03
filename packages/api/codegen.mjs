@@ -9,11 +9,11 @@
  */
 export default {
     schema: 'packages/api/schema.graphql',
-    documents: 'packages/storefront/src/operations/*.graphql',
+    documents: 'apps/storefront/src/operations/*.graphql',
     generates: {
         // The storefront's operations, as typed strings: the client sends the
         // string and gets the result type, with no GraphQL library in the page.
-        'packages/storefront/src/generated/operations.ts': {
+        'apps/storefront/src/generated/operations.ts': {
             plugins: ['typescript-operations', 'typed-document-node'],
             config: {
                 useTypeImports: true,

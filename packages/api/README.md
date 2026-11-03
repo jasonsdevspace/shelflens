@@ -58,4 +58,4 @@ const response = await api.run(
 );
 ```
 
-`packages/server` puts this behind HTTP, and `packages/storefront` puts it in a service worker.
+`apps/server` puts this behind HTTP, and `apps/storefront` puts it in a service worker.

@@ -8,26 +8,27 @@
         "node": ">=24 <25"
     },
     "workspaces": [
-        "packages/*"
+        "packages/*",
+        "apps/*"
     ],
     "scripts": {
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
         "test": "vitest",
-        "e2e": "npm run storefront && playwright test --config packages/storefront/playwright.config.ts",
+        "e2e": "npm run storefront && playwright test --config apps/storefront/playwright.config.ts",
         "build": "npm run build --workspaces --if-present",
         "catalog": "tsx packages/catalog/src/cli.ts",
         "bench": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/search/src/bench-cli.ts && prettier --write docs/benchmarks",
-        "bench:popover": "npm run build && tsx packages/storefront/src/bench/bench-cli.ts && prettier --write docs/benchmarks",
-        "bench:sizes": "npm run build && NODE_OPTIONS=--expose-gc tsx packages/storefront/src/bench/sizes-cli.ts && prettier --write docs/benchmarks",
-        "bench:cold": "npm run storefront && tsx packages/storefront/src/bench/cold-visit.ts && prettier --write docs/benchmarks",
-        "budget": "tsx packages/storefront/src/bench/budget.ts",
+        "bench:popover": "npm run build && tsx apps/storefront/src/bench/bench-cli.ts && prettier --write docs/benchmarks",
+        "bench:sizes": "npm run build && NODE_OPTIONS=--expose-gc tsx apps/storefront/src/bench/sizes-cli.ts && prettier --write docs/benchmarks",
+        "bench:cold": "npm run storefront && tsx apps/storefront/src/bench/cold-visit.ts && prettier --write docs/benchmarks",
+        "budget": "tsx apps/storefront/src/bench/budget.ts",
         "screenshots:accept": "node scripts/screenshots.mjs accept",
-        "lighthouse": "npm run storefront && tsx packages/storefront/src/bench/lighthouse.ts",
-        "api": "npm run build && node packages/server/dist/main.js",
+        "lighthouse": "npm run storefront && tsx apps/storefront/src/bench/lighthouse.ts",
+        "api": "npm run build && node apps/server/dist/main.js",
         "dev": "npm run build && npm run dev --workspace=@shelflens/storefront",
-        "storefront": "npm run build && npm run catalog -- --compact --out packages/storefront/public/catalog.json && npm run sample --workspace=@shelflens/storefront && npm run bundle --workspace=@shelflens/storefront",
-        "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && node packages/api/scripts/persist-operations.mjs && prettier --write packages/api/src/generated packages/storefront/src/generated",
+        "storefront": "npm run build && npm run catalog -- --compact --out apps/storefront/public/catalog.json && npm run sample --workspace=@shelflens/storefront && npm run bundle --workspace=@shelflens/storefront",
+        "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && node packages/api/scripts/persist-operations.mjs && prettier --write packages/api/src/generated apps/storefront/src/generated",
         "verify": "npm run type-check --workspaces && tsc -p scripts && eslint . && prettier --check . && node scripts/check-prose.mjs && node scripts/check-node.mjs && knip --tsConfig tsconfig.build.json && vitest run",
         "prepare": "husky || true"
     },

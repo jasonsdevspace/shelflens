@@ -37,8 +37,8 @@ export const STOPS: readonly Stop[] = [
         to: EMPTY_STATE,
         focus: SEARCH_BOX,
         tests: [
-            'packages/storefront/src/client/latest.test.ts',
-            'packages/storefront/src/search/SearchBox.test.tsx',
+            'apps/storefront/src/client/latest.test.ts',
+            'apps/storefront/src/search/SearchBox.test.tsx',
         ],
     },
     {
@@ -47,7 +47,7 @@ export const STOPS: readonly Stop[] = [
         body: 'Watch the network while you type. The suggestion list waits for a short pause after the last keystroke and sends once, so the API is not flooded and the suggestions still feel immediate.',
         to: EMPTY_STATE,
         focus: SEARCH_BOX,
-        tests: ['packages/storefront/src/search/SearchBox.test.tsx'],
+        tests: ['apps/storefront/src/search/SearchBox.test.tsx'],
     },
     {
         id: 'combobox',
@@ -56,8 +56,8 @@ export const STOPS: readonly Stop[] = [
         to: EMPTY_STATE,
         focus: SEARCH_BOX,
         tests: [
-            'packages/storefront/src/search/SearchBox.test.tsx',
-            'packages/storefront/e2e/start.spec.ts',
+            'apps/storefront/src/search/SearchBox.test.tsx',
+            'apps/storefront/e2e/start.spec.ts',
         ],
     },
     {
@@ -67,8 +67,8 @@ export const STOPS: readonly Stop[] = [
         to: EMPTY_STATE,
         focus: SEARCH_BOX,
         tests: [
-            'packages/storefront/src/search/recent.test.ts',
-            'packages/storefront/src/search/SearchBox.test.tsx',
+            'apps/storefront/src/search/recent.test.ts',
+            'apps/storefront/src/search/SearchBox.test.tsx',
         ],
     },
     {
@@ -102,8 +102,8 @@ export const STOPS: readonly Stop[] = [
         to: { ...EMPTY_STATE, phrase: 'jacket', brand: ['Ridgeback'], sort: 'price-asc' },
         focus: BRANDS,
         tests: [
-            'packages/storefront/src/app/url.test.ts',
-            'packages/storefront/src/app/useUrlState.test.tsx',
+            'apps/storefront/src/app/url.test.ts',
+            'apps/storefront/src/app/useUrlState.test.tsx',
         ],
     },
     {
@@ -120,10 +120,7 @@ export const STOPS: readonly Stop[] = [
         body: 'This asks for page 999. The heading still gives the real total, and the page says it is past the last page, with a link to the last one. The tests also check that a page size past the limit is reduced rather than refused.',
         to: { ...EMPTY_STATE, phrase: 'boot', page: 999 },
         focus: '.past-last',
-        tests: [
-            'packages/engine/src/search.test.ts',
-            'packages/storefront/src/App.results.test.tsx',
-        ],
+        tests: ['packages/engine/src/search.test.ts', 'apps/storefront/src/App.results.test.tsx'],
     },
     {
         id: 'rules',
@@ -133,7 +130,7 @@ export const STOPS: readonly Stop[] = [
         focus: '.set-aside',
         tests: [
             'packages/engine/src/rules.test.ts',
-            'packages/storefront/src/App.merchandising.test.tsx',
+            'apps/storefront/src/App.merchandising.test.tsx',
         ],
     },
     {
@@ -146,7 +143,7 @@ export const STOPS: readonly Stop[] = [
             'packages/engine/src/search.test.ts',
             'packages/engine/src/synonyms.test.ts',
             'packages/engine/src/rules.test.ts',
-            'packages/storefront/src/results/ProductCard.test.tsx',
+            'apps/storefront/src/results/ProductCard.test.tsx',
         ],
     },
     {
@@ -156,8 +153,8 @@ export const STOPS: readonly Stop[] = [
         to: { ...EMPTY_STATE, phrase: 'jacket', explain: true, rules: true },
         focus: '.rules',
         tests: [
-            'packages/storefront/src/results/RulesPanel.test.tsx',
-            'packages/storefront/src/worker/handle.test.ts',
+            'apps/storefront/src/results/RulesPanel.test.tsx',
+            'apps/storefront/src/worker/handle.test.ts',
         ],
     },
     {
@@ -169,8 +166,8 @@ export const STOPS: readonly Stop[] = [
         tests: [
             'packages/engine/src/signals.test.ts',
             'packages/api/src/api.test.ts',
-            'packages/storefront/src/worker/handle.test.ts',
-            'packages/storefront/src/results/ProductCard.test.tsx',
+            'apps/storefront/src/worker/handle.test.ts',
+            'apps/storefront/src/results/ProductCard.test.tsx',
         ],
     },
     {
@@ -182,7 +179,7 @@ export const STOPS: readonly Stop[] = [
         tests: [
             'packages/engine/src/recover.test.ts',
             'packages/api/src/api.test.ts',
-            'packages/storefront/src/App.results.test.tsx',
+            'apps/storefront/src/App.results.test.tsx',
         ],
     },
     {
@@ -192,8 +189,8 @@ export const STOPS: readonly Stop[] = [
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-desc' },
         focus: RESULTS,
         tests: [
-            'packages/storefront/src/format/money.test.ts',
-            'packages/storefront/src/product/variants.test.ts',
+            'apps/storefront/src/format/money.test.ts',
+            'apps/storefront/src/product/variants.test.ts',
         ],
     },
     {
@@ -202,10 +199,7 @@ export const STOPS: readonly Stop[] = [
         body: 'With nothing else viewed yet, the row of products under this one shows the most rated in its category, and its heading says "Most rated in" and the category. Open a product from that row and this one leads the next row, under a heading that begins "Viewed with this product" and says where the rest come from. It never shows the product itself or one you cannot see, and it starts over when you clear site data.',
         to: { ...EMPTY_STATE, product: 'SL-00001' },
         focus: '#rail-heading',
-        tests: [
-            'packages/api/src/recommend.test.ts',
-            'packages/storefront/src/App.product.test.tsx',
-        ],
+        tests: ['packages/api/src/recommend.test.ts', 'apps/storefront/src/App.product.test.tsx'],
     },
     {
         id: 'telemetry',
@@ -213,10 +207,7 @@ export const STOPS: readonly Stop[] = [
         body: 'Search, open a product, then look in DevTools under Application, IndexedDB, shelflens-events. What you did is sent in batches with sendBeacon, so it never blocks the page. A batch delivered twice counts once, and nothing in it could name you. With Global Privacy Control on, nothing is sent at all.',
         to: EMPTY_STATE,
         focus: SEARCH_BOX,
-        tests: [
-            'packages/storefront/src/events/collector.test.ts',
-            'packages/api/src/events.test.ts',
-        ],
+        tests: ['apps/storefront/src/events/collector.test.ts', 'packages/api/src/events.test.ts'],
     },
     {
         id: 'errors',

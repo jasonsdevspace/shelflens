@@ -75,12 +75,12 @@ to a third of a second.
   cleared, and says it keeps no rules when it was given nowhere to keep them. It keeps the store it
   has when a new source cannot be built, when a visit cannot build again, and when the host cannot
   tidy up after a build, and a request during a change is answered rather than kept waiting.
-- `packages/server/src/server.test.ts`: clicks posted over a real socket rank on the next visit and
+- `apps/server/src/server.test.ts`: clicks posted over a real socket rank on the next visit and
   not mid-visit, `/rules` answers 404 where the host keeps none, and the server takes a host or a
   fixed API, never both.
-- `packages/storefront/src/dev/hosts-agree.test.ts`: the same batch of clicks sent to the worker
+- `apps/storefront/src/dev/hosts-agree.test.ts`: the same batch of clicks sent to the worker
   and to the Node server nudges the same products by the same amount on the next visit to each.
-- `packages/storefront/src/worker/handle-catalog.test.ts`: a visitor's catalog is loaded, replaced
+- `apps/storefront/src/worker/handle-catalog.test.ts`: a visitor's catalog is loaded, replaced
   and removed, a file just loaded is built from the one in hand without being read back, a catalog
   that cannot be built leaves the last one serving with its rules, and a load and a removal that
   arrive together end in agreement.

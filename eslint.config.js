@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import js from '@eslint/js';
@@ -49,12 +49,19 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
-/** The workspace's packages, each with a manifest of its own. */
-const WORKSPACES = readdirSync(new URL('packages/', import.meta.url), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+/**
+ * The workspace's packages, as paths from the root, each with a manifest of its own: the
+ * libraries in packages/ and what runs in apps/, from the folders the root's manifest names.
+ */
+const WORKSPACES = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8'))
+    .workspaces.map((glob) => glob.replace(/\/\*$/, ''))
+    .flatMap((folder) =>
+        readdirSync(new URL(`${folder}/`, import.meta.url), { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => `${folder}/${entry.name}`)
+    )
     // A folder left behind by another branch, with no manifest, is not a package.
-    .filter((name) => existsSync(new URL(`packages/${name}/package.json`, import.meta.url)));
+    .filter((path) => existsSync(new URL(`${path}/package.json`, import.meta.url)));
 
 /** Code that runs in the browser loads no Node module. */
 const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot load Node.' };
@@ -126,12 +133,12 @@ export default defineConfig(
     },
     {
         // The script each page runs before its first paint, in the browser.
-        files: ['packages/storefront/theme.js'],
+        files: ['apps/storefront/theme.js'],
         languageOptions: { globals: globals.browser },
     },
     {
         // The storefront runs in a browser, and its hooks follow React's rules.
-        files: ['packages/storefront/**/*.{ts,tsx}'],
+        files: ['apps/storefront/**/*.{ts,tsx}'],
         languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
         plugins: { 'react-hooks': reactHooks },
         rules: {
@@ -140,7 +147,7 @@ export default defineConfig(
     },
     {
         // Tests read whatever a result happens to contain.
-        files: ['**/*.test.{ts,tsx}', 'packages/storefront/vitest.setup.ts'],
+        files: ['**/*.test.{ts,tsx}', 'apps/storefront/vitest.setup.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -160,7 +167,7 @@ export default defineConfig(
             'packages/catalog/src/**/*.ts',
             'packages/search/src/**/*.ts',
             'packages/api/src/**/*.ts',
-            'packages/storefront/src/**/*.{ts,tsx}',
+            'apps/storefront/src/**/*.{ts,tsx}',
         ],
         ignores: [
             '**/*.test.{ts,tsx}',
@@ -168,8 +175,8 @@ export default defineConfig(
             '**/bench.ts',
             '**/bench-cli.ts',
             '**/bundle.test.ts',
-            'packages/storefront/src/dev/**',
-            'packages/storefront/src/bench/**',
+            'apps/storefront/src/dev/**',
+            'apps/storefront/src/bench/**',
         ],
         rules: {
             '@typescript-eslint/no-restricted-imports': [
@@ -184,7 +191,7 @@ export default defineConfig(
         // The worker hosts the API for the pages, so it reads what the API packages
         // offer and never a page's own folder, which would make a page its dependency.
         // Its own block replaces the one above for these files, so it names Node too.
-        files: ['packages/storefront/src/worker/**/*.ts'],
+        files: ['apps/storefront/src/worker/**/*.ts'],
         ignores: ['**/*.test.ts'],
         rules: {
             '@typescript-eslint/no-restricted-imports': [
@@ -207,14 +214,14 @@ export default defineConfig(
     // because another one happens to install what it uses. Imports of types
     // count too, since a type a package needs is a package it needs. What
     // ships takes only its dependencies, and the tools only its checks.
-    ...WORKSPACES.map((name) => ({
-        files: [`packages/${name}/**/*.{ts,tsx,mjs,js}`],
+    ...WORKSPACES.map((path) => ({
+        files: [`${path}/**/*.{ts,tsx,mjs,js}`],
         rules: {
             'import-x/no-extraneous-dependencies': [
                 'error',
                 {
                     packageDir: [
-                        fileURLToPath(new URL(`packages/${name}/`, import.meta.url)),
+                        fileURLToPath(new URL(`${path}/`, import.meta.url)),
                         fileURLToPath(new URL('./', import.meta.url)),
                     ],
                     includeTypes: true,

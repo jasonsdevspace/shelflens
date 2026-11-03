@@ -241,5 +241,5 @@ jobs:
               run: |
                   flags="--latest=false"
                   [ "$PRERELEASE" = "true" ] && flags="$flags --prerelease"
-                  scripts/github-release.sh "$TAG" "$VERSION" packages/storefront/CHANGELOG.md \
+                  scripts/github-release.sh "$TAG" "$VERSION" apps/storefront/CHANGELOG.md \
                       "ShelfLens storefront $VERSION" $flags

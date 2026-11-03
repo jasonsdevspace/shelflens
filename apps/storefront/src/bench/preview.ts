@@ -23,7 +23,7 @@ export const startPreview = async (port: number): Promise<Preview> => {
     const child: ChildProcess = spawn(
         'npx',
         ['vite', 'preview', '--port', String(port), '--strictPort'],
-        { cwd: 'packages/storefront', stdio: ['ignore', 'ignore', 'inherit'] }
+        { cwd: 'apps/storefront', stdio: ['ignore', 'ignore', 'inherit'] }
     );
     for (let waited = 0; !(await answers(origin)); waited += 1) {
         if (child.exitCode !== null || waited > 100) {

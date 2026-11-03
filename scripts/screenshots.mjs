@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 import { isRunDirectly } from './repository.mjs';
 
-const STOREFRONT = 'packages/storefront';
+const STOREFRONT = 'apps/storefront';
 export const SCREENSHOTS = join(STOREFRONT, 'e2e', '__screenshots__');
 const RESULTS = join(STOREFRONT, 'test-results');
 export const ARTIFACT = 'screenshots';

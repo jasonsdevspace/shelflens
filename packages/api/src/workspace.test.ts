@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -20,6 +20,7 @@ const read = (path: string) =>
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
         packages?: Record<string, { version?: string; resolved?: string }>;
+        workspaces?: string[];
     };
 
 const ENGINE = '@jasonsdevspace/shelflens';
@@ -28,8 +29,15 @@ describe('the engine in the workspace', () => {
     const engine = read('packages/engine/package.json');
 
     it('is taken at any version by every package here that takes it, so the workspace is the one linked', () => {
-        const takers = readdirSync(new URL('packages/', root))
-            .map((name) => [name, read(`packages/${name}/package.json`)] as const)
+        // Every workspace package, in the folders the root's manifest names.
+        const folders = read('package.json').workspaces ?? [];
+        const takers = folders
+            .map((glob) => glob.replace(/\/\*$/, ''))
+            .flatMap((folder) =>
+                readdirSync(new URL(`${folder}/`, root)).map((name) => `${folder}/${name}`)
+            )
+            .filter((path) => existsSync(new URL(`${path}/package.json`, root)))
+            .map((path) => [path.split('/').pop() ?? path, read(`${path}/package.json`)] as const)
             .flatMap(([name, manifest]) =>
                 [manifest.dependencies, manifest.devDependencies].flatMap((listed) =>
                     listed?.[ENGINE] === undefined ? [] : [[name, listed[ENGINE]] as const]
