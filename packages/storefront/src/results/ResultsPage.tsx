@@ -42,7 +42,7 @@ import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { toRuleInput } from './rule-input.js';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
-import { setAsideBySort } from './setAside.js';
+import { setAsideBySort, type SetAsideRule } from './setAside.js';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
@@ -453,7 +453,7 @@ const Notices = ({
 }: {
     readonly previewing: boolean;
     readonly sortKey: SortKey;
-    readonly setAside: readonly string[];
+    readonly setAside: readonly SetAsideRule[];
     readonly heading: string;
     readonly onSortByRelevance: () => void;
 }) => (
@@ -554,7 +554,7 @@ const Answer = ({
         <Notices
             previewing={previewing}
             sortKey={sortKey}
-            setAside={result.merchandising.setAsideBySort}
+            setAside={result.merchandising.setAside}
             heading={heading}
             onSortByRelevance={onSortByRelevance}
         />

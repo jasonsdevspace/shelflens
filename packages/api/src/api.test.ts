@@ -30,6 +30,13 @@ beforeAll(() => {
                     when: { queries: ['jacket'] },
                     pin: [catalog.products[3]?.sku ?? ''],
                 },
+                {
+                    id: 'brand-lift',
+                    name: 'Lift a brand',
+                    when: { queries: ['parka'] },
+                    boost: [{ attribute: { name: 'brand', value: 'Ridgeback' }, weight: 1.5 }],
+                    bury: [{ attribute: { name: 'brand', value: 'Ostara' }, weight: 0.5 }],
+                },
             ],
         })
     );
@@ -62,7 +69,7 @@ const RESULTS = `
                 ... on ValueFacet { buckets { value count } }
                 ... on RangeFacet { buckets { from to count } }
                 ... on StatsFacet { min max count } }
-            merchandising { applied setAsideBySort }
+            merchandising { applied setAsideBySort setAside { ruleId name pins boosts buries } }
         }
     }`;
 
@@ -91,7 +98,26 @@ describe('searching', () => {
         const { search } = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 3 } }));
         expect(search.items[0].product.sku).toBe(catalog.products[3]?.sku);
         expect(search.items[0].explanation.rules).toEqual([{ ruleId: 'promo', action: 'PIN' }]);
-        expect(search.merchandising).toEqual({ applied: ['promo'], setAsideBySort: [] });
+        expect(search.merchandising).toEqual({
+            applied: ['promo'],
+            setAsideBySort: [],
+            setAside: [],
+        });
+    });
+
+    it('says what a sort set aside of each rule, with its name or null', async () => {
+        const sorted = (phrase: string) =>
+            run(RESULTS, { input: { phrase, sort: [{ by: 'PRICE', direction: 'ASC' }] } }).then(
+                (response) => data(response).search.merchandising
+            );
+        expect(await sorted('jacket')).toEqual({
+            applied: [],
+            setAsideBySort: ['promo'],
+            setAside: [{ ruleId: 'promo', name: null, pins: 1, boosts: 0, buries: 0 }],
+        });
+        expect((await sorted('parka')).setAside).toEqual([
+            { ruleId: 'brand-lift', name: 'Lift a brand', pins: 0, boosts: 1, buries: 1 },
+        ]);
     });
 
     it('translates a corrected phrase, an empty one, and a hopeless one', async () => {

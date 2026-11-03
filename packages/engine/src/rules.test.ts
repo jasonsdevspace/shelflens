@@ -26,6 +26,7 @@ const documents: Document[] = [
 const rules: Rule[] = [
     {
         id: 'runner-promo',
+        name: 'Runner promotion',
         when: { queries: ['runner', 'runners'] },
         pin: ['p3'],
         boost: [{ attribute: { name: 'brand', value: 'Ostara' }, weight: 2 }],
@@ -62,6 +63,7 @@ describe('rules on a query', () => {
         expect(result.rules).toEqual({
             applied: ['runner-promo', 'hide-pro'],
             setAsideBySort: [],
+            setAside: [],
         });
     });
 
@@ -119,6 +121,10 @@ describe('rules and the sort', () => {
         expect(result.rules).toEqual({
             applied: ['hide-pro'],
             setAsideBySort: ['runner-promo'],
+            // Its pin, boost and bury all give way, by name.
+            setAside: [
+                { ruleId: 'runner-promo', name: 'Runner promotion', pins: 1, boosts: 1, buries: 1 },
+            ],
         });
     });
 
@@ -159,6 +165,11 @@ describe('rules and the sort', () => {
         expect(result.rules).toEqual({
             applied: ['shoes-mixed'],
             setAsideBySort: ['shoes-mixed', 'shoes-boost'],
+            // The pin holds under the category's own sort, so only the boost and the bury are counted.
+            setAside: [
+                { ruleId: 'shoes-mixed', pins: 0, boosts: 1, buries: 0 },
+                { ruleId: 'shoes-boost', pins: 0, boosts: 0, buries: 1 },
+            ],
         });
     });
 

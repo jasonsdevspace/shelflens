@@ -20,11 +20,12 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await audit(page);
 
     await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
-    const aside = page.getByText(/sets aside the pins, boosts and buries/);
-    await expect(aside).toBeVisible();
-    await expect(aside).toContainText('featured-jackets');
+    const aside = page.getByText(/sets aside the pins/);
+    await expect(aside).toHaveText(
+        'The sort “Price, low to high” sets aside the pins of “Featured jackets”.'
+    );
     // The cafe racer sample stays hidden: a hide holds under any sort, and is not set aside.
-    await expect(aside).not.toContainText('racer-sample');
+    await expect(aside).not.toContainText('cafe racer');
     await audit(page);
     await page.getByRole('button', { name: 'Sort by relevance' }).click();
     const sort = page.getByRole('combobox', { name: 'Sort by' });
@@ -32,18 +33,15 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
     await expect(sort).toBeFocused();
 });
 
-test('the category’s own sort keeps its pins and says the boosts were set aside', async ({
+test('the category’s own sort names the boost it set aside, and the rule by its name', async ({
     page,
 }) => {
     // The demo's boots rule only boosts a brand, which the category's own order does not read.
     await page.goto('/?q=boots&category=boots&sort=position');
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
-    const aside = page.getByText(/sets aside every other change/);
-    await expect(aside).toContainText(
-        'The sort “Featured” keeps pins only from a category’s own rules.'
+    await expect(page.getByText(/sets aside the boost/)).toHaveText(
+        'The sort “Featured” sets aside the boost of “Ridgeback boots first”.'
     );
-    await expect(aside).toContainText('ridgeback-boots');
-    await expect(page.getByText(/sets aside the pins, boosts and buries/)).toHaveCount(0);
     await audit(page);
 });
 

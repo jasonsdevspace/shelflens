@@ -222,7 +222,11 @@ export const resolvers: Resolvers = {
         matching: ({ result }) => fromMode(result.mode),
         sort: ({ result }) => result.sort.map(fromSort),
         facets: ({ result }) => result.facets,
-        merchandising: ({ result }) => result.rules,
+        merchandising: ({ result }) => ({
+            ...result.rules,
+            // A rule with no name has none to give, which the schema says as null.
+            setAside: result.rules.setAside.map((rule) => ({ ...rule, name: rule.name ?? null })),
+        }),
         noResults: ({ result, input }, _args, context) =>
             result.total > 0 ? null : whenEmpty(input, context),
     },

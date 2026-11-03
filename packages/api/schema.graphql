@@ -414,6 +414,27 @@ type Merchandising {
     when it also boosts or buries, since those do nothing under that sort.
     """
     setAsideBySort: [ID!]!
+
+    """
+    The same rules, in the same order, each with its name and how many of its
+    pins, boosts and buries the sort set aside.
+    """
+    setAside: [SetAsideRule!]!
+}
+
+"""
+A rule a sort set aside, and what of it gave way. Under a sort scoped to the
+rule's own filter its pins hold, so pins is zero there.
+"""
+type SetAsideRule {
+    ruleId: ID!
+
+    "The rule's name, when it has one."
+    name: String
+
+    pins: Int!
+    boosts: Int!
+    buries: Int!
 }
 
 """

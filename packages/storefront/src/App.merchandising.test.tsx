@@ -33,13 +33,13 @@ describe('explain mode', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
-        expect(screen.queryByText(/sets aside the pins/)).toBeNull();
+        expect(screen.queryByText(/sets aside the pin/)).toBeNull();
         await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'price-asc');
         await settled();
         // It names the rule in the sort's own words, in the status that was there all along.
-        const said = screen.getByText(/sets aside the pins/);
+        const said = screen.getByText(/sets aside the pin/);
         expect(said).toHaveTextContent(
-            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket.'
+            'The sort “Price, low to high” sets aside the pin of “featured-jacket”.'
         );
         expect(said).toHaveAttribute('role', 'status');
         // The way back is a button beside the line, outside the status, so only the line is heard.
@@ -71,8 +71,10 @@ describe('the rules a sort set aside', () => {
             );
         }
         expect(screen.queryAllByRole('heading', { name: /^Rules for/ })).toHaveLength(on ? 1 : 0);
-        expect(screen.getByText(/sets aside the pins/)).toHaveTextContent(
-            setAsideBySort('price-asc', ['featured-jacket']) ?? ''
+        expect(screen.getByText(/sets aside the pin/)).toHaveTextContent(
+            setAsideBySort('price-asc', [
+                { ruleId: 'featured-jacket', name: null, pins: 1, boosts: 0, buries: 0 },
+            ]) ?? ''
         );
     });
 });

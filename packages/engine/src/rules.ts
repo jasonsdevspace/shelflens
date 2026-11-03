@@ -6,6 +6,7 @@ import {
     type Rule,
     type RuleAdjustment,
     type RuleEffect,
+    type SetAside,
     type SortClause,
 } from './types.js';
 
@@ -35,7 +36,7 @@ export interface RulePlan {
     /** Score multipliers by document id, with the rules behind them. */
     readonly adjustments: readonly PlannedAdjustment[];
     readonly applied: readonly string[];
-    readonly setAsideBySort: readonly string[];
+    readonly setAside: readonly SetAside[];
 }
 
 interface PlannedAdjustment {
@@ -50,7 +51,7 @@ const EMPTY_PLAN: RulePlan = {
     hidden: new Set(),
     adjustments: [],
     applied: [],
-    setAsideBySort: [],
+    setAside: [],
 };
 
 /**
@@ -199,8 +200,17 @@ interface Draft {
     readonly hidden: Set<string>;
     readonly adjustments: PlannedAdjustment[];
     readonly applied: string[];
-    readonly setAsideBySort: string[];
+    readonly setAside: SetAside[];
 }
+
+/** What a sort set aside of a rule: the pins given, and every boost and bury. */
+const setAsideOf = (rule: Rule, pins: number): SetAside => ({
+    ruleId: rule.id,
+    ...(rule.name !== undefined && { name: rule.name }),
+    pins,
+    boosts: (rule.boost ?? []).length,
+    buries: (rule.bury ?? []).length,
+});
 
 /** Whether the rule changes the order of the results, which only relevance can take. */
 const ordersResults = (rule: Rule): boolean =>
@@ -214,7 +224,9 @@ const keepUnderSort = (draft: Draft, rule: Rule): void => {
     const hides = rule.hide ?? [];
     for (const id of hides) draft.hidden.add(id);
     if (hides.length > 0) draft.applied.push(rule.id);
-    if (ordersResults(rule)) draft.setAsideBySort.push(rule.id);
+    if (ordersResults(rule)) {
+        draft.setAside.push(setAsideOf(rule, (rule.pin ?? []).length));
+    }
 };
 
 /** Whether the rule moves products by their score, which only relevance reads. */
@@ -228,7 +240,7 @@ const scoresResults = (rule: Rule): boolean =>
  */
 const keepUnderOwnSort = (draft: Draft, rule: Rule): void => {
     if ((rule.pin ?? []).length + (rule.hide ?? []).length > 0) draft.applied.push(rule.id);
-    if (scoresResults(rule)) draft.setAsideBySort.push(rule.id);
+    if (scoresResults(rule)) draft.setAside.push(setAsideOf(rule, 0));
 };
 
 const addEffects = (draft: Draft, rule: Rule, relevance: boolean): void => {
@@ -256,7 +268,7 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
         hidden: new Set(),
         adjustments: [],
         applied: [],
-        setAsideBySort: [],
+        setAside: [],
     };
 
     for (const rule of rules) {

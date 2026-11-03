@@ -9,22 +9,49 @@ describe('what the page says about rules a sort set aside', () => {
         expect(setAsideBySort('price-asc', [])).toBeUndefined();
     });
 
-    it('names the pins, boosts and buries under a sort that is not the category’s own', () => {
-        expect(setAsideBySort('price-asc', ['featured-jacket'])).toBe(
-            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket.'
-        );
-        expect(setAsideBySort('rating', ['a', 'b'])).toBe(
-            'The sort “Rating” sets aside the pins, boosts and buries of the rules a, b.'
+    it('names each rule and what the sort took from it', () => {
+        expect(
+            setAsideBySort('price-asc', [
+                {
+                    ruleId: 'featured-jackets',
+                    name: 'Featured jackets',
+                    pins: 2,
+                    boosts: 0,
+                    buries: 0,
+                },
+            ])
+        ).toBe('The sort “Price, low to high” sets aside the pins of “Featured jackets”.');
+        expect(
+            setAsideBySort('position', [
+                {
+                    ruleId: 'ridgeback-boots',
+                    name: 'Ridgeback boots first',
+                    pins: 0,
+                    boosts: 1,
+                    buries: 0,
+                },
+            ])
+        ).toBe('The sort “Featured” sets aside the boost of “Ridgeback boots first”.');
+    });
+
+    it('lists every kind a rule lost, and every rule, as a list is read', () => {
+        expect(
+            setAsideBySort('rating', [
+                { ruleId: 'a', name: 'All three', pins: 1, boosts: 2, buries: 1 },
+                { ruleId: 'b', name: 'Buries', pins: 0, boosts: 0, buries: 3 },
+                { ruleId: 'c', name: 'Pins', pins: 1, boosts: 0, buries: 0 },
+            ])
+        ).toBe(
+            'The sort “Rating” sets aside the pin, boosts and bury of “All three”, the buries of “Buries” and the pin of “Pins”.'
         );
     });
 
-    it('keeps only a category’s own pins under the category’s sort, and names the rest', () => {
-        expect(setAsideBySort('position', ['ridgeback-boots'])).toBe(
-            'The sort “Featured” keeps pins only from a category’s own rules. It sets aside every other change the rule ridgeback-boots makes to the order.'
-        );
-        expect(setAsideBySort('position', ['a', 'b'])).toContain(
-            'the rules a, b make to the order.'
-        );
+    it('names a rule with no name by its id', () => {
+        expect(
+            setAsideBySort('newest', [
+                { ruleId: 'promo', name: null, pins: 1, boosts: 0, buries: 0 },
+            ])
+        ).toBe('The sort “Newest” sets aside the pin of “promo”.');
     });
 });
 

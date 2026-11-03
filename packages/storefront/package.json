@@ -12,7 +12,7 @@
         "sample": "tsx src/try/cli.ts"
     },
     "dependencies": {
-        "@jasonsdevspace/shelflens": "0.4.1",
+        "@jasonsdevspace/shelflens": "0.5.0",
         "@shelflens/api": "0.1.0",
         "@shelflens/catalog": "0.1.0",
         "react": "19.3.1",

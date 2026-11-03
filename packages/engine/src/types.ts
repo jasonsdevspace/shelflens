@@ -252,9 +252,25 @@ export interface SearchResult {
     readonly facets: readonly Facet[];
     readonly rules: {
         readonly applied: readonly string[];
-        /** Rules that would have applied, had the sort been relevance. */
+        /** Rules that would have applied, had the sort been relevance, by id. */
         readonly setAsideBySort: readonly string[];
+        /** The same rules, each with what the sort set aside of it. */
+        readonly setAside: readonly SetAside[];
     };
+}
+
+/**
+ * A rule a sort set aside, and how many of its pins, boosts and buries gave
+ * way. Under a sort scoped to the rule's own filter its pins hold, so only
+ * its boosts and buries are counted. Its hides always hold.
+ */
+export interface SetAside {
+    readonly ruleId: string;
+    /** The rule's name, when it has one. */
+    readonly name?: string;
+    readonly pins: number;
+    readonly boosts: number;
+    readonly buries: number;
 }
 
 /**

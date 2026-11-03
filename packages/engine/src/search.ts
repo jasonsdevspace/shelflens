@@ -512,7 +512,11 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
             mode,
             sort,
             facets,
-            rules: { applied: plan.applied, setAsideBySort: plan.setAsideBySort },
+            rules: {
+                applied: plan.applied,
+                setAsideBySort: plan.setAside.map((rule) => rule.ruleId),
+                setAside: plan.setAside,
+            },
         };
     };
 
