@@ -11,7 +11,7 @@ import { EMPTY_STATE, type SearchState } from '../app/url.js';
 export interface Stop {
     readonly id: string;
     readonly title: string;
-    /** What to do and what to look for, in two sentences. */
+    /** What to do and what to look for, in the page's own words. */
     readonly body: string;
     /** The page state that sets the gotcha up, for every stop the page can reach. */
     readonly to?: SearchState;
@@ -121,7 +121,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'explain',
         title: 'Why is this product first?',
-        body: '"Explain ranking" is on. Under each card is its place and score, and which typed word matched which term in which field: exactly, as the start of a word, as a synonym or one typo away. Where a rule pinned, boosted or buried a product, the card names the rule.',
+        body: '"Explain ranking" is on. Under each card is its place and score, and which typed word matched which term in which field: exactly, as the start of a word, as a synonym or one typo away. Where a rule pinned, boosted or buried a product, the card says which rule did it.',
         to: { ...EMPTY_STATE, phrase: 'jackit', explain: true },
         tests: [
             'packages/engine/src/search.test.ts',
@@ -143,18 +143,19 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'popularity',
         title: 'What shoppers click rises, and never past a pin',
-        body: 'Open a few of these jackets, then reload the page. The ones you opened rise a little, each with a line under the card saying "Opened from the results in 1 earlier visit", and the pinned ones stay first. The rise is capped at the smallest boost a rule can give and counts from the next visit, never mid-page, so paging holds still.',
+        body: 'Open a few of these jackets, then reload the page. The ones you opened rise a little, each with a line under the card saying "Opened from the results in 1 earlier visit", and the pinned ones stay first. The rise is capped at a quarter of the score and counts from the next visit, never mid-page, so paging holds still.',
         to: { ...EMPTY_STATE, phrase: 'jacket', explain: true },
         tests: [
             'packages/engine/src/signals.test.ts',
             'packages/api/src/api.test.ts',
             'packages/storefront/src/worker/handle.test.ts',
+            'packages/storefront/src/results/ProductCard.test.tsx',
         ],
     },
     {
         id: 'nothing',
         title: 'Nothing is still a page',
-        body: 'Nothing matches "zzqx", so the page says "Showing results for "jacket" instead" and names the word it left out. A word two typos off gets a spelling offered, filters that emptied the page get an offer to clear them, and when nothing helps the page shows popular products, the most clicked first.',
+        body: 'No product matches every word of "zzqx jacket", so the page shows the results for "jacket" instead and says "zzqx" was left out. A word two typos off gets a spelling offered, filters that emptied the page get an offer to clear them, and when nothing helps the page shows popular products, the most clicked first.',
         to: { ...EMPTY_STATE, phrase: 'zzqx jacket' },
         tests: [
             'packages/engine/src/recover.test.ts',
@@ -196,6 +197,6 @@ export const STOPS: readonly Stop[] = [
         id: 'errors',
         title: 'A mistake is a validation error, not a 500',
         body: 'The page cannot show this one, because it sends only the store’s own saved queries. The tests send the API a filter on an attribute it does not have and a query that nests too deep, and get a message with a code, never a stack.',
-        tests: ['packages/api/src/api.test.ts'],
+        tests: ['packages/api/src/api.test.ts', 'packages/api/src/http.test.ts'],
     },
 ];

@@ -78,7 +78,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                     Tested in{' '}
                     {stop.tests.map((test, i) => (
                         <span key={test}>
-                            {i > 0 && ' and '}
+                            {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
                             <code>{test}</code>
                         </span>
                     ))}

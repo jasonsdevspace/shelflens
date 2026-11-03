@@ -54,53 +54,81 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
 
 /*
  * What each stop's body says the page shows, seen on the page its "Try it"
- * leads to. Looked for in the page's main region, since the tour quotes some
- * of the same words.
+ * leads to. Each presses "Try it" itself, and looks in the page's main
+ * region, since the tour quotes some of the same words.
  */
-const empty = (page: Page) =>
-    expect(page.getByRole('combobox', { name: 'Search the store' })).toHaveValue('');
-const LANDINGS: Readonly<Record<string, (page: Page, main: Locator) => Promise<void>>> = {
+type Landing = (page: Page, main: Locator, tryIt: () => Promise<void>) => Promise<void>;
+const after =
+    (check: (page: Page, main: Locator) => Promise<void>): Landing =>
+    async (page, main, tryIt) => {
+        await tryIt();
+        await check(page, main);
+    };
+/** The typing stops lead to the empty box, so search first and "Try it" has somewhere to bring the page back from. */
+const empty: Landing = async (page, _, tryIt) => {
+    const box = page.getByRole('combobox', { name: 'Search the store' });
+    await box.fill('boot');
+    await box.press('Enter');
+    await expect(page).toHaveURL(/q=boot/);
+    await tryIt();
+    await expect.poll(() => new URL(page.url()).search).toBe('');
+    await expect(box).toHaveValue('');
+};
+const LANDINGS: Readonly<Record<string, Landing>> = {
     stale: empty,
     debounce: empty,
     combobox: empty,
     recent: empty,
-    'cache-key': (_, main) => expect(main.getByText(/There is no product/)).toBeVisible(),
+    'cache-key': after((_, main) => expect(main.getByText(/There is no product/)).toBeVisible()),
     // The catalog's "Café" is indexed folded, so the typed "cafe" matches it.
-    normalization: async (_, main) => {
+    normalization: after(async (_, main) => {
         const card = main
             .getByRole('listitem')
             .filter({ hasText: /Café Racer Jacket/ })
             .first();
         await expect(card.getByText('"cafe" matched "cafe" in the name')).toBeVisible();
-    },
-    facets: (page) => expect(page.getByRole('group', { name: 'Brand' })).toBeVisible(),
-    url: async (page) => {
+    }),
+    facets: after((page) => expect(page.getByRole('group', { name: 'Brand' })).toBeVisible()),
+    url: after(async (page) => {
         await expect(page.getByRole('checkbox', { name: /^Ridgeback/ })).toBeChecked();
         await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('price-asc');
-    },
-    paging: (_, main) =>
-        expect(main.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
-            'aria-current',
-            'page'
-        ),
-    edges: (_, main) => expect(main.getByText(/past the last page/)).toBeVisible(),
-    rules: async (_, main) => {
+    }),
+    paging: after((_, main) =>
+        expect(main.getByRole('button', { name: 'Page 2' })).toHaveAttribute('aria-current', 'page')
+    ),
+    edges: after((_, main) => expect(main.getByText(/past the last page/)).toBeVisible()),
+    rules: after(async (_, main) => {
         await expect(main.getByText(/Featured jackets/).first()).toBeVisible();
         await expect(main.getByRole('button', { name: 'Sort by relevance' })).toBeVisible();
+    }),
+    explain: after((_, main) =>
+        expect(main.getByText(/"jackit" is one typo away from "jacket"/).first()).toBeVisible()
+    ),
+    'rules-editor': after((_, main) =>
+        expect(main.getByRole('button', { name: 'Add a rule' })).toBeVisible()
+    ),
+    // Open a jacket and reload: the next visit counts the open.
+    popularity: async (page, main, tryIt) => {
+        await tryIt();
+        await main.getByRole('list', { name: 'Products' }).getByRole('link').nth(2).click();
+        await expect(page).toHaveURL(/product=/);
+        await page.goBack();
+        await page.reload();
+        await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+        await expect(
+            main
+                .locator('.card-explain')
+                .filter({ hasText: 'Opened from the results in 1 earlier visit' })
+        ).toHaveCount(1);
     },
-    explain: (_, main) =>
-        expect(main.getByText(/"jackit" is one typo away from "jacket"/).first()).toBeVisible(),
-    'rules-editor': (_, main) =>
-        expect(main.getByRole('button', { name: 'Add a rule' })).toBeVisible(),
-    popularity: (_, main) =>
-        expect(main.getByText(/Pinned to the top by rule/).first()).toBeVisible(),
-    nothing: (_, main) => expect(main.getByText(/Showing results for/)).toBeVisible(),
-    prices: async (page, main) => {
+    nothing: after((_, main) => expect(main.getByText(/Showing results for/)).toBeVisible()),
+    prices: after(async (page, main) => {
         await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('price-desc');
         await expect(main.getByText(/\$[\d,.]+ to \$[\d,.]+/).first()).toBeVisible();
-    },
-    'cold-start': (_, main) =>
-        expect(main.getByRole('heading', { name: /Most rated in/ })).toBeVisible(),
+    }),
+    'cold-start': after((_, main) =>
+        expect(main.getByRole('heading', { name: /Most rated in/ })).toBeVisible()
+    ),
     telemetry: empty,
 };
 
@@ -113,17 +141,23 @@ test('lands every stop on the page its body describes', async ({ page }) => {
     await page.goto('/');
     const tour = page.getByRole('complementary', { name: 'Tour' });
     const main = page.getByRole('main');
+    const shown = async () =>
+        Number(/Stop (\d+) of/.exec((await tour.textContent()) ?? '')?.[1] ?? 0);
     for (const [index, stop] of STOPS.entries()) {
+        // A reload opens the tour at its first stop, so walk back to this one.
+        while ((await shown()) < index + 1) {
+            await tour.getByRole('button', { name: 'Next' }).click();
+        }
         await expect(tour, stop.id).toContainText(`Stop ${String(index + 1)} of`);
         await expect(tour, stop.id).toContainText(stop.title);
         const landing = LANDINGS[stop.id];
         if (landing) {
-            await tour.getByRole('link', { name: 'Try it' }).click();
-            await test.step(stop.id, () => landing(page, main));
+            await test.step(stop.id, () =>
+                landing(page, main, () => tour.getByRole('link', { name: 'Try it' }).click())
+            );
         } else {
             await expect(tour.getByRole('link', { name: 'Try it' })).toHaveCount(0);
         }
-        if (index < STOPS.length - 1) await tour.getByRole('button', { name: 'Next' }).click();
     }
 });
 
