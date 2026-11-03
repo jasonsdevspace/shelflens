@@ -36,14 +36,14 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'debounce',
         title: 'A burst of keystrokes is one request',
-        body: 'Watch the network while you type. The suggestion list waits a short pause after the last keystroke and sends once, so the API is not flooded and the suggestions still feel immediate.',
+        body: 'Watch the network while you type. The suggestion list waits for a short pause after the last keystroke and sends once, so the API is not flooded and the suggestions still feel immediate.',
         to: EMPTY_STATE,
         tests: ['packages/storefront/src/search/SearchBox.test.tsx'],
     },
     {
         id: 'combobox',
         title: 'The suggestion list works from the keyboard',
-        body: 'Use only the keyboard. Arrow keys move the highlight, Enter searches it, Escape closes and keeps the phrase, and a screen reader hears how many suggestions there are. An accessibility audit runs over it in the tests.',
+        body: 'Use only the keyboard. Arrow keys move the highlight, Enter chooses it, Escape closes and keeps the phrase, and a screen reader hears how many suggestions there are. An accessibility audit runs over it in the tests.',
         to: EMPTY_STATE,
         tests: [
             'packages/storefront/src/search/SearchBox.test.tsx',
@@ -76,36 +76,42 @@ export const STOPS: readonly Stop[] = [
     },
     {
         id: 'facets',
-        title: 'Choosing Red never zeroes Blue',
-        body: 'Tick a brand. The other brands keep their counts, because each filter counts as if its own selection were not there. A naive count would leave one choice per filter after the first tick.',
+        title: 'Ticking one brand never zeroes the others',
+        body: 'Tick a brand under Filters. The other brands keep their counts, because each filter is counted as if its own choice were not there, and the brand appears as a chip under the heading. A naive count would show every other brand at zero.',
         to: { ...EMPTY_STATE, phrase: 'jacket' },
         tests: ['packages/engine/src/facets.test.ts'],
     },
     {
         id: 'url',
         title: 'The address bar is the page',
-        body: 'This page is a phrase, a brand, a sort and a page number, all in the URL. Copy it to share it, press back to undo the brand. A value the page cannot read is ignored rather than breaking it.',
+        body: 'This page is a phrase, a brand and a sort, all in the URL. Copy it to share it. Untick the brand, then press back and it returns. A value the page cannot read is ignored rather than breaking it.',
         to: { ...EMPTY_STATE, phrase: 'jacket', brand: ['Ridgeback'], sort: 'price-asc' },
-        tests: ['packages/storefront/src/app/url.test.ts'],
+        tests: [
+            'packages/storefront/src/app/url.test.ts',
+            'packages/storefront/src/app/useUrlState.test.tsx',
+        ],
     },
     {
         id: 'paging',
         title: 'Paging never shows a product twice',
-        body: 'Products with equal scores would come back in a different order on each request, so a shopper sees one twice and another never. Every sort ends on a tie breaker, and a test pages through a whole result set checking for duplicates and gaps.',
+        body: 'Step through the pages under the results. Products with equal scores would come back in a different order on each request, so a shopper sees one twice and another never. Every sort ends on a tie breaker, and a test pages through a whole result set checking for duplicates and gaps.',
         to: { ...EMPTY_STATE, phrase: 'boot', page: 2 },
         tests: ['packages/engine/src/search.test.ts'],
     },
     {
         id: 'edges',
         title: 'A page past the end is empty, not an error',
-        body: 'This asks for page 999. The answer is an empty page with the real total, and a page size past the limit is reduced rather than refused. Pinned products beyond the page size still come first.',
+        body: 'This asks for page 999. The heading still gives the real total, and the page says it is past the last page, with a link to the last one. The tests also check that a page size past the limit is reduced rather than refused.',
         to: { ...EMPTY_STATE, phrase: 'boot', page: 999 },
-        tests: ['packages/engine/src/search.test.ts', 'packages/engine/src/rules.test.ts'],
+        tests: [
+            'packages/engine/src/search.test.ts',
+            'packages/storefront/src/App.results.test.tsx',
+        ],
     },
     {
         id: 'rules',
         title: 'Pins and boosts disappear under a sort',
-        body: 'Under relevance, two jackets are pinned first by a rule. Choose "Price, low to high" under "Sort by" and the pin is set aside, and the page says so rather than looking broken. Switch the sort back and watch them return.',
+        body: 'This search is sorted by "Price, low to high". The line over the results says the sort sets aside the pins of "Featured jackets", so the page explains itself rather than looking broken. Press "Sort by relevance" beside it and the two pinned jackets come back first.',
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-asc', explain: true },
         tests: [
             'packages/engine/src/rules.test.ts',
@@ -115,9 +121,14 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'explain',
         title: 'Why is this product first?',
-        body: '"Explain ranking" is on. Under each card is which typed word matched which indexed term in which field, exactly, by prefix, by synonym or one typo away, and which rule pinned, boosted or buried it. The tool a merchandiser needs, and the engine carries it on every hit.',
+        body: '"Explain ranking" is on. Under each card is its place and score, and which typed word matched which term in which field: exactly, as the start of a word, as a synonym or one typo away. Where a rule pinned, boosted or buried a product, the card names the rule.',
         to: { ...EMPTY_STATE, phrase: 'jackit', explain: true },
-        tests: ['packages/api/src/api.test.ts', 'packages/engine/src/search.test.ts'],
+        tests: [
+            'packages/engine/src/search.test.ts',
+            'packages/engine/src/synonyms.test.ts',
+            'packages/engine/src/rules.test.ts',
+            'packages/storefront/src/results/ProductCard.test.tsx',
+        ],
     },
     {
         id: 'rules-editor',
@@ -132,17 +143,22 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'popularity',
         title: 'What shoppers click rises, and never past a pin',
-        body: 'Open a few of these jackets, then reload and search again with "Explain ranking" on. The ones you opened rise a little, with the count under each card, and the pinned ones stay first. The nudge is capped, folds in when a visit begins rather than mid-page, and stays below the smallest boost a merchandiser would write.',
+        body: 'Open a few of these jackets, then reload the page. The ones you opened rise a little, each with a line under the card saying "Opened from the results in 1 earlier visit", and the pinned ones stay first. The rise is capped at the smallest boost a rule can give and counts from the next visit, never mid-page, so paging holds still.',
         to: { ...EMPTY_STATE, phrase: 'jacket', explain: true },
-        tests: ['packages/engine/src/signals.test.ts', 'packages/api/src/api.test.ts'],
+        tests: [
+            'packages/engine/src/signals.test.ts',
+            'packages/api/src/api.test.ts',
+            'packages/storefront/src/worker/handle.test.ts',
+        ],
     },
     {
         id: 'nothing',
         title: 'Nothing is still a page',
-        body: 'One word here matches nothing. The page shows the results of the phrase without it, offers a spelling when a word is two typos off, offers to clear filters that emptied the page, and falls back to the most clicked products, then the most rated.',
+        body: 'Nothing matches "zzqx", so the page says "Showing results for "jacket" instead" and names the word it left out. A word two typos off gets a spelling offered, filters that emptied the page get an offer to clear them, and when nothing helps the page shows popular products, the most clicked first.',
         to: { ...EMPTY_STATE, phrase: 'zzqx jacket' },
         tests: [
             'packages/engine/src/recover.test.ts',
+            'packages/api/src/api.test.ts',
             'packages/storefront/src/App.results.test.tsx',
         ],
     },
@@ -151,12 +167,15 @@ export const STOPS: readonly Stop[] = [
         title: 'A range, in the store’s currency',
         body: 'A product sold in several sizes or colors shows its lowest and highest price, and every amount is formatted for the store’s currency and locale rather than with a symbol typed into the page. Open any jacket to see the price of each size and color.',
         to: { ...EMPTY_STATE, phrase: 'jacket', sort: 'price-desc' },
-        tests: ['packages/storefront/src/format/money.test.ts'],
+        tests: [
+            'packages/storefront/src/format/money.test.ts',
+            'packages/storefront/src/product/variants.test.ts',
+        ],
     },
     {
         id: 'cold-start',
-        title: 'A rail that never lies',
-        body: 'With nothing else viewed yet, the row of products under this one shows the most rated in its category, and its heading says so. Open a product from that row and this one leads the next row, under a heading that begins "Viewed with this product" and says where the rest come from. It never shows the product itself or one you cannot see, and it starts over when you clear site data.',
+        title: 'Related products that say where they come from',
+        body: 'With nothing else viewed yet, the row of products under this one shows the most rated in its category, and its heading says "Most rated in" and the category. Open a product from that row and this one leads the next row, under a heading that begins "Viewed with this product" and says where the rest come from. It never shows the product itself or one you cannot see, and it starts over when you clear site data.',
         to: { ...EMPTY_STATE, product: 'SL-00001' },
         tests: [
             'packages/api/src/recommend.test.ts',
@@ -166,7 +185,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'telemetry',
         title: 'Telemetry that cannot hurt the page',
-        body: 'Search, open a product, then look in DevTools under Application, IndexedDB, shelflens-events. What you did is sent in batches with sendBeacon, so it never blocks the page, a batch delivered twice counts once, nothing in it could name you, and with Global Privacy Control on nothing is sent at all.',
+        body: 'Search, open a product, then look in DevTools under Application, IndexedDB, shelflens-events. What you did is sent in batches with sendBeacon, so it never blocks the page. A batch delivered twice counts once, and nothing in it could name you. With Global Privacy Control on, nothing is sent at all.',
         to: EMPTY_STATE,
         tests: [
             'packages/storefront/src/events/collector.test.ts',
@@ -176,7 +195,7 @@ export const STOPS: readonly Stop[] = [
     {
         id: 'errors',
         title: 'A mistake is a validation error, not a 500',
-        body: 'The one stop the page cannot reach. The demo accepts only its own operations, so nothing a browser sends can be malformed. The tests send the API a filter on an attribute it does not have and a query that nests too deep, and get a message with a code, never a stack.',
-        tests: ['packages/api/src/api.test.ts', 'packages/api/src/http.test.ts'],
+        body: 'The page cannot show this one, because it sends only the store’s own saved queries. The tests send the API a filter on an attribute it does not have and a query that nests too deep, and get a message with a code, never a stack.',
+        tests: ['packages/api/src/api.test.ts'],
     },
 ];

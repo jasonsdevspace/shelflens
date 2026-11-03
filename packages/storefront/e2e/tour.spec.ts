@@ -1,3 +1,6 @@
+import type { Locator, Page } from '@playwright/test';
+
+import { STOPS } from '../src/tour/stops.js';
 import { audit, expect, test } from './support.js';
 
 // The tour's own tests are the first visit the others are not.
@@ -47,6 +50,81 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     await expect(tour).toBeHidden();
     await page.getByRole('button', { name: 'Tour' }).click();
     await expect(tour).toBeVisible();
+});
+
+/*
+ * What each stop's body says the page shows, seen on the page its "Try it"
+ * leads to. Looked for in the page's main region, since the tour quotes some
+ * of the same words.
+ */
+const empty = (page: Page) =>
+    expect(page.getByRole('combobox', { name: 'Search the store' })).toHaveValue('');
+const LANDINGS: Readonly<Record<string, (page: Page, main: Locator) => Promise<void>>> = {
+    stale: empty,
+    debounce: empty,
+    combobox: empty,
+    recent: empty,
+    'cache-key': (_, main) => expect(main.getByText(/There is no product/)).toBeVisible(),
+    // The catalog's "Café" is indexed folded, so the typed "cafe" matches it.
+    normalization: async (_, main) => {
+        const card = main
+            .getByRole('listitem')
+            .filter({ hasText: /Café Racer Jacket/ })
+            .first();
+        await expect(card.getByText('"cafe" matched "cafe" in the name')).toBeVisible();
+    },
+    facets: (page) => expect(page.getByRole('group', { name: 'Brand' })).toBeVisible(),
+    url: async (page) => {
+        await expect(page.getByRole('checkbox', { name: /^Ridgeback/ })).toBeChecked();
+        await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('price-asc');
+    },
+    paging: (_, main) =>
+        expect(main.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
+            'aria-current',
+            'page'
+        ),
+    edges: (_, main) => expect(main.getByText(/past the last page/)).toBeVisible(),
+    rules: async (_, main) => {
+        await expect(main.getByText(/Featured jackets/).first()).toBeVisible();
+        await expect(main.getByRole('button', { name: 'Sort by relevance' })).toBeVisible();
+    },
+    explain: (_, main) =>
+        expect(main.getByText(/"jackit" is one typo away from "jacket"/).first()).toBeVisible(),
+    'rules-editor': (_, main) =>
+        expect(main.getByRole('button', { name: 'Add a rule' })).toBeVisible(),
+    popularity: (_, main) =>
+        expect(main.getByText(/Pinned to the top by rule/).first()).toBeVisible(),
+    nothing: (_, main) => expect(main.getByText(/Showing results for/)).toBeVisible(),
+    prices: async (page, main) => {
+        await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('price-desc');
+        await expect(main.getByText(/\$[\d,.]+ to \$[\d,.]+/).first()).toBeVisible();
+    },
+    'cold-start': (_, main) =>
+        expect(main.getByRole('heading', { name: /Most rated in/ })).toBeVisible(),
+    telemetry: empty,
+};
+
+test('lands every stop on the page its body describes', async ({ page }) => {
+    expect(Object.keys(LANDINGS).sort()).toEqual(
+        STOPS.filter((stop) => stop.to !== undefined)
+            .map((stop) => stop.id)
+            .sort()
+    );
+    await page.goto('/');
+    const tour = page.getByRole('complementary', { name: 'Tour' });
+    const main = page.getByRole('main');
+    for (const [index, stop] of STOPS.entries()) {
+        await expect(tour, stop.id).toContainText(`Stop ${String(index + 1)} of`);
+        await expect(tour, stop.id).toContainText(stop.title);
+        const landing = LANDINGS[stop.id];
+        if (landing) {
+            await tour.getByRole('link', { name: 'Try it' }).click();
+            await test.step(stop.id, () => landing(page, main));
+        } else {
+            await expect(tour.getByRole('link', { name: 'Try it' })).toHaveCount(0);
+        }
+        if (index < STOPS.length - 1) await tour.getByRole('button', { name: 'Next' }).click();
+    }
 });
 
 test('the tour never covers a card that focus reaches', async ({ page }) => {
