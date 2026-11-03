@@ -20,15 +20,13 @@ interface Applied {
     readonly without: SearchState;
 }
 
-const LIST_TITLES = { brand: 'brand', color: 'color', size: 'size' } as const;
-
 /** Every filter that is on, in the order the column lists them, each with the state that drops it. */
 const appliedFilters = (state: SearchState, store: StoreInfo): Applied[] => [
     ...(['brand', 'color', 'size'] as const).flatMap((name) =>
         state[name].map((value) => ({
             key: `${name}:${value}`,
             label: value,
-            facet: LIST_TITLES[name],
+            facet: name,
             without: withoutValue(state, name, value),
         }))
     ),

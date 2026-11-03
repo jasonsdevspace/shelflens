@@ -246,8 +246,9 @@ export const DESCRIPTION_CLOSERS: readonly string[] = [
 
 /**
  * Words a shopper might type that the catalog says differently. Kept beside
- * the vocabulary so the two stay in step, and read by the engine's synonym
- * tests rather than built into the engine, which knows nothing about clothes.
+ * the vocabulary so the two stay in step, and made into the store's one-way
+ * synonyms by the search package rather than built into the engine, which
+ * knows nothing about clothes.
  */
 export const SYNONYM_SUGGESTIONS: readonly (readonly [string, string])[] = [
     ['trainers', 'sneakers'],

@@ -36,19 +36,15 @@ export interface FacetsProps {
     readonly offersClear?: boolean;
 }
 
-const TITLES: Readonly<Record<string, string>> = {
+const LISTS = ['brand', 'color', 'size'] as const;
+type ListName = (typeof LISTS)[number];
+
+const TITLES: Readonly<Record<ListName | 'category', string>> = {
     category: 'Category',
     brand: 'Brand',
     color: 'Color',
     size: 'Size',
-    price: 'Price',
-    rating: 'Rating',
 };
-
-const LISTS = ['brand', 'color', 'size'] as const;
-type ListName = (typeof LISTS)[number];
-
-const isList = (name: string): name is ListName => (LISTS as readonly string[]).includes(name);
 
 const toggled = (values: readonly string[], value: string): string[] =>
     values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
@@ -126,7 +122,7 @@ const CategoryFacet = ({
         );
     };
     return (
-        <Group title={TITLES['category'] ?? 'Category'} name="category">
+        <Group title={TITLES.category} name="category">
             {current && (
                 <>
                     <button type="button" className="option-button facet-up" onClick={up}>
@@ -182,7 +178,7 @@ const ListFacet = ({
     const buckets = all
         ? listed
         : listed.filter((bucket, index) => index < SHOWN || revealed.includes(bucket.value));
-    const title = TITLES[name] ?? name;
+    const title = TITLES[name];
     const fold = () => {
         setAll(!all);
         setRevealed(state[name]);
@@ -357,7 +353,7 @@ export const Facets = (props: FacetsProps) => {
             {category && <CategoryFacet {...props} facet={category} />}
             {LISTS.map((name) => {
                 const facet = facetFor(name);
-                return (facet || state[name].length > 0) && isList(name) ? (
+                return facet || state[name].length > 0 ? (
                     <ListFacet key={name} {...props} facet={facet} name={name} />
                 ) : null;
             })}

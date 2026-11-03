@@ -27,7 +27,9 @@ interface ExplainProps {
 type Match = NonNullable<Hit['explanation']>['matches'][number];
 type Effect = NonNullable<Hit['explanation']>['rules'][number];
 
-const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> = {
+const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> & {
+    readonly EXACT: (match: Match) => string;
+} = {
     EXACT: (m) => `"${m.typed}" matched "${m.matched}" in the ${m.field}`,
     PREFIX: (m) => `"${m.typed}" is the start of "${m.matched}" in the ${m.field}`,
     SYNONYM: (m) => `"${m.typed}" is a synonym of "${m.matched}" in the ${m.field}`,
@@ -35,8 +37,7 @@ const ROUTES: Partial<Record<Match['route'], (match: Match) => string>> = {
 };
 
 /** A route the page does not know yet still reads as a match. */
-const matchText = (match: Match): string =>
-    (ROUTES[match.route] ?? ROUTES.EXACT ?? (() => ''))(match);
+const matchText = (match: Match): string => (ROUTES[match.route] ?? ROUTES.EXACT)(match);
 
 type Popularity = NonNullable<NonNullable<Hit['explanation']>['popularity']>;
 

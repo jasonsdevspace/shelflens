@@ -25,14 +25,14 @@ import {
  * service worker.
  *
  * One endpoint, `/graphql`, a receiver for the storefront's events at
- * `/events`, the rules a merchandiser saves at `/rules`, and a health
- * check. A persisted operation is
- * a `GET` naming one of the storefront's operations, and a full query is
- * a `POST`, refused unless the host takes them. The customer group arrives in a
- * header, standing in for the session a real store would have. Requests
- * are rate limited per group and address before any work is done, bodies
- * are bounded, each answer says what may be cached, and a failure reaches
- * the client as a request id to quote, never as a stack.
+ * `/events`, the rules a merchandiser saves at `/rules`, and a health check.
+ * A persisted operation is a `GET` naming one of the storefront's operations,
+ * and a full query is a `POST`, refused unless the host takes them. The
+ * customer group arrives in a header, standing in for the session a real
+ * store would have. Requests are rate limited per group and address before
+ * any work is done, bodies are bounded, each answer says what may be cached,
+ * and a failure reaches the client as a request id to quote, never as a
+ * stack.
  */
 
 const BODY_LIMIT_BYTES = 16 * 1024;
@@ -67,7 +67,10 @@ export type ServerOptions = StoreSupply & {
     readonly now?: () => Date;
     /** The operations a client may name. The storefront's, unless told otherwise. */
     readonly persisted?: Readonly<Record<string, string>>;
-    /** Take full query text as well as the persisted operations. Refused unless set, and the public demo never sets it. */
+    /**
+     * Take full query text as well as the persisted operations. Refused unless
+     * set, and the public demo never sets it.
+     */
     readonly allowFullQueries?: boolean;
     /** How long a cacheable answer may be served, in seconds. */
     readonly maxAgeSeconds?: number;
@@ -112,7 +115,7 @@ const METHODS: Readonly<Record<OriginPath, string>> = {
     rules: 'GET, POST, DELETE',
 };
 
-/** The headers of the store's a page on another origin may read. */
+/** The store's headers a page on another origin may read. */
 const EXPOSED = `${VERSION_HEADER}, x-request-id`;
 
 /** A request as it arrives, with what the handler knows about where it is going. */
@@ -129,8 +132,9 @@ interface Arrival {
  * The value the trusted proxy wrote into a forwarded header, or nothing
  * when no proxy is trusted. A proxy adds its own entry at the end of
  * whatever the client sent, so the last entry is the one it vouches for,
- * and anything before it may be the client's invention. An IPv4 address
- * carries no port, so one connection is one client.
+ * and anything before it may be the client's invention. An IPv4 address is
+ * counted without its port, so each connection from one client counts as
+ * that client.
  */
 const forwarded = (
     request: IncomingMessage,
@@ -336,7 +340,10 @@ const SECURITY_HEADERS = {
     'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
-/** The headers of an answer the server writes itself, a refusal or a failure, which no cache may keep. */
+/**
+ * The headers of an answer the server writes itself, a refusal or a failure,
+ * which no cache may keep.
+ */
 const JSON_HEADERS = {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',

@@ -22,49 +22,6 @@ import type { Catalog } from '@shelflens/catalog';
 
 import type { CatalogStore } from './catalog-db.js';
 
-/**
- * The API as a `fetch` handler, which is all a service worker needs.
- *
- * The store is built once, from the catalog and the rules the site ships
- * beside it, the first time anything asks. A rules file that names a
- * product or an attribute the store does not have fails the build of the
- * store, so a merchandiser's mistake is reported, not shipped. Every request for `graphql` under the base
- * after that is answered in the page, so the client makes a real network
- * request and gets a real response, and only the hop to a server is
- * missing. Only the storefront's own operations are accepted, by name.
- * Anything that is not a request for the API is left to the network.
- *
- * Answers are cached twice. In memory, on the project's key, for the life
- * of the worker. And, when the worker is given one, in a store of
- * responses keyed by URL, the way a browser cache would keep them: an
- * answer a worker makes up never enters the browser's own HTTP cache, so
- * the worker keeps what the headers say may be kept, for as long as they
- * say, and matches on the viewer header the answer varies on. A new
- * store version is a new URL, and the old URLs are dropped when the store
- * is built.
- *
- * Events the page sends to `events` beside `graphql` are kept in the
- * store the worker is given, and answered with nothing, since the page
- * never waits for them. The API reads the same store for the fields that
- * are built from them, and the clicks among them are folded into ranking
- * when the store is built. A page that loads asks for a fresh look, and
- * the store is built again, as a new version, only when the clicks have
- * changed since. So within one visit the ranking holds still, and paging
- * never repeats or skips a product, and the next visit sees the clicks.
- *
- * The rules a merchandiser saves arrive on `rules` beside the other two.
- * A saved set stands in for the shipped file until it is reset, and the
- * store is built again, as a new version, before the save is answered,
- * so the next search cannot land on the old one.
- *
- * Given a catalog store in place of a catalog URL, as the page for a
- * visitor's own catalog is, the worker builds from whatever catalog is kept
- * there, and `catalog` beside the other paths takes a new one, checked
- * first, or removes it. Until one is loaded the API answers that there is
- * nothing to search. Each new catalog is a new version, so nothing the old
- * one answered is served again.
- */
-
 export interface WorkerApiOptions {
     /** Where the catalog JSON is served from, for a store built from a file the site ships. */
     readonly catalogUrl?: string;
@@ -75,7 +32,10 @@ export interface WorkerApiOptions {
     /** The path the site is served under, where `graphql` is answered. */
     readonly base?: string;
     readonly fetch?: typeof fetch;
-    /** Take full query text as well as the persisted operations. Refused unless set, and the demo never sets it. */
+    /**
+     * Take full query text as well as the persisted operations. Refused unless
+     * set, and the public demo never sets it.
+     */
     readonly allowFullQueries?: boolean;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
@@ -149,9 +109,37 @@ const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string):
     return response.json() as Promise<T>;
 };
 
-/** Said by a change the worker refused, since it would discard the visitor's saved rules. */
+/**
+ * What a change answers when the worker refused it, since it would discard
+ * the visitor's saved rules.
+ */
 const KEEPS_RULES = Symbol('keeps saved rules');
 
+/**
+ * The API as a `fetch` handler, which is all a service worker needs.
+ *
+ * The store is built the first time anything asks, from the catalog and the
+ * rules the site ships beside it, and a rules file that names what the store
+ * does not have fails that build, so a mistake is reported rather than
+ * shipped. A `GET` or `POST` to `graphql` under the base is answered here,
+ * the storefront's own operations by name and full query text only when
+ * allowed. Any other request is left to the network, as decision record 6
+ * explains.
+ *
+ * Answers are cached twice: in memory on the project's one key (record 8),
+ * and, when the worker is given a response store, by URL as a browser cache
+ * would keep them, matched on the viewer header the answer varies on, since
+ * an answer a worker makes up never enters the browser's own HTTP cache. A
+ * new store version is a new URL, and the old URLs are dropped.
+ *
+ * Events on `events` are kept (record 9), and when a visit begins the store
+ * is built again with their clicks in its ranking, as a new version, only if
+ * they changed since (record 8). Rules saved on `rules` stand in for the
+ * shipped file until reset, with the store built again before the save is
+ * answered (record 10). Given a catalog store, the worker builds from a
+ * visitor's own catalog, which `catalog` takes or removes, and until one is
+ * loaded answers that there is nothing to search (record 13).
+ */
 export const createWorkerApi = ({
     catalogUrl,
     catalogs,
@@ -181,7 +169,10 @@ export const createWorkerApi = ({
         return fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog');
     };
 
-    /** Drops every kept answer that is not for this version, or every one without a version. */
+    /**
+     * Drops every kept answer not for this version, or every kept answer when
+     * there is no store.
+     */
     const dropOthers = async (api: StoreApi | undefined) => {
         if (!answers) return;
         const kept = await answers();
@@ -307,6 +298,7 @@ export const createWorkerApi = ({
                 return reason;
             }
         });
+
     /** The answer to a change refused because it would discard the visitor's saved rules. */
     const rulesKept = () =>
         json(409, {
@@ -411,7 +403,8 @@ export const createWorkerApi = ({
         // is not put back among the kept ones.
         const still = (await host.served())?.api.version === response.headers.get(VERSION_HEADER);
         if (kept && mayKeep(response) && still) {
-            // An answer that cannot be kept, as when the browser's storage is full, is still the answer.
+            // An answer that cannot be kept, as when the browser's storage is full, is still the
+            // answer.
             await kept.put(request, response.clone()).catch((error: unknown) => {
                 console.error('an answer could not be kept', error);
             });

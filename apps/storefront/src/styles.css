@@ -296,7 +296,7 @@ h4 {
     gap: var(--space-3);
 }
 
-/* The results list. */
+/* The results heading. */
 
 .results-heading {
     font-size: var(--text-title);
@@ -305,24 +305,6 @@ h4 {
 
 .results-note {
     font-weight: var(--weight-normal);
-    color: var(--muted);
-}
-
-.results-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
-}
-
-.result-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.result-meta {
-    font-size: var(--text-caption);
     color: var(--muted);
 }
 

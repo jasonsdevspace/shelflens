@@ -133,7 +133,9 @@ export interface RuleEffect {
 }
 
 export interface EngineConfig {
+    /** The text a query searches. Only these are indexed. */
     readonly fields: Readonly<Record<string, TextField>>;
+    /** What filters, sorts, facets and rules may name. Only these are kept. */
     readonly attributes: Readonly<Record<string, AttributeKind>>;
     readonly synonyms?: readonly SynonymRule[];
     readonly facets?: Readonly<Record<string, FacetConfig>>;
@@ -165,9 +167,9 @@ export interface EngineConfig {
 export type Filter =
     | { readonly attribute: string; readonly eq: string | boolean }
     | { readonly attribute: string; readonly in: readonly string[] }
-    /** `from` is inclusive and `to` is exclusive, so adjacent ranges never share a value. */
     | {
           readonly attribute: string;
+          /** `from` is inclusive and `to` is exclusive, so adjacent ranges never share a value. */
           readonly range: { readonly from?: number; readonly to?: number };
       };
 
@@ -206,10 +208,13 @@ export type MatchKind = 'exact' | 'prefix' | 'fuzzy' | 'synonym';
 
 /** One reason a document matched, kept so a result can say why it ranked where it did. */
 export interface TermMatch {
+    /** The typed words this match stands for, normalized. A synonym can stand for several. */
     readonly queryTerm: string;
+    /** The indexed term it matched. */
     readonly indexTerm: string;
     readonly field: string;
     readonly kind: MatchKind;
+    /** What this one term added to the hit's score, in this field. */
     readonly score: number;
 }
 
@@ -223,6 +228,7 @@ export interface SignalEffect {
 
 export interface Hit {
     readonly id: string;
+    /** The score after rules and signals. */
     readonly score: number;
     readonly matches: readonly TermMatch[];
     readonly rules: readonly RuleEffect[];
@@ -235,7 +241,9 @@ export interface Hit {
  *
  * Exact matching runs first. Only when it finds nothing does the fuzzy pass
  * run, allowing one typo per word. A result page says which it was, so a
- * shopper can be told their query was corrected.
+ * shopper can be told their query was corrected. `all` means there was no
+ * query, so the results are whatever the filters left, and `none` means the
+ * query matched nothing that passes the filters.
  */
 export type MatchMode = 'exact' | 'fuzzy' | 'all' | 'none';
 
@@ -244,7 +252,9 @@ export interface SearchResult {
     /** Matching documents in all, before the per-query limit. */
     readonly total: number;
     readonly page: number;
+    /** The page size used, after clamping to what one page may hold. */
     readonly pageSize: number;
+    /** The pages that can be reached, within the per-query limit. */
     readonly totalPages: number;
     readonly mode: MatchMode;
     /** The sort actually applied, after any scoped sort fell back. */
@@ -253,7 +263,7 @@ export interface SearchResult {
     readonly rules: {
         readonly applied: readonly string[];
         /**
-         * Rules that would have applied, had the sort been relevance, by id.
+         * The ids of the rules in `setAside`.
          *
          * @deprecated Each rule's id is in `setAside`, with what the sort set aside of it.
          */
@@ -280,11 +290,15 @@ export interface SetAside {
 /**
  * What a page can offer instead of nothing, when a search found nothing.
  *
- * Each part is computed from the request alone, so the engine stays pure,
- * and each is present only when it would find something.
+ * Each part is computed from the request alone, so the engine stays pure.
+ * A correction and a shorter phrase are present only when they would find
+ * something.
  */
 export interface Recovery {
-    /** The phrase with each word nothing matched replaced by its nearest known word. */
+    /**
+     * The phrase with each word nothing matched replaced by the most used
+     * indexed word within two typos of it that finds something.
+     */
     readonly correction?: string;
     /** The phrase with some of the shopper's words left out, and what it finds. */
     readonly relaxed?: {
@@ -293,16 +307,21 @@ export interface Recovery {
         readonly dropped: readonly string[];
         readonly total: number;
     };
-    /** How many documents the same phrase finds with every filter removed. */
+    /**
+     * How many documents the same phrase finds without the request's own
+     * filters, the fixed ones kept. Zero when the request had none.
+     */
     readonly foundWithoutFilters: number;
 }
 
 /**
  * A request the engine cannot carry out.
  *
- * Thrown for a request that names an attribute the config does not, which
- * is a mistake in the caller rather than a search with no results. A caller
- * fronting an API turns this into a validation error for the client.
+ * Thrown for a request that names what the config does not, or asks an
+ * attribute for what its kind cannot take, and for a document or a rule the
+ * engine cannot index. Each is a mistake in the caller rather than a search
+ * with no results. A caller fronting an API turns this into a validation
+ * error for the client.
  */
 export class EngineError extends Error {
     constructor(

@@ -11,26 +11,26 @@ answer it over `@shelflens/search`.
   `shelflens-customer-group` header. There is no argument that asks for another group's prices.
   A price says whether it is below list and a product says whether it is for members only, and
   both stay inside the viewer's own view: a guest never receives either as true.
-- **One cache key.** Inside the package, `cacheKey` is the only definition of what an answer is
-  an answer to: the store version, the whole viewer, and the operation with its variables. The
-  store host wraps every store it serves in a cache on that key, and a test shows the leak a key
-  without the viewer causes. `cacheKeyOf`, which the package exports, builds the same key from
-  parts, with the operation's persisted name standing for
-  its text, for a page with nothing from GraphQL in it.
-  [Decision record 8](../../docs/decisions/0008-one-cache-key.md).
+- **One cache key.** Inside the package, `cacheKey` is the only definition of what an answer is an
+  answer to: the store version, the whole viewer, and the operation with its variables. The store
+  host wraps every store it serves in a cache on that key, and a test shows the leak a key without
+  the viewer causes. `cacheKeyOf`, which the package exports, builds the same key from parts, with
+  the operation's persisted name standing for its text, for a page with nothing from GraphQL in
+  it. [Decision record 8](../../docs/decisions/0008-one-cache-key.md).
 - **One shape over HTTP.** `resolveRequest` says what a request means and `responseHeaders` what
   its answer may be cached as, so the Node server and the service worker cannot disagree. A
   persisted operation is a `GET` naming one of the storefront's operations by hash, from the
-  manifest `npm run codegen` writes, with its variables and the version it expects in the URL.
-  A full query is a `POST`, refused unless a host takes them. An answer is cacheable only under the version
-  that answered it, and the viewer is a header the cache varies on.
-- **A query is read once.** The schema is built once, since it describes the store's shape and
-  not one store's contents, and each query that validates is kept, by its text, the most recently
-  used first, up to `KEPT_QUERIES` of at most `KEPT_QUERY_LENGTH` characters. A store built again
-  for a saved rule or a visit's clicks answers the page's operations without parsing or
-  validating them again. A query that fails is never kept, and one kept under a set of limits is
-  checked again under any other. A host that takes full queries can see the page's operations
-  pushed out by enough different ones, and reads them again when they return.
+  manifest `npm run codegen` writes, with its variables and the version it expects in the URL. A
+  full query is a `POST`, refused unless a host takes them. An answer is cacheable only under the
+  version that answered it, and the viewer is a header the cache varies on.
+- **A query is read once.** The schema is built once, since it describes the store's shape and not
+  one store's contents, and each query that validates is kept, by its text, the most recently used
+  first, up to `KEPT_QUERIES` of at most `KEPT_QUERY_LENGTH` characters, both set in
+  `src/execute.ts`. A store built again for a saved rule or a visit's clicks answers the page's
+  operations without parsing or validating them again. A query that fails is never kept, and one
+  kept under a set of limits is checked again under any other. A host that takes full queries can
+  see the page's operations pushed out by enough different ones, and reads them again when they
+  return.
 - **One store host.** `createStoreHost` builds the store from a catalog, the shipped rules, the
   rules a merchandiser saved and the clicks collected so far, and builds it again as a new version
   when a visit begins after new clicks or a set of rules is saved. One change happens at a time,
@@ -46,13 +46,13 @@ answer it over `@shelflens/search`.
   explains why.
 
 ```ts
-import { createStoreHost, viewerFromHeader } from '@shelflens/api';
+import { createStoreHost, GROUP_HEADER, viewerFromHeader } from '@shelflens/api';
 
 const host = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [] }) });
 const { api } = await host.current();
 const response = await api.run(
     { query: '{ search(input: { phrase: "boot" }) { total } }' },
-    viewerFromHeader(request.headers.get('shelflens-customer-group')),
+    viewerFromHeader(request.headers.get(GROUP_HEADER)),
     // When the request arrived, which a rule with a window reads.
     new Date()
 );

@@ -14,16 +14,16 @@ import {
  *
  *   npm run budget
  *
- * Runs after `npm run storefront`. Each page's scripts are the ones its
- * HTML loads or preloads, each compressed as a server sends it, the widget
- * is the one file a host page loads, and the service worker is the one file
- * the browser installs. That is what a page needs
- * before it can answer: a chunk it imports later, on demand, is not part
- * of it, and the stylesheets are measured by Lighthouse with the page. A page past its budget, or
- * with anything from GraphQL in it, fails the run, and so does any file
- * that carries the golden queries, the tests' own fixture. The worker carries GraphQL by design. The test beside the
- * budgets measures each entry as esbuild bundles it, which catches a
- * change in the source before anything is built.
+ * Runs after `npm run storefront`. Each page's scripts are the ones its HTML
+ * loads or preloads, each compressed as a server sends it, the widget is the one
+ * file a host page loads, and the service worker is the one file the browser
+ * installs. That is what a page needs before it can answer: a chunk it imports
+ * later, on demand, is not part of it, and the stylesheets are measured by
+ * Lighthouse with the page. A page past its budget, or with anything from GraphQL
+ * in it, fails the run, and so does any file that carries the golden queries, the
+ * tests' own fixture. The worker carries GraphQL by design. The test beside the
+ * budgets measures each entry as esbuild bundles it, which catches a change in
+ * the source before anything is built.
  */
 
 const DIST = new URL('../../dist/', import.meta.url);

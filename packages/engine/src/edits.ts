@@ -1,15 +1,3 @@
-/**
- * Whether two terms are one typo apart.
- *
- * One typo means one inserted, deleted or substituted character, or two
- * adjacent characters swapped. Swaps count as one edit because they are the
- * most common typing mistake, and a tolerance that charged two for them
- * would miss "shoe" typed as "shoe" with the middle letters crossed.
- *
- * Written as a direct comparison rather than a general edit distance,
- * because the question is only ever "within one", and answering that is
- * far cheaper than computing how far apart two terms are.
- */
 /** Same length: at most one substitution, or one swap of adjacent characters. */
 const sameLengthWithinOneEdit = (a: string, b: string): boolean => {
     let first = -1;
@@ -39,6 +27,18 @@ const oneLongerWithinOneEdit = (longer: string, shorter: string): boolean => {
     return true;
 };
 
+/**
+ * Whether two terms are one typo apart.
+ *
+ * One typo means one inserted, deleted or substituted character, or two
+ * adjacent characters swapped. Swaps count as one edit because they are the
+ * most common typing mistake, and a tolerance that charged two for them
+ * would miss "sohe" typed for "shoe".
+ *
+ * Written as a direct comparison rather than a general edit distance,
+ * because the question is only ever "within one", and answering that is
+ * far cheaper than computing how far apart two terms are.
+ */
 export const withinOneEdit = (a: string, b: string): boolean => {
     if (a === b) return true;
     const lengthGap = a.length - b.length;
@@ -48,7 +48,7 @@ export const withinOneEdit = (a: string, b: string): boolean => {
     return false;
 };
 
-/** One row of the edit table: the cost of each prefix of `b` against the first `i` characters of `a`. */
+/** The two rows before the current one of the edit table, since a swap reaches back two. */
 interface Rows {
     readonly previous2: number[];
     readonly previous: number[];
