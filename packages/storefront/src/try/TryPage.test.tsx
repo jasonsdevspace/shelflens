@@ -172,12 +172,25 @@ describe('the page for a visitor’s own catalog', () => {
     it('keeps the products, and says so, when removing them fails', async () => {
         page();
         await loadSample();
-        failure = failWhen('DELETE', `${BASE}catalog`, () =>
-            Promise.resolve(new Response(null, { status: 500 }))
-        );
+        let deletes = 0;
+        failure = failWhen('DELETE', `${BASE}catalog`, () => {
+            deletes += 1;
+            return Promise.resolve(new Response(null, { status: 500 }));
+        });
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         await alerted('Your products could not be removed (error 500), so they are still here.');
         expect(screen.getByText(/the 200 products you loaded/)).toBeInTheDocument();
+        // A second failure in the same words empties the alert first, so it is heard again.
+        const seen: string[] = [];
+        const watch = new MutationObserver(() =>
+            seen.push(document.querySelector('[role="alert"]')?.textContent ?? '')
+        );
+        watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        await waitFor(() => expect(deletes).toBe(2));
+        await waitFor(() => expect(seen.at(-1)).toMatch(/could not be removed/));
+        watch.disconnect();
+        expect(seen).toContain('');
     });
 
     it('removes the products and is back where a file is chosen, saying they were removed', async () => {
@@ -433,11 +446,50 @@ describe('the page for a visitor’s own catalog', () => {
         expect(headings.some((heading) => heading.startsWith('Building the store'))).toBe(false);
         const question =
             'Searching this file replaces your products and discards the rules you saved for them. Search it anyway?';
-        expect(screen.getByRole('group', { name: question })).toContainElement(keep);
-        expect(keep).toHaveAccessibleDescription(question);
-        expect(
+        // Named by the question once, so it is read with the answer that takes focus, and not twice.
+        const group = screen.getByRole('group', { name: question });
+        expect(group).toContainElement(keep);
+        expect(group).toContainElement(
             screen.getByRole('button', { name: 'Yes, search this file' })
-        ).toHaveAccessibleDescription(question);
+        );
+        expect(keep).not.toHaveAccessibleDescription();
+    });
+
+    it('keeps a file dropped while the rules are read, rather than searching the one before it', async () => {
+        page();
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'first.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in first.csv' });
+        let release = () => undefined as void;
+        failure = failWhen(
+            'GET',
+            `${BASE}rules`,
+            () =>
+                new Promise<Response>((resolve) => {
+                    release = () => resolve(Response.json({ rules: [], edited: false }));
+                })
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Search 1 product' }));
+        const drop = new Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(drop, 'dataTransfer', {
+            value: { files: [new File(['name,price\nStool,40\nLamp,30\n'], 'second.csv')] },
+        });
+        act(() => {
+            document.body.dispatchEvent(drop);
+        });
+        await screen.findByRole('heading', { level: 1, name: 'What is in second.csv' });
+        await act(async () => {
+            release();
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        // The first file is neither searched nor put back over the second.
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'What is in second.csv'
+        );
+        expect(screen.getByRole('button', { name: 'Search 2 products' })).toBeInTheDocument();
     });
 
     it('keeps its alert in the page before a problem, so the problem is heard as it arrives', async () => {

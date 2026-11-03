@@ -17,6 +17,7 @@ import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
 import { reasonOf } from '../client/reason.js';
+import { readRules } from '../client/rules.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/money.js';
 import { startFailure } from '../worker/register.js';
@@ -82,6 +83,8 @@ type Stage =
           /** New each time the visitor's file is searched, so the results take focus as they land. */
           readonly arrival?: number;
           readonly problem?: string;
+          /** When the problem happened, so a second failure in the same words is heard again. */
+          readonly problemAt?: number;
           /** Asked first, since removing the products discards the visitor's saved rules. */
           readonly confirm?: boolean;
           /** Set when focus goes back to the remove button, after a kept or failed removal. */
@@ -121,7 +124,7 @@ const ProblemAlert = ({ problem }: { readonly problem: string | undefined }) => 
         return () => clearTimeout(timer);
     }, [problem]);
     return (
-        <p className={shown === '' ? undefined : 'try-problem'} role="alert">
+        <p className={shown === '' ? 'try-alert' : 'try-alert try-problem'} role="alert">
             {shown}
         </p>
     );
@@ -436,21 +439,15 @@ const Ask = ({
     const id = useId();
     const safe = useRef<HTMLButtonElement>(null);
     useLayoutEffect(() => safe.current?.focus(), []);
-    // A group named by the question, and each answer described by it, so the answer that
-    // takes focus is read with the question it answers.
+    // A group named by the question, so the answer that takes focus is read with the question
+    // it answers, once.
     return (
         <div className="try-ask" role="group" aria-labelledby={id}>
             <span id={id}>{question}</span>{' '}
-            <button type="button" className="text-button" aria-describedby={id} onClick={onYes}>
+            <button type="button" className="text-button" onClick={onYes}>
                 {yes}
             </button>{' '}
-            <button
-                ref={safe}
-                type="button"
-                className="text-button"
-                aria-describedby={id}
-                onClick={onNo}
-            >
+            <button ref={safe} type="button" className="text-button" onClick={onNo}>
                 {no}
             </button>
         </div>
@@ -461,6 +458,7 @@ const Ask = ({
 const CatalogBar = ({
     loaded,
     problem,
+    problemAt,
     confirm,
     focusRemove,
     onAnother,
@@ -472,6 +470,7 @@ const CatalogBar = ({
 }: {
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
+    readonly problemAt?: number | undefined;
     readonly confirm?: boolean | undefined;
     readonly focusRemove?: boolean | undefined;
     readonly onAnother: () => void;
@@ -492,35 +491,44 @@ const CatalogBar = ({
         }
     }, [focusRemove, confirm, onFocused]);
     return (
-        <div className="callout try-bar">
-            <span>
-                You are searching the{' '}
-                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept in
-                this browser.
-            </span>{' '}
-            {confirm === true ? (
-                <Ask
-                    question="Removing your products also discards the rules you saved for them. Remove them anyway?"
-                    yes="Yes, remove them"
-                    no="Keep my products"
-                    onYes={onConfirm}
-                    onNo={onKeep}
-                />
-            ) : (
-                <>
-                    <button type="button" className="text-button" onClick={onAnother}>
-                        Choose another file
-                    </button>{' '}
-                    <button ref={remove} type="button" className="text-button" onClick={onRemove}>
-                        Remove your products
-                    </button>{' '}
-                    <a className="text-button" href={widgetUrl}>
-                        See your products on a store&rsquo;s page
-                    </a>
-                </>
-            )}
-            <ProblemAlert problem={problem} />
-        </div>
+        <>
+            <div className="callout try-bar">
+                <span>
+                    You are searching the{' '}
+                    {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept
+                    in this browser.
+                </span>{' '}
+                {confirm === true ? (
+                    <Ask
+                        question="Removing your products also discards the rules you saved for them. Remove them anyway?"
+                        yes="Yes, remove them"
+                        no="Keep my products"
+                        onYes={onConfirm}
+                        onNo={onKeep}
+                    />
+                ) : (
+                    <>
+                        <button type="button" className="text-button" onClick={onAnother}>
+                            Choose another file
+                        </button>{' '}
+                        <button
+                            ref={remove}
+                            type="button"
+                            className="text-button"
+                            onClick={onRemove}
+                        >
+                            Remove your products
+                        </button>{' '}
+                        <a className="text-button" href={widgetUrl}>
+                            See your products on a store&rsquo;s page
+                        </a>
+                    </>
+                )}
+            </div>
+            {/* Under the bar rather than in it, so an empty alert takes no room among its actions. */}
+            {/* Made anew for each failure, so the same words a second time are heard again. */}
+            <ProblemAlert key={problemAt} problem={problem} />
+        </>
     );
 };
 
@@ -627,10 +635,10 @@ const CATCH_UP_MS = 300;
 
 /**
  * Whether loading a catalog of this version would discard rules the visitor
- * saved: there are saved rules, and other products are loaded. The same file
- * again keeps its rules. Read before the store is built, so the page can ask
- * first, and an answer that cannot be read asks nothing, since the worker
- * refuses on its own.
+ * saved, as the worker decides it: there are saved rules, and the products
+ * loaded, if any, are not these. The same file again keeps its rules. Read
+ * before the store is built, so the page can ask first, and an answer that
+ * cannot be read asks nothing, since the worker refuses on its own.
  */
 const wouldDiscardRules = async (
     base: string,
@@ -638,13 +646,11 @@ const wouldDiscardRules = async (
     version: string
 ): Promise<boolean> => {
     try {
-        const [answer, loaded] = await Promise.all([fetch(`${base}rules`), readLoaded(catalogUrl)]);
-        if (!answer.ok || !loaded || loaded.version === version) return false;
-        const { rules, edited } = (await answer.json()) as {
-            readonly rules: readonly unknown[];
-            readonly edited: boolean;
-        };
-        return edited && rules.length > 0;
+        const [saved, loaded] = await Promise.all([
+            readRules(`${base}rules`),
+            readLoaded(catalogUrl),
+        ]);
+        return saved?.edited === true && saved.rules.length > 0 && loaded?.version !== version;
     } catch {
         return false;
     }
@@ -772,9 +778,18 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { catalog } = whole;
             const retry = searchLabel(catalog.products.length);
             pending.current = true;
+            asked.current += 1;
+            const mine = asked.current;
             // Asked before the store is built, so the page never says it is building and then
             // asks. The worker still refuses on its own, in case the rules changed meanwhile.
-            if (!discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version))) {
+            const ask =
+                !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
+            // A file chosen or dropped while the rules were read is the visitor's latest choice.
+            if (mine !== asked.current) {
+                pending.current = false;
+                return;
+            }
+            if (ask) {
                 pending.current = false;
                 const { problem: _last, ...asking } = review;
                 setStage({ ...asking, replacing: true });
@@ -872,6 +887,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { loaded } = stage;
             pending.current = true;
             setActed(true);
+
             try {
                 const response = await changeCatalog(
                     catalogUrl,
@@ -895,6 +911,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     kind: 'searching',
                     loaded,
                     focusRemove: true,
+                    problemAt: performance.now(),
                     problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
                 });
             } finally {
@@ -978,6 +995,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     <CatalogBar
                         loaded={stage.loaded}
                         problem={stage.problem}
+                        problemAt={stage.problemAt}
                         confirm={stage.confirm}
                         focusRemove={stage.focusRemove}
                         onAnother={onAnother}

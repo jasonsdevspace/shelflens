@@ -165,12 +165,21 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-1) var(--space-4);
 }
 
-/* A thumb's height when the bar stacks on a phone, as the filters' text buttons are. */
-.try-bar .text-button {
-    min-height: 1.5rem;
+/* A thumb's height when the bar stacks on a phone, the link as well as the buttons. */
+@media (max-width: 48rem) {
+    .try-bar .text-button {
+        display: inline-flex;
+        align-items: center;
+        min-height: var(--target);
+    }
+}
+
+/* An alert waiting for a problem takes no room. */
+.try-alert:empty {
+    margin: 0;
 }
 
 /* A question that asks for an answer is in the text's own color, never muted. */
