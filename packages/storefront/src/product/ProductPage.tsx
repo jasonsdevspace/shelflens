@@ -195,6 +195,42 @@ const useOwnScroll = () => {
 type Product = NonNullable<ProductQuery['product']>;
 type Recommended = NonNullable<RecommendationsQuery['recommendations']>;
 
+/**
+ * Where the screen is too narrow for the table of sizes and colors, it
+ * scrolls inside this frame rather than the page. Only while it scrolls is
+ * the frame a region of its own, named by the table's heading and reachable
+ * from the keyboard so it can be scrolled without a pointer. Where the table
+ * fits, the frame is nothing to a keyboard or a screen reader.
+ */
+const VariantsFrame = ({
+    labelledBy,
+    children,
+}: {
+    readonly labelledBy: string;
+    readonly children: ReactNode;
+}) => {
+    const frame = useRef<HTMLDivElement>(null);
+    const [scrolls, setScrolls] = useState(false);
+    useEffect(() => {
+        const at = frame.current;
+        if (!at || typeof ResizeObserver !== 'function') return;
+        // Told once as it starts watching, then each time the frame or the table changes size.
+        const watch = new ResizeObserver(() => setScrolls(at.scrollWidth > at.clientWidth));
+        watch.observe(at);
+        if (at.firstElementChild) watch.observe(at.firstElementChild);
+        return () => watch.disconnect();
+    }, []);
+    return (
+        <div
+            ref={frame}
+            className="variants-frame"
+            {...(scrolls && { role: 'region', 'aria-labelledby': labelledBy, tabIndex: 0 })}
+        >
+            {children}
+        </div>
+    );
+};
+
 /** The product itself: its heading and lines, its sizes and colors, and the rail beneath. */
 const Details = ({
     product,
@@ -240,17 +276,7 @@ const Details = ({
             <h2 id="product-variants" className="product-subheading">
                 Sizes and colors
             </h2>
-            {/*
-             * Where the screen is too narrow for the table, it scrolls inside this
-             * frame rather than the page, named by its heading and reachable from
-             * the keyboard so it can be scrolled without a pointer.
-             */}
-            <div
-                className="variants-frame"
-                role="region"
-                aria-labelledby="product-variants"
-                tabIndex={0}
-            >
+            <VariantsFrame labelledBy="product-variants">
                 <table className="variants" aria-labelledby="product-variants">
                     <thead>
                         <tr>
@@ -271,7 +297,7 @@ const Details = ({
                         ))}
                     </tbody>
                 </table>
-            </div>
+            </VariantsFrame>
             {rail && <Rail rail={rail} state={state} navigate={navigate} />}
         </article>
     );

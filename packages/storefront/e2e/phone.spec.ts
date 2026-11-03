@@ -1,5 +1,5 @@
 import { STOPS } from '../src/tour/stops.js';
-import { audit, expect, type Page, test } from './support.js';
+import { audit, expect, type Page, setTextSize, settle, test } from './support.js';
 
 /*
  * The same storefront on a phone: the facets are a drawer, and the popover
@@ -309,14 +309,17 @@ test.describe('on a first visit', () => {
         expect(row.textRight).toBeLessThanOrEqual(row.startLeft);
     });
 
-    test('at larger text the page is never zoomed out, and every control of the top bar and the tour can be tapped', async ({
+    test('at twice the text size the page is never zoomed out, and every control of the top bar and the tour can be tapped', async ({
         page,
     }) => {
         await page.setViewportSize({ width: 320, height: 640 });
         await page.goto('/?q=jacket');
         const tour = page.getByRole('complementary', { name: 'Tour' });
         await expect(tour).toContainText('A tour of what to try');
-        await page.evaluate(() => document.documentElement.style.setProperty('font-size', '150%'));
+        // A visitor's own larger text. The setting holds for the page as loaded, and a phone's
+        // browser fits the page to the screen again as it reflows, zooming out if it is wider.
+        await setTextSize(page, 2);
+        await settle(page);
         const zoom = () =>
             page.evaluate(() => ({ scale: window.visualViewport?.scale ?? 1, width: innerWidth }));
         expect(await zoom()).toEqual({ scale: 1, width: 320 });
@@ -336,7 +339,16 @@ test.describe('on a first visit', () => {
         await tour.getByRole('button', { name: 'Next' }).tap({ trial: true });
         // Previous is off at the first stop, so it is checked for being on screen instead.
         const previous = await tour.getByRole('button', { name: 'Previous' }).boundingBox();
-        expect(previous && previous.x >= 0 && previous.x + previous.width <= 320).toBe(true);
+        const sheet = await tour.boundingBox();
+        expect(
+            previous !== null &&
+                sheet !== null &&
+                previous.x >= 0 &&
+                previous.x + previous.width <= 320 &&
+                previous.y >= sheet.y &&
+                previous.y + previous.height <= Math.min(640, sheet.y + sheet.height),
+            'Previous is wholly on screen and inside the sheet'
+        ).toBe(true);
     });
 
     test('Not now puts the bar away for good', async ({ page }) => {

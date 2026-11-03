@@ -1,15 +1,16 @@
-import { audit, expect, type Page, test } from './support.js';
+import { audit, expect, type Page, setTextSize, settle, test } from './support.js';
 
 /*
- * No page scrolls sideways at a phone's width or wider, at text sizes up to
- * twice the usual, set as a visitor's own larger text would set it, through
- * the root every size is drawn from. 400% zoom on a 1280 window is 320 wide
- * at the usual size, so it is among them. The one thing that may scroll
- * sideways is the table of sizes and colors, inside its own frame.
+ * No page reaches past the screen at a phone's width or wider, at text
+ * sizes up to twice the usual, set as a visitor's own larger text sets it,
+ * so the layouts that larger text brings on are the ones measured. 400%
+ * zoom on a 1280 window is 320 wide at the usual size, so it is among them.
+ * The one thing that may scroll sideways is the table of sizes and colors,
+ * inside its own frame.
  */
 
 const WIDTHS = [320, 360, 375, 390, 412, 768, 1280];
-const TEXT_SIZES = ['100%', '125%', '150%', '200%'];
+const TEXT_SCALES = [1, 1.25, 1.5, 2];
 
 const PAGES = [
     ['the home page', '/'],
@@ -22,25 +23,96 @@ const PAGES = [
     ["the page for a visitor's own catalog", '/try/'],
 ] as const;
 
-/** Every width and text size at which the page is wider than the screen, with how wide it was. */
-const overflows = async (page: Page): Promise<string[]> => {
+/** The pages served as a document of their own, which are what a visit before the script sees. */
+const SHELLS = [
+    ['the store', '/'],
+    ['the about page', '/about/'],
+    ["the page for a visitor's own catalog", '/try/'],
+] as const;
+
+/*
+ * Cut off on purpose, so not a fault: the filled part of a rating's stars,
+ * and a choice a select shortens with its ellipsis. Text kept for a screen
+ * reader alone is drawn a pixel wide, and is passed over by its size, as is
+ * a control drawn unseen over another to take its clicks.
+ */
+const CLIPPED_ON_PURPOSE = ['stars-fill', 'select'];
+
+/**
+ * What reaches past the screen as the page is drawn: the page itself, any
+ * box drawn past its right edge, the tour's fixed sheet among them, and any
+ * text cut off by a box too narrow for it. A box inside a frame that scrolls
+ * or clips on purpose is that frame's to hold.
+ */
+const pastTheEdge = (page: Page, onPurpose: readonly string[]) =>
+    page.evaluate((allowed) => {
+        const width = document.documentElement.clientWidth;
+        const named = (element: Element) =>
+            `${element.tagName.toLowerCase()}.${element.className}`.trim();
+        /** Whether a box between it and the page scrolls or clips it, and so holds it. */
+        const held = (element: Element) => {
+            for (let at = element.parentElement; at; at = at.parentElement) {
+                if (getComputedStyle(at).overflowX !== 'visible') return true;
+            }
+            return false;
+        };
+        const drawnPast = (element: Element) => {
+            const box = element.getBoundingClientRect();
+            return box.width > 0 && box.right > width + 1 && !held(element);
+        };
+        const overflowing = (element: Element) => element.scrollWidth > element.clientWidth + 1;
+        /** A box that scrolls sideways is a fault of its own, but for the table's frame. */
+        const scrollsSideways = (element: Element, overflowX: string) =>
+            (overflowX === 'auto' || overflowX === 'scroll') &&
+            overflowing(element) &&
+            !element.classList.contains('variants-frame');
+        const cutsOff = (element: Element, overflowX: string, opacity: string) =>
+            (overflowX === 'hidden' || overflowX === 'clip') &&
+            opacity !== '0' &&
+            element.clientWidth > 1 &&
+            overflowing(element) &&
+            !allowed.some((name) => element.classList.contains(name));
+
+        const found: string[] = [];
+        if (document.documentElement.scrollWidth > width) {
+            found.push(`the page is ${String(document.documentElement.scrollWidth)} wide`);
+        }
+        for (const element of document.querySelectorAll('body *')) {
+            const { overflowX, opacity } = getComputedStyle(element);
+            if (drawnPast(element)) {
+                const right = Math.round(element.getBoundingClientRect().right);
+                found.push(`${named(element)} ends at ${String(right)}`);
+            }
+            if (scrollsSideways(element, overflowX))
+                found.push(`${named(element)} scrolls sideways`);
+            if (cutsOff(element, overflowX, opacity))
+                found.push(`${named(element)} cuts off its content`);
+        }
+        return found;
+    }, onPurpose);
+
+/** Every width and text size at which something reaches past the screen, with what it was. */
+const overflows = async (page: Page, scripts = true): Promise<string[]> => {
     const found: string[] = [];
     for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 800 });
-        for (const size of TEXT_SIZES) {
-            const wide = await page.evaluate((fontSize) => {
-                document.documentElement.style.setProperty('font-size', fontSize);
-                return document.documentElement.scrollWidth;
-            }, size);
-            if (wide > width) found.push(`${String(width)} wide at ${size}: ${String(wide)}`);
+        for (const scale of TEXT_SCALES) {
+            await setTextSize(page, scale);
+            // Without a script nothing reacts to the change, and nothing would run a frame to wait on.
+            if (scripts) await settle(page);
+            for (const what of await pastTheEdge(page, CLIPPED_ON_PURPOSE)) {
+                found.push(`${String(width)} wide at ${String(scale * 100)}%: ${what}`);
+            }
         }
     }
-    await page.evaluate(() => document.documentElement.style.removeProperty('font-size'));
+    await setTextSize(page, 1);
     return found;
 };
 
 for (const [name, path] of PAGES) {
-    test(`${name} never scrolls sideways, whatever the width and text size`, async ({ page }) => {
+    test(`${name} never reaches past the screen, whatever the width and text size`, async ({
+        page,
+    }) => {
         await page.goto(path);
         await expect(page.locator('h1').first()).toBeVisible();
         await page.waitForLoadState('networkidle');
@@ -51,10 +123,10 @@ for (const [name, path] of PAGES) {
 test.describe('before the store is ready', () => {
     test.use({ javaScriptEnabled: false });
 
-    for (const [name, path] of PAGES) {
-        test(`${name} keeps its room without scrolling sideways`, async ({ page }) => {
+    for (const [name, path] of SHELLS) {
+        test(`${name} keeps its room without reaching past the screen`, async ({ page }) => {
             await page.goto(path);
-            expect(await overflows(page)).toEqual([]);
+            expect(await overflows(page, false)).toEqual([]);
         });
     }
 });
@@ -62,15 +134,14 @@ test.describe('before the store is ready', () => {
 test.describe('with the tour showing', () => {
     test.use({ tourSeen: false });
 
-    test('the bar that offers it, then the tour, never scroll the page sideways', async ({
-        page,
-    }) => {
+    test('the bar that offers it, then the tour, stay within the screen', async ({ page }) => {
         await page.setViewportSize({ width: 320, height: 640 });
         await page.goto('/?q=jacket');
         const tour = page.getByRole('complementary', { name: 'Tour' });
         await expect(tour).toContainText('A tour of what to try');
         expect(await overflows(page)).toEqual([]);
         await page.setViewportSize({ width: 320, height: 640 });
+        await settle(page);
         await tour.getByRole('button', { name: 'Start' }).click();
         await expect(tour).toContainText('Stop 1 of');
         expect(await overflows(page)).toEqual([]);
@@ -82,9 +153,11 @@ test('the only sideways scrolling is the table of sizes and colors, in a frame t
 }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/?product=SL-00001');
+    await expect(page.getByRole('heading', { name: 'Sizes and colors' })).toBeVisible();
+    await setTextSize(page, 2);
+    await settle(page);
     const frame = page.getByRole('region', { name: 'Sizes and colors' });
     await expect(frame).toBeVisible();
-    await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%'));
     const scrollers = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>('body *')]
             .filter((element) => {
@@ -101,12 +174,20 @@ test('the only sideways scrolling is the table of sizes and colors, in a frame t
     await expect(frame).toBeFocused();
 });
 
+test('the table of sizes and colors is no stop of its own where it fits', async ({ page }) => {
+    await page.goto('/?product=SL-00001');
+    await expect(page.getByRole('heading', { name: 'Sizes and colors' })).toBeVisible();
+    await settle(page);
+    await expect(page.getByRole('region', { name: 'Sizes and colors' })).toHaveCount(0);
+    await expect(page.locator('.variants-frame')).not.toHaveAttribute('tabindex');
+});
+
 test('audits clean at a phone width with text at twice its size', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
+    await setTextSize(page, 2);
     for (const [, path] of PAGES) {
         await page.goto(path);
         await expect(page.locator('h1').first()).toBeVisible();
-        await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%'));
         await audit(page);
     }
 });

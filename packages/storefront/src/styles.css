@@ -556,9 +556,12 @@ h4 {
     margin: calc(-1 * var(--space-1));
 }
 
-/* Nothing found: no facets to show, so the results take the whole width. */
+/*
+ * Nothing found: no facets to show, so the results take the whole width,
+ * and never more than it, whatever their widest content asks for.
+ */
 .results-layout.is-empty {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 /*
@@ -566,9 +569,7 @@ h4 {
  * answer never flickers. They come back at once, and with reduced motion
  * they change without fading.
  */
-/* The column takes the track's width, not the width its widest content asks for. */
 .results-main {
-    min-width: 0;
     transition: opacity 0.15s;
 }
 
@@ -1315,8 +1316,9 @@ h4 {
         padding-bottom: calc(var(--tour-height, 50dvh) + var(--space-4));
     }
 
+    /* The column is the screen's width, never what its widest content asks for. */
     .results-layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--space-4);
     }
 
