@@ -209,22 +209,63 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.queryByRole('button', { name: 'Back to your products' })).toBeNull();
     });
 
-    it('searches what another tab loaded when it is back, and stays as it is when nothing changed', async () => {
+    it('stays as it is when it is back and nothing changed', async () => {
         page();
         await loadSample();
+        // What is loaded, read first, then given back to the tab's own read once it is held.
+        const loaded = (await (await fetch(`${BASE}catalog`)).json()) as unknown;
+        let answer = () => undefined as void;
+        let asked = false;
+        failure = failWhen('GET', `${BASE}catalog`, () => {
+            asked = true;
+            return new Promise<Response>((resolve) => {
+                answer = () => resolve(Response.json(loaded));
+            });
+        });
         act(() => {
             window.dispatchEvent(new Event('focus'));
         });
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        await waitFor(() => expect(asked).toBe(true));
+        await act(async () => {
+            answer();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
         expect(screen.getByText(/the 200 products you loaded/)).toBeInTheDocument();
+        expect(screen.queryByText(/Another tab loaded/)).toBeNull();
+    });
+
+    it('searches what another tab loaded when it is back, and says so', async () => {
+        page();
+        await loadSample();
         const table = parseCsv('name,price\nBench,120\nStool,40\n');
         const other = toCatalog(table, guessMapping(table));
         if (!other.ok) throw new Error(other.error);
         await fetch(`${BASE}catalog`, { method: 'PUT', body: JSON.stringify(other.catalog) });
+        // A switch back to the tab, as most browsers say it.
         act(() => {
-            window.dispatchEvent(new Event('focus'));
+            document.dispatchEvent(new Event('visibilitychange'));
         });
         await screen.findByText(/the 2 products you loaded/);
+        await heard('Another tab loaded 2 products, so these are what you are searching now.');
+    });
+
+    it('reads once when a return fires both a visibility change and a focus', async () => {
+        page();
+        await loadSample();
+        let reads = 0;
+        failure = (request) => {
+            if (request.method === 'GET' && new URL(request.url).pathname === `${BASE}catalog`) {
+                reads += 1;
+            }
+            return undefined;
+        };
+        act(() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitFor(() => expect(reads).toBe(1));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(reads).toBe(1);
     });
 
     it('removes the products and is back where a file is chosen, saying they were removed', async () => {

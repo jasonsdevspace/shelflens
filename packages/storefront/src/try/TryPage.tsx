@@ -89,6 +89,8 @@ type Stage =
           readonly confirm?: boolean;
           /** Set when focus goes back to the remove button, after a kept or failed removal. */
           readonly focusRemove?: boolean;
+          /** Said once another tab replaced the products, so the change is not silent. */
+          readonly notice?: string;
       };
 
 /**
@@ -459,6 +461,7 @@ const CatalogBar = ({
     loaded,
     problem,
     problemAt,
+    notice,
     confirm,
     focusRemove,
     onAnother,
@@ -471,6 +474,7 @@ const CatalogBar = ({
     readonly loaded: Loaded;
     readonly problem?: string | undefined;
     readonly problemAt?: number | undefined;
+    readonly notice?: string | undefined;
     readonly confirm?: boolean | undefined;
     readonly focusRemove?: boolean | undefined;
     readonly onAnother: () => void;
@@ -526,6 +530,12 @@ const CatalogBar = ({
                 )}
             </div>
             {/* Under the bar rather than in it, so an empty alert takes no room among its actions. */}
+            {notice !== undefined && (
+                <>
+                    <p className="notice">{notice}</p>
+                    <LiveStatus text={notice} />
+                </>
+            )}
             {/* Made anew for each failure, so the same words a second time are heard again. */}
             <ProblemAlert key={problemAt} problem={problem} />
         </>
@@ -729,23 +739,35 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     useEffect(() => {
         if (searching === undefined) return undefined;
         let live = true;
+        // A return fires both a visibility change and a focus, so one read at a time.
+        let reading = false;
         const check = () => {
-            if (document.visibilityState !== 'visible' || pending.current) return;
-            readLoaded(catalogUrl).then(
-                (loaded) => {
-                    if (!live || loaded?.version === searching) return;
-                    clearSearch(base);
-                    setStage(
-                        loaded
-                            ? { kind: 'searching', loaded }
-                            : {
-                                  kind: 'choose',
-                                  notice: 'Your products were removed from this browser in another tab.',
-                              }
-                    );
-                },
-                () => undefined
-            );
+            if (document.visibilityState !== 'visible' || pending.current || reading) return;
+            reading = true;
+            readLoaded(catalogUrl)
+                .then(
+                    (loaded) => {
+                        // A change this tab began meanwhile is its own to say.
+                        if (!live || pending.current || loaded?.version === searching) return;
+                        clearSearch(base);
+                        setStage(
+                            loaded
+                                ? {
+                                      kind: 'searching',
+                                      loaded,
+                                      notice: `Another tab loaded ${count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, so these are what you are searching now.`,
+                                  }
+                                : {
+                                      kind: 'choose',
+                                      notice: 'Your products were removed from this browser in another tab.',
+                                  }
+                        );
+                    },
+                    () => undefined
+                )
+                .finally(() => {
+                    reading = false;
+                });
         };
         document.addEventListener('visibilitychange', check);
         window.addEventListener('focus', check);
@@ -1030,6 +1052,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         loaded={stage.loaded}
                         problem={stage.problem}
                         problemAt={stage.problemAt}
+                        notice={stage.notice}
                         confirm={stage.confirm}
                         focusRemove={stage.focusRemove}
                         onAnother={onAnother}

@@ -79,7 +79,8 @@ again keeps its answers.
   them is taken back to the products and the search they left.
 - Every tab of the site shares the one worker, so another tab can remove or replace the products
   a tab is searching. A tab coming back into view reads what is loaded, and says the products
-  were removed in another tab, or searches the ones loaded there, rather than failing to search.
+  were removed in another tab, or searches the ones loaded there and says so, rather than
+  failing to search.
 - The rules editor works on a visitor's store as it does on the demo's. The store over a
   visitor's catalog ships no rules, so discarding them leaves none. A save builds a new store
   over the index already built, which at the cap takes a few milliseconds on a laptop rather

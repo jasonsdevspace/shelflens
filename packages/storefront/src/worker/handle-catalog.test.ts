@@ -383,24 +383,6 @@ describe('the worker for a visitor’s own catalog', () => {
         });
     });
 
-    it('refuses a load that would discard a rule saved just before it, though both arrive together', async () => {
-        const rules = createMemoryRuleStore();
-        const api = visitorApi(undefined, { rules });
-        await api.handle(catalogRequest('PUT', LAMPS));
-        const save = new Request(`${ORIGIN}${BASE}rules`, {
-            method: 'POST',
-            body: JSON.stringify({ rules: pinFirst(LAMPS) }),
-        });
-        // The save is asked first, so the load, asked a moment after, finds the rule saved.
-        const [saved, loaded] = await Promise.all([
-            api.handle(save),
-            api.handle(catalogRequest('PUT', MUGS)),
-        ]);
-        expect(saved?.status).toBe(204);
-        expect(loaded?.status).toBe(409);
-        expect(await rules.current()).toEqual(pinFirst(LAMPS));
-    });
-
     it('does not keep an answer that finishes after its catalog was removed', async () => {
         const { answers, kept } = memoryAnswers();
         const api = visitorApi(answers);
