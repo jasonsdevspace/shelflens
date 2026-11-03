@@ -10,6 +10,7 @@ import {
     STEPS,
     type Target,
 } from './rule-form.js';
+import { setAsideByOwnSort } from './setAside.js';
 
 /**
  * One rule, as a form. Every change goes up at once, so the results beside
@@ -47,7 +48,7 @@ const Field = ({
 }: {
     readonly id: string;
     readonly label: string;
-    readonly line?: string;
+    readonly line?: string | undefined;
     readonly children: ReactNode;
 }) => (
     <div className="rules-field">
@@ -162,11 +163,13 @@ const WeightField = ({
     onChange,
 }: Pick<RuleFormProps, 'form' | 'onChange'> & { readonly id: string }) => {
     if (form.action !== 'boost' && form.action !== 'bury') return null;
+    const line = setAsideByOwnSort(form.kept.filter, form.action);
     return (
-        <Field id={`${id}-step`} label="How much">
+        <Field id={`${id}-step`} label="How much" line={line}>
             <select
                 id={`${id}-step`}
                 className="select"
+                aria-describedby={line === undefined ? undefined : `${id}-step-line`}
                 value={form.step}
                 onChange={(event) => onChange({ ...form, step: Number(event.target.value) })}
             >

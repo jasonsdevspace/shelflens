@@ -103,3 +103,20 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await expect(notice).toBeHidden();
     await expect.poll(order).toEqual(before);
 });
+
+test('the rule form says a category rule’s boost does nothing under the category’s own sort', async ({
+    page,
+    isMobile,
+}) => {
+    await page.goto('/?q=boots&category=boots&explain=1&rules=1');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    if (isMobile) await page.getByRole('button', { name: 'Edit rules' }).tap();
+    const panel = isMobile
+        ? page.getByRole('dialog', { name: 'Rules' })
+        : page.getByRole('complementary', { name: 'Rules' });
+    await panel.getByRole('button', { name: /Ridgeback boots first/ }).click();
+    await expect(panel.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+        'Under “Featured”, the category’s own order, a boost does nothing. It applies under “Relevance”, where a search starts.'
+    );
+    await audit(page);
+});

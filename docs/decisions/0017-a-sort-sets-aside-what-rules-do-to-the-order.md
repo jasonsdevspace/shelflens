@@ -63,9 +63,11 @@ set aside together, each once, and marks each one the sort set aside.
   rule hides.
 - A merchandiser can tell a rule that does nothing under this sort from one that never matched.
 - Under a category's scoped sort, a boost or a bury for that category does nothing, and the page
-  says so. The demo's `ridgeback-boots` rule, which boosts a brand when "boots" is searched inside
-  the boots category, meets this under "Featured". A merchandiser who wants a product higher in a
-  category's own order pins it, or changes its position.
+  says so. The rule form says it before the rule is saved, under "How much", for a rule that keeps
+  a category filter and boosts or buries, as a hint rather than a refusal, since the same rule
+  applies in full under "Relevance". The demo's `ridgeback-boots` rule, which boosts a brand when
+  "boots" is searched inside the boots category, meets this under "Featured". A merchandiser who
+  wants a product higher in a category's own order pins it, or changes its position.
 
 ## How it is tested
 
@@ -87,3 +89,8 @@ set aside together, each once, and marks each one the sort set aside.
 - `packages/storefront/e2e/merchandising.spec.ts`, under "Featured" in the boots category: the line
   names `ridgeback-boots`, says pins are kept only from a category's own rules, and says nothing of
   pins being set aside.
+- `packages/storefront/src/results/RulesPanel.test.tsx` and `setAside.test.ts`: the rule form says
+  so for a boost and a bury in a rule for one category, and not for a pin or a rule with no
+  category, and the store itself sets such a boost aside under "Featured".
+  `packages/storefront/e2e/merchandising.spec.ts` opens the demo's `ridgeback-boots` rule and finds
+  the hint under "How much".

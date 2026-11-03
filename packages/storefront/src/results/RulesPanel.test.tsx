@@ -317,6 +317,38 @@ describe('the rules panel', () => {
         });
     });
 
+    it('says a boost or a bury in a rule for one category does nothing under that category’s own sort', async () => {
+        const { user } = open({
+            phrase: 'boots',
+            applied: ['all-boots'],
+            products: [{ sku: 'SL-7', name: 'Mud Boot' }],
+        });
+        await user.click(await screen.findByRole('button', { name: /all-boots/ }));
+        const said =
+            'Under “Featured”, the category’s own order, a boost does nothing. It applies under “Relevance”, where a search starts.';
+        expect(screen.queryByText(said)).toBeNull();
+        await user.click(screen.getByRole('radio', { name: /^Boost/ }));
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            said
+        );
+        await user.click(screen.getByRole('radio', { name: /^Bury/ }));
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            said.replace('a boost', 'a bury')
+        );
+        // A pin holds under the category's own sort, so it is told nothing.
+        await user.click(screen.getByRole('radio', { name: /^Pin/ }));
+        expect(screen.queryByText(/the category’s own order/)).toBeNull();
+    });
+
+    it('says nothing of the category’s own sort to a boost in a rule for no category', async () => {
+        const { user } = open();
+        await user.click(await screen.findByRole('button', { name: /Featured jackets/ }));
+        await user.click(screen.getByRole('radio', { name: /^Boost/ }));
+        expect(
+            screen.getByRole('combobox', { name: 'How much' })
+        ).not.toHaveAccessibleDescription();
+    });
+
     it('lists what the engine applied, not what the words suggest', async () => {
         // The engine stems "jackets" to "jacket" and applies the rule. The panel takes its word.
         open({ phrase: 'Jackets', applied: ['featured-jackets'] });
