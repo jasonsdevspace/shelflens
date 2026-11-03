@@ -10,7 +10,8 @@ import { startPreview } from './preview.js';
  *
  *   npm run lighthouse
  *
- * Builds the page with `npm run storefront` first, as the browser tests do.
+ * Builds the page with `npm run storefront` first, as the browser tests do. To audit
+ * a build already made, run `tsx packages/storefront/src/bench/lighthouse.ts`.
  *
  * Accessibility is audited on each page as it is once ready. One visit
  * first installs the worker and waits for the page, and the audit keeps

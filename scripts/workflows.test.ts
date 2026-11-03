@@ -89,4 +89,31 @@ describe('the workflows', () => {
             /scripts\/github-release\.sh [^\n]*\\\n\s+"ShelfLens storefront \$VERSION"/
         );
     });
+
+    it('run the same checks in CI as `npm run verify` runs, each in a step of its own', () => {
+        /** A command as written in either place, without the npx a CI step runs it through. */
+        const commands = (line: string) =>
+            line.split(' && ').map((command) => command.trim().replace(/^npx /, ''));
+        const verify = (
+            JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+                scripts: Record<string, string>;
+            }
+        ).scripts['verify'];
+        const job = jobsOf(read('ci.yml')).get('verify') ?? '';
+        // The checks, by the names a failed run shows, each with the command its step runs.
+        const steps = [
+            'Type-check',
+            'Lint',
+            'Format check',
+            'Prose check',
+            'Node version check',
+            'Check for unused exports and dependencies',
+            'Unit tests',
+        ].map((name) => {
+            const run = new RegExp(`- name: ${name}\\n\\s+run: (.+)`).exec(job)?.[1];
+            if (run === undefined) throw new Error(`the verify job has no step named ${name}`);
+            return run;
+        });
+        expect(steps.flatMap(commands)).toEqual(commands(verify ?? ''));
+    });
 });
