@@ -2,6 +2,7 @@ import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useRef, useS
 
 import { App } from '../App.jsx';
 import { useHeadingFocus } from '../app/focus.js';
+import { LiveStatus } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
@@ -142,30 +143,14 @@ const Chooser = ({
     readonly reading?: string | undefined;
     readonly notice?: string | undefined;
     readonly announce: boolean;
-    /** How many products are loaded, when the visitor came here from searching them. */
-    readonly back?: number | undefined;
+    /** Whether products are loaded, when the visitor came here from searching them. */
+    readonly back?: boolean | undefined;
     readonly onFile: (file: FileLike) => void;
     readonly onSample: () => void;
     readonly onBack: () => void;
 }) => {
     const heading = useHeadingFocus(problem ?? 'choose', announce);
     const [over, setOver] = useState(false);
-    // A file dropped anywhere on the page is read, rather than opened by the browser in its place.
-    useEffect(() => {
-        const hold = (event: DragEvent) => event.preventDefault();
-        const dropped = (event: DragEvent) => {
-            event.preventDefault();
-            setOver(false);
-            const file = event.dataTransfer?.files[0];
-            if (file) onFile(file);
-        };
-        window.addEventListener('dragover', hold);
-        window.addEventListener('drop', dropped);
-        return () => {
-            window.removeEventListener('dragover', hold);
-            window.removeEventListener('drop', dropped);
-        };
-    }, [onFile]);
     const picked = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) onFile(file);
@@ -191,12 +176,19 @@ const Chooser = ({
                 </p>
             )}
             <p className="notice" role="status">
-                {reading ? `Reading ${reading}.` : (notice ?? '')}
+                {reading ? `Reading ${reading}.` : ''}
             </p>
-            {back !== undefined && (
+            {notice !== undefined && (
+                <>
+                    <p className="notice">{notice}</p>
+                    {/* Filled a moment after it mounts, so it is heard though the page just changed. */}
+                    <LiveStatus text={notice} />
+                </>
+            )}
+            {back === true && (
                 <p>
                     <button type="button" className="button" onClick={onBack}>
-                        {backLabel(back)}
+                        {BACK_LABEL}
                     </button>
                 </p>
             )}
@@ -204,6 +196,8 @@ const Chooser = ({
                 className={`try-drop${over ? ' is-over' : ''}`}
                 onDragOver={() => setOver(true)}
                 onDragLeave={() => setOver(false)}
+                // The page reads the file, so the drop area only lets go of its highlight.
+                onDrop={() => setOver(false)}
             >
                 <p>Drop a file here, or</p>
                 <label className="try-pick">
@@ -269,8 +263,8 @@ const Review = ({
     onKeepProducts,
 }: {
     readonly announce: boolean;
-    /** How many products are loaded, when the visitor came here from searching them. */
-    readonly back?: number | undefined;
+    /** Whether products are loaded, when the visitor came here from searching them. */
+    readonly back?: boolean | undefined;
     readonly name: string;
     readonly table: Table;
     readonly mapping: Mapping;
@@ -295,9 +289,12 @@ const Review = ({
                 {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)} and{' '}
                 {count(table.headers.length, 'column', 'columns', DEFAULT_LOCALE)}.
             </p>
-            {problem && (
+            {/* One alert, so a problem and a mapping that cannot make a catalog are heard together. */}
+            {(problem !== undefined || !result.ok) && (
                 <p className="try-problem" role="alert">
-                    {problem}
+                    {[problem, result.ok ? undefined : result.error]
+                        .filter((line) => line !== undefined)
+                        .join(' ')}
                 </p>
             )}
             {/* The answer first, then the way on, then the guess, so a right guess needs no scrolling
@@ -346,9 +343,6 @@ const Review = ({
                 </>
             ) : (
                 <>
-                    <p className="try-problem" role="alert">
-                        {result.error}
-                    </p>
                     <div className="try-actions">
                         <OtherWays back={back} onAnother={onAnother} onBack={onKeepProducts} />
                     </div>
@@ -365,7 +359,7 @@ const OtherWays = ({
     onAnother,
     onBack,
 }: {
-    readonly back?: number | undefined;
+    readonly back?: boolean | undefined;
     readonly onAnother: () => void;
     readonly onBack: () => void;
 }) => (
@@ -373,9 +367,9 @@ const OtherWays = ({
         <button type="button" className="button" onClick={onAnother}>
             Choose another file
         </button>
-        {back !== undefined && (
+        {back === true && (
             <button type="button" className="button" onClick={onBack}>
-                {backLabel(back)}
+                {BACK_LABEL}
             </button>
         )}
     </>
@@ -500,8 +494,8 @@ const BeforeStore = ({
     readonly stage: Exclude<Stage, { readonly kind: 'searching' }>;
     /** Whether the visitor's own action brought this stage, so its heading takes focus. */
     readonly announce: boolean;
-    /** How many products are loaded, when the visitor came here from searching them. */
-    readonly back: number | undefined;
+    /** Whether products are loaded, when the visitor came here from searching them. */
+    readonly back: boolean;
     readonly onFile: (file: FileLike) => void;
     readonly onSample: () => void;
     readonly onSearch: () => void;
@@ -572,9 +566,15 @@ const BeforeStore = ({
 /** The button that loads the sample, named again by a message that offers it and by the explainer. */
 const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
 
-/** The button back to the products already loaded. */
-const backLabel = (products: number) =>
-    `Back to your ${count(products, 'product', 'products', DEFAULT_LOCALE)}`;
+/**
+ * The button back to the products already loaded. It names no count, since
+ * another tab may have changed them since, and the button opens whatever is
+ * there.
+ */
+const BACK_LABEL = 'Back to your products';
+
+/** Said when the way back finds the products gone, as after a removal in another tab. */
+const GONE = 'Your products are no longer in this browser, so there is nothing to go back to.';
 
 /** The button that searches a whole file, named again by the messages that point to it. */
 const searchLabel = (products: number) =>
@@ -607,8 +607,8 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     const pending = useRef(false);
     // The search the visitor left when they chose another file.
     const lastSearch = useRef('');
-    // How many products are loaded while the visitor looks at another file, so they can go back.
-    const [back, setBack] = useState<number | undefined>(undefined);
+    // Set while products are loaded and the visitor looks at another file, so they can go back.
+    const [back, setBack] = useState(false);
     const catalogUrl = `${base}catalog`;
 
     useEffect(() => {
@@ -650,6 +650,25 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             if (mine === asked.current) setStage({ kind: 'choose', problem: messageOf(error) });
         }
     }, []);
+
+    // A file dropped anywhere on the page is read wherever a file can be taken, and is never
+    // opened by the browser in the page's place, which would lose whatever the visitor had.
+    const takesFile =
+        stage.kind === 'choose' || stage.kind === 'reading' || stage.kind === 'review';
+    useEffect(() => {
+        const hold = (event: DragEvent) => event.preventDefault();
+        const dropped = (event: DragEvent) => {
+            event.preventDefault();
+            const file = event.dataTransfer?.files[0];
+            if (file && takesFile) void onFile(file);
+        };
+        window.addEventListener('dragover', hold);
+        window.addEventListener('drop', dropped);
+        return () => {
+            window.removeEventListener('dragover', hold);
+            window.removeEventListener('drop', dropped);
+        };
+    }, [takesFile, onFile]);
 
     const onSample = useCallback(async () => {
         setActed(true);
@@ -706,9 +725,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     setStage({ ...review, problem: await errorOf(response, retry) });
                     return;
                 }
+                // The products the visitor could have gone back to are replaced now.
+                setBack(false);
                 const loaded = await readLoaded(catalogUrl);
                 clearSearch(base);
-                if (loaded) setBack(undefined);
                 setStage(
                     loaded
                         ? { kind: 'searching', loaded, arrival: performance.now() }
@@ -730,45 +750,37 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     );
 
     // Back to the products the visitor was searching, with their search, from the chooser or
-    // from a file they looked at instead.
+    // from a file they looked at instead. Pressing it is the visitor's latest choice, so a file
+    // still being read is let go, and a file chosen while the products are read wins over it.
     const keepProducts = useCallback(async () => {
-        if (stage.kind === 'starting' || stage.kind === 'failed' || stage.kind === 'searching')
-            return;
-        if (stage.kind === 'loading' || pending.current) return;
+        if (stage.kind !== 'choose' && stage.kind !== 'reading' && stage.kind !== 'review') return;
+        if (pending.current) return;
         const from = stage;
+        asked.current += 1;
+        const mine = asked.current;
         pending.current = true;
         try {
             const loaded = await readLoaded(catalogUrl);
-            if (!loaded) {
-                setBack(undefined);
-                if (from.kind === 'review' && from.replacing === true) {
-                    // Only the saved rules are left, and searching this file still discards them,
-                    // so the question stays.
-                    setStage({
-                        ...from,
-                        problem:
-                            'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.',
-                    });
-                } else if (from.kind === 'review') {
-                    setStage({
-                        ...from,
-                        problem:
-                            'Your products are no longer in this browser, so there is nothing to go back to.',
-                    });
-                } else {
-                    setStage({
-                        kind: 'choose',
-                        problem:
-                            'Your products are no longer in this browser, so there is nothing to go back to.',
-                    });
-                }
+            if (mine !== asked.current) return;
+            if (loaded) {
+                setBack(false);
+                window.history.replaceState(null, '', `${base}${lastSearch.current}`);
+                setStage({ kind: 'searching', loaded });
                 return;
             }
-            asked.current += 1;
-            setBack(undefined);
-            window.history.replaceState(null, '', `${base}${lastSearch.current}`);
-            setStage({ kind: 'searching', loaded });
+            setBack(false);
+            if (from.kind !== 'review') setStage({ kind: 'choose', problem: GONE });
+            else if (from.replacing === true) {
+                // Only the saved rules are left, and searching this file still discards them,
+                // so the question stays.
+                setStage({
+                    ...from,
+                    problem:
+                        'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.',
+                });
+            } else setStage({ ...from, problem: GONE });
         } catch (error) {
+            if (mine !== asked.current) return;
             const problem = `Your products could not be read (${messageOf(error)}). Reload the page to get back to them.`;
             if (from.kind === 'review') {
                 const { replacing: _asked, ...rest } = from;
@@ -856,7 +868,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         // Kept, so a visitor who keeps their products is taken back to their search.
         if (stage.kind === 'searching') {
             lastSearch.current = window.location.search;
-            setBack(stage.loaded.products);
+            setBack(true);
         }
         clearSearch(base);
         setStage({ kind: 'choose' });

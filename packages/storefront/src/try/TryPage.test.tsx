@@ -59,6 +59,14 @@ const failWhen =
 
 const chooser = () => screen.findByRole('heading', { level: 1, name: 'Search your own products' });
 
+/** A line shown on the page and said in a status region that was empty when it mounted. */
+const heard = async (line: string) => {
+    expect(screen.getByText(line, { selector: 'p.notice' })).toBeInTheDocument();
+    await waitFor(() =>
+        expect(screen.getAllByRole('status').map((status) => status.textContent)).toContain(line)
+    );
+};
+
 const loadSample = async () => {
     await chooser();
     await userEvent.click(
@@ -158,9 +166,7 @@ describe('the page for a visitor’s own catalog', () => {
         await loadSample();
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         expect(await chooser()).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'Your products were removed from this browser.'
-        );
+        await heard('Your products were removed from this browser.');
         // Nothing is loaded, so there is nothing to go back to.
         expect(screen.queryByRole('button', { name: /^Back to your/ })).toBeNull();
     });
@@ -172,7 +178,7 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
         await chooser();
-        expect(screen.getByRole('status')).toHaveTextContent(
+        await heard(
             'Your products and the rules you saved for them were removed from this browser.'
         );
     });
@@ -183,7 +189,7 @@ describe('the page for a visitor’s own catalog', () => {
         act(() => window.history.replaceState(null, '', `${BASE}?q=bag`));
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
-        await userEvent.click(screen.getByRole('button', { name: 'Back to your 200 products' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
         await screen.findByText(/your own catalog of 200 products/);
         expect(window.location.search).toBe('?q=bag');
     });
@@ -198,8 +204,110 @@ describe('the page for a visitor’s own catalog', () => {
             new File(['name,price\nBench,120\n'], 'bench.csv')
         );
         await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
-        await userEvent.click(screen.getByRole('button', { name: 'Back to your 200 products' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
         await screen.findByText(/your own catalog of 200 products/);
+    });
+
+    it('lets go of a file still being read when the way back finds the products gone', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        let finish = (_text: string) => undefined as void;
+        const slow = {
+            name: 'slow.csv',
+            size: 10,
+            text: () =>
+                new Promise<string>((resolve) => {
+                    finish = resolve;
+                }),
+        };
+        const input = screen.getByLabelText('Choose a file');
+        Object.defineProperty(input, 'files', { value: [slow], configurable: true });
+        act(() => {
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await screen.findByText('Reading slow.csv.');
+        // Removed in another tab, as far as this one can tell.
+        await fetch(`${BASE}catalog`, { method: 'DELETE' });
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        const gone =
+            'Your products are no longer in this browser, so there is nothing to go back to.';
+        expect(await screen.findByRole('alert')).toHaveTextContent(gone);
+        await act(async () => {
+            finish('name,price\nBench,120\n');
+            await Promise.resolve();
+        });
+        // The read the visitor turned away from does not replace why the way back did nothing.
+        expect(screen.queryByRole('heading', { name: 'What is in slow.csv' })).toBeNull();
+        expect(screen.getByRole('alert')).toHaveTextContent(gone);
+    });
+
+    it('keeps a file chosen while the way back is still reading the products', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        let release = () => undefined as void;
+        failure = failWhen(
+            'GET',
+            `${BASE}catalog`,
+            () =>
+                new Promise<Response>((_resolve, reject) => {
+                    release = () => reject(new Error('late'));
+                })
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        await act(async () => {
+            release();
+            await Promise.resolve();
+        });
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('What is in bench.csv');
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('offers no way back once the products are replaced, even when reading them again fails', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        failure = failWhen('GET', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Search 1 product' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The store could not be reached'
+        );
+        expect(screen.queryByRole('button', { name: 'Back to your products' })).toBeNull();
+    });
+
+    it('reads a file dropped on the review, rather than losing the review to the browser', async () => {
+        page();
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'first.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in first.csv' });
+        const drop = new Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(drop, 'dataTransfer', {
+            value: { files: [new File(['name,price\nStool,40\n'], 'second.csv')] },
+        });
+        act(() => {
+            document.body.dispatchEvent(drop);
+        });
+        expect(drop.defaultPrevented).toBe(true);
+        await screen.findByRole('heading', { level: 1, name: 'What is in second.csv' });
     });
 
     it('reads a file dropped anywhere on the chooser, not only on the drop area', async () => {

@@ -9,7 +9,6 @@ import {
 } from '@shelflens/catalog';
 
 import type { Table } from './csv.js';
-import { CATALOG_ROW_CAP, tooManyRows } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
 import {
     currencyOf,
@@ -247,8 +246,6 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
             ok: false,
             error: 'Choose the column that holds each product’s price. A column named “price” is found on its own.',
         };
-    if (table.rows.length > CATALOG_ROW_CAP)
-        return { ok: false, error: tooManyRows(table.rows.length) };
 
     const indexes = new Map(table.headers.map((header, index) => [header, index]));
     const cell = (row: readonly string[], header: string | undefined) =>
