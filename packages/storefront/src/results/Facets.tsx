@@ -2,10 +2,18 @@ import { useId, useState } from 'react';
 
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
-import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
+import {
+    hasFilters,
+    type PriceBand,
+    type SearchState,
+    withoutFilters,
+    withoutPrice,
+    withoutRating,
+} from '../app/url.js';
 import { count, formatCount } from '../format/count.js';
 import { formatMoney } from '../format/money.js';
 import type { SearchQuery } from '../generated/operations.js';
+import { Stars } from './Stars.jsx';
 
 /**
  * The facets beside the results.
@@ -24,6 +32,8 @@ export interface FacetsProps {
     readonly state: SearchState;
     readonly categories: CategoryTree;
     readonly onChange: (next: SearchState) => void;
+    /** Whether the column offers to clear every filter, as the drawer on a phone does, where no chips show. */
+    readonly offersClear?: boolean;
 }
 
 const TITLES: Readonly<Record<string, string>> = {
@@ -51,7 +61,7 @@ const bandOf = (bucket: { from: number | null; to: number | null }): PriceBand =
     ...(bucket.to !== null && { to: bucket.to }),
 });
 
-const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string => {
+export const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string => {
     const money = (amount: number) => formatMoney({ amount, currency }, locale);
     if (band.from === undefined && band.to !== undefined) return `Under ${money(band.to)}`;
     if (band.from !== undefined && band.to === undefined) return `${money(band.from)} and up`;
@@ -98,10 +108,34 @@ const CategoryFacet = ({
         const n = counts.get(category.id);
         return n === undefined ? [] : [{ category, n }];
     });
-    if (next.length === 0) return null;
+    // Where the shopper is, with the way up above it, so the group never goes away at a leaf.
+    const current = state.category === undefined ? undefined : categories.get(state.category);
+    const parentId = current && current.path.length > 1 ? current.path.at(-2) : undefined;
+    const parent = parentId === undefined ? undefined : categories.get(parentId);
+    if (next.length === 0 && !current) return null;
+    const up = () => {
+        // Above every category, a category's own order means nothing, so it goes too.
+        const { category: _left, sort, ...rest } = state;
+        onChange(
+            parent
+                ? { ...state, category: parent.id, page: 1 }
+                : { ...rest, ...(sort && sort !== 'position' && { sort }), page: 1 }
+        );
+    };
     return (
         <Group title={TITLES['category'] ?? 'Category'}>
-            <ul className="facet-links">
+            {current && (
+                <>
+                    <button type="button" className="option-button facet-up" onClick={up}>
+                        <span aria-hidden="true">‹</span> {parent ? parent.name : 'All categories'}
+                    </button>
+                    {/* The breadcrumb names the page. This says where in the categories the shopper is. */}
+                    <span className="facet-current" aria-current="location">
+                        {current.name}
+                    </span>
+                </>
+            )}
+            <ul className={current ? 'facet-links is-nested' : 'facet-links'}>
                 {next.map(({ category, n }) => (
                     <li key={category.id}>
                         <button
@@ -194,10 +228,8 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
     if (!('ranges' in facet)) return null;
     const bands = facet.ranges.filter((bucket) => bucket.count > 0);
     if (bands.length === 0) return null;
-    const choose = (price: PriceBand | undefined) => {
-        const { price: _dropped, ...rest } = state;
-        onChange({ ...rest, ...(price && { price }), page: 1 });
-    };
+    const choose = (price: PriceBand | undefined) =>
+        onChange(price ? { ...state, price, page: 1 } : withoutPrice(state));
     return (
         <Group title="Price">
             <label className="facet-option">
@@ -228,17 +260,44 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
     );
 };
 
+/**
+ * The rating bands worth offering, strictest first. A looser band that finds
+ * no more than the stricter one before it adds nothing to choose, unless it
+ * is the one chosen. It is not "Any rating", which also keeps what nobody rated.
+ */
+export const distinctBands = <T extends { readonly from: number; readonly count: number }>(
+    bands: readonly T[],
+    chosen: number | undefined
+): T[] =>
+    bands.filter(
+        (band, index) =>
+            index === 0 || band.count !== bands[index - 1]?.count || chosen === band.from
+    );
+
+/** A rating band in words, as in "4 stars and up". */
+export const ratingLabel = (from: number, locale: string): string =>
+    `${count(from, 'star', 'stars', locale)} and up`;
+
 const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: Facet }) => {
     const { locale } = useStoreInfo();
     if (!('ranges' in facet)) return null;
-    const bands = facet.ranges.flatMap((bucket) =>
+    const counted = facet.ranges.flatMap((bucket) =>
         bucket.count > 0 && bucket.from !== null ? [{ ...bucket, from: bucket.from }] : []
     );
+    // A rating the address chose that no band counts stays shown, chosen, so the column and the
+    // chip above the results agree on what is on and it can be cleared here too.
+    const chosen = state.rating;
+    const stranded =
+        chosen !== undefined && !counted.some((bucket) => bucket.from === chosen)
+            ? [{ from: chosen, count: undefined }]
+            : [];
+    const bands: { from: number; count: number | undefined }[] = [
+        ...distinctBands(counted, chosen),
+        ...stranded,
+    ].sort((a, b) => b.from - a.from);
     if (bands.length === 0) return null;
-    const choose = (rating: number | undefined) => {
-        const { rating: _dropped, ...rest } = state;
-        onChange({ ...rest, ...(rating !== undefined && { rating }), page: 1 });
-    };
+    const choose = (rating: number | undefined) =>
+        onChange(rating !== undefined ? { ...state, rating, page: 1 } : withoutRating(state));
     return (
         <Group title="Rating">
             <label className="facet-option">
@@ -258,10 +317,12 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         checked={state.rating === bucket.from}
                         onChange={() => choose(bucket.from)}
                     />
-                    <span className="facet-label">
-                        {count(bucket.from, 'star', 'stars', locale)} and up
+                    {/* The stars a card shows at that rating, seen, and the words, heard. */}
+                    <span className="facet-label facet-rating">
+                        <Stars average={bucket.from} />
+                        <span>{ratingLabel(bucket.from, locale)}</span>
                     </span>
-                    <FacetCount n={bucket.count} />
+                    {bucket.count !== undefined && <FacetCount n={bucket.count} />}
                 </label>
             ))}
         </Group>
@@ -269,7 +330,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
 };
 
 export const Facets = (props: FacetsProps) => {
-    const { facets, state, onChange } = props;
+    const { facets, state, onChange, offersClear = false } = props;
     const byName = new Map(facets.map((facet) => [facet.name, facet]));
     const facetFor = (name: string) => byName.get(name);
     const category = facetFor('category');
@@ -281,7 +342,7 @@ export const Facets = (props: FacetsProps) => {
             aria-label="Narrow the results"
             onSubmit={(event) => event.preventDefault()}
         >
-            {hasFilters(state) && (
+            {offersClear && hasFilters(state) && (
                 <button
                     type="button"
                     className="text-button"

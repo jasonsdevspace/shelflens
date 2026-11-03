@@ -96,11 +96,13 @@ the page.
   the phrase, the category, each facet, the sort, the page and the product being looked at.
   Parse and serialize are pure and tested. A filter is a history entry, so the back button
   undoes it, and a pasted link lands on the same page.
-- **The results page reads one answer.** `src/results` renders the facets, the sort, the cards
-  and the pages from a single search response, so they can never disagree. The facets count past
-  their own filter, choosing "Red" never zeroes "Blue", and the category facet offers the
-  children of wherever the shopper is. The tests run the whole page over the worker's handler,
-  so the counts, the sort fallbacks and the pages are the real ones.
+- **The results page reads one answer.** `src/results` renders the facets, the sort, the cards and
+  the pages from a single search response, so they can never disagree. The facets count past their
+  own filter, choosing "Red" never zeroes "Blue", and the category facet offers the children of
+  wherever the shopper is, with the way up above it. The filters that are on show as chips under
+  the heading, each removing itself, and the rating bands show the stars a card does. The tests run
+  the whole page over the worker's handler, so the counts, the sort fallbacks and the pages are the
+  real ones.
 - **A phone gets the same page, laid out for it.** The facets become a drawer that is modal
   while open: focus starts on its close button, Tab cycles inside it, Escape and the backdrop
   close it, and focus returns to the button that opened it. The popover takes the width of the

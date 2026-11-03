@@ -110,6 +110,97 @@ describe('narrowing', () => {
         expect(countsAfter).toEqual(countsBefore);
     });
 
+    it('keeps the category group at a category with no children, with the way up above it', async () => {
+        const user = await open('?category=outerwear');
+        await settled();
+        const group = facet('Category');
+        expect(within(group).getByText('Outerwear')).toHaveAttribute('aria-current', 'location');
+        await user.click(within(group).getByRole('button', { name: 'Clothing' }));
+        await settled();
+        expect(window.location.search).toBe('?category=clothing');
+        // From a root category the way up is to every category, with the category left out.
+        await user.click(within(facet('Category')).getByRole('button', { name: 'All categories' }));
+        await settled();
+        expect(window.location.search).toBe('');
+    });
+
+    it('shows the stars of each rating band, and says the band in words alone', async () => {
+        await open();
+        const four = within(facet('Rating')).getByRole('radio', {
+            name: /^4 stars and up, \d+ results?$/,
+        });
+        const row = four.closest('label');
+        expect(row?.querySelector('.stars')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('removes a filter by its chip, and puts focus on the chip that takes its place, then the heading', async () => {
+        const user = await open();
+        const [first, second] = within(facet('Brand')).getAllByRole('checkbox');
+        if (!first || !second) throw new Error('expected two brands');
+        await user.click(first);
+        await settled();
+        await user.click(second);
+        await settled();
+        const chips = () => screen.getByRole('list', { name: 'Filters on' });
+        const [one, two] = within(chips()).getAllByRole('button', { name: /^Remove / });
+        const secondName = two?.getAttribute('aria-label') ?? '';
+        if (!one) throw new Error('expected a chip');
+        await user.click(one);
+        await settled();
+        await waitFor(() =>
+            expect(within(chips()).getByRole('button', { name: secondName })).toHaveFocus()
+        );
+        await user.click(within(chips()).getByRole('button', { name: secondName }));
+        await settled();
+        expect(window.location.search).toBe('');
+        await waitFor(() => expect(heading()).toHaveFocus());
+    });
+
+    it('offers no second way to clear the filters in the column, since the chips have one', async () => {
+        const user = await open();
+        const [first] = within(facet('Brand')).getAllByRole('checkbox');
+        if (!first) throw new Error('expected a brand');
+        await user.click(first);
+        await settled();
+        expect(
+            within(screen.getByRole('form', { name: 'Narrow the results' })).queryByRole('button', {
+                name: 'Clear all filters',
+            })
+        ).toBeNull();
+        expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();
+    });
+
+    it('clears the filters and leaves the rules panel open', async () => {
+        const user = await open('?q=jacket&rules=1&explain=1&brand=Ridgeback');
+        await settled();
+        await user.click(
+            within(screen.getByRole('list', { name: 'Filters on' })).getByRole('button', {
+                name: 'Clear all',
+            })
+        );
+        await settled();
+        expect(window.location.search).toBe('?q=jacket&explain=1&rules=1');
+    });
+
+    it('drops a category’s own order with the category, on the way up to every category', async () => {
+        const user = await open('?category=clothing&sort=position');
+        await settled();
+        await user.click(within(facet('Category')).getByRole('button', { name: 'All categories' }));
+        await settled();
+        expect(window.location.search).toBe('');
+    });
+
+    it('shows a rating the address chose that no band counts, checked, as its chip does', async () => {
+        await open('?rating=5');
+        await settled();
+        expect(
+            within(facet('Rating')).getByRole('radio', { name: '5 stars and up' })
+        ).toBeChecked();
+        expect(
+            screen.getByRole('button', { name: 'Remove rating 5 stars and up' })
+        ).toBeInTheDocument();
+    });
+
     it('narrows to a price band and a rating, and clears both at once', async () => {
         const user = await open();
         await user.click(within(facet('Price')).getByRole('radio', { name: /Under/ }));
@@ -123,11 +214,19 @@ describe('narrowing', () => {
         await settled();
         expect(window.location.search).toBe('?price=-50&rating=4');
 
-        await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
+        // The filters on are chips under the heading, the price and the rating among them.
+        const chips = screen.getByRole('list', { name: 'Filters on' });
+        expect(
+            within(chips).getByRole('button', { name: 'Remove price Under $50' })
+        ).toBeInTheDocument();
+        expect(
+            within(chips).getByRole('button', { name: 'Remove rating 4 stars and up' })
+        ).toBeInTheDocument();
+        await user.click(within(chips).getByRole('button', { name: 'Clear all' }));
         await settled();
         expect(window.location.search).toBe('');
-        // The button goes with the filters, and focus moves to the results heading.
-        expect(screen.queryByRole('button', { name: 'Clear all filters' })).not.toBeInTheDocument();
+        // The chips go with the filters, and focus moves to the results heading.
+        expect(screen.queryByRole('list', { name: 'Filters on' })).not.toBeInTheDocument();
         await waitFor(() => expect(heading()).toHaveFocus());
     });
 
@@ -288,12 +387,13 @@ describe('when nothing matches', () => {
         await settled();
         expect(heading()).toHaveTextContent('0 results for "zzqx jacket"');
         expect(screen.getByText(/Nothing matched "zzqx jacket" with these filters/)).toBeVisible();
-        // The facet column stays, with the way out of the filter in it.
+        // The facet column stays, so the filter can be unticked there, and its chip removes it too.
         expect(
-            within(screen.getByRole('form', { name: 'Narrow the results' })).getByRole('button', {
-                name: 'Clear all filters',
+            within(screen.getByRole('form', { name: 'Narrow the results' })).getByRole('checkbox', {
+                name: /Ridgeback/,
             })
-        ).toBeInTheDocument();
+        ).toBeChecked();
+        expect(screen.getByRole('button', { name: 'Remove brand Ridgeback' })).toBeInTheDocument();
     });
 
     it('never offers to leave the category being browsed', async () => {

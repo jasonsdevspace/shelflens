@@ -44,6 +44,10 @@ describe('on a phone', () => {
         await user.click(first);
         await settled();
         expect(window.location.search).not.toBe('');
+        // The drawer covers the chips, so it carries its own way to clear the filters.
+        expect(
+            within(drawer).getByRole('button', { name: 'Clear all filters' })
+        ).toBeInTheDocument();
         expect(
             within(drawer).getByRole('button', { name: /Show \d+ results/ })
         ).toBeInTheDocument();

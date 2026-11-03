@@ -425,7 +425,7 @@ h4 {
 
 .results-layout {
     display: grid;
-    grid-template-columns: 14rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
     gap: var(--space-6);
     align-items: start;
 }
@@ -466,31 +466,127 @@ h4 {
     }
 }
 
+/* Each group set apart under a line, its title small and strong, its rows the column's width. */
 .facets {
     display: grid;
-    gap: var(--space-4);
+    gap: 0;
+}
+
+.facets > .text-button {
+    margin-bottom: var(--space-3);
 }
 
 .facet {
     margin: 0;
-    padding: 0;
+    padding: var(--space-4) 0;
     border: none;
+    border-top: 1px solid var(--line);
     display: grid;
     gap: var(--space-1);
 }
 
+.facet:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Floated, so a fieldset draws its legend inside it rather than into the line above. */
 .facet-title {
+    float: left;
+    width: 100%;
+    font-size: var(--text-small);
     font-weight: var(--weight-strong);
     padding: 0;
     margin-bottom: var(--space-1);
+}
+
+.facet-title + * {
+    clear: both;
+}
+
+/*
+ * A row lights up under the pointer across the column's width. Everything in
+ * a group is inset alike, so the rows' edges line up with the title and the
+ * column, which scrolls on its own, never scrolls sideways.
+ */
+.facet-title,
+.facet-current,
+.facet .text-button,
+.facet .option-button {
+    padding-inline: var(--space-2);
 }
 
 .facet-option {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    min-height: 1.5rem;
+    min-height: 2rem;
+    padding-inline: var(--space-2);
     font-size: var(--text-small);
+    border-radius: var(--radius-small);
+}
+
+.facet-option:hover {
+    background: var(--highlight);
+}
+
+.facets .hint {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Where the shopper is in the categories, with the way up above it and its own below it. */
+.facet-current {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+}
+
+.facet-links.is-nested {
+    padding-left: var(--space-3);
+}
+
+/* A rating band: the stars a card shows at it, then its words, on one line. */
+.facet-rating {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+/* The filters that are on, each a chip that removes itself, then the way to clear them all. */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    list-style: none;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-small);
+    color: var(--fg);
+    background: var(--highlight);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-large);
+}
+
+.chip-x {
+    color: var(--muted);
+}
+
+.chip:hover .chip-x,
+.chip:focus-visible .chip-x {
+    color: var(--fg);
 }
 
 .facet-label {
@@ -515,7 +611,7 @@ h4 {
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    min-height: 1.5rem;
+    min-height: 2rem;
     font: inherit;
     font-size: var(--text-small);
     text-align: left;
@@ -1153,7 +1249,8 @@ h4 {
 
 /* Rows a thumb can hit. */
 .drawer-body .facet-option,
-.drawer-body .option-button {
+.drawer-body .option-button,
+.drawer-body .facet-current {
     min-height: var(--target);
 }
 

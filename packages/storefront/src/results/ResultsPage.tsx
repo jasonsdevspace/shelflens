@@ -37,6 +37,7 @@ import { fold, recentSearches, rememberSearch } from '../search/recent.js';
 import { Drawer } from './Drawer.jsx';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
+import { FilterChips } from './FilterChips.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
@@ -679,6 +680,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                     state={state}
                     categories={categories}
                     onChange={navigate}
+                    offersClear={narrow}
                 />
             </FacetColumn>
         )
@@ -702,6 +704,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                         onCloseRules={closeRules}
                         drawer={narrow && side}
                     />
+                    <FilterChips state={state} navigate={navigate} heading={`${id}-heading`} />
                     <ViewerNotice
                         group={group}
                         items={result.items}
