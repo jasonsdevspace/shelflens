@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-import { DEFAULT_LOCALE, safeLocale } from '../format/money.js';
+import { DEFAULT_LOCALE, safeLocale } from '../format/locale.js';
 import type { StoreQuery } from '../generated/operations.js';
 
 /**

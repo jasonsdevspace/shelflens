@@ -1,10 +1,11 @@
 import { StateLink } from '../app/StateLink.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import { hasFilters, type SearchState, serializeSearchState, withoutFilters } from '../app/url.js';
+import { hasFilters, type SearchState, withoutFilters } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
 import { count } from '../format/count.js';
-import type { CardFragment, SearchQuery } from '../generated/operations.js';
-import { ProductCard } from './ProductCard.jsx';
+import { listOf } from '../format/list.js';
+import type { SearchQuery } from '../generated/operations.js';
+import { CardList } from './CardList.jsx';
 
 /**
  * What the page shows instead of nothing.
@@ -20,29 +21,6 @@ export interface NoResultsProps {
     readonly navigate: Navigate;
     readonly offered: SearchQuery['search']['noResults'];
 }
-
-const Cards = ({
-    label,
-    products,
-    state,
-    navigate,
-}: {
-    readonly label: string;
-    readonly products: readonly CardFragment[];
-    readonly state: SearchState;
-    readonly navigate: Navigate;
-}) => (
-    <ul className="cards" aria-label={label}>
-        {products.map((product) => (
-            <ProductCard
-                key={product.sku}
-                product={product}
-                href={serializeSearchState({ ...state, product: product.sku })}
-                onOpen={() => navigate({ ...state, product: product.sku })}
-            />
-        ))}
-    </ul>
-);
 
 /**
  * The sentence over the offers. With a phrase, the heading has already said
@@ -97,13 +75,14 @@ const Relaxed = ({
                 Showing results for &quot;{relaxed.phrase}&quot; instead
             </h2>
             <p className="no-results-offer">
-                No product matched every word, so &quot;{relaxed.dropped.join('" and "')}&quot;{' '}
+                No product matched every word, so{' '}
+                {listOf(relaxed.dropped.map((word) => `"${word}"`))}{' '}
                 {relaxed.dropped.length === 1 ? 'was' : 'were'} left out.{' '}
                 <StateLink to={{ ...state, phrase: relaxed.phrase, page: 1 }} navigate={navigate}>
                     {seeAll(relaxed.result.total, locale)}
                 </StateLink>
             </p>
-            <Cards
+            <CardList
                 label={`Results for "${relaxed.phrase}"`}
                 products={relaxed.result.items.map((hit) => hit.product)}
                 state={state}
@@ -147,7 +126,7 @@ export const NoResults = ({ state, navigate, offered }: NoResultsProps) => {
             {!relaxed && offered && offered.popular.length > 0 && (
                 <>
                     <h2 className="no-results-heading">Popular products</h2>
-                    <Cards
+                    <CardList
                         label="Popular products"
                         products={offered.popular}
                         state={state}

@@ -6,7 +6,7 @@ import { gzipSync } from 'node:zlib';
 import { chromium } from '@playwright/test';
 
 import { formatCount } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
+import { DEFAULT_LOCALE } from '../format/locale.js';
 import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { sampleCsv } from '../try/sample.js';
 import type { StartedMessage } from '../worker/handle.js';

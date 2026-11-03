@@ -1,9 +1,9 @@
 import { paysLess } from '@shelflens/api';
-import type { Catalog, Product } from '@shelflens/catalog';
+import { type Catalog, categoryNames, type Product } from '@shelflens/catalog';
 import { useId, useMemo, useState } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
-import { DEFAULT_LOCALE, formatMoney, formatPriceRange } from '../format/money.js';
+import { formatMoney, formatPriceRange } from '../format/money.js';
 import { ratingText } from '../format/rating.js';
 import type { Table } from './csv.js';
 import type { MappedField, Mapping } from './mapping.js';
@@ -232,9 +232,6 @@ export const MappingEditor = ({
     );
 };
 
-const categoryNamesOf = (catalog: Catalog): ReadonlyMap<string, string> =>
-    new Map(catalog.categories.map((category) => [category.id, category.name]));
-
 const PreviewCard = ({
     product,
     catalog,
@@ -258,12 +255,16 @@ const PreviewCard = ({
                 {[product.brand, path].filter((part) => part !== '').join(' · ')}
             </span>
             <span>
-                {formatMoney({ amount: product.price.guest.min, currency: catalog.currency })}
+                {formatMoney(
+                    { amount: product.price.guest.min, currency: catalog.currency },
+                    catalog.locale
+                )}
                 {/* By the store's own rule, so the preview and the cards say the same. */}
                 {paysLess(product, 'member') &&
                     `, member price ${formatPriceRange(
                         { amount: product.price.member.min, currency: catalog.currency },
-                        { amount: product.price.member.max, currency: catalog.currency }
+                        { amount: product.price.member.max, currency: catalog.currency },
+                        catalog.locale
                     )}`}
                 {variant?.inStock === false && ', out of stock'}
             </span>
@@ -273,7 +274,7 @@ const PreviewCard = ({
             )}
             {product.rating.count > 0 && (
                 <span className="notice">
-                    {ratingText(product.rating.average, product.rating.count, DEFAULT_LOCALE)}
+                    {ratingText(product.rating.average, product.rating.count, catalog.locale)}
                 </span>
             )}
             <span className="notice">ID {product.sku}</span>
@@ -317,7 +318,7 @@ export const Preview = ({
     /** What to say first, of a column the last change moved from one part to another. */
     readonly note?: string | undefined;
 }) => {
-    const categories = categoryNamesOf(catalog);
+    const categories = categoryNames(catalog);
     const shown = catalog.products.slice(0, 3);
     const [first] = shown;
     // What the cards show, so a change to any part of them is a change to say, and a change
@@ -329,7 +330,7 @@ export const Preview = ({
             ? ''
             : [
                   note,
-                  `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency })}.`,
+                  `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency }, catalog.locale)}.`,
               ]
                   .filter((line) => line !== undefined)
                   .join(' ');

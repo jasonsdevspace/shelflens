@@ -56,4 +56,25 @@ describe('useQuery', () => {
             data: { store: { name: 'for a member' } },
         });
     });
+
+    it('abandons the request in flight when its component goes', () => {
+        let sent: AbortSignal | undefined;
+        const client = {
+            group: 'guest',
+            version: undefined,
+            remembered: 0,
+            query: (
+                _document: unknown,
+                _variables: unknown,
+                { signal }: { signal: AbortSignal }
+            ) => {
+                sent = signal;
+                return new Promise<unknown>(() => undefined);
+            },
+        } as unknown as GraphQLClient;
+        const { unmount } = renderHook(() => useQuery(client, StoreDocument, {}));
+        expect(sent?.aborted).toBe(false);
+        unmount();
+        expect(sent?.aborted).toBe(true);
+    });
 });

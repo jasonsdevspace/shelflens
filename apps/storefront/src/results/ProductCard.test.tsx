@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { CardFragment } from '../generated/operations.js';
 import { type Hit, ProductCard } from './ProductCard.jsx';
@@ -182,5 +182,21 @@ describe('the rating on a card', () => {
         plain(null);
         expect(document.querySelector('.card-rating')).toHaveTextContent('No ratings yet');
         expect(document.querySelector('.stars')).toBeNull();
+    });
+});
+
+describe('opening a card', () => {
+    it('opens in place on a plain click, and leaves an Alt click to the browser', () => {
+        const onOpen = vi.fn();
+        render(
+            <ul>
+                <ProductCard product={product} href="/?product=SL-00001" onOpen={onOpen} />
+            </ul>
+        );
+        const link = screen.getByRole('link');
+        expect(fireEvent.click(link, { altKey: true })).toBe(true);
+        expect(onOpen).not.toHaveBeenCalled();
+        expect(fireEvent.click(link)).toBe(false);
+        expect(onOpen).toHaveBeenCalledOnce();
     });
 });

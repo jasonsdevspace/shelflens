@@ -18,3 +18,7 @@ export const formatAverage = (average: number, locale: string): string => {
 /** A rating as every page says it, as in "4.4 out of 5, from 587 ratings". */
 export const ratingText = (average: number, ratings: number, locale: string): string =>
     `${formatAverage(average, locale)} out of 5, from ${count(ratings, 'rating', 'ratings', locale)}`;
+
+/** A rating band in words, as in "4 stars and up". */
+export const ratingBandText = (from: number, locale: string): string =>
+    `${count(from, 'star', 'stars', locale)} and up`;

@@ -1,3 +1,4 @@
+import { isPlainClick } from '../app/StateLink.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { count, formatCount } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
@@ -98,8 +99,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                 href={href}
                 data-sku={product.sku}
                 onClick={(event) => {
-                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
-                        return;
+                    if (!isPlainClick(event)) return;
                     event.preventDefault();
                     onOpen();
                 }}

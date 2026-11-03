@@ -2,32 +2,42 @@ import { type RefObject, useEffect, useRef } from 'react';
 
 import { focusIsFree } from '../app/focus.js';
 
-const headingIn = (container: RefObject<HTMLElement | null>) =>
-    container.current?.querySelector<HTMLElement>('.results-heading');
+/** The results heading, by the id the page gave it, so a change of style cannot lose it. */
+const headingOf = (id: string) => document.getElementById(id);
 
 /**
  * Puts focus back where the visitor was when a product closes: on the card
  * for the product just closed, or on the results heading when that card is
- * no longer on the page. Runs once the request has settled, succeeds or
- * not, and steps aside if the visitor has already put focus somewhere, so
- * a facet ticked while the results were loading keeps it. Tells the caller
- * either way, so the request is not repeated on a later load.
+ * no longer on the page. Runs once the request has settled, whether it
+ * succeeded or not, and steps aside if the visitor has already put focus
+ * somewhere, so a facet ticked while the results were loading keeps it.
+ * Tells the caller either way, so the return is not tried again on a later
+ * load.
  */
-export const useReturnFocus = (
-    container: RefObject<HTMLElement | null>,
-    sku: string | undefined,
-    settled: boolean,
-    onDone: () => void
-): void => {
+export const useReturnFocus = ({
+    container,
+    headingId,
+    sku,
+    settled,
+    onDone,
+}: {
+    /** Where the cards are. */
+    readonly container: RefObject<HTMLElement | null>;
+    readonly headingId: string;
+    /** The product just closed, or nothing when focus has been put back already. */
+    readonly sku: string | undefined;
+    readonly settled: boolean;
+    readonly onDone: () => void;
+}): void => {
     useEffect(() => {
         if (sku === undefined || !settled) return;
         if (focusIsFree()) {
             const links = container.current?.querySelectorAll<HTMLElement>('.card-link') ?? [];
             const card = [...links].find((link) => link.dataset['sku'] === sku);
-            (card ?? headingIn(container))?.focus({ preventScroll: !card });
+            (card ?? headingOf(headingId))?.focus({ preventScroll: !card });
         }
         onDone();
-    }, [container, sku, settled, onDone]);
+    }, [container, headingId, sku, settled, onDone]);
 };
 
 /**
@@ -37,7 +47,7 @@ export const useReturnFocus = (
  * put focus somewhere, as the return to a closed product does.
  */
 export const useArrivalFocus = (
-    container: RefObject<HTMLElement | null>,
+    headingId: string,
     arrival: number | undefined,
     answered: boolean
 ): void => {
@@ -45,8 +55,8 @@ export const useArrivalFocus = (
     useEffect(() => {
         if (arrival === undefined || !answered || handled.current === arrival) return;
         handled.current = arrival;
-        if (focusIsFree()) headingIn(container)?.focus();
-    }, [container, arrival, answered]);
+        if (focusIsFree()) headingOf(headingId)?.focus();
+    }, [headingId, arrival, answered]);
 };
 
 /**
@@ -58,7 +68,7 @@ export const useArrivalFocus = (
  * gone counts, so a browser that leaves focus on the page after a click,
  * as Safari does, never has it moved.
  */
-export const useKeptFocus = (container: RefObject<HTMLElement | null>, answered: boolean): void => {
+export const useKeptFocus = (headingId: string, answered: boolean): void => {
     const last = useRef<Element | null>(null);
     useEffect(() => {
         const seen = (event: FocusEvent) => {
@@ -74,6 +84,6 @@ export const useKeptFocus = (container: RefObject<HTMLElement | null>, answered:
         const drawer = document.querySelector<HTMLElement>(
             '.drawer-panel:not([hidden]) .drawer-title'
         );
-        (drawer ?? headingIn(container))?.focus();
+        (drawer ?? headingOf(headingId))?.focus();
     });
 };

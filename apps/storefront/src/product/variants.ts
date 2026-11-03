@@ -1,3 +1,4 @@
+import { listOf } from '../format/list.js';
 import type { ProductQuery } from '../generated/operations.js';
 
 type Variant = NonNullable<ProductQuery['product']>['variants'][number];
@@ -10,12 +11,6 @@ export interface VariantRow {
     readonly price: Variant['price'];
     readonly stock: string;
 }
-
-/** "S", "S and M", "S, M and L". */
-const list = (words: readonly string[]): string =>
-    words.length < 2
-        ? (words[0] ?? '')
-        : `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`;
 
 /** The sizes once each, in the catalog's order. */
 const sizesOf = (variants: readonly Variant[]): readonly string[] => [
@@ -37,7 +32,7 @@ const stockOf = (variants: readonly Variant[]): string => {
     if (out.length === 0) return 'In stock';
     if (out.includes('')) return 'Some out of stock';
     // Named as sizes, so "13 out of stock" is never read as a count.
-    return `${out.length === 1 ? 'Size' : 'Sizes'} ${list(out)} out of stock`;
+    return `${out.length === 1 ? 'Size' : 'Sizes'} ${listOf(out)} out of stock`;
 };
 
 const groupBy = <T>(items: readonly T[], keyOf: (item: T) => string): readonly T[][] => {
@@ -66,7 +61,7 @@ export const variantRows = (variants: readonly Variant[]): readonly VariantRow[]
                     {
                         key: first.sku,
                         color: first.color,
-                        sizes: list(sizesOf(group).filter((size) => size !== '')),
+                        sizes: listOf(sizesOf(group).filter((size) => size !== '')),
                         price: first.price,
                         stock: stockOf(group),
                     },

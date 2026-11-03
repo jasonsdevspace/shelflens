@@ -9,7 +9,9 @@ import {
     withoutRating,
     withoutValue,
 } from '../app/url.js';
-import { priceLabel, ratingLabel } from './Facets.jsx';
+import type { Navigate } from '../app/useUrlState.js';
+import { priceBandText } from '../format/money.js';
+import { ratingBandText } from '../format/rating.js';
 
 /** One filter that is on, as its chip shows it and a screen reader names it, and the state without it. */
 interface Applied {
@@ -34,7 +36,7 @@ const appliedFilters = (state: SearchState, store: StoreInfo): Applied[] => [
         ? [
               {
                   key: 'price',
-                  label: priceLabel(state.price, store),
+                  label: priceBandText(state.price, store.currency, store.locale),
                   facet: 'price',
                   without: withoutPrice(state),
               },
@@ -44,7 +46,7 @@ const appliedFilters = (state: SearchState, store: StoreInfo): Applied[] => [
         ? [
               {
                   key: 'rating',
-                  label: ratingLabel(state.rating, store.locale),
+                  label: ratingBandText(state.rating, store.locale),
                   facet: 'rating',
                   without: withoutRating(state),
               },
@@ -64,7 +66,7 @@ export const FilterChips = ({
     heading,
 }: {
     readonly state: SearchState;
-    readonly navigate: (next: SearchState) => void;
+    readonly navigate: Navigate;
     /** The results heading's id, where focus goes once no chip is left. */
     readonly heading: string;
 }) => {

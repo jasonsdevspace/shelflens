@@ -2,7 +2,9 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { VERSION_HEADER } from '@shelflens/api';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
+import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
+import { createLatest } from '../client/latest.js';
 import { discardRules, readRules, type RulesBody, saveRules } from '../client/rules.js';
 import {
     type Form,
@@ -14,7 +16,7 @@ import {
     ruleOf,
     summary,
 } from './rule-form.js';
-import { RuleForm } from './RuleForm.js';
+import { RuleForm } from './RuleForm.jsx';
 
 export interface RulesPanelProps {
     /** The editor the page holds. */
@@ -69,6 +71,8 @@ export interface RulesEditor {
     readonly fields: RefObject<HTMLFormElement | null>;
     /** The whole set with the rule being typed in it, once that rule is sound, for the preview. */
     readonly draft: readonly Rule[] | undefined;
+    /** Reads the rules again after a read failed. */
+    readonly retry: () => void;
     readonly edit: (next: Form, products: readonly Named[]) => void;
     readonly close: () => void;
     readonly save: () => void;
@@ -84,7 +88,9 @@ interface Loaded extends RulesBody {
     readonly revision: number;
 }
 
-const NOT_READ = 'The rules could not be read. Reload the page and try again.';
+const NOT_READ = 'Nothing was saved. Load the rules again first.';
+// For a developer: the read either never reached the host or came back as something else.
+const READ_FAILED = 'the rules path did not answer with a set of rules';
 const NOT_YET = 'The rules are being read again. Try again in a moment.';
 
 /**
@@ -101,9 +107,10 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
     const [failedFor, setFailedFor] = useState<number>();
     // The revision this panel's own save made, whose read is skipped, once.
     const own = useRef<number>(undefined);
-    // Each read takes a ticket and only the newest read's answer is kept, so an
-    // older answer landing later never overwrites a newer one.
-    const ticket = useRef(0);
+    // Only the newest read's answer is kept, so an older one landing later never overwrites it.
+    const [latest] = useState(createLatest);
+    // Counts the times asked again after a failed read.
+    const [attempt, setAttempt] = useState(0);
     /** The host accepted this set under this revision, so it is the set. */
     const accept = (rules: readonly Rule[], revision: number) => {
         own.current = revision;
@@ -115,22 +122,28 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
             own.current = undefined;
             return;
         }
-        const mine = ticket.current + 1;
-        ticket.current = mine;
-        void readRules(rulesUrl).then((next) => {
-            if (mine !== ticket.current) return;
-            if (next) {
-                setLoaded({ ...next, revision: storeRevision });
-                // A read that failed at this revision is made good by this one.
-                setFailedFor(undefined);
-            } else {
-                setFailedFor(storeRevision);
-            }
-        });
+        void latest
+            .run((signal) => readRules(rulesUrl, signal))
+            .then((outcome) => {
+                if (outcome.stale) return;
+                const next = outcome.value;
+                if (next) {
+                    setLoaded({ ...next, revision: storeRevision });
+                    // A read that failed at this revision is made good by this one.
+                    setFailedFor(undefined);
+                } else {
+                    setFailedFor(storeRevision);
+                }
+            });
         return () => {
-            ticket.current += 1;
+            latest.cancel();
         };
-    }, [rulesUrl, storeRevision, enabled]);
+    }, [rulesUrl, storeRevision, enabled, attempt, latest]);
+    /** Reads the set again, with the failure put away while it is on its way. */
+    const retry = () => {
+        setFailedFor(undefined);
+        setAttempt((n) => n + 1);
+    };
     // The last set read is kept for the form while the next is on its way, but only
     // the set for the store as it is now can be saved over.
     return {
@@ -138,6 +151,7 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
         current: loaded?.revision === storeRevision,
         failed: failedFor === storeRevision,
         accept,
+        retry,
     };
 };
 
@@ -267,7 +281,11 @@ export const useRulesEditor = ({
     storeRevision,
     enabled,
 }: RulesEditorOptions): RulesEditor => {
-    const { loaded, current, failed, accept } = useLoadedRules(rulesUrl, storeRevision, enabled);
+    const { loaded, current, failed, accept, retry } = useLoadedRules(
+        rulesUrl,
+        storeRevision,
+        enabled
+    );
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
     const [message, setMessage] = useState('');
@@ -393,6 +411,7 @@ export const useRulesEditor = ({
         message,
         fields,
         draft,
+        retry,
         edit,
         close,
         save,
@@ -425,19 +444,29 @@ export const RulesPanel = ({
     const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
         editor;
     const edit = (next: Form) => editor.edit(next, products);
+    const title = useRef<HTMLHeadingElement>(null);
     return (
         <div className="rules">
-            <h2 className="rules-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
+            {/* Takes focus from Try again, which goes while the rules are read. */}
+            <h2 className="rules-title" tabIndex={-1} ref={title}>
+                {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
+            </h2>
             {message && (
                 <p className="callout" role="status">
                     {message}
                 </p>
             )}
             {failed && (
-                <p className="notice" role="alert">
-                    {NOT_READ}
-                </p>
+                <LoadFailure
+                    what="The rules"
+                    reason={READ_FAILED}
+                    onRetry={() => {
+                        title.current?.focus();
+                        editor.retry();
+                    }}
+                />
             )}
+            {!failed && !editable && !form && <p className="notice">Reading the rules.</p>}
             {form ? (
                 <RuleForm
                     form={form}

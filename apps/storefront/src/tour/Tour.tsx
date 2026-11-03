@@ -1,9 +1,10 @@
-import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
+import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { REPO_URL } from '../app/Portfolio.jsx';
 import { StateLink } from '../app/StateLink.jsx';
 import type { SearchState } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
+import { listSeparator } from '../format/list.js';
 import { land } from './land.js';
 import { STOPS } from './stops.js';
 
@@ -59,7 +60,7 @@ const useRoomForTour = (sheet: RefObject<HTMLElement | null>) => {
 const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
 
 /** Escape closes the tour from anywhere inside it, unless a control inside used the key. */
-const closeOnEscape = (onClose: () => void) => (event: React.KeyboardEvent) => {
+const closeOnEscape = (onClose: () => void) => (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     event.preventDefault();
     onClose();
@@ -177,7 +178,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 Tested in{' '}
                 {stop.tests.map((test, i) => (
                     <span key={test}>
-                        {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
+                        {listSeparator(i, stop.tests.length)}
                         {/*
                          * Named by its file, and a link to it in the repository, so the
                          * folder it is in is a press away on a phone and from the keyboard.

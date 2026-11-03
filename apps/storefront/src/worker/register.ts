@@ -57,8 +57,22 @@ export class StoreDidNotStart extends Error {
     override readonly name = 'StoreDidNotStart';
 }
 
+/**
+ * A visitor's own catalog lives in the worker, which the dev server does not run, so a page over
+ * one works only on the built site.
+ */
+export class OnlyOnTheBuiltSite extends Error {
+    override readonly name = 'OnlyOnTheBuiltSite';
+    constructor() {
+        super('the page for your own catalog runs on the built site');
+    }
+}
+
+/** How a start failed: in a browser that cannot run the store, or only this time. */
+export type StartFailureKind = 'unsupported' | 'unavailable';
+
 /** Whether a start that failed can be helped by trying again in this browser. */
-export const startFailure = (error: unknown): 'unsupported' | 'unavailable' =>
+export const startFailure = (error: unknown): StartFailureKind =>
     error instanceof WorkerUnsupported ? 'unsupported' : 'unavailable';
 
 /**

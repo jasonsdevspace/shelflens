@@ -13,16 +13,24 @@ export const StatusRegion = ({ children }: { readonly children: ReactNode }) => 
 );
 
 /**
- * A line said each time it changes. A live region announces what changes in
- * it, not what it was created with, so the line is empty on its first
- * render and filled a moment later, and it stays mounted through loading
- * so each landed answer is a change.
+ * The text a live region holds, a moment after it is given. A live region
+ * announces what changes in it, not what it was created with, so the region
+ * is empty on its first render and filled a moment later.
  */
-export const LiveStatus = ({ text }: { readonly text: string }) => {
-    const [shown, setShown] = useState('');
+export const useSaidLater = (text: string): string => {
+    const [said, setSaid] = useState('');
     useEffect(() => {
-        const timer = setTimeout(() => setShown(text), 0);
+        const timer = setTimeout(() => setSaid(text), 0);
         return () => clearTimeout(timer);
     }, [text]);
-    return <StatusRegion>{shown}</StatusRegion>;
+    return said;
+};
+
+/**
+ * A line said each time it changes. It stays mounted through loading, so
+ * each landed answer is a change.
+ */
+export const LiveStatus = ({ text }: { readonly text: string }) => {
+    const said = useSaidLater(text);
+    return <StatusRegion>{said}</StatusRegion>;
 };

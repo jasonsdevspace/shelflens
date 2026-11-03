@@ -12,7 +12,8 @@
 
 const KEY = 'shelflens.session';
 
-const fresh = (): string => {
+/** An id no other tab or event shares, where the browser has no `randomUUID` too. */
+export const randomId = (): string => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
     }
@@ -24,10 +25,10 @@ export const sessionId = (): string => {
     try {
         const kept = sessionStorage.getItem(KEY);
         if (kept) return kept;
-        const made = fresh();
+        const made = randomId();
         sessionStorage.setItem(KEY, made);
         return made;
     } catch {
-        return fresh();
+        return randomId();
     }
 };

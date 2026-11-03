@@ -392,7 +392,9 @@ describe('the rules panel', () => {
     it('edits nothing until the rules are read, and says when they cannot be', async () => {
         vi.stubGlobal('fetch', () => Promise.resolve(new Response('down', { status: 503 })));
         open();
-        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The rules could not be loaded.'
+        );
         expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
     });
 
@@ -470,10 +472,49 @@ describe('the rules panel', () => {
         );
     });
 
+    it('reads the rules again when asked to after a failed read', async () => {
+        const live = fetch;
+        vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
+        const { user } = open();
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The rules could not be loaded.'
+        );
+        let land: (() => void) | undefined;
+        vi.stubGlobal(
+            'fetch',
+            (input: RequestInfo | URL, init?: RequestInit) =>
+                new Promise<Response>((resolve) => {
+                    land = () => void live(input, init).then(resolve);
+                })
+        );
+        await user.click(screen.getByRole('button', { name: 'Try again' }));
+        // The button goes while the rules are read, so focus waits on the panel's title.
+        expect(screen.getByRole('heading', { name: 'Rules for \u201cjacket\u201d' })).toHaveFocus();
+        expect(screen.getByText('Reading the rules.')).toBeInTheDocument();
+        land?.();
+        expect(await screen.findByRole('button', { name: 'Add a rule' })).toBeInTheDocument();
+        expect(screen.queryByText('Reading the rules.')).toBeNull();
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('abandons a read in flight when the panel closes', async () => {
+        const signals: AbortSignal[] = [];
+        vi.stubGlobal('fetch', (_input: RequestInfo | URL, init?: RequestInit) => {
+            if (init?.signal) signals.push(init.signal);
+            return new Promise<Response>(() => undefined);
+        });
+        const { closePanel } = open();
+        await waitFor(() => expect(signals).toHaveLength(1));
+        closePanel();
+        expect(signals[0]?.aborted).toBe(true);
+    });
+
     it('treats a 200 that is not the rules as a failed read', async () => {
         vi.stubGlobal('fetch', () => Promise.resolve(Response.json({ error: 'nope' })));
         open();
-        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The rules could not be loaded.'
+        );
         expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
     });
 
@@ -509,7 +550,9 @@ describe('the rules panel', () => {
         const live = fetch;
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         const { user, closePanel, reopenPanel } = open();
-        expect(await screen.findByRole('alert')).toHaveTextContent('The rules could not be read.');
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The rules could not be loaded.'
+        );
         vi.stubGlobal('fetch', live);
         closePanel();
         reopenPanel();

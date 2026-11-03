@@ -1,5 +1,5 @@
 import { normalize } from '@jasonsdevspace/shelflens';
-import type { Catalog } from '@shelflens/catalog';
+import { type Catalog, categoryNames } from '@shelflens/catalog';
 
 /**
  * Completions for a phrase still being typed.
@@ -17,7 +17,7 @@ const WORD = /[a-z0-9][a-z0-9-]*/g;
 
 export const createCompletions = (catalog: Catalog): Completions => {
     const counts = new Map<string, number>();
-    const names = new Map(catalog.categories.map((category) => [category.id, category.name]));
+    const names = categoryNames(catalog);
     for (const product of catalog.products) {
         const texts = [
             product.name,

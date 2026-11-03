@@ -1,4 +1,4 @@
-import { type Catalog, generateCatalog } from '@shelflens/catalog';
+import { categoryNames, generateCatalog } from '@shelflens/catalog';
 
 /**
  * The sample file a visitor can download and load, so trying the page takes
@@ -35,9 +35,6 @@ const csvField = (value: string): string =>
     /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 
 const dollars = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
-
-const categoryNames = (catalog: Catalog): ReadonlyMap<string, string> =>
-    new Map(catalog.categories.map((category) => [category.id, category.name]));
 
 /** The sample, or a file like it of another size, such as one at the cap for the cold start benchmark. */
 export const sampleCsv = (products = SAMPLE_PRODUCTS): string => {

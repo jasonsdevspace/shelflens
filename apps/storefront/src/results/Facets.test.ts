@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { distinctBands, ratingLabel } from './Facets.jsx';
+import { distinctBands } from './Facets.jsx';
 
 describe('the rating bands', () => {
     const bands = [
@@ -20,10 +20,5 @@ describe('the rating bands', () => {
 
     it('keep the strictest band whatever it counts', () => {
         expect(distinctBands([{ from: 4, count: 0 }], undefined)).toHaveLength(1);
-    });
-
-    it('say a band in words, in the singular for one star', () => {
-        expect(ratingLabel(4, 'en-US')).toBe('4 stars and up');
-        expect(ratingLabel(1, 'en-US')).toBe('1 star and up');
     });
 });
