@@ -15,7 +15,7 @@
  *    once the tracker moves on, so the comment says what the issue said.
  * 5. American spelling, to agree with the identifiers beside it.
  *
- * Run with `npm run prose`.
+ * Run with `node scripts/check-prose.mjs`, as `npm run verify` does.
  */
 import { basename, extname } from 'node:path';
 

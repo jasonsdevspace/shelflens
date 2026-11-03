@@ -5,24 +5,25 @@
     "keywords": [
         "search",
         "full-text",
-        "facets",
+        "fuzzy-search",
         "typo-tolerance",
+        "synonyms",
+        "facets",
+        "merchandising",
         "ecommerce"
     ],
-    "license": "MIT",
-    "author": "Jason Poteet",
+    "homepage": "https://github.com/jasonsdevspace/shelflens/tree/main/packages/engine#readme",
+    "bugs": {
+        "url": "https://github.com/jasonsdevspace/shelflens/issues"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jasonsdevspace/shelflens.git",
         "directory": "packages/engine"
     },
-    "homepage": "https://github.com/jasonsdevspace/shelflens/tree/main/packages/engine#readme",
-    "bugs": {
-        "url": "https://github.com/jasonsdevspace/shelflens/issues"
-    },
+    "license": "MIT",
+    "author": "Jason Poteet",
     "type": "module",
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
     "exports": {
         ".": {
             "@shelflens/source": "./src/index.ts",
@@ -30,6 +31,8 @@
             "default": "./dist/index.js"
         }
     },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "files": [
         "dist",
         "src",
@@ -44,7 +47,7 @@
         "access": "public"
     },
     "scripts": {
-        "type-check": "tsc -p tsconfig.json",
+        "type-check": "tsc -p tsconfig.json && tsc -p smoke",
         "build": "tsc -b tsconfig.build.json",
         "prepack": "npm run build"
     }

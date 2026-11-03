@@ -8,8 +8,9 @@ import { describe, expect, it } from 'vitest';
  * tests resolve it to its sources, but a build resolves it through
  * node_modules, and a pin that the workspace's version does not satisfy
  * makes npm fetch the published engine from the registry instead. That
- * once shipped a worker without a feature the tests had passed. So the
- * pins follow the engine's version, and the lockfile holds no second copy.
+ * once shipped a worker without a feature the tests had passed. So every
+ * package takes the engine at any version, which the workspace always
+ * satisfies, and the lockfile holds no second copy.
  */
 
 const root = new URL('../../../', import.meta.url);
@@ -25,10 +26,11 @@ const ENGINE = '@jasonsdevspace/shelflens';
 describe('the engine in the workspace', () => {
     const engine = read('packages/engine/package.json');
 
-    it('is the version every package here pins', () => {
-        for (const name of ['api', 'search']) {
+    it('is taken at any version by every package here, so the workspace is the one linked', () => {
+        for (const name of ['api', 'search', 'storefront']) {
             const pin = read(`packages/${name}/package.json`).dependencies?.[ENGINE];
-            expect(pin, name).toBe(engine.version);
+            // Any version, so an engine release edits its own manifest and no other.
+            expect(pin, name).toBe('*');
         }
     });
 
