@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { REPO_URL } from '../app/Portfolio.jsx';
 import { StateLink } from '../app/StateLink.jsx';
@@ -30,17 +30,19 @@ const TOUR_HEIGHT = '--tour-height';
  * Marks the page while the tour is open, with its height as it is drawn, so
  * whatever takes focus is scrolled into view above it, on a phone where it
  * is a sheet across the bottom and on a wide screen where it is a box in
- * the corner.
+ * the corner. The height kept is the tallest the tour has been since it
+ * opened, so a shorter stop never takes room from under the page, which
+ * would shift a page scrolled to its end each time the stop changed.
  */
 const useRoomForTour = (sheet: RefObject<HTMLElement | null>) => {
     useEffect(() => {
         const root = document.documentElement;
         root.classList.add(TOURING);
-        const measure = () =>
-            root.style.setProperty(
-                TOUR_HEIGHT,
-                `${String(sheet.current?.getBoundingClientRect().height ?? 0)}px`
-            );
+        let tallest = 0;
+        const measure = () => {
+            tallest = Math.max(tallest, sheet.current?.getBoundingClientRect().height ?? 0);
+            root.style.setProperty(TOUR_HEIGHT, `${String(tallest)}px`);
+        };
         measure();
         const watch =
             typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : undefined;
@@ -85,12 +87,14 @@ export const TourOffer = ({
             onKeyDown={closeOnEscape(onDecline)}
         >
             <p className="tour-offer-text">A tour of what to try, {STOPS.length} stops</p>
-            <button type="button" className="button" onClick={onStart}>
-                Start
-            </button>
-            <button type="button" className="button" onClick={onDecline}>
-                Not now
-            </button>
+            <div className="tour-offer-actions">
+                <button type="button" className="button" onClick={onStart}>
+                    Start
+                </button>
+                <button type="button" className="button" onClick={onDecline}>
+                    Not now
+                </button>
+            </div>
         </aside>
     );
 };
@@ -111,9 +115,25 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
     }, [takeFocus]);
     const sheet = useRef<HTMLElement>(null);
     useRoomForTour(sheet);
-    // The landing "Try it" started, given up when the stop changes or the tour closes.
+    // On each change of stop: the landing "Try it" started is given up, and the
+    // new stop opens at its top, with its count and Close in view, before it is
+    // drawn. A keyboard visitor's focus stays in view, where the buttons scroll
+    // with the stop on a short screen.
     const landing = useRef<() => void>(undefined);
     useEffect(() => () => landing.current?.(), [index]);
+    useLayoutEffect(() => {
+        const at = sheet.current;
+        if (!at) return;
+        at.scrollTop = 0;
+        const focused = document.activeElement;
+        if (
+            focused instanceof HTMLElement &&
+            at.contains(focused) &&
+            focused.matches(':focus-visible')
+        ) {
+            focused.scrollIntoView({ block: 'nearest' });
+        }
+    }, [index]);
 
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;
@@ -174,40 +194,52 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             </p>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink
-                        className="button button-primary tour-try"
-                        to={stop.to}
-                        navigate={tryIt}
-                    >
+                    <StateLink className="button button-primary" to={stop.to} navigate={tryIt}>
                         Try it
                     </StateLink>
                 )}
-                {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
-                <button
-                    type="button"
-                    className="button"
-                    aria-disabled={first}
-                    onClick={() => {
-                        if (!first) onIndex(index - 1);
-                    }}
-                >
-                    Previous
-                </button>
-                <button
-                    type="button"
-                    className="button"
-                    onClick={() => {
-                        if (!last) {
-                            onIndex(index + 1);
-                            return;
-                        }
-                        // A finished tour opens on its first stop next time.
-                        onIndex(0);
-                        onClose();
-                    }}
-                >
-                    {last ? 'Finish' : 'Next'}
-                </button>
+                <div className="tour-steps">
+                    {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
+                    <button
+                        type="button"
+                        className="button"
+                        aria-disabled={first}
+                        onClick={() => {
+                            if (!first) onIndex(index - 1);
+                        }}
+                    >
+                        Previous
+                    </button>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => {
+                            if (!last) {
+                                onIndex(index + 1);
+                                return;
+                            }
+                            // A finished tour opens on its first stop next time.
+                            onIndex(0);
+                            onClose();
+                        }}
+                    >
+                        {/* Both words in one place, the other hidden, so the button is as wide on every stop. */}
+                        <span className="tour-step-label">
+                            <span
+                                className={last ? 'tour-step-unused' : undefined}
+                                aria-hidden={last}
+                            >
+                                Next
+                            </span>
+                            <span
+                                className={last ? undefined : 'tour-step-unused'}
+                                aria-hidden={!last}
+                            >
+                                Finish
+                            </span>
+                        </span>
+                    </button>
+                </div>
             </div>
         </aside>
     );

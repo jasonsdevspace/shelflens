@@ -432,7 +432,11 @@ h4 {
     overflow-wrap: anywhere;
 }
 
-/* The buttons wrap onto a second line where larger text leaves no room for them on one. */
+/*
+ * The buttons wrap onto a second line where larger text leaves no room for
+ * them on one. Previous and Next keep together on the right, so they stand in
+ * the same place on the last stop, which has no Try it, as on every other.
+ */
 .tour-nav {
     display: flex;
     flex-wrap: wrap;
@@ -440,9 +444,25 @@ h4 {
     gap: var(--space-2);
 }
 
-/* The stop's own way in, on the left, with the steps through the tour on the right. */
-.tour-try {
-    margin-right: auto;
+.tour-step-label {
+    display: inline-grid;
+}
+
+.tour-step-label > * {
+    grid-area: 1 / 1;
+}
+
+/* Drawn for its width alone, so it is neither seen nor heard. */
+.tour-step-unused {
+    visibility: hidden;
+}
+
+.tour-steps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-left: auto;
 }
 
 /* A phone's first visit: one line saying what the tour is, with its two answers beside it. */
@@ -453,8 +473,17 @@ h4 {
     gap: var(--space-2);
 }
 
+/* The two answers keep together, wrapping as one where larger text leaves no room, then apart. */
+.tour-offer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
 .tour-offer-text {
-    flex: 1 1 10em;
+    flex: 1 1 7em;
     margin: 0;
     font-size: var(--text-small);
 }
@@ -1223,9 +1252,10 @@ h4 {
     }
 
     /*
-     * A sheet across the bottom, one height from stop to stop so the buttons
-     * never jump, and never more than half the screen. A long stop scrolls
-     * inside it, under buttons that stay in view.
+     * A sheet across the bottom, as tall as its stop and never more than half
+     * the screen, so a short stop leaves the page in view. A long stop scrolls
+     * inside it. Its buttons are its last row and the sheet sits on the bottom
+     * edge, so they hold their place from stop to stop at any height.
      */
     .tour {
         right: 0;
@@ -1234,7 +1264,6 @@ h4 {
         display: flex;
         flex-direction: column;
         width: auto;
-        height: min(28rem, 50dvh);
         overflow: auto;
         border-width: 1px 0 0;
         border-radius: var(--radius-large) var(--radius-large) 0 0;
@@ -1242,21 +1271,18 @@ h4 {
 
     /* The sheet's own bottom padding is the buttons', so nothing scrolls under them. */
     .tour:not(.tour-offer) {
+        max-height: min(28rem, 50dvh);
         padding-bottom: 0;
     }
 
     .tour-nav {
-        position: sticky;
-        bottom: 0;
-        margin-top: auto;
         padding-block: var(--space-2) var(--space-4);
         background: var(--raised);
     }
 
-    /* The bar that offers the tour is one line, not a sheet. */
+    /* The bar that offers the tour is one row where it fits, not a sheet. */
     .tour.tour-offer {
         flex-direction: row;
-        height: auto;
     }
 
     /* The last cards and the pagination can still scroll above the sheet, at its drawn height. */
@@ -1293,6 +1319,18 @@ h4 {
     .category-nav {
         flex-basis: 100%;
         margin-left: 0;
+    }
+}
+
+/*
+ * Where the screen is tall enough, the tour's buttons stay in view while a
+ * long stop scrolls under them. On a short screen, or at a large text size,
+ * they would leave the stop no room, so they scroll with it.
+ */
+@media (max-width: 48rem) and (min-height: 34rem) {
+    .tour-nav {
+        position: sticky;
+        bottom: 0;
     }
 }
 
