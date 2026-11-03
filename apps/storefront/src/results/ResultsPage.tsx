@@ -82,11 +82,14 @@ export interface ResultsPageProps {
     readonly storeRevision: number;
     /** Counts the searches submitted, so a search run again is remembered again. */
     readonly searched: number;
-    /** New each time the visitor brings this store, as App's own `arrival` says. */
+    /** New each time the visitor comes to this store, as App's own `arrival` says. */
     readonly arrival?: number | undefined;
 }
 
-/** What the heading answers with, and what it notes after: the count, or that the matches are close ones. */
+/**
+ * What the heading answers with, and what it notes after: the count, or that
+ * the matches are close ones.
+ */
 interface Heading {
     readonly text: string;
     readonly note: string | undefined;
@@ -156,7 +159,10 @@ const FacetColumn = ({
         </aside>
     );
 
-/** What the status line says: the heading once an answer has landed, nothing while one is coming. */
+/**
+ * What the status line says: the heading once an answer has landed, nothing
+ * while one is coming.
+ */
 const announcement = (
     {
         state,
@@ -513,7 +519,10 @@ const useAppliedRules = (
 const useRememberedSearch = (
     phrase: string | undefined,
     result: Result | undefined,
-    /** Whether the result is the store's own answer to this search, not a preview or an older one. */
+    /**
+     * Whether the result is the store's own answer to this search, not a
+     * preview or an older one.
+     */
     own: boolean,
     /** Counts the searches submitted, so one run again after a clear joins the list again. */
     searched: number
@@ -529,7 +538,10 @@ const useRememberedSearch = (
     }, [phrase, found, searched]);
 };
 
-/** What an answer puts under the toolbar: the notices, the cards or the nothing page, and the pages. */
+/**
+ * What an answer puts under the toolbar: the notices, the cards or the nothing
+ * page, and the pages.
+ */
 const Answer = ({
     result,
     state,

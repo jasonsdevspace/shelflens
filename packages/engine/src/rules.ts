@@ -19,9 +19,9 @@ import {
  * changed without touching the index, and every effect a rule has on a
  * result is recorded on that result for explain mode.
  *
- * Boosts and buries move products by changing their relevance score, so
- * they mean nothing under any other sort. Pins and hides still apply under
- * a sort scoped to the rule's own filter, which is how a category's
+ * Boosts and buries move products by changing their relevance score, so they
+ * mean nothing under any other sort. Hides apply under every sort, and pins
+ * under a sort scoped to the rule's own filter, which is how a category's
  * merchandising survives its position sort, though the rule's boosts and
  * buries are set aside there. A rule whose pins, boosts or buries the sort
  * sets aside is reported, so a page can say that sorting by price switched
@@ -54,7 +54,10 @@ const EMPTY_PLAN: RulePlan = {
     setAside: [],
 };
 
-/** Reports a rule that names what the engine does not have. */
+/**
+ * Reports a rule that names what the engine does not have, or an attribute
+ * it cannot match on.
+ */
 interface Known {
     id(ruleId: string, id: string): void;
     attribute(ruleId: string, name: string): void;
@@ -108,9 +111,11 @@ const checkWindow = (rule: Rule): void => {
 };
 
 /**
- * Refuses a rule that could never do what it says: a document or an
- * attribute the engine does not have, or an attribute a rule cannot match
- * on, since a rule names a value as text and only a keyword attribute is one.
+ * Refuses a rule that could never do what it says: one that does nothing,
+ * shares another's id, weighs nothing, or has a window it cannot read or
+ * that ends before it starts, and one that names a document or an attribute
+ * the engine does not have, or an attribute other than a keyword, since a
+ * rule names a value as text.
  *
  * Run when the engine is created and on every reconfigure, so a mistake in a
  * rules file is reported before a shopper meets it.
@@ -200,7 +205,10 @@ interface Draft {
     readonly applied: string[];
     /** The rules the sort set aside, each with the pins it would have placed under relevance. */
     readonly aside: { readonly rule: Rule; readonly pins: readonly string[] }[];
-    /** The products a set-aside rule would have pinned, so a later rule's pin of one is not counted. */
+    /**
+     * The products a set-aside rule would have pinned, so a later rule's pin of
+     * one is not counted.
+     */
     readonly claimed: Set<string>;
 }
 
@@ -215,7 +223,10 @@ const wouldPin = (draft: Draft, rule: Rule): string[] => {
     return pins;
 };
 
-/** What the sort set aside of each rule, once every rule is read, leaving out a rule that lost nothing. */
+/**
+ * What the sort set aside of each rule, once every rule is read, leaving out a
+ * rule that lost nothing.
+ */
 const setAsideOf = (draft: Draft): SetAside[] =>
     draft.aside
         .map(({ rule, pins }) => ({

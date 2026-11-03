@@ -1,11 +1,3 @@
-/*
- * A product's thumbnail, drawn rather than fetched.
- *
- * The catalog is generated and has no photographs, so the thumbnail is the
- * product's first color with the brand's initial on it. It carries no text
- * for a screen reader, since the name beside it already says what it is.
- */
-
 const COLOR_VALUES: Readonly<Record<string, string>> = {
     Black: '#1a1a1a',
     White: '#f4f4f4',
@@ -31,6 +23,13 @@ export interface SwatchProps {
     readonly size?: number;
 }
 
+/**
+ * A product's thumbnail, drawn rather than fetched.
+ *
+ * The catalog is generated and has no photographs, so the thumbnail is the
+ * product's first color with the brand's initial on it. It carries no text
+ * for a screen reader, since the name beside it already says what it is.
+ */
 export const Swatch = ({ color, brand, size = 40 }: SwatchProps) => {
     const name = color ?? 'Charcoal';
     const fill = COLOR_VALUES[name] ?? '#777777';

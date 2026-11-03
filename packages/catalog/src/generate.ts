@@ -19,15 +19,6 @@ import {
     type LeafSpec,
 } from './words.js';
 
-/*
- * Builds a catalog from a seed.
- *
- * The same seed and size always produce the same catalog, byte for byte, on
- * any machine. That is what lets the golden queries name specific products,
- * the benchmark compare runs, and the demo ship a snapshot that matches what
- * the tests ran against.
- */
-
 /**
  * Bumped whenever the output for a given seed changes, so a cached index
  * built from an older generator is never mistaken for the current one.
@@ -216,6 +207,14 @@ const createProduct = (generation: Generation, index: number): Product => {
     };
 };
 
+/**
+ * Builds a catalog from a seed.
+ *
+ * The same seed and size always produce the same catalog, byte for byte, on
+ * any machine. That is what lets the golden queries name specific products,
+ * the benchmark compare runs, and the demo ship a snapshot that matches what
+ * the tests ran against.
+ */
 export const generateCatalog = ({
     seed = DEFAULT_SEED,
     products: count = DEFAULT_PRODUCTS,

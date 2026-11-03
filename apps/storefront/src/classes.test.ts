@@ -26,20 +26,26 @@ const SHARED = new Set([
     'visually-hidden',
 ]);
 
+/** Folders that hold nothing a page is written from: what is built, installed or generated. */
+const SKIPPED = new Set(['node_modules', 'dist', 'generated', 'e2e', 'test-results']);
+
+/** Every file under a folder that `keep` keeps, past the folders nothing is written from. */
+const walk = (dir: string, keep: (name: string) => boolean): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+            ? SKIPPED.has(entry.name)
+                ? []
+                : walk(join(dir, entry.name), keep)
+            : keep(entry.name)
+              ? [join(dir, entry.name)]
+              : []
+    );
+
 /** Every component file, with the classes it names in its markup. */
 const components = (): { file: string; defined: string[]; classes: string[] }[] => {
     const root = __dirname;
-    const walk = (dir: string): string[] =>
-        readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-            entry.isDirectory()
-                ? entry.name === 'generated'
-                    ? []
-                    : walk(join(dir, entry.name))
-                : /\.tsx$/.test(entry.name) && !entry.name.includes('.test.')
-                  ? [join(dir, entry.name)]
-                  : []
-        );
-    return walk(root).map((path) => {
+    const isComponent = (name: string) => name.endsWith('.tsx') && !name.includes('.test.');
+    return walk(root, isComponent).map((path) => {
         const text = readFileSync(path, 'utf8');
         // The class names written out: in quotes, in a template's fixed parts, and in the
         // quoted strings an expression chooses between.
@@ -108,31 +114,32 @@ describe('the components', () => {
 
     it('are all a style sheet defines, so no sheet keeps a class nothing wears', () => {
         const app = join(__dirname, '..');
-        const walk = (dir: string, keep: (name: string) => boolean): string[] =>
-            readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-                entry.isDirectory()
-                    ? ['node_modules', 'dist', 'generated', 'e2e'].includes(entry.name)
-                        ? []
-                        : walk(join(dir, entry.name), keep)
-                    : keep(entry.name)
-                      ? [join(dir, entry.name)]
-                      : []
-            );
         const sheets = walk(join(app, 'src'), (name) => name.endsWith('.css'));
         // What can write a class: the components, the modules that set one by script, and the
-        // pages, which carry the frame drawn before the script.
-        const writers = walk(
-            app,
-            (name) => /\.(tsx?|html)$/.test(name) && !name.includes('.test.')
-        ).map((path) => readFileSync(path, 'utf8'));
-        const text = writers.join('\n');
-        // A class a template builds, as searchbox-option-${kind}, is worn through its fixed part.
-        const prefixes = [...text.matchAll(/([a-z][a-z-]*-)\$\{/g)].map((match) => match[1] ?? '');
+        // pages, which carry the frame drawn before the script. Comments name classes without
+        // writing them, so they are left out.
+        const text = walk(app, (name) => /\.(tsx?|js|html)$/.test(name) && !name.includes('.test.'))
+            .map((path) =>
+                readFileSync(path, 'utf8')
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    .replace(/<!--[\s\S]*?-->/g, '')
+                    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+            )
+            .join('\n');
+        // A class a component's template builds, as searchbox-option-${kind}, is worn through
+        // the fixed part before the template's value.
+        const prefixes = components()
+            .flatMap((component) => component.classes)
+            .filter((name) => name.endsWith('-'));
         const worn = (name: string) =>
             new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(text) ||
             prefixes.some((prefix) => name.startsWith(prefix));
         const unworn = sheets.flatMap((sheet) => {
-            const css = readFileSync(sheet, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+            // A class is a selector, so what a rule's values hold, a url or a string, is no class.
+            const css = readFileSync(sheet, 'utf8')
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/url\([^)]*\)/g, '')
+                .replace(/(['"])(?:(?!\1).)*\1/g, '');
             const defined = new Set(
                 [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => match[1] ?? '')
             );
@@ -141,6 +148,7 @@ describe('the components', () => {
                 .map((name) => `${relative(app, sheet)} defines ${name}`);
         });
         expect(sheets.length).toBeGreaterThan(0);
+        expect(prefixes).toContain('searchbox-option-');
         expect(unworn).toEqual([]);
     });
 });

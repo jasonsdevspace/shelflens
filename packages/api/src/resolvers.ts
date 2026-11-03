@@ -315,7 +315,10 @@ export const resolvers: Resolvers = {
     },
 };
 
-/** A facet over an attribute the schema does not name is a configuration mistake, not a request's. */
+/**
+ * A facet over an attribute the schema does not name is a configuration
+ * mistake, not a request's.
+ */
 const badInputAttribute = (attribute: string): never => {
     throw new Error(`a facet reports an attribute the schema does not name: ${attribute}`);
 };
