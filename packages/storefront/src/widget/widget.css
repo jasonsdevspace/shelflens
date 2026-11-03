@@ -20,6 +20,7 @@
     --highlight: var(--light-highlight);
     --control: var(--light-control);
     --rating: var(--light-rating);
+    --raised: var(--light-raised);
     --warn: var(--light-warn);
     --swatch-edge: var(--light-swatch-edge);
     display: block;
@@ -48,6 +49,7 @@
         --highlight: light-dark(var(--light-highlight), var(--dark-highlight));
         --control: light-dark(var(--light-control), var(--dark-control));
         --rating: light-dark(var(--light-rating), var(--dark-rating));
+        --raised: light-dark(var(--light-raised), var(--dark-raised));
         --warn: light-dark(var(--light-warn), var(--dark-warn));
         --swatch-edge: light-dark(var(--light-swatch-edge), var(--dark-swatch-edge));
     }

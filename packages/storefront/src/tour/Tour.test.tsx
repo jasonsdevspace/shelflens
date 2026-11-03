@@ -54,6 +54,16 @@ describe('the tour panel', () => {
         expect(onClose).toHaveBeenCalledOnce();
     });
 
+    it('shows how far through the tour the stop is, makes Try it the strong action and Close the quiet one', () => {
+        render(<Tour index={1} onIndex={vi.fn()} navigate={vi.fn()} onClose={vi.fn()} takeFocus />);
+        const done = document.querySelector<HTMLElement>('.tour-progress-done');
+        expect(done?.style.inlineSize).toBe(`${String((2 / STOPS.length) * 100)}%`);
+        // The bar repeats the count, which is said with the stop already.
+        expect(document.querySelector('.tour-progress')).toHaveAttribute('aria-hidden', 'true');
+        expect(screen.getByRole('link', { name: 'Try it' })).toHaveClass('button-primary');
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('tour-close');
+    });
+
     it('starts a finished tour over at its first stop', async () => {
         const onIndex = vi.fn();
         const user = userEvent.setup();

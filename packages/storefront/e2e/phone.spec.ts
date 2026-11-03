@@ -1,3 +1,4 @@
+import { STOPS } from '../src/tour/stops.js';
 import { audit, expect, type Page, test } from './support.js';
 
 /*
@@ -183,6 +184,43 @@ test.describe('on a first visit', () => {
         await tour.getByRole('button', { name: 'Start' }).click();
         await expect(tour).toContainText('Stop 1 of');
         await expect(tour.getByRole('button', { name: 'Close' })).toBeFocused();
+    });
+
+    test('the sheet keeps one height from stop to stop, with its buttons in view', async ({
+        page,
+    }) => {
+        // The narrowest phone the page is built for, where a long file name has the least room.
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.goto('/');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await tour.getByRole('button', { name: 'Start' }).click();
+        const heights = new Set<number>();
+        for (let stop = 1; stop <= STOPS.length; stop += 1) {
+            await expect(tour).toContainText(`Stop ${String(stop)} of`);
+            const drawn = await page.evaluate(() => {
+                const scroller = document.querySelector('.tour');
+                const nav = document.querySelector('.tour-nav');
+                if (!scroller || !nav) throw new Error('expected the sheet and its buttons');
+                const sheet = scroller.getBoundingClientRect();
+                const buttons = nav.getBoundingClientRect();
+                return {
+                    height: Math.round(sheet.height),
+                    // Nothing scrolls sideways, and no strip of the sheet shows under its buttons.
+                    sideways: scroller.scrollWidth > scroller.clientWidth,
+                    gapUnderButtons: Math.round(sheet.bottom - buttons.bottom),
+                    navInSheet:
+                        buttons.top >= sheet.top &&
+                        buttons.bottom <= sheet.bottom + 1 &&
+                        buttons.bottom <= window.innerHeight + 1,
+                };
+            });
+            heights.add(drawn.height);
+            expect(drawn.navInSheet, `the buttons at stop ${String(stop)}`).toBe(true);
+            expect(drawn.sideways, `sideways at stop ${String(stop)}`).toBe(false);
+            expect(drawn.gapUnderButtons, `under the buttons at stop ${String(stop)}`).toBe(0);
+            if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
+        }
+        expect([...heights], 'the heights the sheet was drawn at').toHaveLength(1);
     });
 
     test('Not now puts the bar away for good', async ({ page }) => {
