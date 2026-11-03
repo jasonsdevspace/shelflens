@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseCsv } from '../try/csv.js';
 import { guessMapping } from '../try/mapping.js';
 import { toCatalog } from '../try/to-catalog.js';
-import { createMemoryCatalogStore } from './catalog-db.js';
+import { type CatalogStore, createMemoryCatalogStore } from './catalog-db.js';
 import { type AnswerStore, createWorkerApi } from './handle.js';
 
 /*
@@ -337,18 +337,68 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(saved).toEqual(UNBUILDABLE);
     });
 
-    it('answers a load and a removal that arrive together, and ends in agreement', async () => {
+    it('holds a removal until a load that is building lands, then removes it, so both paths agree', async () => {
+        let release = () => undefined as void;
+        let building = false;
+        const catalogs = createMemoryCatalogStore();
+        const replace = catalogs.replace.bind(catalogs);
+        const held: CatalogStore = {
+            ...catalogs,
+            replace: (catalog) =>
+                new Promise<void>((resolve) => {
+                    building = true;
+                    release = () => void replace(catalog).then(resolve);
+                }),
+        };
+        const api = createWorkerApi({ catalogs: held, base: BASE });
+        let removedYet = false;
+        const loading = api.handle(catalogRequest('PUT', LAMPS));
+        // Sent once the load is building, which is when a removal must wait for it.
+        await vi.waitFor(() => expect(building).toBe(true));
+        const removing = api.handle(catalogRequest('DELETE')).then((response) => {
+            removedYet = true;
+            return response;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        // The build is held open, and the removal waits for it rather than running beside it.
+        expect(removedYet).toBe(false);
+        release();
+        expect((await loading)?.status).toBe(204);
+        expect((await removing)?.status).toBe(204);
+        expect((await api.handle(catalogRequest('GET')))?.status).toBe(404);
+        expect((await api.handle(get({ op: STORE })))?.status).toBe(404);
+    });
+
+    it('refuses a catalog past the row cap and keeps the one it had', async () => {
         const api = visitorApi();
-        const [loaded, removed] = await Promise.all([
-            api.handle(catalogRequest('PUT', LAMPS)),
-            api.handle(catalogRequest('DELETE')),
+        await api.handle(catalogRequest('PUT', LAMPS));
+        const rows = Array.from({ length: 10_001 }, (_, index) => `Item ${index},$1.00`).join('\n');
+        const refused = await api.handle(catalogRequest('PUT', fromCsv(`name,price\n${rows}\n`)));
+        expect(refused?.status).toBe(400);
+        const { errors } = (await refused?.json()) as { errors: { message: string }[] };
+        expect(errors[0]?.message).toContain('past the cap of 10000');
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: LAMPS.version,
+            products: 2,
+        });
+    });
+
+    it('refuses a load that would discard a rule saved just before it, though both arrive together', async () => {
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(undefined, { rules });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        const save = new Request(`${ORIGIN}${BASE}rules`, {
+            method: 'POST',
+            body: JSON.stringify({ rules: pinFirst(LAMPS) }),
+        });
+        // The save is asked first, so the load, asked a moment after, finds the rule saved.
+        const [saved, loaded] = await Promise.all([
+            api.handle(save),
+            api.handle(catalogRequest('PUT', MUGS)),
         ]);
-        expect(loaded?.status).toBe(204);
-        expect(removed?.status).toBe(204);
-        // Whichever ran last, what the catalog path says and what is searched agree.
-        const listed = (await api.handle(catalogRequest('GET')))?.status;
-        const searched = (await api.handle(get({ op: STORE })))?.status;
-        expect([listed, searched]).toEqual(listed === 404 ? [404, 404] : [200, 200]);
+        expect(saved?.status).toBe(204);
+        expect(loaded?.status).toBe(409);
+        expect(await rules.current()).toEqual(pinFirst(LAMPS));
     });
 
     it('does not keep an answer that finishes after its catalog was removed', async () => {

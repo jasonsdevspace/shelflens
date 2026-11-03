@@ -269,6 +269,8 @@ test('discarding a visitor’s rules gives back the order the engine chose', asy
     const order = () =>
         cards.evaluateAll((links) => links.map((link) => link.getAttribute('data-sku')));
     await expect(layout).toHaveAttribute('aria-busy', 'false');
+    // Every bench, before anything is read from the order.
+    await expect(cards).toHaveCount(4);
     const before = await order();
     const last = before[before.length - 1] ?? '';
     await page.getByRole('button', { name: 'Rules', exact: true }).click();
@@ -278,10 +280,37 @@ test('discarding a visitor’s rules gives back the order the engine chose', asy
     await panel.getByRole('combobox', { name: 'Product', exact: true }).fill(last);
     await panel.getByRole('button', { name: 'Save rule' }).click();
     await expect(panel.getByRole('status')).toContainText('Rule saved');
+    // The rule moved the last bench first, so getting the order back proves something.
+    await expect.poll(async () => (await order())[0]).toBe(last);
     const notice = page.locator('.rules-notice');
     await notice.getByRole('button', { name: 'Discard your rules' }).click();
     await notice.getByRole('button', { name: 'Yes, discard' }).click();
     await expect(notice).toBeHidden();
-    await expect(layout).toHaveAttribute('aria-busy', 'false');
-    expect(await order()).toEqual(before);
+    await expect.poll(order).toEqual(before);
+});
+
+test('a tab whose products were removed in another says so when it is back, rather than failing to search', async ({
+    page,
+}) => {
+    await loadBenches(page);
+    const other = await page.context().newPage();
+    await other.goto('try/');
+    await expect(other.getByText('the 4 products you loaded')).toBeVisible();
+    await other.getByRole('button', { name: 'Remove your products' }).click();
+    await expect(
+        other.getByRole('heading', { level: 1, name: 'Search your own products' })
+    ).toBeVisible();
+    await page.bringToFront();
+    // Headless Chromium fires no focus when a tab is brought back, so the test fires the one a
+    // browser does when the visitor returns to it.
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(
+        page.getByRole('heading', { level: 1, name: 'Search your own products' })
+    ).toBeVisible();
+    await expect(
+        page.locator('p.notice', {
+            hasText: 'Your products were removed from this browser in another tab.',
+        })
+    ).toBeVisible();
+    await audit(page);
 });

@@ -722,6 +722,40 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
     }, []);
 
+    // Another tab of this site shares the worker, so it can remove the products this tab is
+    // searching, or load others. Coming back to this tab reads what is loaded, and a store
+    // that is gone or replaced is said rather than left to fail.
+    const searching = stage.kind === 'searching' ? stage.loaded.version : undefined;
+    useEffect(() => {
+        if (searching === undefined) return undefined;
+        let live = true;
+        const check = () => {
+            if (document.visibilityState !== 'visible' || pending.current) return;
+            readLoaded(catalogUrl).then(
+                (loaded) => {
+                    if (!live || loaded?.version === searching) return;
+                    clearSearch(base);
+                    setStage(
+                        loaded
+                            ? { kind: 'searching', loaded }
+                            : {
+                                  kind: 'choose',
+                                  notice: 'Your products were removed from this browser in another tab.',
+                              }
+                    );
+                },
+                () => undefined
+            );
+        };
+        document.addEventListener('visibilitychange', check);
+        window.addEventListener('focus', check);
+        return () => {
+            live = false;
+            document.removeEventListener('visibilitychange', check);
+            window.removeEventListener('focus', check);
+        };
+    }, [searching, catalogUrl, base]);
+
     // A file dropped anywhere on the page is read wherever a file can be taken, and is never
     // opened by the browser in the page's place, which would lose whatever the visitor had.
     const takesFile =
