@@ -27,6 +27,18 @@ describe('the tour', () => {
         expect(within(reopened).getByRole('button', { name: 'Close' })).toHaveFocus();
     });
 
+    it('marks the page with its height while it is open, so focus is kept clear of it, and unmarks it once closed', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open();
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        expect(document.documentElement).toHaveClass('is-touring');
+        // Its height as drawn, for the room the page keeps above it.
+        expect(document.documentElement.style.getPropertyValue('--tour-height')).toMatch(/px$/);
+        await user.click(within(tour).getByRole('button', { name: 'Close' }));
+        expect(document.documentElement).not.toHaveClass('is-touring');
+        expect(document.documentElement.style.getPropertyValue('--tour-height')).toBe('');
+    });
+
     it('resumes at the stop it was closed on', async () => {
         localStorage.removeItem('shelflens.tour');
         const user = await open();

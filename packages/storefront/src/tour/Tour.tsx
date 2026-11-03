@@ -26,17 +26,43 @@ export interface TourProps {
     readonly takeFocus: boolean;
 }
 
+/** The class on the page's root while the tour is open, and the property its height is kept in. */
+const TOURING = 'is-touring';
+const TOUR_HEIGHT = '--tour-height';
+
 export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps) => {
     const closer = useRef<HTMLButtonElement>(null);
     useEffect(() => {
         if (takeFocus) closer.current?.focus();
     }, [takeFocus]);
+    // Marked on the page while the tour is open, with its height as it is drawn, so whatever
+    // takes focus is scrolled into view above it, on a phone where it is a sheet across the
+    // bottom and on a wide screen where it is a box in the corner.
+    const sheet = useRef<HTMLElement>(null);
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.add(TOURING);
+        const measure = () =>
+            root.style.setProperty(
+                TOUR_HEIGHT,
+                `${String(sheet.current?.getBoundingClientRect().height ?? 0)}px`
+            );
+        measure();
+        const watch =
+            typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : undefined;
+        if (sheet.current) watch?.observe(sheet.current);
+        return () => {
+            watch?.disconnect();
+            root.classList.remove(TOURING);
+            root.style.removeProperty(TOUR_HEIGHT);
+        };
+    }, []);
 
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;
     const last = index === STOPS.length - 1;
     return (
-        <aside id={TOUR_ID} className="tour" aria-label="Tour">
+        <aside ref={sheet} id={TOUR_ID} className="tour" aria-label="Tour">
             <div className="tour-head">
                 <p className="tour-count">
                     Stop {index + 1} of {STOPS.length}

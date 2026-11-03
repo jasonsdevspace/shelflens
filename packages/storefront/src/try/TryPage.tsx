@@ -739,16 +739,25 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     useEffect(() => {
         if (searching === undefined) return undefined;
         let live = true;
-        // A return fires both a visibility change and a focus, so one read at a time.
+        // A return fires both a visibility change and a focus, so the two make one check. A
+        // return while a read is out reads again once it lands, since the first may have been
+        // answered before the other tab's change.
         let reading = false;
-        const check = () => {
-            if (document.visibilityState !== 'visible' || pending.current || reading) return;
+        let again = false;
+        let queued = false;
+        const read = () => {
+            if (document.visibilityState !== 'visible' || pending.current) return;
+            if (reading) {
+                again = true;
+                return;
+            }
             reading = true;
             readLoaded(catalogUrl)
                 .then(
                     (loaded) => {
                         // A change this tab began meanwhile is its own to say.
                         if (!live || pending.current || loaded?.version === searching) return;
+                        again = false;
                         clearSearch(base);
                         setStage(
                             loaded
@@ -767,7 +776,19 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 )
                 .finally(() => {
                     reading = false;
+                    if (again && live) {
+                        again = false;
+                        read();
+                    }
                 });
+        };
+        const check = () => {
+            if (queued) return;
+            queued = true;
+            queueMicrotask(() => {
+                queued = false;
+                read();
+            });
         };
         document.addEventListener('visibilitychange', check);
         window.addEventListener('focus', check);

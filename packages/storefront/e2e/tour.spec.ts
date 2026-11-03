@@ -48,3 +48,30 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     await page.getByRole('button', { name: 'Tour' }).click();
     await expect(tour).toBeVisible();
 });
+
+test('the tour never covers a card that focus reaches', async ({ page }) => {
+    await page.goto('?category=clothing');
+    await expect(page.getByRole('complementary', { name: 'Tour' })).toBeVisible();
+    await page.locator('.cards > .card a').first().focus();
+    for (let step = 0; step < 12; step += 1) {
+        await page.keyboard.press('Tab');
+        const where = await page.evaluate(() => {
+            const focused = document.activeElement?.getBoundingClientRect();
+            const tour = document.querySelector('.tour')?.getBoundingClientRect();
+            const overlaps =
+                focused !== undefined &&
+                tour !== undefined &&
+                focused.right > tour.left &&
+                focused.left < tour.right &&
+                focused.bottom > tour.top &&
+                focused.top < tour.bottom;
+            return {
+                onCard: document.activeElement?.matches('.cards > .card a') ?? false,
+                overlaps,
+            };
+        });
+        // Still on the cards, and none of it under the tour.
+        expect(where.onCard, `focus after ${String(step + 1)} presses`).toBe(true);
+        expect(where.overlaps, `focus after ${String(step + 1)} presses`).toBe(false);
+    }
+});

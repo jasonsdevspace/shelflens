@@ -149,3 +149,30 @@ test('on a phone the product name has the width of the page, under its swatch', 
     const line = Number.parseFloat(await name.evaluate((el) => getComputedStyle(el).lineHeight));
     expect(box.height).toBeLessThanOrEqual(line * 2 + 1);
 });
+
+test.describe('on a first visit', () => {
+    // The tour opens on its own, as a sheet over the bottom of the screen.
+    test.use({ tourSeen: false });
+
+    test('the tour sheet never covers a card that focus reaches', async ({ page }) => {
+        await page.goto('?category=clothing');
+        const sheet = page.getByRole('complementary', { name: 'Tour' });
+        await expect(sheet).toBeVisible();
+        const cards = page.locator('.cards > .card a');
+        await expect(cards.first()).toBeVisible();
+        await cards.first().focus();
+        for (let step = 0; step < 6; step += 1) {
+            await page.keyboard.press('Tab');
+            const where = await page.evaluate(() => ({
+                onCard: document.activeElement?.matches('.cards > .card a') ?? false,
+                bottom: document.activeElement?.getBoundingClientRect().bottom ?? Infinity,
+                sheet: document.querySelector('.tour')?.getBoundingClientRect().top ?? 0,
+            }));
+            // Still on the cards, and above the sheet.
+            expect(where.onCard, `focus after ${String(step + 1)} presses`).toBe(true);
+            expect(where.bottom, `focus after ${String(step + 1)} presses`).toBeLessThanOrEqual(
+                where.sheet
+            );
+        }
+    });
+});
