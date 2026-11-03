@@ -29,20 +29,20 @@ test('opens on a first visit, walks every stop, and stays closed once finished',
     await expect(page).toHaveURL(/product=SL-00008/);
     await expect(page.getByText(/There is no product/)).toBeVisible();
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
-    await expect(page.getByRole('heading', { level: 1 })).not.toContainText('results');
+    // A member is shown the product, marked as theirs alone.
+    const main = page.getByRole('main');
+    await expect(main.getByText('Members only')).toBeVisible();
+    await expect(main.getByText(/There is no product/)).toBeHidden();
     await expect(tour).toBeVisible();
 
-    let finished = false;
-    for (let i = 0; i < 20 && !finished; i += 1) {
-        const finish = tour.getByRole('button', { name: 'Finish' });
-        if (await finish.isVisible()) {
-            await finish.click();
-            finished = true;
-        } else {
-            await tour.getByRole('button', { name: 'Next' }).click();
-        }
+    // Every stop after the fifth is one Next away, and the last says Finish in place of Next.
+    for (let next = 5; next < STOPS.length; next += 1) {
+        await expect(tour.getByRole('button', { name: 'Finish' })).toHaveCount(0);
+        await tour.getByRole('button', { name: 'Next' }).click();
     }
-    expect(finished).toBe(true);
+    await expect(tour).toContainText(`Stop ${String(STOPS.length)} of ${String(STOPS.length)}`);
+    await expect(tour.getByRole('button', { name: 'Next' })).toHaveCount(0);
+    await tour.getByRole('button', { name: 'Finish' }).click();
     await expect(tour).toBeHidden();
 
     await page.reload();
@@ -164,6 +164,17 @@ const coveredByTour = (page: Page) =>
         );
     });
 
+test('stands the tour off the page in the dark theme', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/');
+    await expect(page.getByRole('complementary', { name: 'Tour' })).toBeVisible();
+    const backgrounds = await page.evaluate(() => ({
+        page: getComputedStyle(document.body).backgroundColor,
+        tour: getComputedStyle(document.querySelector('.tour') ?? document.body).backgroundColor,
+    }));
+    expect(backgrounds.tour).not.toBe(backgrounds.page);
+});
+
 test('keeps focus on Previous when it reaches the first stop', async ({ page }) => {
     await page.goto('/');
     const tour = page.getByRole('complementary', { name: 'Tour' });
@@ -214,6 +225,21 @@ test('lands every stop on the page its body describes', async ({ page }) => {
 test('the tour never covers a card that focus reaches', async ({ page }) => {
     await page.goto('?category=clothing');
     await expect(page.getByRole('complementary', { name: 'Tour' })).toBeVisible();
+    // Some of the cards Tab reaches start out under the tour, so keeping them clear is the test.
+    const under = await page.evaluate(() => {
+        const tour = document.querySelector('.tour')?.getBoundingClientRect();
+        if (!tour) return 0;
+        return [...document.querySelectorAll('.cards > .card a')].slice(0, 13).filter((card) => {
+            const box = card.getBoundingClientRect();
+            return (
+                box.right > tour.left &&
+                box.left < tour.right &&
+                box.bottom > tour.top &&
+                box.top < tour.bottom
+            );
+        }).length;
+    });
+    expect(under).toBeGreaterThan(0);
     await page.locator('.cards > .card a').first().focus();
     for (let step = 0; step < 12; step += 1) {
         await page.keyboard.press('Tab');

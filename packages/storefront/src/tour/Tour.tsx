@@ -52,6 +52,9 @@ const useRoomForTour = (sheet: RefObject<HTMLElement | null>) => {
     }, [sheet]);
 };
 
+/** A test's file, without the folders it is in. */
+const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
+
 /** Escape closes the tour from anywhere inside it, unless a control inside used the key. */
 const closeOnEscape = (onClose: () => void) => (event: React.KeyboardEvent) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -134,9 +137,15 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 <p className="tour-count" aria-hidden="true">
                     {position}
                 </p>
-                <button ref={closer} type="button" className="button" onClick={onClose}>
+                <button ref={closer} type="button" className="button tour-close" onClick={onClose}>
                     Close
                 </button>
+            </div>
+            <div className="tour-progress" aria-hidden="true">
+                <span
+                    className="tour-progress-done"
+                    style={{ inlineSize: `${String(((index + 1) / STOPS.length) * 100)}%` }}
+                />
             </div>
             <div aria-live="polite">
                 <p className="visually-hidden">{position}</p>
@@ -148,13 +157,18 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 {stop.tests.map((test, i) => (
                     <span key={test}>
                         {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
-                        <code>{test}</code>
+                        {/* Named by its file, with the path from the repository root on hover. */}
+                        <code title={test}>{fileName(test)}</code>
                     </span>
                 ))}
             </p>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink className="button tour-try" to={stop.to} navigate={tryIt}>
+                    <StateLink
+                        className="button button-primary tour-try"
+                        to={stop.to}
+                        navigate={tryIt}
+                    >
                         Try it
                     </StateLink>
                 )}

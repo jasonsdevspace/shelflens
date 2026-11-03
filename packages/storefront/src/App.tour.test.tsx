@@ -1,5 +1,5 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { NARROW } from './app/useMediaQuery.js';
 import { open } from './test/store.jsx';
@@ -31,11 +31,17 @@ describe('the tour', () => {
 
     it('marks the page with its height while it is open, so focus is kept clear of it, and unmarks it once closed', async () => {
         localStorage.removeItem('shelflens.tour');
+        // A document draws nothing, so the tour is given a height to be measured at.
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+            this: HTMLElement
+        ) {
+            return this.matches('.tour') ? new DOMRect(0, 0, 384, 217) : new DOMRect();
+        });
         const user = await open();
         const tour = screen.getByRole('complementary', { name: 'Tour' });
         expect(document.documentElement).toHaveClass('is-touring');
         // Its height as drawn, for the room the page keeps above it.
-        expect(document.documentElement.style.getPropertyValue('--tour-height')).toMatch(/px$/);
+        expect(document.documentElement.style.getPropertyValue('--tour-height')).toBe('217px');
         await user.click(within(tour).getByRole('button', { name: 'Close' }));
         expect(document.documentElement).not.toHaveClass('is-touring');
         expect(document.documentElement.style.getPropertyValue('--tour-height')).toBe('');
@@ -67,7 +73,7 @@ describe('the tour', () => {
         expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
     });
 
-    it('lists a stop\'s tests with commas and a last "and"', async () => {
+    it('names a stop\'s tests by their files, with commas and a last "and"', async () => {
         localStorage.removeItem('shelflens.tour');
         const user = await open();
         const tour = screen.getByRole('complementary', { name: 'Tour' });
@@ -76,8 +82,12 @@ describe('the tour', () => {
             await user.click(within(tour).getByRole('button', { name: 'Next' }));
         }
         expect(tour.querySelector('.tour-test')).toHaveTextContent(
-            'Tested in packages/engine/src/search.test.ts, packages/engine/src/synonyms.test.ts, packages/engine/src/rules.test.ts and packages/storefront/src/results/ProductCard.test.tsx'
+            'Tested in search.test.ts, synonyms.test.ts, rules.test.ts and ProductCard.test.tsx'
         );
+        // Each file keeps its path from the repository root, on hover.
+        expect(
+            [...tour.querySelectorAll('.tour-test code')].map((code) => code.getAttribute('title'))
+        ).toEqual(STOPS[index]?.tests);
     });
 
     it('keeps focus on Previous when it reaches the first stop', async () => {
