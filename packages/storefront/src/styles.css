@@ -797,6 +797,18 @@ h4 {
     border-radius: var(--radius);
 }
 
+/* The rules a sort set aside, with the way back after the line rather than inside it. */
+.set-aside {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+}
+
+.set-aside p {
+    margin: 0;
+}
+
 .pagination {
     display: flex;
     flex-wrap: wrap;

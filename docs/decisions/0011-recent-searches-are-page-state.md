@@ -4,11 +4,11 @@
 
 ## Context
 
-A shopper who searched this store before wants to run that search again without retyping it,
-and a shopper on a shared device wants that list gone. Release 2 adds the list to the search
-box. The worker already keeps every search this browser made, as events in IndexedDB, and the
-box already has a popover with suggested queries in it, so two questions had real alternatives:
-where the list lives, and how it sits beside the suggestions.
+A shopper who searched this store before wants to run that search again without retyping it, and a
+shopper on a shared device wants that list gone. The search box offers the list. The worker already
+keeps every search this browser made, as events in IndexedDB, and the box already has a popover
+with suggested queries in it, so two questions had real alternatives: where the list lives, and how
+it sits beside the suggestions.
 
 ## Options
 
@@ -27,12 +27,12 @@ of its own beside a visible heading.
 
 ## Decision
 
-**Local storage, in the page.** The events honor Global Privacy Control and stop entirely under
-it, which is right for telemetry and wrong for a convenience that never leaves the browser.
-A list the box reads from local storage is page state, like the tour's "seen" mark: nothing is
-sent, nothing is asked of the API, and a private window or a refused store means nothing is
-kept and nothing is offered. The storefront reads storage each time the box opens, so a clear
-in another tab shows on the next open.
+**Local storage, in the page.** The events honor Global Privacy Control and stop entirely under it,
+which is right for telemetry and wrong for a convenience that never leaves the browser. A list the
+box reads from local storage is page state, like the tour's "seen" mark: nothing is sent, nothing
+is asked of the API, and a private window or a refused store means nothing is kept and nothing is
+offered. The box reads storage when it opens and when another tab writes the list, so a clear in
+another tab shows at once.
 
 **A source, not a mode.** What was typed filters the list by prefix, on the whole phrase or on
 any word, from the first character. With nothing typed the list is the whole history, newest
@@ -49,8 +49,8 @@ keys, so nothing one keystroke from a phrase can wipe the list. It says "Recent 
 cleared" through the status line and puts focus back in the box.
 
 **On the answer, not the search.** A phrase joins the list when its result lands with something
-found. A typo that found nothing is never offered again, and the nothing-found page stays a page
-with a way forward rather than a place to return to.
+found as typed. A typo that found nothing, or found only close matches, is never offered again, and
+the nothing-found page stays a page with a way forward rather than a place to return to.
 
 ## Consequences
 
@@ -68,9 +68,10 @@ with a way forward rather than a place to return to.
 
 ## How it is tested
 
-- The store: newest first, each phrase once however it was capitalized, a cap, nothing blank,
-  a clear that leaves nothing behind, storage that holds something else or refuses, a change in
-  another tab seen on the next read, and the prefix match on a phrase or any word in it.
+- The store: newest first, each phrase once however it was capitalized, a cap, nothing blank, a
+  clear that leaves nothing behind, storage that holds something else or refuses, a change in
+  another tab seen as it happens and on the next read, and the prefix match on a phrase or any word
+  in it.
 - The box: the list on focus under its heading with an audit, nothing when there is nothing,
   filtering from the first character, groups above suggestions with no phrase twice, the clear
   button by Tab and Enter with the announcement and the focus return, Escape from the button,

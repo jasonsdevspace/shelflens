@@ -22,7 +22,7 @@
         "build": "tsc -b tsconfig.build.json"
     },
     "dependencies": {
-        "@jasonsdevspace/shelflens": "0.4.0",
+        "@jasonsdevspace/shelflens": "0.4.1",
         "@shelflens/catalog": "0.1.0"
     },
     "license": "MIT"

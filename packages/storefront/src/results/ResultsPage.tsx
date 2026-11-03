@@ -42,6 +42,7 @@ import { Pagination } from './Pagination.jsx';
 import { ProductCard } from './ProductCard.jsx';
 import { toRuleInput } from './rule-input.js';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
+import { setAsideBySort } from './setAside.js';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
@@ -261,14 +262,22 @@ const Crumbs = ({
     );
 };
 
+/** The Sort by control's id, beside the results heading it belongs to. */
+const sortIdOf = (heading: string) => `${heading}-sort`;
+
 const SortField = ({
+    id,
     sortKey,
     state,
     navigate,
-}: Pick<ResultsPageProps, 'state' | 'navigate'> & { readonly sortKey: SortKey }) => (
+}: Pick<ResultsPageProps, 'state' | 'navigate'> & {
+    readonly id: string;
+    readonly sortKey: SortKey;
+}) => (
     <label className="sort">
         <span className="sort-label">Sort by</span>
         <select
+            id={id}
             className="select"
             value={sortKey}
             onChange={(event) =>
@@ -392,42 +401,61 @@ const Toolbar = ({
             >
                 Rules
             </button>
-            {result.total > 0 && <SortField sortKey={sortKey} state={state} navigate={navigate} />}
+            {result.total > 0 && (
+                <SortField id={sortIdOf(id)} sortKey={sortKey} state={state} navigate={navigate} />
+            )}
         </div>
     );
 };
 
 /**
- * The rules a sort set aside, by name, and the way back. A sort only
- * reorders, so the pins, boosts and buries give way to it, while a rule's
- * hides still hold.
+ * The rules a sort set aside, and the way back. The status is always in the
+ * page, empty while nothing is set aside, so a screen reader hears the line
+ * when a sort brings it. The button stays out of the status, so only the line
+ * is heard, and it puts focus on Sort by, since the button goes with the line.
  */
 const SetAside = ({
-    sortKey,
-    setAside,
+    said,
+    heading,
+    onSortByRelevance,
 }: {
-    readonly sortKey: SortKey;
-    readonly setAside: readonly string[];
-}) => {
-    const one = setAside.length === 1;
-    return (
-        <p className="callout" role="status">
-            The sort &ldquo;{SORTS[sortKey].label}&rdquo; sets aside the pins, boosts and buries of{' '}
-            {one ? 'the rule' : 'the rules'} {setAside.join(', ')}. Choose &ldquo;Relevance&rdquo;
-            under &ldquo;Sort by&rdquo; to bring {one ? 'it' : 'them'} back.
-        </p>
-    );
-};
+    readonly said: string | undefined;
+    readonly heading: string;
+    readonly onSortByRelevance: () => void;
+}) => (
+    <div className={said === undefined ? undefined : 'callout set-aside'}>
+        <p role="status">{said}</p>
+        {said !== undefined && (
+            <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                    onSortByRelevance();
+                    (
+                        document.getElementById(sortIdOf(heading)) ??
+                        document.getElementById(heading)
+                    )?.focus();
+                }}
+            >
+                Sort by relevance
+            </button>
+        )}
+    </div>
+);
 
 /** What the page says over the cards: a preview in progress, and rules a sort set aside. */
 const Notices = ({
     previewing,
     sortKey,
     setAside,
+    heading,
+    onSortByRelevance,
 }: {
     readonly previewing: boolean;
     readonly sortKey: SortKey;
     readonly setAside: readonly string[];
+    readonly heading: string;
+    readonly onSortByRelevance: () => void;
 }) => (
     <>
         {previewing && (
@@ -436,7 +464,11 @@ const Notices = ({
                 rule&rdquo;.
             </p>
         )}
-        {setAside.length > 0 && <SetAside sortKey={sortKey} setAside={setAside} />}
+        <SetAside
+            said={setAsideBySort(sortKey, setAside)}
+            heading={heading}
+            onSortByRelevance={onSortByRelevance}
+        />
     </>
 );
 
@@ -507,18 +539,24 @@ const Answer = ({
     navigate,
     previewing,
     sortKey,
+    heading,
     onPage,
+    onSortByRelevance,
 }: Pick<ResultsPageProps, 'state' | 'navigate'> & {
     readonly result: Result;
     readonly previewing: boolean;
     readonly sortKey: SortKey;
+    readonly heading: string;
     readonly onPage: (page: number) => void;
+    readonly onSortByRelevance: () => void;
 }) => (
     <>
         <Notices
             previewing={previewing}
             sortKey={sortKey}
             setAside={result.merchandising.setAsideBySort}
+            heading={heading}
+            onSortByRelevance={onSortByRelevance}
         />
         {result.total === 0 && (
             <NoResults state={state} navigate={navigate} offered={result.noResults} />
@@ -625,11 +663,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                     name: hit.product.name,
                 }))}
                 brands={brandsOf(result)}
-                byRelevance={sortKey === 'relevance'}
-                onSortByRelevance={() => {
-                    const { sort: _sort, ...rest } = state;
-                    navigate({ ...rest, page: 1 });
-                }}
+                setAside={result.merchandising.setAsideBySort}
             />
         </RulesColumn>
     ) : (
@@ -683,7 +717,12 @@ export const ResultsPage = (props: ResultsPageProps) => {
                             navigate={navigate}
                             previewing={previewing}
                             sortKey={sortKey}
+                            heading={`${id}-heading`}
                             onPage={toPage}
+                            onSortByRelevance={() => {
+                                const { sort: _sort, ...rest } = state;
+                                navigate({ ...rest, page: 1 });
+                            }}
                         />
                     )}
                 </section>

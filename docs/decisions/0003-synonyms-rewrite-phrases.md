@@ -23,9 +23,9 @@ once per query word it stood in for.
 the phrase it matched becomes one unit of the query that any of the rule's alternatives may
 satisfy. This is how search engines handle multi-word synonyms.
 
-**C. Expand at index time.** Index "tee" products under "t-shirt" as well. Any rule change means
-reindexing, which the merchandiser panel in a later milestone cannot afford, and the engine
-could no longer say which word the shopper typed and which the rule supplied.
+**C. Expand at index time.** Index "tee" products under "t-shirt" as well. Every rule change would
+mean reindexing, and the engine could no longer say which word the shopper typed and which the rule
+supplied.
 
 ## Decision
 

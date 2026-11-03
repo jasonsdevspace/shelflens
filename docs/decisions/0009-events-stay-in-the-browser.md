@@ -4,16 +4,16 @@
 
 ## Context
 
-Release 2 starts with what a shopper does: the phrases searched, the results clicked, the
-products viewed. Recommendations and a nudge to ranking are built from them later. The brief
-sets the rules for collecting them: batched and sent with `sendBeacon`, never blocking the page,
-surviving being blocked, counting a retried batch once, carrying no personal data, and stopping
-entirely when the browser sends Global Privacy Control.
+The store collects what a shopper does: the phrases searched, the results clicked, the products
+viewed. Recommendations and a nudge to ranking are built from them. The rules for collecting them
+are strict: batched and sent with `sendBeacon`, never blocking the page, surviving being blocked,
+counting a retried batch once, carrying no personal data, and stopping entirely when the browser
+sends Global Privacy Control.
 
-Two things about this project make the usual answer not fit. The API is a service worker in
-the visitor's browser, which the browser stops after a few seconds idle, so there is no process
-that stays up to hold what arrived. And the public demo accepts only its own persisted
-operations, refusing every `POST` to `graphql`, which is where a mutation would have to go.
+Two things about this project make the usual answer not fit. The API is a service worker in the
+visitor's browser, which the browser stops after a few seconds idle, so there is no process that
+stays up to hold what arrived. And every host takes only the storefront's persisted operations
+unless told otherwise, refusing a `POST` to `graphql`, which is where a mutation would have to go.
 
 ## Options
 
@@ -32,22 +32,22 @@ recommendations rail has something to show on a first visit. Or none, so the rai
 A plain `POST`, kept in IndexedDB, with no seeded history.
 
 A beacon cannot set a header, so the viewer header the API varies on is not available, and a
-mutation would need a hole in the persisted-only rule for an operation that returns nothing.
-The receiver is one function in the API package, `receiveEvents`, called by the worker, the
-Node server and the dev server, so the three cannot disagree about what a batch is. A batch is
-a closed set of fields, and one unknown field refuses the whole batch, so nothing a page did not
-mean to send can arrive by accident. A phrase is folded to a few lower case words and capped,
-so a name typed into the search box arrives as words, never as a record. Every event carries an
-id the page made, and the store keeps each id once, so a beacon the browser took and delivered
-twice counts once. A batch carrying the browser's privacy signal is answered and dropped, and
-the page under that signal queues nothing in the first place.
+mutation would need full queries let in for an operation that returns nothing. The receiver is one
+function in the API package, `receiveEvents`, called by the worker, the Node server and the dev
+server, so the three cannot disagree about what a batch is. A batch is a closed set of fields, and
+one unknown field refuses the whole batch, so nothing a page did not mean to send can arrive by
+accident. A phrase is folded to a few lower case words and capped, so a name typed into the search
+box arrives as words, never as a record. Every event carries an id the page made, and the store
+keeps each id once, so a beacon the browser took and delivered twice counts once. A batch carrying
+the browser's privacy signal is answered and dropped, and the page under that signal queues nothing
+in the first place.
 
-Memory would lose the history between two clicks, since the worker is stopped in between.
-Storage in the page would make the page the owner of API state, which the Node host could not
-share. IndexedDB outlives the worker, the page can open it so a browser test can see what
-arrived, and it needs nothing from Node, so the implementation sits with the worker and the
-memory implementation serves the Node server and the tests. The store is bounded at ten
-thousand events, oldest first out.
+Memory would lose the history between two clicks, since the worker is stopped in between. Storage
+in the page would make the page the owner of API state, which the Node host could not share.
+IndexedDB outlives the worker, the page can open it so a browser test can see what arrived, and it
+needs nothing from Node, so the implementation sits with the worker and the memory implementation
+serves the Node server, the dev server and the tests. The store is bounded at ten thousand events,
+oldest first out.
 
 A seeded history would cost the thing the rail exists to show. With shipped history the cold
 start fallback would never fire in the demo, and the tour would name a test for behavior a
@@ -64,11 +64,11 @@ showing what was viewed together or the category's most rated.
   would find nothing there.
 - The receiver takes no viewer, so an event is not tied to a group. Pricing and visibility are
   applied when recommendations are read, not when events are written.
-- Each event carries the tab it happened in, as a random id kept in session storage until the
-  tab closes, which is what "viewed together" means. A tab duplicated or opened from the page
-  starts with a copy of that storage and shares the id, which counts as the same visit. The tab asking for a rail is taken to have
-  viewed the product already, since its own view may still be on its way, and a view is sent at
-  once rather than after the pause for the same reason.
+- Each event carries the tab it happened in, as a random id kept in session storage until the tab
+  closes, which is what "viewed together" means. A tab duplicated or opened from the page starts
+  with a copy of that storage and shares the id, which counts as the same visit. The tab asking for
+  a rail is taken to have viewed the product already, since its own view may still be on its way,
+  and a view is sent at once rather than after the pause for the same reason.
 - An answer built from the events says it is volatile, and the handler, the browser's kept
   answers and the page's memory all leave it out, so the rail is current on every open while the
   product's own answer stays cacheable.

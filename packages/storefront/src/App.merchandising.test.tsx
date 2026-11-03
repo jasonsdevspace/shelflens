@@ -35,10 +35,23 @@ describe('explain mode', () => {
         expect(screen.queryByText(/sets aside the pins/)).toBeNull();
         await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'price-asc');
         await settled();
-        // It names the rule and the way back, in the sort's own words.
-        expect(screen.getByText(/sets aside the pins/)).toHaveTextContent(
-            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket. Choose “Relevance” under “Sort by” to bring it back.'
+        // It names the rule in the sort's own words, in the status that was there all along.
+        const said = screen.getByText(/sets aside the pins/);
+        expect(said).toHaveTextContent(
+            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket.'
         );
+        expect(said).toHaveAttribute('role', 'status');
+        // The way back is a button beside the line, outside the status, so only the line is heard.
+        const back = screen.getByRole('button', { name: 'Sort by relevance' });
+        expect(said).not.toContainElement(back);
+        await user.click(back);
+        await settled();
+        const sort = screen.getByRole('combobox', { name: 'Sort by' });
+        expect(sort).toHaveValue('relevance');
+        expect(sort).toHaveFocus();
+        expect(said).toBeInTheDocument();
+        expect(said).toBeEmptyDOMElement();
+        expect(cards()[0]?.closest('li')).toHaveTextContent(featured.name);
     });
 });
 

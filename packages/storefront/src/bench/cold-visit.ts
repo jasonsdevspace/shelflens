@@ -11,7 +11,7 @@ import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { sampleCsv } from '../try/sample.js';
 import type { StartedMessage } from '../worker/handle.js';
 import { startPreview } from './preview.js';
-import { gitCommit, megabytes, today } from './record.js';
+import { megabytes, type Recorded, recorded, recordedTable } from './record.js';
 import { PHONE_SLOWDOWN } from './sizes.js';
 
 /**
@@ -206,7 +206,7 @@ const kb = (bytes: number): string => `${(bytes / 1024).toFixed(0)} KB`;
 const report = (
     runs: readonly Run[],
     sizes: { catalog: number; page: number; worker: number },
-    recorded: { date: string; commit: string }
+    recorded: Recorded
 ): string => `# Cold first visit
 
 Run \`npm run bench:cold\` to reproduce it. The raw results are in [cold-visit.json](cold-visit.json).
@@ -216,9 +216,13 @@ downloads the catalog and the rules and builds the store, claims the page, and t
 search. Each run is a fresh browser context against the production build served locally, so the
 numbers leave out the network and show what the browser itself has to do.
 
-| Recorded | Commit | Catalog (gzip) | Page (gzip) | Worker (gzip) |
-| -------- | ------ | -------------- | ----------- | ------------- |
-| ${recorded.date} | \`${recorded.commit}\` | ${kb(sizes.catalog)} | ${kb(sizes.page)} | ${kb(sizes.worker)} |
+${recordedTable(recorded)}
+
+What a first visit downloads, each as a server sends it:
+
+| Catalog (gzip) | Page (gzip) | Worker (gzip) |
+| -------------- | ----------- | ------------- |
+| ${kb(sizes.catalog)} | ${kb(sizes.page)} | ${kb(sizes.worker)} |
 
 | Run | Ready to search | Catalog and rules downloaded | Store built | First suggestion |
 | --- | --------------- | ---------------------------- | ----------- | ---------------- |
@@ -322,12 +326,11 @@ const main = async () => {
         } finally {
             rmSync(folder, { recursive: true, force: true });
         }
-        const recorded = { date: today(), commit: gitCommit() };
-        const text =
-            report(runs, sizes, recorded) + capReport(atCap.laptop, atCap.phone, fileBytes);
+        const run = recorded();
+        const text = report(runs, sizes, run) + capReport(atCap.laptop, atCap.phone, fileBytes);
         writeFileSync(
             `${OUT}.json`,
-            `${JSON.stringify({ recorded, sizes, runs, atCap }, null, 2)}\n`
+            `${JSON.stringify({ recorded: run, sizes, runs, atCap }, null, 2)}\n`
         );
         writeFileSync(`${OUT}.md`, text);
         console.log(text);

@@ -4,10 +4,11 @@
 
 ## Context
 
-A storefront asks the same questions over and over. The category pages, the facet counts and
-the popular phrases are the same for everyone who asks, and answering each from memory is the
+A storefront asks the same questions over and over. The category pages, the facet counts and the
+popular phrases are the same for everyone who asks, and answering each from memory is the
 difference between an engine that is fast and a site that feels fast. So answers get cached, in
-more than one place: in the handler that runs the API, and later in the page and at the edge.
+more than one place: in the handler that runs the API, in the page, and in the browser or at an
+edge.
 
 Every cache has a key, and the key is where search caches go wrong. The API prices every
 product for the viewer named in the request, and hides the products the viewer may not see.
@@ -56,16 +57,16 @@ What the key does not contain is the time, so a rule with a time window may stay
 up to the cache's age limit after its window closes. That is the age limit's job, and the
 default is five minutes.
 
-**Amended with Release 2.** The clicks shoppers make nudge ranking, and they arrive all the time,
-so they could not be a rule: a rule is fingerprinted into the version, and every batch would
-have moved every key in three layers and emptied the page's memory. Nor could they be applied
-as they arrive, since then page two would disagree with page one. So the clicks are folded into
-the store when it is built, as a fingerprint in the version beside the rules', and the worker
-builds the store again only when a visit begins and the clicks have changed since. Within a
-visit the ranking holds still and every kept answer stays right. A store built with new clicks
-is a new version, so nothing kept under the old one is served again, which is the same rule the
-catalog and the rules already follow. An answer that reads the events as they are now, the rail
-beside a product, says it is volatile instead, and no layer keeps it.
+**Amended for clicks.** The clicks shoppers make nudge ranking, and they arrive all the time, so
+they could not be a rule: a rule is fingerprinted into the version, and every batch would have
+moved every key in three layers and emptied the page's memory. Nor could they be applied as they
+arrive, since then page two would disagree with page one. So the clicks are folded into the store
+when it is built, as a fingerprint in the version beside the rules', and the worker builds the
+store again only when a visit begins and the clicks have changed since. Within a visit the ranking
+holds still and every kept answer stays right. A store built with new clicks is a new version, so
+nothing kept under the old one is served again, which is the same rule the catalog and the rules
+already follow. An answer that reads the events as they are now, the rail beside a product, says it
+is volatile instead, and no layer keeps it.
 
 **Amended with one store host.** The worker is no longer the only host that folds the clicks in.
 The Node server and the dev server serve the same store host, and each treats a request that
@@ -89,19 +90,20 @@ Three caches share the key, and each holds it in the form its medium allows.
   is asked for again. The memory is one object the page holds and hands to each client, so a
   reviewer switching between guest and member keeps both viewers' answers, kept apart by the
   key, and the version.
-- **The browser, or an edge.** The storefront's operations are persisted: each is named at
-  build time by the hash of its text, and the page keeps only the name, since it never sends the
-  text. The client sends the name in a `GET` with the
-  variables and the version it last saw in the URL, and the viewer in a header the cache varies
-  on. An answer is marked cacheable only when the URL named the version that answered and
-  nothing failed. So the URL is the key, a new version is a new URL, and nothing is ever purged.
-  On the Node host that is the browser's own HTTP cache, or an edge in front of it. On the demo
-  it cannot be: a response a service worker makes up never enters the browser's HTTP cache. So
-  the worker keeps the layer itself, in the Cache API, under the same URL, for the age the
-  headers say and varying on the same header, and drops the other versions' URLs when the store
-  is built. The public demo accepts only these named operations. A full query is refused, so
-  nothing a browser can send runs a query the storefront did not ship.
-- **The handler.** `withResponseCache`, above, in the service worker and the Node server.
+- **The browser, or an edge.** The storefront's operations are persisted: each is named at build
+  time by the hash of its text, and the page keeps only the name, since it never sends the text.
+  The client sends the name in a `GET` with the variables and the version it last saw in the URL,
+  and the viewer in a header the cache varies on. An answer is marked cacheable only when the URL
+  named the version that answered and nothing failed. So the URL is the key, a new version is a new
+  URL, and nothing is ever purged. On the Node host that is the browser's own HTTP cache, or an
+  edge in front of it. On the demo it cannot be: a response a service worker makes up never enters
+  the browser's HTTP cache. So the worker keeps the layer itself, in the Cache API, under the same
+  URL, for the age the headers say and varying on the same header, and drops the other versions'
+  URLs when the store is built. Every host accepts only these named operations unless told
+  otherwise, and the demo never is, so nothing a browser can send runs a query the storefront did
+  not ship.
+- **The handler.** `withResponseCache`, above, which the store host wraps around every store it
+  builds, for the service worker, the Node server and the dev server alike.
 
 The handler's cache keys on the query text and the page's on the name. They are the same key
 in different spellings: the manifest maps each name to exactly the text the handler sees, and a

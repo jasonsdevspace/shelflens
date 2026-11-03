@@ -34,6 +34,24 @@ const result = engine.search({
 A document is an id, some searchable text by field, and some attributes to filter and sort by.
 The engine knows nothing about products. Whoever owns the catalog decides what becomes a document.
 
+## What it exports
+
+`createEngine(documents, config)` builds an engine, and its `search`, `recover` and
+`reconfigure` are the whole interface. Beside it, the package exports:
+
+- `EngineError`, the error the engine throws for a config or a request it refuses, with a `code`.
+- `signalWeight`, `SIGNAL_CAP` and `SIGNAL_SATURATION`, so a host can show what a count of
+  choices does to a score.
+- `normalize`, `foldAccents`, `tokenize` and `stem`, the rules the engine applies to the catalog
+  and the query alike, for a host that has to match text the same way.
+- `withinEdits` and `withinOneEdit`, the edit-distance checks the fuzzy pass and the recovery use.
+
+And the types of everything it takes and gives: `Engine`, `EngineConfig`, `Document`,
+`TextField`, `AttributeKind`, `AttributeValue`, `SynonymRule`, `FacetConfig`, `Rule`,
+`RuleTrigger`, `RuleAdjustment`, `SearchRequest`, `Filter`, `SortClause`, `SearchResult`, `Hit`,
+`TermMatch`, `MatchKind`, `MatchMode`, `RuleEffect`, `SignalEffect`, `Facet`, `ValueBucket`,
+`RangeBucket` and `Recovery`.
+
 ## How matching works
 
 - **The same normalization on both sides.** Accents are folded, case is folded, hyphenated words
@@ -99,12 +117,13 @@ pinned or buried takes no signal at all, so the crowd never moves what a merchan
 hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
 new counts over the same index.
 
-Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins
-still apply under a sort scoped to the rule's own filter, which is how a category's merchandising
-survives its position sort. A hide says what may be shown rather than where, so it holds under
-every sort. A rule whose pins, boosts or buries are set aside by the sort is reported in the
-result, so a page can say that sorting by price switched the merchandising off. Every effect a rule has on a
-result is recorded on that hit, alongside its matches, for explain mode.
+Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins still
+apply under a sort scoped to the rule's own filter, which is how a category's merchandising
+survives its position sort, while a boost or a bury in that rule is set aside there. A hide says
+what may be shown rather than where, so it holds under every sort. A rule whose pins, boosts or
+buries are set aside by the sort is reported in the result, so a page can say that sorting by price
+switched the merchandising off. Every effect a rule has on a result is recorded on that hit,
+alongside its matches, for explain mode.
 
 ## Where it comes from
 

@@ -8,11 +8,23 @@ the page.
   the names and the types, and leaves the text to the API's manifest, since it never sends it. A named
   operation goes as a `GET` with its variables and the store version in the URL, so a cache can
   keep the answer under it. The client remembers answers too, on the API's one cache key, for a
-  count and an age, in a memory the page holds and shares between viewers. Beside it is the
-  latest-request helper
-  that gives each request a ticket, aborts the one before, and marks a late answer stale.
+  count and an age, in a memory the page holds and shares between viewers. Beside it are the
+  latest-request helper, which gives each request a ticket, aborts the one before, and marks a
+  late answer stale, and the clients of the rules path and of a visitor's catalog, which read a
+  host's reason for a refusal one way.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
   Apollo or urql, and [decision record 8](../../docs/decisions/0008-one-cache-key.md) the key.
+- **The first screen is in the page.** The build renders the strip, the masthead and the line for
+  a store that is still starting into each page's HTML, from the same components the script draws,
+  so the first paint is the page rather than a blank one, and nothing moves when the script takes
+  over. A browser with JavaScript turned off sees the line that says the store needs it.
+  [Decision record 16](../../docs/decisions/0016-the-first-screen-is-in-the-page.md) has the
+  choices.
+- **A product has a page of its own.** Opening a product shows where it sits in the categories,
+  its brand, material and rating, its price as a range across its variants in the store's
+  currency, what a guest pays beside a member price, a table of its colors, sizes and stock, and
+  a rail of other products. The way back returns to the results with focus on the card just
+  closed, or offers the store when the visit began on the product.
 - **Explain mode.** A toggle on the results page, carried in the URL, that asks the API for the
   explanation it carries on every hit and says under each card why it ranked there: which word
   matched which term in which field, exactly, by prefix, by synonym or corrected, and which rule
@@ -67,8 +79,7 @@ the page.
 - **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit
   and walks the gotchas the project exists to show, one stop each, with a link that puts the page
   in the state that shows it and the name of the test that proves it. A test checks every named
-  test exists. The brief's exit check for Release 1 is that a reviewer can trigger every
-  headline gotcha from the tour.
+  test exists, and a reviewer can trigger every headline gotcha from it.
 - **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
   prices change and say so, a product only members may see appears and says so, one line under
   the toolbar says what the switch changed on the page, and nothing in the URL or the query
@@ -90,14 +101,16 @@ the page.
   debounce and minimum length, and the results list. The tests drive the popover against a
   network shim that answers requests out of order, and run an axe audit over it.
 - **The API is a service worker.** `src/worker` builds the store from the shipped catalog during
-  install, claims the page on activation, and answers `graphql` under the site's path from inside
-  the page. It accepts only the storefront's own operations, by name, caches answers on the API's
+  install, claims the page on activation, and answers `graphql`, `events` and `rules` under the
+  site's path from inside the page, and a visitor's catalog too on the page for one, through the
+  API's store host and its one `routeOf`. A failure of its own is a 500 in the API's shape, as the
+  Node server answers. It accepts only the storefront's own operations, by name, caches answers on the API's
   one cache key, and keeps what the answer's headers allow in the Cache API under the answer's
   URL, since a response a worker makes up never enters the browser's own cache. Its handler is
   tested with plain fetch requests.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
-  Node handler from `@shelflens/server` on `/graphql`, so `npm run dev` needs no second process
-  and no worker fighting hot reloading.
+  Node handler from `@shelflens/server` on the paths the Node server serves, over the same store
+  host, so `npm run dev` needs no second process and no worker fighting hot reloading.
 - **Deployed by CI.** Once every check has passed on main, the workflow builds the page, the
   catalog, the rules and the worker for the path the project site is served under and publishes
   them to GitHub Pages at jasonsdevspace.com/shelflens/. A merge that fails a check is never
@@ -108,15 +121,23 @@ the page.
   fresh browser, records when the page was ready to search, how long the worker spent downloading
   the catalog and building the store, and how long the first suggestion took, and writes it to
   [docs/benchmarks](../../docs/benchmarks/cold-visit.md).
-- **Lighthouse scores a hundred for accessibility**, on the home page, a results page in explain
-  mode, a category and a product, checked in CI by `npm run lighthouse` after the browser tests.
+- **Lighthouse audits every page the demo serves.** `npm run lighthouse` runs after the browser
+  tests in CI, over the pages `src/bench/pages.ts` lists: the home page, a results page in explain
+  mode, a category, a product, the explainer, the widget's host page, the page for a visitor's own
+  catalog empty and with the sample loaded, and the widget's host page over that catalog. Each must
+  score a hundred for accessibility, and on a first visit at least ninety for performance, with the
+  largest paint inside two and a half seconds and a layout shift of no more than a tenth.
 - **A real browser in CI.** `npm run e2e` builds the production page, serves it, and runs
   Playwright against it on a desktop and a phone profile with the service worker answering, with
   an axe audit of each page it reaches. Nothing is mocked.
-- **Two budgets.** A test bundles the page and fails past 100 KB compressed or if anything from
-  GraphQL is in it. Another times every suggestion on the demo catalog and fails past the
-  popover's share of its 150 ms budget. `npm run bench:popover` records the measurement in
-  [docs/benchmarks](../../docs/benchmarks/popover.md).
+- **Budgets.** `src/budgets.ts` holds each download's budget, compressed: the page under 100 KB,
+  the page for a visitor's own catalog under 115 KB, the widget under 85 KB and the service worker
+  under 85 KB. A test bundles each entry and `npm run budget` measures what the build ships, and
+  both fail past a budget, on anything from GraphQL in a page or the widget, and on a test
+  fixture in anything. The search package holds the catalog under 400 KB and the API package its
+  browser bundle under 90 KB. Another test times every suggestion on the demo catalog and fails
+  past the popover's share of its 150 ms budget, and `npm run bench:popover` records the
+  measurement in [docs/benchmarks](../../docs/benchmarks/popover.md).
 
 ```bash
 npm run dev          # the page with hot reloading, API answered by the dev server

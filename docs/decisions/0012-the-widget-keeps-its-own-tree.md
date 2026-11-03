@@ -4,13 +4,12 @@
 
 ## Context
 
-Release 2 ends with the search box as a widget: one script a host page loads and mounts into an
-element of its own, so the popover works on a page that is not the store's. The brief asks for
-isolated styles, a stacking context of its own, and survival of the host's CSS, with a record on
-Shadow DOM against scoped CSS and on avoiding a clash with the host page's own React. The host
-pages worth designing for are the hostile ones: a reset on every element, a rule on every list
-item, a banner stacked over everything, a box that clips what it holds, and a React of a
-different version already on the page.
+The search box also ships as a widget: one script a host page loads and mounts into an element of
+its own, so the popover works on a page that is not the store's. It needs isolated styles, a
+stacking context of its own, and survival of the host's CSS, without clashing with the host page's
+own React. The host pages worth designing for are the hostile ones: a reset on every element, a
+rule on every list item, a banner stacked over everything, a box that clips what it holds, and a
+React of a different version already on the page.
 
 ## Options
 
@@ -30,16 +29,20 @@ the host names, with the callback as the override.
 ## Decision
 
 **A shadow root.** Selectors from the host stop at the root, so a rule on every list item or every
-input never reaches the box, and two widgets on one page never share an id. Scoped CSS loses to
-a reset on every element and to a rule on `ul li`, which beats a class on specificity, and the
-demo's host page carries both to show it. An iframe isolates more than this and demonstrates
-less: the popover cannot extend past the frame's box, a pick has to reach the top window by a
-message, and every question the brief asks a record about stops being a question. What a
-shadow root does not stop is inheritance, so the widget's container pins the font, the color,
-the line height and the letter spacing, and takes its colors from the one standard property a host sets to theme it, `color-scheme`, through `light-dark()`, with the light values alone for a browser that does not know it. The store's own theme script sets
-that property, so on the demo's host page the widget switches with the portfolio and the store.
-Layout and the stacking context sit on that inner container rather than on `:host`, where a host
-rule on the element would win, and the element is given `display: block` as an inline style at mount, which only an `!important` could beat.
+input never reaches the box, and two widgets on one page never share an id. Scoped CSS loses to a
+reset on every element and to a rule on `ul li`, which beats a class on specificity, and the demo's
+host page carries both to show it. An iframe isolates more than this and demonstrates less: the
+popover cannot extend past the frame's box, a pick has to reach the top window by a message, and
+the questions this record exists to answer stop being questions. What a shadow root does not stop
+is inheritance, so the widget's container pins the font at 16px, the color, the line height, the
+letter spacing, the text transform and the cursor. It takes its colors from the one standard
+property a host sets to theme it, `color-scheme`, through `light-dark()`, each chosen by name from
+the light and dark pairs in `tokens.css` that the store's pages share, with the light values alone
+for a browser that does not know it. The store's own theme script sets that property, so on the
+demo's host page the widget switches with the portfolio and the store. Layout and the stacking
+context sit on that inner container rather than on `:host`, where a host rule on the element would
+win, and the element is given `display: block` as an inline style at mount, which only an
+`!important` could beat.
 
 **The top layer.** A stacking context of its own makes the popover's order private but leaves the
 widget in the host's order at `auto`, so a fixed banner at a high z-index paints over the list
@@ -56,9 +59,12 @@ box and as wide as it, which no host can promise to keep in view.
 
 **A React of its own.** The widget's file carries React and nothing in it reads or sets a global
 the host's React depends on, so any version on the host is left alone, and a host built on React
-mounts the widget from an effect and calls the returned function from the cleanup. That costs the widget's size: React is nine tenths of the file, which ships minified at 76 KB compressed, the figure the bundle test records, as an ordinary build with one entry rather than library mode, which leaves whitespace in an ES file. A lighter runtime with React's shape would take most of that out, and does carry the hooks the box uses. It was not taken because the repo then has two frameworks and two
-sets of behavior to test, and one search box has to look the same in both. The record says what
-that choice costs so it can be revisited.
+mounts the widget from an effect and calls the returned function from the cleanup. That costs the
+widget's size: React is nine tenths of the file, which ships minified at 76 KB compressed, the
+figure the bundle test records, as an ordinary build with one entry rather than library mode, which
+leaves whitespace in an ES file. A lighter runtime with React's shape would take most of that out,
+and does carry the hooks the box uses. It was not taken because the repo then has two frameworks
+and two sets of behavior to test, and one search box has to look the same in both.
 
 **To the store, unless the host says otherwise.** A host hands the widget the API's address and
 the store's, and a search or a product opens the store's page. A host with a page of its own for

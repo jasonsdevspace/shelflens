@@ -35,9 +35,10 @@ tests. The cache is a memory with a key the project defines.
 
 Option C.
 
-- **Typed without a runtime.** The operations are written as GraphQL files and generated into
-  typed strings, so the client is typed end to end and ships no parser or printer. The page's
-  bundle holds React and the storefront's own code, and nothing from GraphQL.
+- **Typed without a runtime.** The operations are written as GraphQL files and generated as typed
+  documents that carry only the hash of their text, so the client is typed end to end and the page
+  ships no parser, printer or query text. The page's bundle holds React and the storefront's own
+  code, and nothing from GraphQL.
 - **Stale responses are a separate piece.** A "latest" helper hands each request a ticket,
   aborts the one before it, and reports a result as stale when its ticket is no longer current.
   The popover ignores stale results. The helper is tested on its own, and the popover is tested

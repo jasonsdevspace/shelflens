@@ -1,8 +1,9 @@
 # Decision records
 
 The decisions in this project that had a real alternative, with the option rejected, what the
-choice costs, and the test or measurement behind it. Each was written when the decision was made,
-so the evidence was still fresh.
+choice costs, and the test or measurement behind it. Records 1 to 15 were written when the decision
+was made, so the evidence was still fresh. Records 16 and 17 were written after the work they
+describe, from the code and its tests.
 
 1. [An engine of our own, rather than a library](0001-an-engine-of-our-own.md): the parts a
    library hides are the parts the project exists to show.
@@ -32,7 +33,7 @@ so the evidence was still fresh.
     button beside a visible heading, and joined only by a search that found something.
 12. [The widget keeps its own tree, and its popover takes the top layer](0012-the-widget-keeps-its-own-tree.md):
     a shadow root over scoped CSS, the top layer over a stacking context, a React of its own
-    with the cost measured, and a demo that is honest about what a real embed still lacks.
+    with the cost measured, and an embed on another origin answered by the Node server.
 13. [A visitor's catalog stays in the browser, in a store of its own](0013-a-visitors-catalog-stays-in-the-browser.md):
     the same worker registered again under `try/`, a file mapped onto the products the store
     already has, read in the page and checked by the worker, capped at what a phone can search.
@@ -42,3 +43,9 @@ so the evidence was still fresh.
 15. [One store host for every transport](0015-one-store-host-for-every-transport.md):
     the worker, the Node server and the dev server serve one store host from the API, which
     folds clicks in when a visit begins and keeps the index when a set of rules is saved.
+16. [The first screen is in the page, drawn by the components the script uses](0016-the-first-screen-is-in-the-page.md):
+    the strip, the masthead and the waiting line rendered at build time from the same components,
+    so they show before the script runs and nothing moves when it draws over them.
+17. [A sort sets aside what rules do to the order, and the page says so](0017-a-sort-sets-aside-what-rules-do-to-the-order.md):
+    hides hold under any sort, pins, boosts and buries give way to it and are named on the page,
+    and a category's own sort keeps the pins written for it.

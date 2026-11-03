@@ -1,6 +1,24 @@
 # Changelog
 
-The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0, Release 1.1 is 1.1.0, and Release 2 is 1.2.0 and 2.0.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes.
+The storefront is the demo at [jasonsdevspace.com/shelflens](https://jasonsdevspace.com/shelflens/), deployed from main on every merge. Release 1 is 1.0.0, Release 1.1 is 1.1.0, Release 2 is 1.2.0 and 2.0.0, and Release 2.1 is 2.1.0. From 1.2.0 on, each version is released from a tag on main, with its entry here as the release notes. The version follows the releases of the demo rather than its API, so a change that breaks something for developers is marked as breaking in its entry.
+
+## 2.1.0
+
+Release 2.1: the same store, faster and steadier, with one design throughout and the docs to match.
+
+- **Faster on a large catalog.** The store runs engine 0.4.1, which answers the widest searches of a hundred thousand products in about a third of the time, with the same results.
+- **A first screen at once.** The portfolio strip and the store's name show before the script runs, and the page no longer jumps as the store arrives. "Preparing the store." shows only when the start takes a moment, and says when a first visit takes longer. A browser with JavaScript turned off is told the store needs it.
+- **Every wait ends.** A store that cannot start says why within half a minute, and offers to try again when trying again can help. A private window that refuses the store is told to open a regular one.
+- **Clearer when something fails.** Results or a product that do not load say so in plain words, with a Try again button, and a failure inside the store says so in the page's own words rather than as a network error.
+- **Every sort works.** "Catalog order" sorts by each product's place in the catalog. A hidden product stays hidden under every sort, and the line under a sort names the rules it set aside and how to bring them back. Under "Featured", it says a category's own pins are kept.
+- **A results page that holds its shape.** The toolbar, the filter and rules drawers on a phone, and explain mode's cards keep their places on a phone and a laptop. Counts agree in number, as in "1 result", and a count of a thousand or more is grouped, as in "1,999 products".
+- **A product page that keeps your place.** Loading, switching "Shopping as" and going back keep the product and focus where they were. The sizes and colors table has a row for each color and price, a member sees what a guest pays beside the member price, and the rail says where its products come from.
+- **One look for every control.** Every dropdown has the same caret, every control the same focus ring, and every button an edge you can see in both themes. The one action a view asks for is a filled button, and an action that reads as text is always underlined. On a phone each dropdown and button is a thumb's size, and a dropdown's text no longer makes the page zoom.
+- **Your own products on a phone.** A long column name in your file no longer widens the page past the screen.
+- **Suggestions recover.** If suggestions fail to load, coming back to the same words asks again.
+- **The same search box everywhere.** The search box is the same height on another site's page as in the store.
+- **Safer pages.** Every page carries a security policy that lets it load only from its own site and run only its own scripts.
+- **For developers, breaking.** The Node server runs only the storefront's own operations unless `FULL_QUERIES=true`, and the schema's `Store.catalogVersion` is now `Store.version`.
 
 ## 2.0.0
 

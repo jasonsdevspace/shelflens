@@ -106,7 +106,9 @@ export type Merchandising = {
     /**
      * Rules whose pins, boosts or buries would have applied under a relevance
      * sort. A rule that also hides is in applied as well, since a hide holds
-     * under any sort.
+     * under any sort. A sort scoped to a rule's own filter, as a category's
+     * position is, keeps that rule's pins and hides, and lists the rule here
+     * when it also boosts or buries, since those do nothing under that sort.
      */
     readonly setAsideBySort: ReadonlyArray<Scalars['ID']['output']>;
 };

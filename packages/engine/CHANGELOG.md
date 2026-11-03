@@ -4,6 +4,18 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.4.1
+
+The same results as 0.4.0, reported fully under a category's own sort, with the package's page
+saying what it exports.
+
+- **Set-aside boosts are reported.** Under a sort scoped to a rule's own filter, such as a
+  category's position, a rule keeps its pins and hides, and its boosts and buries do nothing, as
+  in 0.4.0. Such a rule is now listed in `setAsideBySort` as well, so a page can say why its boosts
+  and buries did nothing. A rule that only boosts or buries is listed there alone and no longer in
+  `applied`.
+- **What it exports.** The README lists every value and type the package exports.
+
 ## 0.4.0
 
 The same results as 0.3.0, for less work, and on an older Node.

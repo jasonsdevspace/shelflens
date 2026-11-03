@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { type PopoverBench, runPopoverBench } from './bench.js';
-import { gitCommit, machine, megabytes, today } from './record.js';
+import { megabytes, type Recorded, recorded, recordedTable } from './record.js';
 
 /**
  * Measures what the popover waits for and writes the results.
@@ -20,10 +20,7 @@ const { values } = parseArgs({
     },
 });
 
-const report = (
-    bench: PopoverBench,
-    recorded: { date: string; commit: string; machine: string; node: string }
-): string => `# Popover benchmark
+const report = (bench: PopoverBench, recorded: Recorded): string => `# Popover benchmark
 
 Run \`npm run bench:popover\` to reproduce it. The raw results are in [popover.json](popover.json).
 
@@ -32,9 +29,7 @@ typing to pause before it asks, so the API has 50 ms to answer a suggestion. The
 the API answering in the same process, which is what the service worker does: the request is
 real, but there is no server and no network between the page and the answer.
 
-| Recorded   | Commit    | Machine                | Node    |
-| ---------- | --------- | ---------------------- | ------- |
-| ${recorded.date} | \`${recorded.commit}\` | ${recorded.machine} | ${recorded.node} |
+${recordedTable(recorded)}
 
 ## Starting the store
 
@@ -62,15 +57,10 @@ const main = async () => {
         products: Number(values.products),
         iterations: Number(values.iterations),
     });
-    const recorded = {
-        date: today(),
-        commit: gitCommit(),
-        machine: machine(),
-        node: process.version,
-    };
+    const run = recorded();
     mkdirSync(dirname(values.out), { recursive: true });
-    writeFileSync(values.out, `${JSON.stringify({ recorded, ...bench }, null, 4)}\n`);
-    writeFileSync(values.out.replace(/\.json$/, '.md'), report(bench, recorded));
+    writeFileSync(values.out, `${JSON.stringify({ recorded: run, ...bench }, null, 4)}\n`);
+    writeFileSync(values.out.replace(/\.json$/, '.md'), report(bench, run));
     console.log(
         `suggest p95 ${bench.suggest.p95Ms} ms, search p95 ${bench.search.p95Ms} ms, ` +
             `store built in ${bench.parseMs + bench.buildMs} ms`
