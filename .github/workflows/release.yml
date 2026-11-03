@@ -198,14 +198,20 @@ jobs:
               with:
                   persist-credentials: false
 
+            # Named for the part of the project it is, as the storefront's is, with the
+            # package's name on npm and the way to install it above the notes. The
+            # version is staged on npm, not yet live, so the line says it installs
+            # once promoted. The name is the package's own, read from its manifest.
             - name: Create the GitHub release
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   flags=""
                   [ "$PRERELEASE" = "true" ] && flags="--prerelease"
+                  package="$(jq -r .name packages/engine/package.json)"
+                  export NOTES_LEAD="The engine is [\`$package\`](https://www.npmjs.com/package/$package) on npm. Once this version is promoted there, install it with \`npm install $package@$VERSION\`."
                   scripts/github-release.sh "$TAG" "$VERSION" packages/engine/CHANGELOG.md \
-                      "@jasonsdevspace/shelflens $VERSION" $flags
+                      "ShelfLens engine $VERSION" $flags
 
     # The storefront is deployed from main by CI, so its release is a page
     # that names the version and says what changed. It is not marked as the

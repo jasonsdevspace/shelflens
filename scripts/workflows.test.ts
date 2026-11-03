@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
  * What the workflows promise that only reading them can hold: a name for
  * every job a reviewer sees in the checks, the screenshots taken in the
  * image of the Playwright the tests pin, and an engine published only as
- * the tarball the oldest Node check proved.
+ * the tarball the oldest Node check proved, and a release on GitHub named
+ * for the part of the project it is.
  */
 
 const ROOT = join(import.meta.dirname, '..');
@@ -64,6 +65,28 @@ describe('the workflows', () => {
         expect(publish.indexOf('sha256sum -c -')).toBeGreaterThan(0);
         expect(publish.indexOf('sha256sum -c -')).toBeLessThan(
             publish.indexOf('npm stage publish')
+        );
+    });
+
+    it('name each release on GitHub for the part of the project it is, and the engine for its npm name too', () => {
+        const jobs = jobsOf(read('release.yml'));
+        /** The step of a job that runs the release script, from its name to the next step. */
+        const releaseStep = (job: string) =>
+            (jobs.get(job) ?? '')
+                .split(/\n(?= {12}- name: )/)
+                .find((step) => step.includes('scripts/github-release.sh')) ?? '';
+        const engine = releaseStep('engine-release');
+        expect(engine).toMatch(
+            /scripts\/github-release\.sh [^\n]*\\\n\s+"ShelfLens engine \$VERSION"/
+        );
+        // The lead is set in the same step, before the script runs, from the package's own name.
+        expect(engine).toContain('package="$(jq -r .name packages/engine/package.json)"');
+        expect(engine).toMatch(/export NOTES_LEAD=.*npm install \$package@\$VERSION/);
+        expect(engine.indexOf('export NOTES_LEAD=')).toBeLessThan(
+            engine.indexOf('scripts/github-release.sh')
+        );
+        expect(releaseStep('storefront')).toMatch(
+            /scripts\/github-release\.sh [^\n]*\\\n\s+"ShelfLens storefront \$VERSION"/
         );
     });
 });

@@ -5,7 +5,8 @@
 #
 #   scripts/github-release.sh <tag> <version> <changelog> <title> [gh release flags]
 #
-# Needs GH_TOKEN with permission to write contents.
+# NOTES_LEAD, when set, is a paragraph put above the entry, such as how to
+# install the version. Needs GH_TOKEN with permission to write contents.
 set -euo pipefail
 
 tag="$1"
@@ -29,6 +30,10 @@ awk -v v="$version" '
 if ! grep -q . notes.md; then
     echo "the changelog entry for $version in $changelog is empty"
     exit 1
+fi
+if [ -n "${NOTES_LEAD:-}" ]; then
+    { printf '%s\n\n' "$NOTES_LEAD"; cat notes.md; } > notes-with-lead.md
+    mv notes-with-lead.md notes.md
 fi
 
 gh release create "$tag" --title "$title" --notes-file notes.md "$@"

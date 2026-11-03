@@ -2,7 +2,8 @@
 
 The engine follows semantic versioning from its first release. Until 1.0.0, a minor version may
 change the public types. Each version is published from a tag by the release workflow, with
-provenance, and has a release on GitHub with the entry below as its notes.
+provenance, and has a release on GitHub with the entry below as its notes, under a line that
+names the package on npm and how to install that version once it is promoted.
 
 ## 0.5.0
 
