@@ -17,24 +17,21 @@ import {
 import { RuleForm } from './RuleForm.js';
 
 /**
- * The merchandiser's side of the store: the rules that apply to the
- * current search, one of them open for editing, and a draft the results
- * beside this panel preview before it is saved.
+ * The merchandiser's side of the store: the rules that apply to the current
+ * search, one of them open for editing, and a draft the results beside this
+ * panel preview before it is saved.
  *
- * The page owns the editor, the form and the loaded set, through the hook
- * below, so the panel can be drawn as a drawer or as a column and drawn
- * anew when the layout changes shape without losing a rule being typed.
- * The draft, the whole set with the edited rule in it, is what the page
- * asks the API to preview in place of the store's rules. Saving posts
- * the same set to the rules path, and the host builds the store again
- * under a new version before it answers, so the next search is the one
- * the preview showed. The store's own rules are one click away, in the
- * panel and on every results page while a saved set is in effect, so the
- * tour never describes a store nobody can get back to.
+ * The page holds the editor, through the hook below. The draft, the whole set
+ * with the edited rule in it, is what the page asks the API to preview in
+ * place of the store's rules. Saving posts the same set to the rules path,
+ * and the host builds the store again under a new version before it answers,
+ * so the next search is the one the preview showed. The store's own rules are
+ * one click away, in the panel and on every results page while a saved set is
+ * in effect, so the tour never describes a store nobody can get back to.
  */
 
 export interface RulesPanelProps {
-    /** The editor's state and actions, held by the page so the panel can be drawn anew without losing them. */
+    /** The editor the page holds. */
     readonly editor: RulesEditor;
     /** The search the rules are read for. Rules apply to a search, so without one the panel says so. */
     readonly phrase: string | undefined;
@@ -62,7 +59,7 @@ export interface RulesEditorOptions {
     readonly enabled: boolean;
 }
 
-/** What the panel holds and does, kept by the page across the panel being drawn anew. */
+/** What the panel holds and does. */
 export interface RulesEditor {
     /** Where the rules are read and saved. */
     readonly rulesUrl: string;

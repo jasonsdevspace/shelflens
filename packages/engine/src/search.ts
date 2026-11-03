@@ -46,11 +46,18 @@ const SUGGESTION_EDITS = 2;
 const RELEVANCE: SortClause = { by: 'relevance', direction: 'desc' };
 
 export interface Engine {
+    /**
+     * One page of results with its facets. Throws an `EngineError` for a
+     * filter, sort or facet the config does not name, which is the caller's
+     * mistake rather than an empty result.
+     */
     search(request: SearchRequest): SearchResult;
     /**
      * What to offer instead of nothing: a corrected phrase, a shorter one,
      * or the same one without its filters, each only if it finds something.
      * Costs a few searches, so a caller asks only after a search found nothing.
+     * `fixedFilters` are kept through every attempt, such as who may see
+     * what, while the request's own filters may be dropped.
      */
     recover(request: SearchRequest, fixedFilters?: readonly Filter[]): Recovery;
     /**
@@ -630,6 +637,11 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     };
 };
 
+/**
+ * Indexes the documents once and returns an engine over them. Throws an
+ * `EngineError` for an attribute value of the wrong kind, or a rule that
+ * names what the documents do not have.
+ */
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
     checkRules(config.rules ?? [], new Set(documents.map((d) => d.id)), config.attributes);
     return createFromIndex(buildIndex(documents, config), config);

@@ -105,4 +105,42 @@ describe('the components', () => {
         expect(found.length).toBeGreaterThan(SHARED.size);
         expect(borrowed).toEqual([]);
     });
+
+    it('are all a style sheet defines, so no sheet keeps a class nothing wears', () => {
+        const app = join(__dirname, '..');
+        const walk = (dir: string, keep: (name: string) => boolean): string[] =>
+            readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+                entry.isDirectory()
+                    ? ['node_modules', 'dist', 'generated', 'e2e'].includes(entry.name)
+                        ? []
+                        : walk(join(dir, entry.name), keep)
+                    : keep(entry.name)
+                      ? [join(dir, entry.name)]
+                      : []
+            );
+        const sheets = walk(join(app, 'src'), (name) => name.endsWith('.css'));
+        // What can write a class: the components, the modules that set one by script, and the
+        // pages, which carry the frame drawn before the script.
+        const writers = walk(
+            app,
+            (name) => /\.(tsx?|html)$/.test(name) && !name.includes('.test.')
+        ).map((path) => readFileSync(path, 'utf8'));
+        const text = writers.join('\n');
+        // A class a template builds, as searchbox-option-${kind}, is worn through its fixed part.
+        const prefixes = [...text.matchAll(/([a-z][a-z-]*-)\$\{/g)].map((match) => match[1] ?? '');
+        const worn = (name: string) =>
+            new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(text) ||
+            prefixes.some((prefix) => name.startsWith(prefix));
+        const unworn = sheets.flatMap((sheet) => {
+            const css = readFileSync(sheet, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+            const defined = new Set(
+                [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => match[1] ?? '')
+            );
+            return [...defined]
+                .filter((name) => !worn(name))
+                .map((name) => `${relative(app, sheet)} defines ${name}`);
+        });
+        expect(sheets.length).toBeGreaterThan(0);
+        expect(unworn).toEqual([]);
+    });
 });

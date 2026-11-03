@@ -8,7 +8,6 @@
  * the host's own, a 500, says only that something went wrong on its side.
  */
 export const reasonOf = async (response: Response): Promise<string | undefined> => {
-    // A failure of the host's own says nothing a visitor can act on, so the page says what it can.
     if (response.status >= 500) return undefined;
     try {
         const body = (await response.json()) as { errors?: { message?: unknown }[] } | null;

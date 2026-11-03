@@ -82,11 +82,7 @@ export interface ResultsPageProps {
     readonly storeRevision: number;
     /** Counts the searches submitted, so a search run again is remembered again. */
     readonly searched: number;
-    /**
-     * Set when the visitor's own action brought this store, as searching a
-     * file of their products does, and new each time, so the heading takes
-     * focus once the results land rather than focus being left at the top.
-     */
+    /** New each time the visitor brings this store, as App's own `arrival` says. */
     readonly arrival?: number | undefined;
 }
 
@@ -116,7 +112,6 @@ const headingFor = (
     };
 };
 
-/** The facets beside the results, or in a drawer where there is no room beside them. */
 /**
  * The first stop in a column beside the results, seen only when it has
  * focus, that takes a keyboard past the column to the results heading.
@@ -135,6 +130,7 @@ const SkipToResults = ({ heading }: { readonly heading: string }) => (
     </a>
 );
 
+/** The facets beside the results, or in a drawer where there is no room beside them. */
 const FacetColumn = ({
     narrow,
     active,
@@ -585,8 +581,6 @@ export const ResultsPage = (props: ResultsPageProps) => {
     const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
     const id = useId();
     const main = useRef<HTMLElement>(null);
-    // The editor lives here, above the drawer and the column, so the panel can be drawn
-    // anew when the layout changes shape without losing the rule being typed.
     const editor = useRulesEditor({
         rulesUrl: props.rulesUrl,
         onStoreChanged: props.onStoreChanged,

@@ -1,4 +1,9 @@
-/**
+import { CATALOG_ROW_CAP } from '@shelflens/api';
+
+import { formatCount } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
+
+/*
  * How large a catalog a visitor can load.
  *
  * The row cap is the API's, since its check of a catalog file holds to it:
@@ -10,10 +15,6 @@
  * printed or has longer text than the generator writes still fits, and a
  * file far past the row cap is refused without reading it.
  */
-import { CATALOG_ROW_CAP } from '@shelflens/api';
-
-import { formatCount } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
 
 export { CATALOG_ROW_CAP };
 export const CATALOG_FILE_BYTES_CAP = 40 * 1024 * 1024;

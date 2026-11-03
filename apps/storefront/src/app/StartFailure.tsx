@@ -1,3 +1,7 @@
+export type StartFailureKind = 'unsupported' | 'unavailable';
+
+const reloadPage = () => globalThis.location.reload();
+
 /**
  * What a page says when its store did not start. A browser that cannot run
  * the store is told what to do instead, with nothing to retry. A store that
@@ -5,10 +9,6 @@
  * Shared by the store and the page for a visitor's products, so the two say
  * the same thing.
  */
-export type StartFailureKind = 'unsupported' | 'unavailable';
-
-const reloadPage = () => globalThis.location.reload();
-
 export const StartFailure = ({
     kind,
     retry = reloadPage,

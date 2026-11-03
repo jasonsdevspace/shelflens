@@ -25,14 +25,14 @@ import {
  * service worker.
  *
  * One endpoint, `/graphql`, a receiver for the storefront's events at
- * `/events`, the rules a merchandiser saves at `/rules`, and a health
- * check. A persisted operation is
- * a `GET` naming one of the storefront's operations, and a full query is
- * a `POST`, refused unless the host takes them. The customer group arrives in a
- * header, standing in for the session a real store would have. Requests
- * are rate limited per group and address before any work is done, bodies
- * are bounded, each answer says what may be cached, and a failure reaches
- * the client as a request id to quote, never as a stack.
+ * `/events`, the rules a merchandiser saves at `/rules`, and a health check.
+ * A persisted operation is a `GET` naming one of the storefront's operations,
+ * and a full query is a `POST`, refused unless the host takes them. The
+ * customer group arrives in a header, standing in for the session a real
+ * store would have. Requests are rate limited per group and address before
+ * any work is done, bodies are bounded, each answer says what may be cached,
+ * and a failure reaches the client as a request id to quote, never as a
+ * stack.
  */
 
 const BODY_LIMIT_BYTES = 16 * 1024;
@@ -129,8 +129,9 @@ interface Arrival {
  * The value the trusted proxy wrote into a forwarded header, or nothing
  * when no proxy is trusted. A proxy adds its own entry at the end of
  * whatever the client sent, so the last entry is the one it vouches for,
- * and anything before it may be the client's invention. An IPv4 address
- * carries no port, so one connection is one client.
+ * and anything before it may be the client's invention. An IPv4 address is
+ * counted without its port, so each connection from one client counts as
+ * that client.
  */
 const forwarded = (
     request: IncomingMessage,

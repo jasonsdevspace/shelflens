@@ -103,9 +103,9 @@ const POPULAR_CANDIDATES = 50;
 /**
  * Among the most rated products the viewer may see in the category being
  * browsed, the most clicked first, then the most rated. Found through the
- * store like any search,
- * so what a rule hides stays hidden here too. The clicks are the ones the
- * store was built with, so this answer may be kept like any other.
+ * store like any search, so what a rule hides stays hidden here too. The
+ * clicks are the ones the store was built with, so this answer may be kept
+ * like any other.
  */
 const popularFor = (input: SearchInput, context: Context): Product[] => {
     const { signals } = context.store;

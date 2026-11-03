@@ -158,7 +158,6 @@ const useProductFocus = ({
             target?.focus();
             if (!loading) landed.current = sku;
         } else if (focusIsFree()) {
-            // What held focus has gone, as Try again goes once pressed.
             target?.focus();
         }
     }, [sku, loading, answer, heading, view]);

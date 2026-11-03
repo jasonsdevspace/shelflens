@@ -11,10 +11,10 @@ import { TryPage } from './TryPage.jsx';
 /**
  * The page at try/, for a visitor's own catalog. It registers the site's
  * worker again, under this page's own path, as the store for a visitor's
- * catalog, and waits until that worker, not the demo's, is in charge.
+ * catalog, and waits until that worker, not the demo's, is in charge. It is
+ * registered exactly as the store's page registers its own, so the two pages
+ * never replace each other's worker.
  */
-// The worker for try/ is registered exactly as the store's page for it registers
-// it, so the two pages never replace each other's worker.
 const config = hostConfig(import.meta.env.BASE_URL, 'try');
 const base = config.scope;
 const root = document.getElementById('root');

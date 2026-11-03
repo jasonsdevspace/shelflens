@@ -222,7 +222,6 @@ const Chooser = ({
             {notice !== undefined && (
                 <>
                     <p className="notice">{notice}</p>
-                    {/* Filled a moment after it mounts, so it is heard though the page just changed. */}
                     <LiveStatus text={notice} />
                 </>
             )}
@@ -388,11 +387,9 @@ const Review = ({
                     )}
                 </>
             ) : (
-                <>
-                    <div className="try-actions">
-                        <OtherWays back={back} onAnother={onAnother} onBack={onKeepProducts} />
-                    </div>
-                </>
+                <div className="try-actions">
+                    <OtherWays back={back} onAnother={onAnother} onBack={onKeepProducts} />
+                </div>
             )}
             <MappingEditor table={table} mapping={mapping} onChange={onMapping} />
         </section>
@@ -567,59 +564,55 @@ const BeforeStore = ({
     readonly onMapping: (mapping: Mapping, note?: string) => void;
     readonly onReplace: () => void;
     readonly onKeepProducts: () => void;
-}) => {
-    return (
-        <>
-            <PageTop home="../" />
-            <main className="content try">
-                {stage.kind === 'starting' && <Preparing />}
-                {stage.kind === 'loading' && (
-                    <Building products={stage.products} announce={announce} />
-                )}
-                {stage.kind === 'failed' && (
-                    <>
-                        <StartFailure kind={stage.failure} />
-                        {import.meta.env.DEV && <p className="notice">{stage.message}</p>}
-                    </>
-                )}
-                {/* One chooser for choosing and reading, so its status stays in the page and
+}) => (
+    <>
+        <PageTop home="../" />
+        <main className="content try">
+            {stage.kind === 'starting' && <Preparing />}
+            {stage.kind === 'loading' && <Building products={stage.products} announce={announce} />}
+            {stage.kind === 'failed' && (
+                <>
+                    <StartFailure kind={stage.failure} />
+                    {import.meta.env.DEV && <p className="notice">{stage.message}</p>}
+                </>
+            )}
+            {/* One chooser for choosing and reading, so its status stays in the page and
                 "Reading" is heard. */}
-                {(stage.kind === 'choose' || stage.kind === 'reading') && (
-                    <Chooser
-                        announce={announce}
-                        reading={stage.kind === 'reading' ? stage.name : undefined}
-                        problem={stage.kind === 'choose' ? stage.problem : undefined}
-                        notice={stage.kind === 'choose' ? stage.notice : undefined}
-                        back={back}
-                        onFile={onFile}
-                        onSample={onSample}
-                        onBack={onKeepProducts}
-                    />
-                )}
-                {stage.kind === 'review' && (
-                    <Review
-                        announce={announce}
-                        name={stage.name}
-                        table={stage.table}
-                        mapping={stage.mapping}
-                        result={stage.result}
-                        partial={stage.partial ?? false}
-                        note={stage.note}
-                        problem={stage.problem}
-                        replacing={stage.replacing}
-                        back={back}
-                        onSearch={onSearch}
-                        onAnother={onAnother}
-                        onMapping={onMapping}
-                        onReplace={onReplace}
-                        onKeepProducts={onKeepProducts}
-                    />
-                )}
-            </main>
-            {stage.kind !== 'starting' && <DemoFooter />}
-        </>
-    );
-};
+            {(stage.kind === 'choose' || stage.kind === 'reading') && (
+                <Chooser
+                    announce={announce}
+                    reading={stage.kind === 'reading' ? stage.name : undefined}
+                    problem={stage.kind === 'choose' ? stage.problem : undefined}
+                    notice={stage.kind === 'choose' ? stage.notice : undefined}
+                    back={back}
+                    onFile={onFile}
+                    onSample={onSample}
+                    onBack={onKeepProducts}
+                />
+            )}
+            {stage.kind === 'review' && (
+                <Review
+                    announce={announce}
+                    name={stage.name}
+                    table={stage.table}
+                    mapping={stage.mapping}
+                    result={stage.result}
+                    partial={stage.partial ?? false}
+                    note={stage.note}
+                    problem={stage.problem}
+                    replacing={stage.replacing}
+                    back={back}
+                    onSearch={onSearch}
+                    onAnother={onAnother}
+                    onMapping={onMapping}
+                    onReplace={onReplace}
+                    onKeepProducts={onKeepProducts}
+                />
+            )}
+        </main>
+        {stage.kind !== 'starting' && <DemoFooter />}
+    </>
+);
 
 /** The button that loads the sample, named again by a message that offers it and by the explainer. */
 const SAMPLE_BUTTON = `Try it with a sample of ${count(SAMPLE_PRODUCTS, 'product', 'products', DEFAULT_LOCALE)}`;

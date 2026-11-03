@@ -27,6 +27,7 @@ const rules = () =>
     parseRulesFile(
         JSON.parse(readFileSync(new URL('../../public/rules.json', import.meta.url), 'utf8'))
     );
+
 export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
@@ -47,7 +48,8 @@ export const storeApi = (): Plugin => ({
             events,
         });
         server.middlewares.use((request, response, next) => {
-            // The dev server answers as the Node server does, so a visitor's catalog is the worker's.
+            // Only the store's own routes, as the Node server serves them. A visitor's catalog is
+            // the worker's alone.
             if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
                 void handle(request, response);
             } else {

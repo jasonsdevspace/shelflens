@@ -26,43 +26,22 @@ import type { CatalogStore } from './catalog-db.js';
  * The API as a `fetch` handler, which is all a service worker needs.
  *
  * The store is built once, from the catalog and the rules the site ships
- * beside it, the first time anything asks. A rules file that names a
- * product or an attribute the store does not have fails the build of the
- * store, so a merchandiser's mistake is reported, not shipped. Every request for `graphql` under the base
- * after that is answered in the page, so the client makes a real network
- * request and gets a real response, and only the hop to a server is
- * missing. Only the storefront's own operations are accepted, by name.
- * Anything that is not a request for the API is left to the network.
+ * beside it, the first time anything asks, and a rules file that names what
+ * the store does not have fails that build, so a mistake is reported rather
+ * than shipped. Every request for `graphql` under the base is answered in
+ * the page, the storefront's own operations by name, and anything else is
+ * left to the network, as decision record 6 explains.
  *
- * Answers are cached twice. In memory, on the project's key, for the life
- * of the worker. And, when the worker is given one, in a store of
- * responses keyed by URL, the way a browser cache would keep them: an
- * answer a worker makes up never enters the browser's own HTTP cache, so
- * the worker keeps what the headers say may be kept, for as long as they
- * say, and matches on the viewer header the answer varies on. A new
- * store version is a new URL, and the old URLs are dropped when the store
- * is built.
+ * Answers are cached twice: in memory on the project's one key (record 8),
+ * and, when the worker is given a response store, by URL as a browser cache
+ * would keep them, since an answer a worker makes up never enters the
+ * browser's own HTTP cache. A new store version is a new URL.
  *
- * Events the page sends to `events` beside `graphql` are kept in the
- * store the worker is given, and answered with nothing, since the page
- * never waits for them. The API reads the same store for the fields that
- * are built from them, and the clicks among them are folded into ranking
- * when the store is built. A page that loads asks for a fresh look, and
- * the store is built again, as a new version, only when the clicks have
- * changed since. So within one visit the ranking holds still, and paging
- * never repeats or skips a product, and the next visit sees the clicks.
- *
- * The rules a merchandiser saves arrive on `rules` beside the other two.
- * A saved set stands in for the shipped file until it is reset, and the
- * store is built again, as a new version, before the save is answered,
- * so the next search cannot land on the old one.
- *
- * Given a catalog store in place of a catalog URL, as the page for a
- * visitor's own catalog is, the worker builds from whatever catalog is kept
- * there, and `catalog` beside the other paths takes a new one, checked
- * first, or removes it. Until one is loaded the API answers that there is
- * nothing to search. Each new catalog is a new version, so nothing the old
- * one answered is served again.
+ * Events on `events` are kept, and folded into ranking when a visit begins
+ * (record 9). Rules saved on `rules` stand in for the shipped file until
+ * reset, with the store built again before the save is answered (record 10).
+ * Given a catalog store, the worker builds from a visitor's own catalog,
+ * which `catalog` takes or removes (record 13).
  */
 
 export interface WorkerApiOptions {

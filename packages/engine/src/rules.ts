@@ -54,12 +54,7 @@ const EMPTY_PLAN: RulePlan = {
     setAside: [],
 };
 
-/**
- * Refuses a rule that could never do what it says.
- *
- * Run when the engine is created, so a mistake in a rules file is reported
- * at startup rather than discovered by a shopper.
- */
+/** Reports a rule that names what the engine does not have. */
 interface Known {
     id(ruleId: string, id: string): void;
     attribute(ruleId: string, name: string): void;
@@ -116,6 +111,9 @@ const checkWindow = (rule: Rule): void => {
  * Refuses a rule that could never do what it says: a document or an
  * attribute the engine does not have, or an attribute a rule cannot match
  * on, since a rule names a value as text and only a keyword attribute is one.
+ *
+ * Run when the engine is created and on every reconfigure, so a mistake in a
+ * rules file is reported before a shopper meets it.
  */
 export const checkRules = (
     rules: readonly Rule[],

@@ -5,19 +5,19 @@ import { isStoreRequest, type StoreRequest, type StoreResponse } from './execute
  * The API's shape over HTTP, shared by every host.
  *
  * Two forms of request. A persisted operation is a `GET` naming one of the
- * storefront's operations by hash, with its variables and the store
- * version it expects in the URL. A full query is a `POST` with the query
- * text, refused unless a host takes them, which the public demo does not. The host reads
- * the request and writes the response. What is decided here is what the
- * request means and what the response may be cached as, so the Node
- * server and the service worker cannot disagree about either.
+ * storefront's operations by hash, with its variables and the store version
+ * it expects in the URL. A full query is a `POST` with the query text,
+ * refused unless a host takes them, which the public demo does not. The host
+ * reads the request and writes the response. What is decided here is what the
+ * request means and what the response may be cached as, so the Node server
+ * and the service worker cannot disagree about either.
  *
- * An answer is cacheable only when the URL names the version it was
- * computed from, the answer has no errors, and the answer does not say it
- * depends on something the version does not cover. Then the version is in the
- * URL, the viewer is in a header the cache varies on, and the answer can
- * sit in a browser or shared cache for its age with nothing to invalidate:
- * a new version is a new URL.
+ * An answer is cacheable only when the URL names the version it was computed
+ * from, the answer has no errors, and the answer does not say it depends on
+ * something the version does not cover. Then the version is in the URL, the
+ * viewer is in a header the cache varies on, and the answer can sit in a
+ * browser or shared cache for its age with nothing to invalidate: a new
+ * version is a new URL.
  */
 
 /** The response header that says which store version answered. */

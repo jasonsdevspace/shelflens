@@ -1,4 +1,4 @@
-/**
+/*
  * A product's thumbnail, drawn rather than fetched.
  *
  * The catalog is generated and has no photographs, so the thumbnail is the
