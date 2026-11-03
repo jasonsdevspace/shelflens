@@ -126,9 +126,26 @@ const LANDINGS: Readonly<Record<string, Landing>> = {
         await expect(page.getByRole('combobox', { name: 'Sort by' })).toHaveValue('price-desc');
         await expect(main.getByText(/\$[\d,.]+ to \$[\d,.]+/).first()).toBeVisible();
     }),
-    'cold-start': after((_, main) =>
-        expect(main.getByRole('heading', { name: /Most rated in/ })).toBeVisible()
-    ),
+    // The walk has opened a jacket by now, so the rail may already say what was viewed with
+    // this product. A browser that has viewed nothing gets the category's most rated.
+    'cold-start': after(async (page, main) => {
+        await expect(page).toHaveURL(/product=SL-00001/);
+        await expect(
+            main.getByRole('heading', { name: /^(Most rated in |Viewed with this product)/ })
+        ).toBeVisible();
+        const browser = page.context().browser();
+        if (!browser) throw new Error('expected the page to have a browser');
+        const fresh = await browser.newContext({ baseURL: new URL('/', page.url()).href });
+        try {
+            const first = await fresh.newPage();
+            await first.goto(new URL(page.url()).search);
+            await expect(
+                first.getByRole('main').getByRole('heading', { name: /^Most rated in / })
+            ).toBeVisible();
+        } finally {
+            await fresh.close();
+        }
+    }),
     telemetry: empty,
 };
 
