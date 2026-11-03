@@ -5,8 +5,9 @@ import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RulesPanel, type RulesPanelProps, useRulesEditor } from './RulesPanel.jsx';
+import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
 import { onlyUnderRelevance } from './setAside.js';
+import { useRulesEditor } from './useRulesEditor.js';
 
 /*
  * The panel on its own, over the rules path of a small host: the shipped

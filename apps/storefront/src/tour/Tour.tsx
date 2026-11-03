@@ -245,3 +245,34 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
         </aside>
     );
 };
+
+/** Opens and closes the tour, and says which panel it controls. */
+export const TourToggle = ({
+    touring,
+    onToggle,
+    buttonRef,
+}: {
+    readonly touring: boolean;
+    readonly onToggle: () => void;
+    readonly buttonRef: RefObject<HTMLButtonElement | null>;
+}) => (
+    <button
+        ref={buttonRef}
+        type="button"
+        className="button"
+        aria-expanded={touring}
+        // Names the tour only while there is one to name.
+        aria-controls={touring ? TOUR_ID : undefined}
+        onClick={onToggle}
+    >
+        Tour
+    </button>
+);
+
+/** The tour, or on a phone's first visit the short bar that offers it. */
+export const TourPlace = ({
+    offering,
+    onStart,
+    ...tour
+}: TourProps & { readonly offering: boolean; readonly onStart: () => void }) =>
+    offering ? <TourOffer onStart={onStart} onDecline={tour.onClose} /> : <Tour {...tour} />;

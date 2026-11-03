@@ -2,7 +2,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { App, REVEAL_WITHIN_MS } from './App.jsx';
+import { App } from './App.jsx';
+import { REVEAL_WITHIN_MS } from './app/useStore.js';
 import {
     CategoriesDocument,
     ProductDocument,
