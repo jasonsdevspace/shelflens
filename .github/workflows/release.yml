@@ -26,8 +26,9 @@ on:
 permissions:
     contents: read
 
-# One release run for a tag at a time, so a run repeated while the first is
-# still going waits for it rather than publishing beside it.
+# One release run for a tag at a time, so a tag pushed again while its run is
+# still going never publishes beside it. A run waiting is replaced by a newer
+# one for the same tag, which is the one to publish.
 concurrency:
     group: release-${{ github.ref }}
     cancel-in-progress: false

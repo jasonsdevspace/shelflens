@@ -19,11 +19,12 @@ on:
 permissions:
     contents: read
 
-# A newer push to a pull request supersedes the run in progress. Every other
-# run has a group of its own, so the checks on main never queue behind each
-# other, and only the deploy below waits its turn.
+# A newer push to a pull request supersedes the run in progress. A push to
+# main does not: runs on main wait their turn, so the newest commit is always
+# the last deployed, and a run that has handed an artifact to Pages is never
+# canceled, which would leave the deployment pending.
 concurrency:
-    group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+    group: ci-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -252,7 +253,13 @@ jobs:
               id: pack
               run: |
                   npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
-                  echo "sha256=$(sha256sum "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+                  tarballs=("$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz)
+                  if [ "${#tarballs[@]}" -ne 1 ] || [ ! -f "${tarballs[0]}" ]; then
+                      echo "packing made ${#tarballs[@]} tarballs, not one"
+                      exit 1
+                  fi
+                  sum=$(sha256sum "${tarballs[0]}" | cut -d' ' -f1)
+                  echo "sha256=$sum" >> "$GITHUB_OUTPUT"
 
             # The standard check of a published package's manifest: that its
             # exports, types and files point at what the tarball holds. Packing
@@ -352,17 +359,11 @@ jobs:
               with:
                   path: packages/storefront/dist
 
-    # One deploy at a time, and none canceled once it starts, since a run that has
-    # handed an artifact to Pages and is then canceled leaves the deployment
-    # pending. A newer deploy waiting replaces an older one still waiting.
     deploy:
         name: Deploy the demo
         needs: site
         runs-on: ubuntu-latest
         timeout-minutes: 10
-        concurrency:
-            group: pages
-            cancel-in-progress: false
         permissions:
             pages: write
             id-token: write

@@ -16,7 +16,9 @@ const read = (name: string) => readFileSync(join(WORKFLOWS, name), 'utf8');
 
 /** Each job in a workflow, by its id, with the lines that belong to it. */
 const jobsOf = (text: string): Map<string, string> => {
-    const body = text.slice(text.indexOf('\njobs:\n') + '\njobs:\n'.length);
+    const start = /^jobs:[ \t]*(?:#.*)?\r?\n/m.exec(text);
+    if (!start) throw new Error('a workflow without a jobs: line, which this test cannot read');
+    const body = text.slice(start.index + start[0].length).replace(/\r\n/g, '\n');
     const jobs = new Map<string, string>();
     for (const match of body.matchAll(/^ {4}([a-z][\w-]*):\n((?:(?: {8}.*| *#.*|)\n)*)/gm)) {
         jobs.set(match[1] ?? '', match[2] ?? '');
@@ -52,7 +54,10 @@ describe('the workflows', () => {
         const ci = read('ci.yml');
         const release = read('release.yml');
         expect(ci).toMatch(/engine-sha256:[\s\S]*?value: \$\{\{ jobs\.floor\.outputs\.sha256 \}\}/);
-        expect(jobsOf(ci).get('floor')).toMatch(/sha256sum .*>> "\$GITHUB_OUTPUT"/);
+        const floor = jobsOf(ci).get('floor') ?? '';
+        // Into a variable first, so a checksum that fails fails the step.
+        expect(floor).toMatch(/sum=\$\(sha256sum /);
+        expect(floor).toContain('echo "sha256=$sum" >> "$GITHUB_OUTPUT"');
         const publish = jobsOf(release).get('publish') ?? '';
         expect(publish).toContain('SHA256: ${{ needs.checks.outputs.engine-sha256 }}');
         // Checked before anything is staged.
