@@ -63,4 +63,23 @@ describe('reading a visitor’s file', () => {
             'This file has no products in it. It needs a header row with at least one product under it.'
         );
     });
+
+    it('reads a CSV or a JSON file that starts with a byte order mark, naming its first column as written', async () => {
+        const marked = (text: string, name: string) =>
+            new File([new Uint8Array([0xef, 0xbb, 0xbf]), text], name);
+        expect((await readFile(marked('name,price\nBench,120\n', 'marked.csv'))).headers).toEqual([
+            'name',
+            'price',
+        ]);
+        expect(
+            (await readFile(marked('[{"name":"Bench","price":120}]', 'marked.json'))).headers
+        ).toEqual(['name', 'price']);
+    });
+
+    it('reads a file with no extension by what it starts with', async () => {
+        const json = await readFile(new File(['  [{"name":"Bench","price":120}]'], 'export'));
+        expect(json.rows).toEqual([['Bench', '120']]);
+        const csv = await readFile(new File(['name,price\nBench,120\n'], 'export'));
+        expect(csv.rows).toEqual([['Bench', '120']]);
+    });
 });

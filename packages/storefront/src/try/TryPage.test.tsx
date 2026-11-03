@@ -11,8 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryCatalogStore } from '../worker/catalog-db.js';
 import { createWorkerApi } from '../worker/handle.js';
 import { StoreDidNotStart, WorkerUnsupported } from '../worker/register.js';
+import { parseCsv } from './csv.js';
 import { CATALOG_FILE_BYTES_CAP } from './limits.js';
+import { guessMapping } from './mapping.js';
 import { SAMPLE_FILE, sampleCsv } from './sample.js';
+import { toCatalog } from './to-catalog.js';
 import { TryPage } from './TryPage.jsx';
 
 /*
@@ -191,6 +194,78 @@ describe('the page for a visitor’s own catalog', () => {
         await waitFor(() => expect(seen.at(-1)).toMatch(/could not be removed/));
         watch.disconnect();
         expect(seen).toContain('');
+    });
+
+    it('says when it is back that another tab removed the products, rather than failing to search', async () => {
+        page();
+        await loadSample();
+        // As another tab removing them from the same worker.
+        await fetch(`${BASE}catalog`, { method: 'DELETE' });
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+        await chooser();
+        await heard('Your products were removed from this browser in another tab.');
+        expect(screen.queryByRole('button', { name: 'Back to your products' })).toBeNull();
+    });
+
+    it('stays as it is when it is back and nothing changed', async () => {
+        page();
+        await loadSample();
+        // What is loaded, read first, then given back to the tab's own read once it is held.
+        const loaded = (await (await fetch(`${BASE}catalog`)).json()) as unknown;
+        let answer = () => undefined as void;
+        let asked = false;
+        failure = failWhen('GET', `${BASE}catalog`, () => {
+            asked = true;
+            return new Promise<Response>((resolve) => {
+                answer = () => resolve(Response.json(loaded));
+            });
+        });
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitFor(() => expect(asked).toBe(true));
+        await act(async () => {
+            answer();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+        expect(screen.getByText(/the 200 products you loaded/)).toBeInTheDocument();
+        expect(screen.queryByText(/Another tab loaded/)).toBeNull();
+    });
+
+    it('searches what another tab loaded when it is back, and says so', async () => {
+        page();
+        await loadSample();
+        const table = parseCsv('name,price\nBench,120\nStool,40\n');
+        const other = toCatalog(table, guessMapping(table));
+        if (!other.ok) throw new Error(other.error);
+        await fetch(`${BASE}catalog`, { method: 'PUT', body: JSON.stringify(other.catalog) });
+        // A switch back to the tab, as most browsers say it.
+        act(() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await screen.findByText(/the 2 products you loaded/);
+        await heard('Another tab loaded 2 products, so these are what you are searching now.');
+    });
+
+    it('reads once when a return fires both a visibility change and a focus', async () => {
+        page();
+        await loadSample();
+        let reads = 0;
+        failure = (request) => {
+            if (request.method === 'GET' && new URL(request.url).pathname === `${BASE}catalog`) {
+                reads += 1;
+            }
+            return undefined;
+        };
+        act(() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitFor(() => expect(reads).toBe(1));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(reads).toBe(1);
     });
 
     it('removes the products and is back where a file is chosen, saying they were removed', async () => {
@@ -680,23 +755,62 @@ describe('the page for a visitor’s own catalog', () => {
         expect(price).toHaveFocus();
     });
 
+    /** A file of 1,500 rows whose second price column does not read on row 1,300, past the first rows. */
+    const large = () => {
+        const rows = Array.from(
+            { length: 1500 },
+            (_, index) => `Item ${index},$1.00,${index === 1298 ? 'free' : '$2.00'},R${index}`
+        ).join('\n');
+        return new File([`name,price,other,ref\n${rows}\n`], 'large.csv');
+    };
+
     it('shows a large file’s first rows at once after a change, and the whole of it after a pause', async () => {
         page();
         await chooser();
-        const rows = Array.from({ length: 1500 }, (_, index) => `Item ${index},$1.00,$2.00`).join(
-            '\n'
-        );
-        await userEvent.upload(
-            screen.getByLabelText('Choose a file'),
-            new File([`name,price,other\n${rows}\n`], 'large.csv')
-        );
+        await userEvent.upload(screen.getByLabelText('Choose a file'), large());
         await screen.findByRole('button', { name: 'Search 1,500 products' });
         await userEvent.selectOptions(screen.getByLabelText('Price'), 'other');
         expect(screen.getByRole('button', { name: 'Search these products' })).toBeInTheDocument();
         expect(screen.getByText('Checking all 1,500 rows.')).toBeInTheDocument();
+        // Made again whole with the new mapping, so the row whose new price does not read is left out.
         expect(
-            await screen.findByRole('button', { name: 'Search 1,500 products' })
+            await screen.findByRole('button', { name: 'Search 1,499 products' })
         ).toBeInTheDocument();
+        expect(screen.getByText('1 row is left out')).toBeInTheDocument();
+    });
+
+    it('searches every row when Search is pressed before the whole file is checked', async () => {
+        page();
+        await chooser();
+        await userEvent.upload(screen.getByLabelText('Choose a file'), large());
+        await screen.findByRole('button', { name: 'Search 1,500 products' });
+        await userEvent.selectOptions(screen.getByLabelText('Price'), 'other');
+        await userEvent.click(screen.getByRole('button', { name: 'Search these products' }));
+        // All of it, with the new mapping, not the first rows the preview was made from.
+        await screen.findByText(/the 1,499 products you loaded/);
+    });
+
+    it('refuses an ID repeated past the first rows, chosen after the guess, before anything is sent', async () => {
+        page();
+        await chooser();
+        const rows = Array.from(
+            { length: 1500 },
+            (_, index) => `Item ${index},$1.00,${index === 1398 ? 'R5' : `R${index}`}`
+        ).join('\n');
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File([`name,price,ref\n${rows}\n`], 'repeats.csv')
+        );
+        await screen.findByRole('button', { name: 'Search 1,500 products' });
+        let sent = 0;
+        failure = (request) => {
+            if (request.method === 'PUT') sent += 1;
+            return undefined;
+        };
+        await userEvent.selectOptions(screen.getByLabelText('Product ID'), 'ref');
+        await userEvent.click(screen.getByRole('button', { name: 'Search these products' }));
+        await alerted('The ID “R5” is on row 7 and row 1400, and each product needs its own.');
+        expect(sent).toBe(0);
     });
 });
 
