@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { open } from './test/store.jsx';
+import { STOPS } from './tour/stops.js';
 
 /* The tour, which opens on a first visit and walks every stop. */
 
@@ -63,5 +64,18 @@ describe('the tour', () => {
         expect(window.location.search).toBe('?product=SL-00008');
         expect(await screen.findByText(/There is no product/)).toBeInTheDocument();
         expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
+    });
+
+    it('lists a stop\'s tests with commas and a last "and"', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open();
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        const index = STOPS.findIndex((stop) => stop.id === 'explain');
+        for (let i = 0; i < index; i += 1) {
+            await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        }
+        expect(tour.querySelector('.tour-test')).toHaveTextContent(
+            'Tested in packages/engine/src/search.test.ts, packages/engine/src/synonyms.test.ts, packages/engine/src/rules.test.ts and packages/storefront/src/results/ProductCard.test.tsx'
+        );
     });
 });
