@@ -1,7 +1,10 @@
 // @vitest-environment node
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+
+import { workspacePackages } from './repository.mjs';
 
 /*
  * The engine the other packages run is the one in this repository. The
@@ -13,13 +16,14 @@ import { describe, expect, it } from 'vitest';
  * satisfies, and the lockfile holds no second copy.
  */
 
-const root = new URL('../../../', import.meta.url);
+const root = new URL('../', import.meta.url);
 const read = (path: string) =>
     JSON.parse(readFileSync(new URL(path, root), 'utf8')) as {
         version?: string;
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
         packages?: Record<string, { version?: string; resolved?: string }>;
+        workspaces?: string[];
     };
 
 const ENGINE = '@jasonsdevspace/shelflens';
@@ -28,20 +32,21 @@ describe('the engine in the workspace', () => {
     const engine = read('packages/engine/package.json');
 
     it('is taken at any version by every package here that takes it, so the workspace is the one linked', () => {
-        const takers = readdirSync(new URL('packages/', root))
-            .map((name) => [name, read(`packages/${name}/package.json`)] as const)
+        // Every workspace package, by its path, in the folders the root's manifest names.
+        const takers = workspacePackages(fileURLToPath(root))
+            .map((path) => [path, read(`${path}/package.json`)] as const)
             .flatMap(([name, manifest]) =>
                 [manifest.dependencies, manifest.devDependencies].flatMap((listed) =>
                     listed?.[ENGINE] === undefined ? [] : [[name, listed[ENGINE]] as const]
                 )
             );
         // The packages known to take it, so a test that finds none fails rather than passing.
-        expect(takers.map(([name]) => name)).toEqual(
-            expect.arrayContaining(['api', 'search', 'storefront'])
+        expect(takers.map(([path]) => path)).toEqual(
+            expect.arrayContaining(['packages/api', 'packages/search', 'apps/storefront'])
         );
         // Any version, so an engine release changes no other manifest, only the lockfile
         // npm writes from them.
-        for (const [name, pin] of takers) expect(pin, name).toBe('*');
+        for (const [path, pin] of takers) expect(pin, path).toBe('*');
     });
 
     it('is the only copy the lockfile knows', () => {

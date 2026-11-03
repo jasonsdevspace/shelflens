@@ -116,4 +116,29 @@ describe('the workflows', () => {
         });
         expect(steps.flatMap(commands)).toEqual(commands(verify ?? ''));
     });
+
+    it('release each tag from the folder its package is in', () => {
+        const agree = jobsOf(read('release.yml')).get('agree') ?? '';
+        for (const [prefix, name] of [
+            ['engine-v', 'engine'],
+            ['storefront-v', 'storefront'],
+        ] as const) {
+            const dir = new RegExp(`${prefix}\\*\\) package=${name} dir=(\\S+) ;;`).exec(
+                agree
+            )?.[1];
+            expect(dir, prefix).toBeDefined();
+            // The folder holds the package the tag names, with the changelog its notes come from.
+            const manifest = JSON.parse(
+                readFileSync(join(ROOT, dir ?? '', 'package.json'), 'utf8')
+            ) as {
+                name: string;
+            };
+            expect(manifest.name, prefix).toBe(
+                name === 'engine' ? '@jasonsdevspace/shelflens' : '@shelflens/storefront'
+            );
+            expect(readFileSync(join(ROOT, dir ?? '', 'CHANGELOG.md'), 'utf8'), prefix).toContain(
+                '## '
+            );
+        }
+    });
 });

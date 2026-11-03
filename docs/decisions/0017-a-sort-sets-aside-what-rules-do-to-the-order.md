@@ -58,12 +58,12 @@ page shows the merchandiser's order with that category's pins on top.
 
 The API passes all three through as `Merchandising.applied`, `Merchandising.setAsideBySort` and
 `Merchandising.setAside` (`packages/api/schema.graphql`). The results page in
-`packages/storefront/src/results/ResultsPage.tsx` shows a line over the cards whenever a rule was
+`apps/storefront/src/results/ResultsPage.tsx` shows a line over the cards whenever a rule was
 set aside, naming the sort and each rule by its name, or its id when it has none, with what the
 sort took from it, as in "The sort "Featured" sets aside the boost of "Ridgeback boots first"",
 with a "Sort by relevance" button after it that puts focus on Sort by. It shows whether or not
 "Rules" or "Explain ranking" is on. The line is written by `setAsideBySort` in
-`packages/storefront/src/results/setAside.ts`, into a status that is always in the page, so a
+`apps/storefront/src/results/setAside.ts`, into a status that is always in the page, so a
 screen reader hears it when a sort brings it. The rules panel lists the rules applied and the rules
 set aside together, each once, and marks each one the sort set aside.
 
@@ -92,21 +92,21 @@ set aside together, each once, and marks each one the sort set aside.
 - `packages/api/src/api.test.ts`: a search under relevance reports its pin in `applied` and nothing
   set aside, and under a price sort each rule set aside comes back with its name, or null, and its
   counts.
-- `packages/storefront/src/App.merchandising.test.tsx`: the page says when a sort set the
+- `apps/storefront/src/App.merchandising.test.tsx`: the page says when a sort set the
   merchandising aside, in a status that stays in the page, and its button sorts by relevance and
   puts focus on Sort by. The same line shows to a shopper with "Rules" and "Explain ranking" off
-  and to a merchandiser with both on. `packages/storefront/src/results/RulesPanel.test.tsx`: the
+  and to a merchandiser with both on. `apps/storefront/src/results/RulesPanel.test.tsx`: the
   panel marks each rule the sort set aside, and no other.
-  `packages/storefront/src/results/setAside.test.ts` holds the line's wording: each rule by its
+  `apps/storefront/src/results/setAside.test.ts` holds the line's wording: each rule by its
   name or its id, each kind it lost in the singular or the plural, and every rule as a list is
   read.
-- `packages/storefront/e2e/merchandising.spec.ts`: sorting the jackets by price says the pins of
+- `apps/storefront/e2e/merchandising.spec.ts`: sorting the jackets by price says the pins of
   "Featured jackets" are set aside and leaves the hidden sample out of the line, since its hide
   still holds, and the button goes back to relevance with focus on Sort by.
-- `packages/storefront/e2e/merchandising.spec.ts`, under "Featured" in the boots category: the line
+- `apps/storefront/e2e/merchandising.spec.ts`, under "Featured" in the boots category: the line
   says the boost of "Ridgeback boots first" is set aside, and nothing else.
-- `packages/storefront/src/results/RulesPanel.test.tsx` and `setAside.test.ts`: the rule form says
+- `apps/storefront/src/results/RulesPanel.test.tsx` and `setAside.test.ts`: the rule form says
   so for a boost and a bury, with or without a category filter, and not for a pin, and the store
   itself sets a boost and a bury aside under "Featured" and under "Rating", in a rule for the
-  category and in a rule for the words alike. `packages/storefront/e2e/merchandising.spec.ts` opens
+  category and in a rule for the words alike. `apps/storefront/e2e/merchandising.spec.ts` opens
   the demo's `ridgeback-boots` rule and finds the hint under "How much".

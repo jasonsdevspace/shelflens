@@ -34,9 +34,9 @@ the store is starting.
 
 The frame, rendered at build time from the components the script draws.
 
-`firstScreen` in `packages/storefront/src/app/shell.tsx` renders `PageTop` and `Preparing` inside
+`firstScreen` in `apps/storefront/src/app/shell.tsx` renders `PageTop` and `Preparing` inside
 the page's `main` with React's static renderer, for the store's page and for the page at `try/`.
-The Vite plugin `pageShell` in `packages/storefront/src/dev/shell-plugin.ts` puts that markup in
+The Vite plugin `pageShell` in `apps/storefront/src/dev/shell-plugin.ts` puts that markup in
 place of the mark in each page's root. It loads the components through Vite, so they see the
 site's base as the page does, once for a build and afresh for each page the dev server sends. The
 script then mounts and draws the same markup over it, so nothing moves.
@@ -58,7 +58,7 @@ first screen paints in the theme the portfolio saved.
 - The markup the script draws first has to equal the markup in the page exactly, or the page moves
   when the script takes over. A test holds the two equal for each page, so a change to the strip,
   the masthead or the status line that breaks this fails the tests.
-- The masthead's waiting heights in `packages/storefront/src/styles.css` are measured, one for each
+- The masthead's waiting heights in `apps/storefront/src/styles.css` are measured, one for each
   breakpoint, and have to follow the masthead when the search box or its links change. The strip
   keeps the room the demo's own switches take beside its links in the same way, a field's height on
   a wide screen and a thumb's on a phone.
@@ -72,17 +72,17 @@ first screen paints in the theme the portfolio saved.
 
 ## How it is tested
 
-- `packages/storefront/src/app/shell.test.tsx`: while the store is still starting, the store's
+- `apps/storefront/src/app/shell.test.tsx`: while the store is still starting, the store's
   first render is exactly `firstScreen('/index.html')` and the page at `try/` is exactly
   `firstScreen('/try/index.html')`. The page's markup carries the line for a browser without
   JavaScript, a page with no first screen is refused, and the status line says nothing, then that
   the store is being prepared, then why it is slow.
-- `packages/storefront/src/App.start.test.tsx`: the masthead keeps its room only while the store is
+- `apps/storefront/src/App.start.test.tsx`: the masthead keeps its room only while the store is
   on its way, so a store that cannot start gives it up, and a masthead that is not the store's own
   keeps none.
-- `packages/storefront/e2e/start.spec.ts`, with JavaScript turned off: the strip and the brand
+- `apps/storefront/e2e/start.spec.ts`, with JavaScript turned off: the strip and the brand
   show on the store's page and on `try/`, each says what to do, and the widget's page takes out
   its loading line from its own sheet with no style in its head.
 - `npm run lighthouse` in CI, on a first visit: every page scores at least ninety for performance,
   shifts its layout by no more than a tenth and paints its largest content within two and a half
-  seconds (`packages/storefront/src/bench/lighthouse.ts`).
+  seconds (`apps/storefront/src/bench/lighthouse.ts`).

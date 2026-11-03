@@ -1,13 +1,14 @@
 /**
- * What the repository checks share: the files to check and how they start.
+ * What the repository checks share: the files to check, how they start, and
+ * the workspace's packages.
  *
  * Each check runs from the top of the repository it belongs to, wherever it
  * is started, over tracked files and new ones not yet added, so whatever the
  * repository ignores is skipped too.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -53,3 +54,26 @@ export const repositoryFiles = (scriptUrl, wanted) => {
  */
 export const isRunDirectly = (scriptUrl) =>
     process.argv[1] !== undefined && realpathSync(process.argv[1]) === fileURLToPath(scriptUrl);
+
+/**
+ * Every workspace package, as its path from the root, in the folders the
+ * root's manifest names: a folder ending in `/*` stands for each folder in
+ * it, and any other names one package. A folder with no manifest, such as
+ * one left behind by another branch, is not a package.
+ *
+ * @param {string} root the repository's root, as a path
+ * @returns {string[]}
+ */
+export const workspacePackages = (root) => {
+    /** @type {{ workspaces?: string[] }} */
+    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+    return (manifest.workspaces ?? [])
+        .flatMap((entry) => {
+            const folder = entry.replace(/\/\*$/, '');
+            if (folder === entry) return [entry];
+            return readdirSync(join(root, folder), { withFileTypes: true })
+                .filter((child) => child.isDirectory())
+                .map((child) => `${folder}/${child.name}`);
+        })
+        .filter((path) => existsSync(join(root, path, 'package.json')));
+};

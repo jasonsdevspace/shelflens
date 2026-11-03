@@ -14,7 +14,7 @@
             "path": "packages/api/tsconfig.build.json"
         },
         {
-            "path": "packages/server/tsconfig.build.json"
+            "path": "apps/server/tsconfig.build.json"
         }
     ]
 }

@@ -54,7 +54,7 @@ const NUMBER_WORDS: readonly string[] = [
 ];
 
 describe('the explainer', () => {
-    const page = read('packages/storefront/about/index.html');
+    const page = read('apps/storefront/about/index.html');
     const readme = read('README.md');
 
     it('links to every state the README’s two minutes link to', () => {

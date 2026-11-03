@@ -63,13 +63,13 @@ jobs:
               env:
                   TAG: ${{ github.ref_name }}
               run: |
+                  # The engine is a library in packages/, and the storefront runs, in apps/.
                   case "$TAG" in
-                      engine-v*) package=engine ;;
-                      storefront-v*) package=storefront ;;
+                      engine-v*) package=engine dir=packages/engine ;;
+                      storefront-v*) package=storefront dir=apps/storefront ;;
                       *) echo "$TAG names no package this workflow releases, only engine and storefront"; exit 1 ;;
                   esac
                   version="${TAG#"$package"-v}"
-                  dir="packages/$package"
                   declared=$(node -p "require('./$dir/package.json').version")
                   if [ "$version" != "$declared" ]; then
                       echo "the tag says $version but $dir/package.json says $declared"
@@ -241,5 +241,5 @@ jobs:
               run: |
                   flags="--latest=false"
                   [ "$PRERELEASE" = "true" ] && flags="$flags --prerelease"
-                  scripts/github-release.sh "$TAG" "$VERSION" packages/storefront/CHANGELOG.md \
+                  scripts/github-release.sh "$TAG" "$VERSION" apps/storefront/CHANGELOG.md \
                       "ShelfLens storefront $VERSION" $flags

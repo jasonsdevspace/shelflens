@@ -15,7 +15,10 @@ import { toRuleInput } from './rule-input.js';
  */
 
 const schema = buildSchema(
-    readFileSync(join(__dirname, '..', '..', '..', 'api', 'schema.graphql'), 'utf8')
+    readFileSync(
+        join(__dirname, '..', '..', '..', '..', 'packages', 'api', 'schema.graphql'),
+        'utf8'
+    )
 );
 const RULE_INPUT = schema.getType('RuleInput') as GraphQLInputType;
 

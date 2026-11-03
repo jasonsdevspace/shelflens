@@ -298,7 +298,7 @@ const main = async () => {
     try {
         const runs: Run[] = [];
         for (let i = 0; i < RUNS; i += 1) runs.push(await visit(preview.origin));
-        const dist = 'packages/storefront/dist';
+        const dist = 'apps/storefront/dist';
         // The store's page is every script its HTML loads, entry and preloads, since the
         // build splits what the pages share into chunks of their own.
         const html = readFileSync(`${dist}/index.html`, 'utf8');

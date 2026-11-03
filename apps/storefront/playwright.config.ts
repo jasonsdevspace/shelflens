@@ -72,7 +72,7 @@ export default defineConfig({
         {
             // The Node server, as a host on another origin would run it, open to the
             // page the embed test serves from an origin of its own.
-            command: 'node packages/server/dist/main.js',
+            command: 'node apps/server/dist/main.js',
             cwd: '../..',
             env: { PORT: '4174', PRODUCTS: '300', ORIGINS: 'http://127.0.0.1:4175' },
             url: 'http://127.0.0.1:4174/health',

@@ -3,7 +3,7 @@ dist
 *.log
 .DS_Store
 *.tsbuildinfo
-packages/storefront/public/catalog.json
-packages/storefront/public/try/sample-products.csv
+apps/storefront/public/catalog.json
+apps/storefront/public/try/sample-products.csv
 playwright-report
 test-results
