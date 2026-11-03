@@ -104,11 +104,17 @@ export type Merchandising = {
     readonly __typename?: 'Merchandising';
     readonly applied: ReadonlyArray<Scalars['ID']['output']>;
     /**
+     * The same rules, in the same order, each with its name and how many of its
+     * pins, boosts and buries the sort set aside.
+     */
+    readonly setAside: ReadonlyArray<SetAsideRule>;
+    /**
      * Rules whose pins, boosts or buries would have applied under a relevance
      * sort. A rule that also hides is in applied as well, since a hide holds
      * under any sort. A sort scoped to a rule's own filter, as a category's
      * position is, keeps that rule's pins and hides, and lists the rule here
      * when it also boosts or buries, since those do nothing under that sort.
+     * @deprecated Each rule's id is in setAside, with what the sort set aside of it.
      */
     readonly setAsideBySort: ReadonlyArray<Scalars['ID']['output']>;
 };
@@ -476,6 +482,22 @@ export type SearchResult = {
     readonly totalPages: Scalars['Int']['output'];
 };
 
+/**
+ * A rule a sort set aside, and what of it gave way. A pin is counted only where
+ * the rule would have placed it under relevance, so a product an earlier rule
+ * pinned, or one a rule hides, is not. Under a sort scoped to the rule's own
+ * filter its pins hold, so pins is zero there.
+ */
+export type SetAsideRule = {
+    readonly __typename?: 'SetAsideRule';
+    readonly boosts: Scalars['Int']['output'];
+    readonly buries: Scalars['Int']['output'];
+    /** The rule's name, when it has one. */
+    readonly name: Maybe<Scalars['String']['output']>;
+    readonly pins: Scalars['Int']['output'];
+    readonly ruleId: Scalars['ID']['output'];
+};
+
 export type SortClause = {
     readonly __typename?: 'SortClause';
     readonly by: SortField;
@@ -733,6 +755,7 @@ export type ResolversTypes = {
     SearchHit: ResolverTypeWrapper<HitModel>;
     SearchInput: SearchInput;
     SearchResult: ResolverTypeWrapper<SearchResultModel>;
+    SetAsideRule: ResolverTypeWrapper<SetAsideRule>;
     SortClause: ResolverTypeWrapper<SortClause>;
     SortDirection: SortDirection;
     SortField: SortField;
@@ -786,6 +809,7 @@ export type ResolversParentTypes = {
     SearchHit: HitModel;
     SearchInput: SearchInput;
     SearchResult: SearchResultModel;
+    SetAsideRule: SetAsideRule;
     SortClause: SortClause;
     SortInput: SortInput;
     StatsFacet: FacetModel;
@@ -845,6 +869,7 @@ export type MerchandisingResolvers<
         ResolversParentTypes['Merchandising'],
 > = {
     applied?: Resolver<ReadonlyArray<ResolversTypes['ID']>, ParentType, ContextType>;
+    setAside?: Resolver<ReadonlyArray<ResolversTypes['SetAsideRule']>, ParentType, ContextType>;
     setAsideBySort?: Resolver<ReadonlyArray<ResolversTypes['ID']>, ParentType, ContextType>;
 };
 
@@ -1033,6 +1058,17 @@ export type SearchResultResolvers<
     totalPages?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
+export type SetAsideRuleResolvers<
+    ContextType = Context,
+    ParentType extends ResolversParentTypes['SetAsideRule'] = ResolversParentTypes['SetAsideRule'],
+> = {
+    boosts?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    buries?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    pins?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    ruleId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
 export type SortClauseResolvers<
     ContextType = Context,
     ParentType extends ResolversParentTypes['SortClause'] = ResolversParentTypes['SortClause'],
@@ -1143,6 +1179,7 @@ export type Resolvers<ContextType = Context> = {
     RuleEffect?: RuleEffectResolvers<ContextType>;
     SearchHit?: SearchHitResolvers<ContextType>;
     SearchResult?: SearchResultResolvers<ContextType>;
+    SetAsideRule?: SetAsideRuleResolvers<ContextType>;
     SortClause?: SortClauseResolvers<ContextType>;
     StatsFacet?: StatsFacetResolvers<ContextType>;
     Store?: StoreResolvers<ContextType>;

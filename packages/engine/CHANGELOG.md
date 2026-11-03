@@ -4,6 +4,21 @@ The engine follows semantic versioning from its first release. Until 1.0.0, a mi
 change the public types. Each version is published from a tag by the release workflow, with
 provenance, and has a release on GitHub with the entry below as its notes.
 
+## 0.5.0
+
+What a sort set aside of each rule, by name.
+
+- **What each rule lost.** A result's `rules.setAside` lists each rule the sort set aside, in the
+  order of `rules.setAsideBySort`, with its `name` when it has one and how many of its `pins`,
+  `boosts` and `buries` gave way. Under a sort scoped to the rule's own filter its pins hold, so
+  they count as none there, and a pin is counted only where the rule would have placed it under
+  relevance, so a product an earlier rule pinned or a rule hides is not counted. A rule that would
+  have placed nothing and has no boost or bury is not listed. The type is exported as `SetAside`.
+
+`rules.setAsideBySort` lists the ids of `rules.setAside`, so a rule that would have placed nothing
+leaves it too, and it is deprecated in favor of `rules.setAside`. Every search returns the same
+results as in 0.4.1.
+
 ## 0.4.1
 
 The same results as 0.4.0, reported fully under a category's own sort, with the package's page

@@ -36,7 +36,13 @@ fragment Results on SearchResult {
     }
     merchandising {
         applied
-        setAsideBySort
+        setAside {
+            ruleId
+            name
+            pins
+            boosts
+            buries
+        }
     }
     items {
         score @include(if: $explain)

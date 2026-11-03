@@ -27,6 +27,7 @@ export {
     type RuleTrigger,
     type SearchRequest,
     type SearchResult,
+    type SetAside,
     type SignalEffect,
     type SortClause,
     type SynonymRule,

@@ -46,10 +46,10 @@ The engine knows nothing about products. Whoever owns the catalog decides what b
   and the query alike, for a host that has to match text the same way.
 - `withinEdits` and `withinOneEdit`, the edit-distance checks the fuzzy pass and the recovery use.
 
-And the types of everything it takes and gives: `Engine`, `EngineConfig`, `Document`,
-`TextField`, `AttributeKind`, `AttributeValue`, `SynonymRule`, `FacetConfig`, `Rule`,
-`RuleTrigger`, `RuleAdjustment`, `SearchRequest`, `Filter`, `SortClause`, `SearchResult`, `Hit`,
-`TermMatch`, `MatchKind`, `MatchMode`, `RuleEffect`, `SignalEffect`, `Facet`, `ValueBucket`,
+And the types of everything it takes and gives: `Engine`, `EngineConfig`, `Document`, `TextField`,
+`AttributeKind`, `AttributeValue`, `SynonymRule`, `FacetConfig`, `Rule`, `RuleTrigger`,
+`RuleAdjustment`, `SearchRequest`, `Filter`, `SortClause`, `SearchResult`, `Hit`, `TermMatch`,
+`MatchKind`, `MatchMode`, `RuleEffect`, `SetAside`, `SignalEffect`, `Facet`, `ValueBucket`,
 `RangeBucket` and `Recovery`.
 
 ## How matching works
@@ -121,9 +121,10 @@ Boosts and buries change the relevance score, so they mean nothing under any oth
 apply under a sort scoped to the rule's own filter, which is how a category's merchandising
 survives its position sort, while a boost or a bury in that rule is set aside there. A hide says
 what may be shown rather than where, so it holds under every sort. A rule whose pins, boosts or
-buries are set aside by the sort is reported in the result, so a page can say that sorting by price
-switched the merchandising off. Every effect a rule has on a result is recorded on that hit,
-alongside its matches, for explain mode.
+buries are set aside by the sort is reported in the result's `rules.setAside`, with its name and
+how many of each gave way, so a page can say which rules sorting by price switched off and what
+each one lost. Every effect a rule has on a result is recorded on that hit, alongside its matches,
+for explain mode.
 
 ## Where it comes from
 

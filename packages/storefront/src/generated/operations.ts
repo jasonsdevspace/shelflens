@@ -181,7 +181,13 @@ export type PreviewQuery = {
         readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
         readonly merchandising: {
             readonly applied: ReadonlyArray<string>;
-            readonly setAsideBySort: ReadonlyArray<string>;
+            readonly setAside: ReadonlyArray<{
+                readonly ruleId: string;
+                readonly name: string | null;
+                readonly pins: number;
+                readonly boosts: number;
+                readonly buries: number;
+            }>;
         };
         readonly items: ReadonlyArray<{
             readonly score?: number;
@@ -381,7 +387,13 @@ export type ResultsFragment = {
     readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
     readonly merchandising: {
         readonly applied: ReadonlyArray<string>;
-        readonly setAsideBySort: ReadonlyArray<string>;
+        readonly setAside: ReadonlyArray<{
+            readonly ruleId: string;
+            readonly name: string | null;
+            readonly pins: number;
+            readonly boosts: number;
+            readonly buries: number;
+        }>;
     };
     readonly items: ReadonlyArray<{
         readonly score?: number;
@@ -498,7 +510,13 @@ export type SearchQuery = {
         readonly sort: ReadonlyArray<{ readonly by: SortField; readonly direction: SortDirection }>;
         readonly merchandising: {
             readonly applied: ReadonlyArray<string>;
-            readonly setAsideBySort: ReadonlyArray<string>;
+            readonly setAside: ReadonlyArray<{
+                readonly ruleId: string;
+                readonly name: string | null;
+                readonly pins: number;
+                readonly boosts: number;
+                readonly buries: number;
+            }>;
         };
         readonly items: ReadonlyArray<{
             readonly score?: number;
@@ -676,7 +694,7 @@ export const CategoriesDocument = new TypedDocumentString('', {
     hash: '463ddcc741f6ba20223714607b778a7cdb236fc1d16e2939567560d699374587',
 }) as unknown as TypedDocumentString<CategoriesQuery, CategoriesQueryVariables>;
 export const PreviewDocument = new TypedDocumentString('', {
-    hash: 'beccaf1eab8e94219df1864319400dd49adc3491559463464b4ea0d87d19721b',
+    hash: '0d4497b4302415afd4520df59e31b87b04a58c268fbfcf618c07c7e6db8ca726',
 }) as unknown as TypedDocumentString<PreviewQuery, PreviewQueryVariables>;
 export const ProductDocument = new TypedDocumentString('', {
     hash: '63abfd335812efa73bfcb9cb96c3eacbf11e8fa6777186785c8d97461da2950b',
@@ -685,7 +703,7 @@ export const RecommendationsDocument = new TypedDocumentString('', {
     hash: 'bfa8279da724de11d5d50e9155585444cea7b04df4dfc6ea021adec87b0769cf',
 }) as unknown as TypedDocumentString<RecommendationsQuery, RecommendationsQueryVariables>;
 export const SearchDocument = new TypedDocumentString('', {
-    hash: '6364550e05c98c2178ccf363fbc8c495d5cc9c0ea39e311f50b46698e27c5719',
+    hash: '70eac46c5823ae3812fb5b6b5e64b4ad78bfd7cab0e0568fafeae97e4d4defec',
 }) as unknown as TypedDocumentString<SearchQuery, SearchQueryVariables>;
 export const StoreDocument = new TypedDocumentString('', {
     hash: 'eb7c84d125b3ed0449afca358e642b6a548fa289c526332c9e9ad0564d5397d0',
