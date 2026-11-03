@@ -340,6 +340,14 @@ h4 {
     box-shadow: var(--shadow-raised);
 }
 
+/*
+ * Whatever takes focus is scrolled into view above the tour, never left
+ * behind it, at the height it is drawn, on a phone and on a wide screen.
+ */
+:root.is-touring {
+    scroll-padding-bottom: calc(var(--tour-height, 0rem) + var(--space-4) * 2);
+}
+
 .tour-head {
     display: flex;
     justify-content: space-between;
@@ -1153,14 +1161,9 @@ h4 {
         overflow: auto;
     }
 
-    /* The last cards and the pagination can still scroll above the tour. */
+    /* The last cards and the pagination can still scroll above the sheet, at its drawn height. */
     .content.has-tour {
-        padding-bottom: calc(50dvh + var(--space-4));
-    }
-
-    /* Whatever takes focus is scrolled into view above the sheet, never left behind it. */
-    :root.is-touring {
-        scroll-padding-bottom: calc(50dvh + var(--space-4));
+        padding-bottom: calc(var(--tour-height, 50dvh) + var(--space-4));
     }
 
     .results-layout {

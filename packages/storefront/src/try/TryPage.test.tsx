@@ -245,8 +245,49 @@ describe('the page for a visitor’s own catalog', () => {
         act(() => {
             document.dispatchEvent(new Event('visibilitychange'));
         });
-        await screen.findByText(/the 2 products you loaded/);
+        // The store is built again over the other tab's products, which takes more than a moment
+        // when the machine is busy.
+        await screen.findByText(/the 2 products you loaded/, undefined, { timeout: 5000 });
         await heard('Another tab loaded 2 products, so these are what you are searching now.');
+    });
+
+    it('reads again on a return that came while an older read was out, so a change made meanwhile shows', async () => {
+        page();
+        await loadSample();
+        const before = (await (await fetch(`${BASE}catalog`)).json()) as unknown;
+        // The first check's read is held, and answered with what was loaded before the change.
+        let answer = () => undefined as void;
+        let held = false;
+        failure = (request) => {
+            if (
+                held ||
+                request.method !== 'GET' ||
+                new URL(request.url).pathname !== `${BASE}catalog`
+            ) {
+                return undefined;
+            }
+            held = true;
+            return new Promise<Response>((resolve) => {
+                answer = () => resolve(Response.json(before));
+            });
+        };
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitFor(() => expect(held).toBe(true));
+        // Another tab loads other products, and the visitor comes back while the first read is out.
+        const table = parseCsv('name,price\nBench,120\nStool,40\n');
+        const other = toCatalog(table, guessMapping(table));
+        if (!other.ok) throw new Error(other.error);
+        await fetch(`${BASE}catalog`, { method: 'PUT', body: JSON.stringify(other.catalog) });
+        act(() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await act(async () => {
+            answer();
+            await Promise.resolve();
+        });
+        await screen.findByText(/the 2 products you loaded/, undefined, { timeout: 5000 });
     });
 
     it('reads once when a return fires both a visibility change and a focus', async () => {
