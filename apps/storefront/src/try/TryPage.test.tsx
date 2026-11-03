@@ -274,7 +274,8 @@ describe('the page for a visitor’s own catalog', () => {
         act(() => {
             window.dispatchEvent(new Event('focus'));
         });
-        await waitFor(() => expect(held).toBe(true));
+        // As long as the last wait allows, since a loaded run starts the read late.
+        await waitFor(() => expect(held).toBe(true), { timeout: 5000 });
         // Another tab loads other products, and the visitor comes back while the first read is out.
         const table = parseCsv('name,price\nBench,120\nStool,40\n');
         const other = toCatalog(table, guessMapping(table));
