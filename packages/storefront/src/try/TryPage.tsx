@@ -60,6 +60,8 @@ type Stage =
           readonly result: LoadResult;
           /** Made from the first rows only, while the whole file is made again after a change. */
           readonly partial?: boolean;
+          /** Set once the visitor changes the guess, so each new preview is said. */
+          readonly changed?: boolean;
           readonly problem?: string;
           /** Asked first, since this file would replace a catalog the visitor saved rules for. */
           readonly replacing?: boolean;
@@ -253,6 +255,7 @@ const Review = ({
     mapping,
     result,
     partial,
+    changed,
     problem,
     replacing,
     back,
@@ -270,6 +273,7 @@ const Review = ({
     readonly mapping: Mapping;
     readonly result: LoadResult;
     readonly partial: boolean;
+    readonly changed: boolean;
     readonly problem?: string | undefined;
     readonly replacing?: boolean | undefined;
     readonly onSearch: () => void;
@@ -301,7 +305,7 @@ const Review = ({
             and a wrong one is put right just below. */}
             {result.ok ? (
                 <>
-                    <Preview catalog={result.catalog} />
+                    <Preview catalog={result.catalog} changed={changed} />
                     {partial ? (
                         <p className="notice" role="status">
                             Checking all {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.
@@ -547,6 +551,7 @@ const BeforeStore = ({
                         mapping={stage.mapping}
                         result={stage.result}
                         partial={stage.partial ?? false}
+                        changed={stage.changed ?? false}
                         problem={stage.problem}
                         replacing={stage.replacing}
                         back={back}
@@ -840,7 +845,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { problem: _last, ...review } = stage;
             const quick = stage.table.rows.length <= QUICK_ROWS;
             const result = toCatalog(quick ? stage.table : firstRows(stage.table), mapping);
-            setStage({ ...review, mapping, result, partial: !quick });
+            setStage({ ...review, mapping, result, partial: !quick, changed: true });
         },
         [stage]
     );

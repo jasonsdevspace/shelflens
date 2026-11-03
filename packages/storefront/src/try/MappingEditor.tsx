@@ -1,8 +1,10 @@
 import { paysLess } from '@shelflens/api';
 import type { Catalog, Product } from '@shelflens/catalog';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
-import { formatMoney, formatPriceRange } from '../format/money.js';
+import { LiveStatus } from '../app/LiveStatus.jsx';
+import { count } from '../format/count.js';
+import { DEFAULT_LOCALE, formatMoney, formatPriceRange } from '../format/money.js';
 import type { Table } from './csv.js';
 import type { MappedField, Mapping } from './mapping.js';
 
@@ -65,6 +67,47 @@ export const withSearchOnly = (mapping: Mapping, header: string, on: boolean): M
     return searchOnly.length > 0 ? { ...mapping, searchOnly } : withoutSearchOnly(mapping);
 };
 
+/** The longest a sample value runs in an option before it is cut. */
+const SAMPLE_CHARACTERS = 24;
+
+/** The first two different values a column holds, cut short, so an option says what it is. */
+export const samplesOf = (table: Table, header: string): string => {
+    const index = table.headers.indexOf(header);
+    const seen = new Set<string>();
+    for (const row of table.rows) {
+        const value = (row[index] ?? '').trim();
+        if (value === '' || seen.has(value)) continue;
+        seen.add(value);
+        if (seen.size === 2) break;
+    }
+    return [...seen]
+        .map((value) =>
+            value.length > SAMPLE_CHARACTERS
+                ? `${value.slice(0, SAMPLE_CHARACTERS - 1)}\u2026`
+                : value
+        )
+        .join(' and ');
+};
+
+/** What an option says: the column, the part it feeds now when that is another, and what it holds. */
+const optionText = (header: string, usedFor: MappedField | undefined, samples: string): string =>
+    [header, usedFor && usedText(header, usedFor), samples && `like ${samples}`]
+        .filter((part) => typeof part === 'string' && part !== '')
+        .join(', ');
+
+/** The part a column feeds, or only that it is taken when the column bears the part's own name. */
+const usedText = (header: string, usedFor: MappedField): string =>
+    header.trim().toLowerCase() === FIELD_LABELS[usedFor].toLowerCase()
+        ? 'already used'
+        : `used for ${FIELD_LABELS[usedFor]}`;
+
+/** A column that went from one part to another, so the part it left can say where it went. */
+interface Moved {
+    readonly from: MappedField;
+    readonly to: MappedField;
+    readonly header: string;
+}
+
 export const MappingEditor = ({
     table,
     mapping,
@@ -75,6 +118,21 @@ export const MappingEditor = ({
     readonly onChange: (mapping: Mapping) => void;
 }) => {
     const id = useId();
+    const [moved, setMoved] = useState<Moved | undefined>(undefined);
+    const usedFor = (header: string, field: MappedField): MappedField | undefined =>
+        FIELDS.find((other) => other !== field && mapping[other] === header);
+    const choose = (field: MappedField, header: string) => {
+        const from = header === '' ? undefined : usedFor(header, field);
+        setMoved(from ? { from, to: field, header } : undefined);
+        onChange(withField(mapping, field, header));
+    };
+    const describedBy = (field: MappedField) =>
+        [
+            REQUIRED.has(field) ? `${id}-${field}-needed` : '',
+            moved?.from === field ? `${id}-${field}-moved` : '',
+        ]
+            .filter((part) => part !== '')
+            .join(' ') || undefined;
     const fed = new Set(
         FIELDS.map((field) => mapping[field]).filter((header) => header !== undefined)
     );
@@ -104,26 +162,38 @@ export const MappingEditor = ({
                             className="select"
                             id={`${id}-${field}`}
                             aria-required={REQUIRED.has(field) ? true : undefined}
-                            aria-describedby={
-                                REQUIRED.has(field) ? `${id}-${field}-needed` : undefined
-                            }
+                            aria-describedby={describedBy(field)}
                             value={mapping[field] ?? ''}
-                            onChange={(event) =>
-                                onChange(withField(mapping, field, event.target.value))
-                            }
+                            onChange={(event) => choose(field, event.target.value)}
                         >
                             <option value="">
                                 {REQUIRED.has(field) ? 'Choose a column' : 'Not used'}
                             </option>
                             {table.headers.map((header) => (
                                 <option key={header} value={header}>
-                                    {header}
+                                    {optionText(
+                                        header,
+                                        usedFor(header, field),
+                                        samplesOf(table, header)
+                                    )}
                                 </option>
                             ))}
                         </select>
+                        {moved?.from === field && (
+                            <span id={`${id}-${field}-moved`} className="hint">
+                                Its column, {moved.header}, went to {FIELD_LABELS[moved.to]}.
+                            </span>
+                        )}
                     </div>
                 ))}
             </div>
+            <LiveStatus
+                text={
+                    moved
+                        ? `${FIELD_LABELS[moved.from]} no longer has a column, since ${moved.header} went to ${FIELD_LABELS[moved.to]}.`
+                        : ''
+                }
+            />
             {others.length > 0 && (
                 <fieldset className="try-search-only">
                     <legend>Also search these columns</legend>
@@ -181,18 +251,54 @@ const PreviewCard = ({
                 {variant?.inStock === false && ', out of stock'}
             </span>
             {details.length > 0 && <span className="notice">{details.join(', ')}</span>}
+            {product.description !== '' && (
+                <span className="notice">{excerpt(product.description)}</span>
+            )}
+            {product.rating.count > 0 && (
+                <span className="notice">
+                    {product.rating.average.toFixed(1)} out of 5, from{' '}
+                    {count(product.rating.count, 'rating', 'ratings', DEFAULT_LOCALE)}
+                </span>
+            )}
+            <span className="notice">ID {product.sku}</span>
         </li>
     );
 };
 
+/** The longest a description runs in the preview before it is cut. */
+const EXCERPT_CHARACTERS = 90;
+
+const excerpt = (text: string): string =>
+    text.length > EXCERPT_CHARACTERS
+        ? `${text.slice(0, EXCERPT_CHARACTERS - 1).trimEnd()}\u2026`
+        : text;
+
 const WORDS = ['', 'one', 'two', 'three'];
 
-/** The first three products, as the store will show them. */
-export const Preview = ({ catalog }: { readonly catalog: Catalog }) => {
+/**
+ * The first three products, as the store will show them. Once the visitor
+ * has changed the mapping, each new preview is said, so a change is heard
+ * as well as seen.
+ */
+export const Preview = ({
+    catalog,
+    changed = false,
+}: {
+    readonly catalog: Catalog;
+    readonly changed?: boolean;
+}) => {
     const categories = categoryNamesOf(catalog);
     const shown = catalog.products.slice(0, 3);
+    const [first] = shown;
     return (
         <>
+            <LiveStatus
+                text={
+                    changed && first
+                        ? `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency })}.`
+                        : ''
+                }
+            />
             <h2>{`${shown.length === 1 ? 'The first product' : `The first ${WORDS[shown.length] ?? shown.length} products`}, as the store will show them`}</h2>
             <ul className="try-preview" aria-label="Preview">
                 {shown.map((product) => (
