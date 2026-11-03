@@ -1,7 +1,8 @@
 /**
- * The checks every boundary of the API reads a value through: a request's
- * body, an event batch, a rules file and a visitor's catalog. Written once,
- * so the boundaries agree on what an object is and on what is not JSON.
+ * Checks the API's boundaries share, written once so they agree on what an
+ * object is. A request's body, an event batch, a rules file and a visitor's
+ * catalog are each checked as objects here, and a request and an event
+ * batch are each read as JSON here.
  */
 
 /** Whether a value is a plain object, which an array is not. */

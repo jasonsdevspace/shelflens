@@ -191,7 +191,7 @@ export interface Receipt {
 export const receiveEvents = async (
     request: EventsRequest,
     store: EventStore,
-    /** When the batch arrived, from the host, as every answer's time is. */
+    /** When the batch arrived, by the host's clock, which no event's time is let past. */
     now: Date
 ): Promise<Receipt> => {
     if (request.method !== 'POST') return { status: 405, message: 'events are posted' };

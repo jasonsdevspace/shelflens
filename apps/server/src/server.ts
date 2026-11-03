@@ -46,10 +46,10 @@ const DRAIN_MS = 5_000;
 
 export interface ServerOptions {
     /**
-     * What answers: the store host every host of the API serves, which folds
-     * in the clicks when a visit begins and builds again when rules are
-     * saved, as the service worker's does. Its events, when it keeps any, are
-     * the ones the server receives.
+     * The store host that answers, the one the service worker runs too, so
+     * the server folds in clicks when a visit begins and builds again when
+     * rules are saved, as the worker does. Events are received into the
+     * host's own store, and refused when it keeps none.
      */
     readonly host: StoreHost;
     /** Requests each client may make per minute. */
@@ -340,6 +340,31 @@ const JSON_HEADERS = {
 const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
     send(response, { status, body: errorBody(status, message), requestId });
 
+/**
+ * A store that could not start. Nothing in the request was wrong, and asking
+ * again can succeed, so it is a 503 with a while to wait, as the service
+ * worker answers a store that did not build, with the id the log holds.
+ */
+const notReady = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} found no store`, error);
+    response.setHeader('retry-after', '5');
+    send(response, {
+        status: 503,
+        body: errorBody(503, 'the store is not ready', { requestId }),
+        requestId,
+    });
+};
+
+/** A failure that is ours, in the one error shape, with the id the log holds. */
+const failed = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} failed`, error);
+    send(response, {
+        status: 500,
+        body: errorBody(500, INTERNAL_MESSAGE, { requestId }),
+        requestId,
+    });
+};
+
 /** A receiver's answer as the server writes it. */
 const write = (response: ServerResponse, answer: HostAnswer, requestId: string) => {
     if (answer.body === undefined) {
@@ -387,6 +412,11 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         response: ServerResponse,
         requestId: string
     ) => {
+        // Said before any allowance is spent or any body read, as the events path does.
+        if (!host.keepsRules) {
+            refuse(response, 404, 'this store keeps no rules', requestId);
+            return;
+        }
         // A save builds the store again, so the path has the usual allowance.
         if (!allow(`rules:${addressOf(request, trustProxy)}`)) {
             tooMany(response, requestId);
@@ -394,7 +424,16 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
-        write(response, answerOf(await host.receiveRules(asHttp(request, body))), requestId);
+        let answer: HostAnswer;
+        try {
+            answer = answerOf(await host.receiveRules(asHttp(request, body)));
+        } catch (error) {
+            // Answering the rules builds the store first, and a store that cannot start is
+            // answered as the query path answers it.
+            notReady(response, requestId, error);
+            return;
+        }
+        write(response, answer, requestId);
     };
     // Beacons have a budget of their own, per address, since they carry no group and
     // must not bring a shopper's searches closer to the limit.
@@ -437,7 +476,13 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
-        const receipt = await receiveEvents(asHttp(request, body), events, now());
+        let receipt: Awaited<ReturnType<typeof receiveEvents>>;
+        try {
+            receipt = await receiveEvents(asHttp(request, body), events, now());
+        } catch (error) {
+            failed(response, requestId, error);
+            return;
+        }
         write(response, answerOf(receipt), requestId);
     };
 
@@ -488,10 +533,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
             if (resolved.expected === undefined) await host.refresh();
             ({ api } = await host.current());
         } catch (error) {
-            // Nothing in the request was wrong, and asking again can succeed, as the
-            // service worker answers a store that did not build.
-            console.error(`request ${requestId} found no store`, error);
-            refuse(response, 503, 'the store is not ready', requestId);
+            notReady(response, requestId, error);
             return;
         }
         try {
@@ -510,12 +552,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
                 }),
             });
         } catch (error) {
-            console.error(`request ${requestId} failed`, error);
-            send(response, {
-                status: 500,
-                body: errorBody(500, INTERNAL_MESSAGE, { requestId }),
-                requestId,
-            });
+            failed(response, requestId, error);
         }
     };
 };

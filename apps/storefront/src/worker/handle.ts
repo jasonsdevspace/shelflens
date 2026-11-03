@@ -40,6 +40,8 @@ export interface WorkerApiOptions {
      * set, and the public demo never sets it.
      */
     readonly allowFullQueries?: boolean;
+    /** The clock, read once for each answer, so a test can pin the time as the Node server's can. */
+    readonly now?: () => Date;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
     /** Where to keep the events the page sends. Without one, events are refused. */
@@ -109,9 +111,14 @@ const refuse = (status: number, message: string, extensions?: Record<string, unk
 
 /** A receiver's answer as the worker writes it. */
 const write = ({ status, body, headers = {} }: HostAnswer): Response =>
-    body === undefined
-        ? new Response(null, { status, headers })
-        : json(status, body, { 'content-type': 'application/json; charset=utf-8', ...headers });
+    body === undefined ? new Response(null, { status, headers }) : json(status, body);
+
+/** A request as the API's receivers read it, from what a fetch event gives. */
+const asHttp = async (request: Request) => ({
+    method: request.method,
+    body: request.method === 'GET' ? undefined : await request.text(),
+    header: (name: string) => request.headers.get(name),
+});
 
 const noCatalog = () => refuse(404, 'no catalog is loaded, so there is nothing to search yet');
 
@@ -159,6 +166,7 @@ export const createWorkerApi = ({
     base = '/',
     fetch: fetchImpl = fetch,
     allowFullQueries = false,
+    now = () => new Date(),
     answers,
     events,
     rules,
@@ -215,25 +223,13 @@ export const createWorkerApi = ({
 
     const receive = async (request: Request): Promise<Response> => {
         if (!events) return refuse(404, 'this store keeps no events');
-        const receipt = await receiveEvents(
-            {
-                method: request.method,
-                body: await request.text(),
-                header: (name) => request.headers.get(name),
-            },
-            events,
-            new Date()
-        );
+        const receipt = await receiveEvents(await asHttp(request), events, now());
         return write(answerOf(receipt));
     };
 
     /** The rules path: read, replace or reset the saved set, building again on a change. */
     const receiveRuleSet = async (request: Request): Promise<Response> => {
-        const answer = await host.receiveRules({
-            method: request.method,
-            body: await request.text(),
-        });
-        return write(answerOf(answer));
+        return write(answerOf(await host.receiveRules(await asHttp(request))));
     };
 
     /**
@@ -359,12 +355,7 @@ export const createWorkerApi = ({
 
     const answer = async (request: Request): Promise<Response> => {
         const resolved = resolveRequest(
-            {
-                method: request.method,
-                url: request.url,
-                body: request.method === 'POST' ? await request.text() : undefined,
-                header: (name) => request.headers.get(name),
-            },
+            { ...(await asHttp(request)), url: request.url },
             { persisted: PERSISTED_OPERATIONS, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
@@ -377,12 +368,17 @@ export const createWorkerApi = ({
             if (error instanceof NoCatalogError) return noCatalog();
             return refuse(503, 'the store is not ready');
         }
-        const now = new Date();
-        const response = await api.run(resolved.request, resolved.viewer, now);
+        const at = now();
+        const response = await api.run(resolved.request, resolved.viewer, at);
         return json(
             200,
             response,
-            responseHeaders({ version: api.version, now, expected: resolved.expected, response })
+            responseHeaders({
+                version: api.version,
+                now: at,
+                expected: resolved.expected,
+                response,
+            })
         );
     };
 
@@ -393,7 +389,7 @@ export const createWorkerApi = ({
     const query = async (request: Request): Promise<Response> => {
         const kept = request.method === 'GET' && answers ? await answers() : undefined;
         const held = await kept?.match(request);
-        if (held && fresh(held, new Date())) return held;
+        if (held && fresh(held, now())) return held;
         const response = await answer(request);
         // Kept only while the store that made it is still the one served, so
         // an answer that finishes after its catalog was replaced or removed

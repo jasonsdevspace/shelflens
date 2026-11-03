@@ -8,9 +8,9 @@ import type { Signals } from './signals.js';
 /**
  * What every resolver can reach.
  *
- * The store part is built once per catalog, in store.ts, and shared by every
- * request. The viewer part is built per request, from the request, which is
- * the only place a customer group may come from.
+ * The store part is built in store.ts, once for each store version, and
+ * shared by every request. The viewer part is built per request, from the
+ * request, which is the only place a customer group may come from.
  */
 
 export interface Store {

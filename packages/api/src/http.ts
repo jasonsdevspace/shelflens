@@ -64,7 +64,7 @@ const refused = (status: number, message: string): Resolution => ({
 /** The request header that says who is shopping, read by every host of the API. */
 export const GROUP_HEADER = 'shelflens-customer-group';
 
-/** The customer group a request declared, or guest when it declared none. */
+/** The customer group a request declared, or guest for anything but member. */
 export const viewerFromHeader = (value: string | null | undefined): Viewer => ({
     group: value?.trim().toLowerCase() === 'member' ? 'member' : 'guest',
 });
@@ -118,8 +118,7 @@ export const resolveRequest = (http: HttpRequest, options: HttpOptions): Resolut
 export interface ResponseHeaderInput {
     /** The version of the store that answered. */
     readonly version: string;
-    /** When it answered, for a cache that ages what it keeps. */
-    /** When the answer was made, from the host, for its date header. */
+    /** When the answer was made, by the host's clock, for the date a kept answer is aged from. */
     readonly now: Date;
     /** The version the client expected, from the URL. */
     readonly expected: string | undefined;
@@ -146,7 +145,10 @@ export const responseHeaders = ({
             : 'no-store',
 });
 
-/** What a host writes for a receiver's answer: its status, its body if any, and its headers. */
+/**
+ * A receiver's answer in the one form both hosts write, so neither turns a
+ * receipt into a response its own way.
+ */
 export interface HostAnswer {
     readonly status: number;
     readonly body?: unknown;
@@ -155,9 +157,9 @@ export interface HostAnswer {
 
 /**
  * A receiver's receipt as a host writes it, so the service worker and the
- * Node server answer the events and the rules paths alike: nothing for a
- * change taken, with the store version it made, the body for a read, and
- * the one error shape for a refusal.
+ * Node server answer the events and the rules paths alike: no body for a
+ * batch kept or a change taken, with the store version the change made when
+ * there is one, the body for a read, and the one error shape for a refusal.
  */
 export const answerOf = (receipt: {
     readonly status: number;

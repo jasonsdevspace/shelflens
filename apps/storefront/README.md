@@ -115,10 +115,10 @@ the page.
   install, claims the page on activation, and answers `graphql`, `events` and `rules` under the
   site's path from inside the page, and a visitor's catalog too on the page for one, through the
   API's store host and its one `routeOf`. A failure of its own is a 500 in the API's shape, as the
-  Node server answers. It accepts only the storefront's own operations, by name, caches answers on the API's
-  one cache key, and keeps what the answer's headers allow in the Cache API under the answer's
-  URL, since a response a worker makes up never enters the browser's own cache. Its handler is
-  tested with plain fetch requests.
+  Node server answers. It accepts only the storefront's own operations, by name, caches answers on
+  the API's one cache key, and keeps what the answer's headers allow in the Cache API under the
+  answer's URL, since a response a worker makes up never enters the browser's own cache. Its handler
+  is tested with plain fetch requests.
 - **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
   Node handler from `@shelflens/server` on the paths the Node server serves, over the same store
   host, so `npm run dev` needs no second process and no worker fighting hot reloading.

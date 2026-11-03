@@ -26,11 +26,12 @@ is answered. A request mid-visit names the version it has and keeps it. `/rules`
 resets the rules in effect, as the demo's rules editor does in the browser, kept in memory for as
 long as the server runs. A save keeps the index and applies the new set, under a new store version.
 
-`createHandler` is the request handler on its own, for a host that already has a server. The
-storefront's dev server uses it with a store host of its own, so the store that answers in
-development is built and refreshed as the worker's is in production. `createServer` wraps it in
-`node:http`. Either takes the `host`, and the events it keeps are the ones the server receives.
-`createLocalHost` builds the one a local run serves, as `npm run api` and the dev server do.
+`createHandler` is the request handler on its own, for a host that already has a server, and
+`createServer` wraps it in `node:http`. Either takes a `host` from `@shelflens/api` and receives
+events into the store that host keeps. `createLocalHost` builds the one a local run serves, with
+the events and the saved rules in memory, and `npm run api` and the storefront's dev server both
+use it, so the store that answers in development is built and refreshed as the worker's is in
+production.
 
 `RULES=path` loads the merchandising the server starts with from a JSON file of the shape the demo
 ships in `apps/storefront/public/rules.json`: an object with the rules under `rules`, each with an

@@ -7,7 +7,7 @@ import { fingerprint } from './fingerprint.js';
 import { pricesDiffer } from './prices.js';
 import type { Signals } from './signals.js';
 
-/**
+/*
  * Building a store from a catalog: its engine, its lookups and its version,
  * over the index of one built from the same catalog when there is one.
  */
@@ -74,6 +74,7 @@ const lookupsOf = ({ completions, products, categories, brands }: Store) => ({
 /** The store's name, as the schema gives it. */
 const STORE_NAME = 'ShelfLens';
 
+/** A store from a catalog, its rules and its clicks, under a version that names all three. */
 export const createStore = ({
     catalog,
     rules = [],

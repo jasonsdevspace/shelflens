@@ -79,8 +79,14 @@ export interface Startup {
 type RulesAnswer = RulesReceipt & { readonly version?: string };
 
 export interface StoreHost {
-    /** The events the host folds into ranking, for a host that receives them. */
+    /**
+     * The events the host was given, which it folds into ranking and the
+     * recommendations read, so a server receives into the same store.
+     * Nothing for a host that keeps none.
+     */
     readonly events: EventStore | undefined;
+    /** Whether the host keeps saved rules, so a host without them answers the rules path at once. */
+    readonly keepsRules: boolean;
     /** The store being served, built the first time anything asks. */
     current(): Promise<HostedStore>;
     /** The store being served, or nothing when none has been built or the build failed. */
@@ -142,10 +148,14 @@ export const createStoreHost = ({
 
     type Inputs = Awaited<ReturnType<typeof inputs>>;
 
-    /** What a store is made from, the rules in effect fingerprinted as the store's version does. */
+    /**
+     * What a store is made from. The rules in effect are compared as their
+     * text, so two sets that differ are never taken for the same, as two whose
+     * short fingerprints collided would be, and a save is never lost to that.
+     */
     const fromOf = ({ signals, saved, catalog, shipped }: Inputs): MadeFrom => ({
         clicks: fingerprint(signals),
-        rules: fingerprint(saved ?? shipped),
+        rules: JSON.stringify(saved ?? shipped),
         edited: saved !== undefined,
         catalog: catalog.version,
     });
@@ -174,7 +184,7 @@ export const createStoreHost = ({
         return { api: withResponseCache(createStoreApi(model, { events })), model };
     };
 
-    /** Makes a store the one served, and tells the host. */
+    /** Makes a store the one served, remembered with what it was made from, and tells `onServed`. */
     const serve = async (hosted: HostedStore, from: MadeFrom): Promise<HostedStore> => {
         last = { hosted, from };
         store = Promise.resolve(hosted);
@@ -226,6 +236,7 @@ export const createStoreHost = ({
 
     return {
         events,
+        keepsRules: rules !== undefined,
         current,
         served,
         refresh: async () => {

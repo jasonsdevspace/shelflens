@@ -55,8 +55,9 @@ const MAX_SUGGESTIONS = 20;
 /** How many products stand in for nothing. */
 const POPULAR = 8;
 const RELAXED_PAGE_SIZE = 12;
-/** How many products stand beside one, and how many suggestions, when the request does not say. */
+/** How many products stand beside one when the request does not say. */
 const RAIL_DEFAULT = 6;
+/** How many suggestions are given when the request does not say. */
 const SUGGEST_DEFAULT = 5;
 
 /**
@@ -66,6 +67,7 @@ const SUGGEST_DEFAULT = 5;
  */
 const limitOf = (limit: number | null | undefined, fallback: number, most: number): number =>
     Math.min(Math.max(limit ?? fallback, 0), most);
+
 /** A browsed category is a place, not a filter the shopper chose, so it is never offered up. */
 const FIXED_ATTRIBUTES = ['category'];
 

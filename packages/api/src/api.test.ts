@@ -717,4 +717,17 @@ describe('the limits a field takes', () => {
         expect(await suggest(5)).toBe(5);
         expect(await suggest(null)).toBe(5);
     });
+
+    it('gives a null limit the same default the schema gives a limit left out', async () => {
+        const omitted = (await ask(
+            'query ($sku: ID!) { recommendations(sku: $sku) { items { sku } } suggest(phrase: "jacket") { products { product { sku } } } }',
+            { sku }
+        )) as { recommendations: { items: unknown[] }; suggest: { products: unknown[] } };
+        const nulled = (await ask(
+            'query ($sku: ID!) { recommendations(sku: $sku, limit: null) { items { sku } } suggest(phrase: "jacket", limit: null) { products { product { sku } } } }',
+            { sku }
+        )) as typeof omitted;
+        expect(nulled.recommendations.items.length).toBe(omitted.recommendations.items.length);
+        expect(nulled.suggest.products.length).toBe(omitted.suggest.products.length);
+    });
 });

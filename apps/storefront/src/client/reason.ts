@@ -2,7 +2,7 @@
  * What a host said went wrong, read from an error's body, or nothing.
  *
  * Every path the page asks answers a failure in the API's error shape,
- * `{ errors: [{ message }] }`, so the rules and the catalog clients read it
+ * `{ errors: [{ message, extensions: { code } }] }`, so the rules and the
  * here, and a body that is not that shape, or not JSON at all, says nothing
  * rather than failing the read. Only a refusal gives a reason: a failure of
  * the host's own, a 500, says only that something went wrong on its side.

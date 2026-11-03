@@ -159,16 +159,31 @@ describe('events over HTTP', () => {
 describe('a store that cannot start', () => {
     it('answers 503, since nothing in the request was wrong and asking again can succeed', async () => {
         const broken = createServer({
-            host: createStoreHost({ source: () => Promise.reject(new Error('no catalog')) }),
+            host: createStoreHost({
+                source: () => Promise.reject(new Error('no catalog')),
+                rules: createMemoryRuleStore(),
+            }),
         });
         await new Promise<void>((resolve) => broken.listen(0, resolve));
         const at = `http://127.0.0.1:${(broken.address() as AddressInfo).port}`;
         const quiet = console.error;
         console.error = () => undefined;
         try {
-            const response = await fetch(`${at}/graphql?op=${STORE}`);
-            expect(response.status).toBe(503);
-            expect(await response.json()).toEqual(errorBody(503, 'the store is not ready'));
+            for (const path of [`graphql?op=${STORE}`, 'rules']) {
+                const response = await fetch(`${at}/${path}`);
+                expect(response.status, path).toBe(503);
+                expect(response.headers.get('retry-after'), path).toBe('5');
+                // The id the log holds, to quote, as a failure of ours carries it.
+                const requestId = response.headers.get('x-request-id') ?? '';
+                expect(await response.json(), path).toEqual({
+                    errors: [
+                        {
+                            message: 'the store is not ready',
+                            extensions: { code: 'NOT_READY', requestId },
+                        },
+                    ],
+                });
+            }
         } finally {
             console.error = quiet;
             broken.close();
@@ -276,8 +291,18 @@ describe('rules over HTTP', () => {
         }
     });
 
-    it('is refused where the host keeps no rules', async () => {
-        expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
+    it('is refused where the host keeps no rules, before any allowance is spent', async () => {
+        const ruleless = createServer({ host: hostOf(), rateLimitPerMinute: 2 });
+        await new Promise<void>((resolve) => ruleless.listen(0, resolve));
+        const at = `http://127.0.0.1:${(ruleless.address() as AddressInfo).port}`;
+        try {
+            // Past the allowance of two, which a rules path that counted would have spent.
+            for (let sent = 0; sent < 4; sent += 1) {
+                expect((await fetch(`${at}/rules`)).status).toBe(404);
+            }
+        } finally {
+            ruleless.close();
+        }
     });
 });
 
