@@ -1,4 +1,5 @@
 import { type SortKey, SORTS } from '../app/url.js';
+import type { ResultsFragment } from '../generated/operations.js';
 
 /**
  * What the rule form says of a boost or a bury. Each changes a product's
@@ -8,14 +9,8 @@ import { type SortKey, SORTS } from '../app/url.js';
 export const onlyUnderRelevance = (action: 'boost' | 'bury'): string =>
     `A ${action} applies only under \u201c${SORTS.relevance.label}\u201d, where a search starts. Every other sort sets it aside, \u201c${SORTS.position.label}\u201d included.`;
 
-/** A rule a sort set aside, and how many of its pins, boosts and buries gave way. */
-export interface SetAsideRule {
-    readonly ruleId: string;
-    readonly name?: string | null;
-    readonly pins: number;
-    readonly boosts: number;
-    readonly buries: number;
-}
+/** A rule a sort set aside, and how many of its pins, boosts and buries gave way, as the API sends it. */
+export type SetAsideRule = ResultsFragment['merchandising']['setAside'][number];
 
 /** Words as a list is read aloud: "a", "a and b", "a, b and c". */
 const listOf = (words: readonly string[]): string =>
@@ -33,7 +28,7 @@ const lostFrom = (rule: SetAsideRule): string =>
         ...kind(rule.pins, 'pin', 'pins'),
         ...kind(rule.boosts, 'boost', 'boosts'),
         ...kind(rule.buries, 'bury', 'buries'),
-    ])} of \u201c${rule.name ?? rule.ruleId}\u201d`;
+    ])} of \u201c${rule.name === null || rule.name === '' ? rule.ruleId : rule.name}\u201d`;
 
 /**
  * What the page says about the rules a sort set aside, or nothing when it
@@ -45,7 +40,9 @@ const lostFrom = (rule: SetAsideRule): string =>
 export const setAsideBySort = (
     sortKey: SortKey,
     setAside: readonly SetAsideRule[]
-): string | undefined =>
-    setAside.length === 0
+): string | undefined => {
+    const lost = setAside.filter((rule) => rule.pins + rule.boosts + rule.buries > 0);
+    return lost.length === 0
         ? undefined
-        : `The sort \u201c${SORTS[sortKey].label}\u201d sets aside ${listOf(setAside.map(lostFrom))}.`;
+        : `The sort \u201c${SORTS[sortKey].label}\u201d sets aside ${listOf(lost.map(lostFrom))}.`;
+};

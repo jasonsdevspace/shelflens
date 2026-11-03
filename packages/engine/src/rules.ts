@@ -200,17 +200,34 @@ interface Draft {
     readonly hidden: Set<string>;
     readonly adjustments: PlannedAdjustment[];
     readonly applied: string[];
-    readonly setAside: SetAside[];
+    /** The rules the sort set aside, each with the pins it would have placed under relevance. */
+    readonly aside: { readonly rule: Rule; readonly pins: readonly string[] }[];
+    /** The products a set-aside rule would have pinned, so a later rule's pin of one is not counted. */
+    readonly claimed: Set<string>;
 }
 
-/** What a sort set aside of a rule: the pins given, and every boost and bury. */
-const setAsideOf = (rule: Rule, pins: number): SetAside => ({
-    ruleId: rule.id,
-    ...(rule.name !== undefined && { name: rule.name }),
-    pins,
-    boosts: (rule.boost ?? []).length,
-    buries: (rule.bury ?? []).length,
-});
+/**
+ * The pins a rule would have placed under relevance: each product no rule
+ * before it pinned or would have pinned. A pin of a hidden product places
+ * nothing either, which is only known once every rule is read.
+ */
+const wouldPin = (draft: Draft, rule: Rule): string[] => {
+    const pins = (rule.pin ?? []).filter((id) => !draft.pinnedBy.has(id) && !draft.claimed.has(id));
+    for (const id of pins) draft.claimed.add(id);
+    return pins;
+};
+
+/** What the sort set aside of each rule, once every rule is read, leaving out a rule that lost nothing. */
+const setAsideOf = (draft: Draft): SetAside[] =>
+    draft.aside
+        .map(({ rule, pins }) => ({
+            ruleId: rule.id,
+            ...(rule.name !== undefined && { name: rule.name }),
+            pins: pins.filter((id) => !draft.hidden.has(id)).length,
+            boosts: (rule.boost ?? []).length,
+            buries: (rule.bury ?? []).length,
+        }))
+        .filter((rule) => rule.pins + rule.boosts + rule.buries > 0);
 
 /** Whether the rule changes the order of the results, which only relevance can take. */
 const ordersResults = (rule: Rule): boolean =>
@@ -224,9 +241,7 @@ const keepUnderSort = (draft: Draft, rule: Rule): void => {
     const hides = rule.hide ?? [];
     for (const id of hides) draft.hidden.add(id);
     if (hides.length > 0) draft.applied.push(rule.id);
-    if (ordersResults(rule)) {
-        draft.setAside.push(setAsideOf(rule, (rule.pin ?? []).length));
-    }
+    if (ordersResults(rule)) draft.aside.push({ rule, pins: wouldPin(draft, rule) });
 };
 
 /** Whether the rule moves products by their score, which only relevance reads. */
@@ -240,7 +255,7 @@ const scoresResults = (rule: Rule): boolean =>
  */
 const keepUnderOwnSort = (draft: Draft, rule: Rule): void => {
     if ((rule.pin ?? []).length + (rule.hide ?? []).length > 0) draft.applied.push(rule.id);
-    if (scoresResults(rule)) draft.setAside.push(setAsideOf(rule, 0));
+    if (scoresResults(rule)) draft.aside.push({ rule, pins: [] });
 };
 
 const addEffects = (draft: Draft, rule: Rule, relevance: boolean): void => {
@@ -268,7 +283,8 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
         hidden: new Set(),
         adjustments: [],
         applied: [],
-        setAside: [],
+        aside: [],
+        claimed: new Set(),
     };
 
     for (const rule of rules) {
@@ -284,7 +300,8 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
         else keepUnderOwnSort(draft, rule);
         addEffects(draft, rule, relevance);
     }
-    return draft;
+    const { pins, pinnedBy, hidden, adjustments, applied } = draft;
+    return { pins, pinnedBy, hidden, adjustments, applied, setAside: setAsideOf(draft) };
 };
 
 /** The multiplier a document's score gets, and the effects to record for it. */

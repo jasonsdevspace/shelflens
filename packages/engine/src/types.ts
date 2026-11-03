@@ -252,7 +252,11 @@ export interface SearchResult {
     readonly facets: readonly Facet[];
     readonly rules: {
         readonly applied: readonly string[];
-        /** Rules that would have applied, had the sort been relevance, by id. */
+        /**
+         * Rules that would have applied, had the sort been relevance, by id.
+         *
+         * @deprecated Each rule's id is in `setAside`, with what the sort set aside of it.
+         */
         readonly setAsideBySort: readonly string[];
         /** The same rules, each with what the sort set aside of it. */
         readonly setAside: readonly SetAside[];

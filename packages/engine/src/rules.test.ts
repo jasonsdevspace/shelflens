@@ -173,6 +173,36 @@ describe('rules and the sort', () => {
         });
     });
 
+    it('counts only the pins a rule would have placed, and leaves out a rule that would place none', () => {
+        const overlapping = createEngine(documents, {
+            ...base,
+            rules: [
+                { id: 'first', when: { queries: ['runner'] }, pin: ['p1'] },
+                // p1 is the first rule's, and p2 is hidden, so this one would place only p3.
+                { id: 'second', when: { queries: ['runner'] }, pin: ['p1', 'p2', 'p3'] },
+                // Each of its pins is taken or hidden, so under relevance it would place nothing.
+                { id: 'third', when: { queries: ['runner'] }, pin: ['p3', 'p2'] },
+                { id: 'hides', when: { queries: ['runner'] }, hide: ['p2'] },
+            ],
+        });
+        const result = overlapping.search({
+            query: 'runner',
+            sort: [{ by: 'price', direction: 'asc' }],
+        });
+        expect(result.rules.setAside).toEqual([
+            { ruleId: 'first', pins: 1, boosts: 0, buries: 0 },
+            { ruleId: 'second', pins: 1, boosts: 0, buries: 0 },
+        ]);
+        expect(result.rules.setAsideBySort).toEqual(['first', 'second']);
+        // Under relevance the same rules place p1 and p3, which is what the counts say was lost.
+        expect(
+            overlapping
+                .search({ query: 'runner' })
+                .hits.slice(0, 2)
+                .map((h) => h.id)
+        ).toEqual(['p1', 'p3']);
+    });
+
     it('sets a category rule aside under an unrelated sort', () => {
         const result = engine.search({
             filters: [{ attribute: 'category', eq: 'shoes' }],

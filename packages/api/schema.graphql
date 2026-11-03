@@ -414,6 +414,7 @@ type Merchandising {
     when it also boosts or buries, since those do nothing under that sort.
     """
     setAsideBySort: [ID!]!
+        @deprecated(reason: "Each rule's id is in setAside, with what the sort set aside of it.")
 
     """
     The same rules, in the same order, each with its name and how many of its
@@ -423,8 +424,10 @@ type Merchandising {
 }
 
 """
-A rule a sort set aside, and what of it gave way. Under a sort scoped to the
-rule's own filter its pins hold, so pins is zero there.
+A rule a sort set aside, and what of it gave way. A pin is counted only where
+the rule would have placed it under relevance, so a product an earlier rule
+pinned, or one a rule hides, is not. Under a sort scoped to the rule's own
+filter its pins hold, so pins is zero there.
 """
 type SetAsideRule {
     ruleId: ID!

@@ -490,7 +490,7 @@ const useAppliedRules = (
               [
                   ...new Set([
                       ...result.merchandising.applied,
-                      ...result.merchandising.setAsideBySort,
+                      ...result.merchandising.setAside.map((rule) => rule.ruleId),
                   ]),
               ];
     // The last answer from the store itself for this search, kept through a preview
@@ -663,7 +663,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                     name: hit.product.name,
                 }))}
                 brands={brandsOf(result)}
-                setAside={result.merchandising.setAsideBySort}
+                setAside={result.merchandising.setAside.map((rule) => rule.ruleId)}
             />
         </RulesColumn>
     ) : (

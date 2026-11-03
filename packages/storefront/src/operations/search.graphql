@@ -36,7 +36,6 @@ fragment Results on SearchResult {
     }
     merchandising {
         applied
-        setAsideBySort
         setAside {
             ruleId
             name

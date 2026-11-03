@@ -46,7 +46,24 @@ describe('what the page says about rules a sort set aside', () => {
         );
     });
 
-    it('names a rule with no name by its id', () => {
+    it('leaves out a rule that lost nothing, and says nothing when none lost anything', () => {
+        expect(
+            setAsideBySort('rating', [
+                { ruleId: 'kept', name: 'Kept', pins: 0, boosts: 0, buries: 0 },
+                { ruleId: 'lost', name: 'Lost', pins: 0, boosts: 1, buries: 0 },
+            ])
+        ).toBe('The sort “Rating” sets aside the boost of “Lost”.');
+        expect(
+            setAsideBySort('rating', [
+                { ruleId: 'kept', name: 'Kept', pins: 0, boosts: 0, buries: 0 },
+            ])
+        ).toBeUndefined();
+    });
+
+    it('names a rule with no name, or an empty one, by its id', () => {
+        expect(
+            setAsideBySort('newest', [{ ruleId: 'promo', name: '', pins: 1, boosts: 0, buries: 0 }])
+        ).toBe('The sort “Newest” sets aside the pin of “promo”.');
         expect(
             setAsideBySort('newest', [
                 { ruleId: 'promo', name: null, pins: 1, boosts: 0, buries: 0 },
@@ -79,7 +96,10 @@ describe('what the rule form says of a boost or a bury', () => {
                 sort: [{ by, direction: 'desc' }],
             });
             expect(result.sort[0]?.by, by).toBe(by);
-            expect(result.rules.setAsideBySort, by).toEqual(['for-the-category', 'for-the-words']);
+            expect(
+                result.rules.setAside.map((rule) => rule.ruleId),
+                by
+            ).toEqual(['for-the-category', 'for-the-words']);
         }
     });
 

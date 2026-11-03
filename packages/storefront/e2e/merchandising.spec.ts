@@ -21,11 +21,10 @@ test('explain mode says why the featured jacket is first, and a price sort sets 
 
     await page.getByRole('combobox', { name: 'Sort by' }).selectOption('price-asc');
     const aside = page.getByText(/sets aside the pins/);
+    // The whole line, so the cafe racer sample's hide, which holds under any sort, is not in it.
     await expect(aside).toHaveText(
         'The sort “Price, low to high” sets aside the pins of “Featured jackets”.'
     );
-    // The cafe racer sample stays hidden: a hide holds under any sort, and is not set aside.
-    await expect(aside).not.toContainText('cafe racer');
     await audit(page);
     await page.getByRole('button', { name: 'Sort by relevance' }).click();
     const sort = page.getByRole('combobox', { name: 'Sort by' });

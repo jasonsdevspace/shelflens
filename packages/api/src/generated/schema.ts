@@ -114,6 +114,7 @@ export type Merchandising = {
      * under any sort. A sort scoped to a rule's own filter, as a category's
      * position is, keeps that rule's pins and hides, and lists the rule here
      * when it also boosts or buries, since those do nothing under that sort.
+     * @deprecated Each rule's id is in setAside, with what the sort set aside of it.
      */
     readonly setAsideBySort: ReadonlyArray<Scalars['ID']['output']>;
 };
@@ -482,8 +483,10 @@ export type SearchResult = {
 };
 
 /**
- * A rule a sort set aside, and what of it gave way. Under a sort scoped to the
- * rule's own filter its pins hold, so pins is zero there.
+ * A rule a sort set aside, and what of it gave way. A pin is counted only where
+ * the rule would have placed it under relevance, so a product an earlier rule
+ * pinned, or one a rule hides, is not. Under a sort scoped to the rule's own
+ * filter its pins hold, so pins is zero there.
  */
 export type SetAsideRule = {
     readonly __typename?: 'SetAsideRule';

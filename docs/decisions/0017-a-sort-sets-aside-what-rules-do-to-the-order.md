@@ -30,31 +30,33 @@ boosts and buries give way to the sort, and the rules they came from are named i
 the page can say which rules the sort set aside and how to bring them back.
 
 Who reads the line is a choice of its own. **Show it only with "Rules" or "Explain ranking" on**,
-and a shopper never reads a rule id, but a visitor who sorts while just browsing sees the order
-change with no word of the merchandising that gave way. **Show it to every visitor**, and the
-store is open about what a sort changed, with a way back a shopper can use, at the cost of rule
-ids that mean nothing to a shopper.
+and a shopper never reads about rules, but a visitor who sorts while just browsing sees the order
+change with no word of the merchandising that gave way. **Show it to every visitor**, and the store
+is open about what a sort changed, with a way back a shopper can use, at the cost of merchandising
+words a shopper has no use for.
 
 ## Decision
 
 The third, with the category's own sort kept, and the line shown to every visitor.
 
-`planRules` in `packages/engine/src/rules.ts` reads the request's sort. Under relevance every
-rule that matches applies in full. Under any other sort, a rule keeps its hides and is listed in
-`applied` when it has any, and a rule with a pin, a boost or a bury is listed in `setAsideBySort`.
-A rule that both pins and hides is in both lists.
+`planRules` in `packages/engine/src/rules.ts` reads the request's sort. Under relevance every rule
+that matches applies in full. Under any other sort, a rule keeps its hides and is listed in
+`applied` when it has any, and a rule whose pins, boosts or buries the sort sets aside is listed in
+`setAside`, with its name and how many of each gave way. Its pins are counted only where it would
+have placed them under relevance: a product an earlier rule pinned, or one a rule hides, is not
+counted, and a rule that would have placed nothing is not listed. A rule that both pins and hides
+is in both lists. `setAsideBySort` lists the same rules by id, and is kept for the clients that
+read it.
 
 A sort scoped to a filter, as the store's "Featured" sort is scoped to the category, keeps a rule
 whose filter is on that attribute. Such a rule keeps its pins and its hides and is listed in
 `applied` when it has any. Its boosts and buries do nothing, since the position sort does not read
-a score, so a rule that has them is listed in `setAsideBySort` as well, and a rule that only boosts
-or buries is listed there alone. Browsing one category with no query chooses its scoped sort
-without being asked (`defaultSort` in `packages/engine/src/search.ts`), so a category page shows
-the merchandiser's order with that category's pins on top.
+a score, so a rule that has them is listed in `setAside` as well, with no pins counted, and a rule
+that only boosts or buries is listed there alone. Browsing one category with no query chooses its
+scoped sort without being asked (`defaultSort` in `packages/engine/src/search.ts`), so a category
+page shows the merchandiser's order with that category's pins on top.
 
-The engine also reports each rule it set aside in `setAside`, with the rule's name and how many of
-its pins, boosts and buries gave way, its pins counted as none under its own scoped sort. The API
-passes all three through as `Merchandising.applied`, `Merchandising.setAsideBySort` and
+The API passes all three through as `Merchandising.applied`, `Merchandising.setAsideBySort` and
 `Merchandising.setAside` (`packages/api/schema.graphql`). The results page in
 `packages/storefront/src/results/ResultsPage.tsx` shows a line over the cards whenever a rule was
 set aside, naming the sort and each rule by its name, or its id when it has none, with what the
@@ -80,11 +82,13 @@ set aside together, each once, and marks each one the sort set aside.
 
 ## How it is tested
 
-- `packages/engine/src/rules.test.ts`, under "rules and the sort": a query rule is set aside under
-  any sort but relevance and says so, by name and with each of its pin, boost and bury counted,
-  while its hide holds, a category rule is kept under that category's position sort, a category
-  rule there keeps its pin and its hide while its boost and its bury leave the order alone and are
-  counted as set aside with no pin, and a category rule is set aside under an unrelated sort.
+- `packages/engine/src/rules.test.ts`, under "rules and the sort": a rule's pins are counted only
+  where it would have placed them, and a rule that would place none is not listed, a query rule is
+  set aside under any sort but relevance and says so, by name and with each of its pin, boost and
+  bury counted, while its hide holds, a category rule is kept under that category's position sort,
+  a category rule there keeps its pin and its hide while its boost and its bury leave the order
+  alone and are counted as set aside with no pin, and a category rule is set aside under an
+  unrelated sort.
 - `packages/api/src/api.test.ts`: a search under relevance reports its pin in `applied` and nothing
   set aside, and under a price sort each rule set aside comes back with its name, or null, and its
   counts.
