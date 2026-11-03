@@ -118,11 +118,21 @@ describe('the components', () => {
         // What can write a class: the components, the modules that set one by script, and the
         // pages, which carry the frame drawn before the script. Comments name classes without
         // writing them, so they are left out.
+        /** Text with each HTML comment left out, up to where it closes, or to the end if it never does. */
+        const withoutHtmlComments = (html: string) =>
+            html
+                .split('<!--')
+                .map((part, index) => {
+                    if (index === 0) return part;
+                    const end = part.indexOf('-->');
+                    return end === -1 ? '' : part.slice(end + 3);
+                })
+                .join('');
         const text = walk(app, (name) => /\.(tsx?|js|html)$/.test(name) && !name.includes('.test.'))
             .map((path) =>
-                readFileSync(path, 'utf8')
+                withoutHtmlComments(readFileSync(path, 'utf8'))
                     .replace(/\/\*[\s\S]*?\*\//g, '')
-                    .replace(/<!--[\s\S]*?-->/g, '')
+
                     .replace(/(^|[^:])\/\/.*$/gm, '$1')
             )
             .join('\n');
