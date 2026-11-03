@@ -13,6 +13,8 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: Boolean(process.env['CI']),
     retries: process.env['CI'] ? 1 : 0,
+    // A runner has four cores, and Playwright takes half unless told, so CI names all four.
+    ...(process.env['CI'] ? { workers: 4 } : {}),
     // A test that passes only when run again is flaky, and fails the run by name
     // rather than hiding behind the retry.
     failOnFlakyTests: Boolean(process.env['CI']),

@@ -8,7 +8,7 @@
  * plain Node is used, with no test runner, so it runs on any Node the package
  * could declare. Each assertion names what a user would lose if it failed.
  *
- * Run by the floor job in .github/workflows/ci.yml.
+ * Run by the “Package on oldest Node” job, `floor` in .github/workflows/ci.yml.
  */
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';

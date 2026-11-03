@@ -8,30 +8,36 @@ on:
     pull_request:
     # A deploy by hand, which still runs every check first.
     workflow_dispatch:
-    # The release workflow runs these same checks before it publishes.
+    # The release workflow runs these same checks before it publishes, and
+    # publishes only the packed engine whose checksum the check reports.
     workflow_call:
+        outputs:
+            engine-sha256:
+                description: The checksum of the packed engine the oldest Node check proved.
+                value: ${{ jobs.floor.outputs.sha256 }}
 
 permissions:
     contents: read
 
-# A newer push to a pull request supersedes the run in progress. A push to
-# main does not: a run that has handed an artifact to Pages and is then
-# canceled leaves the deployment pending, so runs on main wait their turn.
+# A newer push to a pull request supersedes the run in progress. Every other
+# run has a group of its own, so the checks on main never queue behind each
+# other, and only the deploy below waits its turn.
 concurrency:
-    group: ci-${{ github.ref }}
+    group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
     verify:
+        name: Lint, test and build
         runs-on: ubuntu-latest
-        timeout-minutes: 20
+        timeout-minutes: 10
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -55,10 +61,10 @@ jobs:
             - name: Node version check
               run: npm run node-check
 
-            - name: Unused exports
+            - name: Check for unused exports
               run: npm run exports
 
-            - name: Test
+            - name: Unit tests
               run: npm run test:run
 
             # The server's types are generated from the schema and committed.
@@ -79,22 +85,23 @@ jobs:
 
             # The budgets held over the files the build ships, compressed as a
             # server sends them, beside the test that measures the source.
-            - name: Budgets on what ships
+            - name: Size budgets on the build
               run: npm run budget
 
     # The storefront in a real browser, served as the demo is served, with
     # the service worker answering and axe auditing each page. Desktop and
     # phone, since the facets and the popover lay out differently on each.
     browser:
+        name: Browser tests
         runs-on: ubuntu-latest
-        timeout-minutes: 20
+        timeout-minutes: 10
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -109,14 +116,7 @@ jobs:
             - name: Browser tests
               run: npm run e2e
 
-            # Lighthouse as a phone on a slow network loads each page: a hundred
-            # for accessibility, ninety for performance, and a largest paint and a
-            # layout shift a visit counts as good. Runs against the build the
-            # browser tests made.
-            - name: Lighthouse audit
-              run: npm run lighthouse
-
-            - name: Keep the report when something fails
+            - name: Upload the report on failure
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
@@ -126,14 +126,47 @@ jobs:
                       packages/storefront/test-results
                   retention-days: 7
 
+    # Lighthouse as a phone on a slow network loads each page: a hundred for
+    # accessibility, ninety for performance, and a largest paint and a layout
+    # shift a visit counts as good. Its own job, so it runs beside the browser
+    # tests rather than after them.
+    lighthouse:
+        name: Lighthouse audits
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Set up Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Install Chromium
+              run: npx playwright install --with-deps chromium
+
+            - name: Build the storefront
+              run: npm run storefront
+
+            - name: Lighthouse audits
+              run: npm run lighthouse
+
     # The screenshots, taken in Playwright's own Linux image, the one place they
     # are taken, since text is drawn differently on every other system. The
     # image's version is the one @playwright/test is pinned to, and the two
     # move together. When a picture is missing or differs, the run fails and
     # keeps what it took, to accept with `npm run screenshots:accept <run id>`.
     visual:
+        name: Screenshot comparison
         runs-on: ubuntu-latest
-        timeout-minutes: 20
+        timeout-minutes: 10
         container:
             # Pinned by digest, as the actions are, so the image cannot change under its tag.
             image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
@@ -145,7 +178,7 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -160,11 +193,11 @@ jobs:
             - name: Compare the screenshots
               run: npx playwright test --config packages/storefront/playwright.config.ts --project visual-desktop --project visual-phone
 
-            - name: Gather what was taken
+            - name: Collect the screenshots
               if: failure()
               run: node scripts/screenshots.mjs collect
 
-            - name: Keep what was taken
+            - name: Upload the screenshots
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
@@ -175,7 +208,7 @@ jobs:
 
             # A test that failed for another reason, a page that never settled say, is
             # read from its trace and the report.
-            - name: Keep the report when something fails
+            - name: Upload the report on failure
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
@@ -191,15 +224,18 @@ jobs:
     # gets it: packed, installed into an empty project outside the repository,
     # and used through its public exports and its types.
     floor:
+        name: Package on oldest Node
         runs-on: ubuntu-latest
-        timeout-minutes: 15
+        timeout-minutes: 10
+        outputs:
+            sha256: ${{ steps.pack.outputs.sha256 }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -210,29 +246,34 @@ jobs:
 
             # Packing runs the engine's build, on the Node the project builds on,
             # which is how the published package is made.
+            # Its checksum is a job output, which no other job in the run can change,
+            # unlike the artifact, so the release publishes only this tarball.
             - name: Pack the engine
-              run: npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
+              id: pack
+              run: |
+                  npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
+                  echo "sha256=$(sha256sum "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
             # The standard check of a published package's manifest: that its
             # exports, types and files point at what the tarball holds. Packing
             # has just built the engine, and this names a mistake before the
             # slower steps reach it.
-            - name: Lint the engine's package
+            - name: Check the package manifest
               run: npx publint packages/engine
 
             # Written as an exact version, because setup-node given a range
-            # installs the newest Node in it, the opposite of a floor. The file
+            # installs the newest Node in it, the opposite of the oldest. The file
             # is not committed, and its name is not one the Node check reads.
-            - name: Work out the floor
+            - name: Find the oldest supported Node
               run: |
                   node -e "import('./packages/engine/smoke/floor.mjs').then(({ floorOf }) => {
                       const floor = floorOf(require('./packages/engine/package.json').engines.node);
-                      if (floor === undefined) throw new Error('engines.node is not a range the floor job can read');
+                      if (floor === undefined) throw new Error('engines.node is not a range the oldest Node check can read');
                       console.log(floor);
                   })" > engine-floor
                   echo "FLOOR=$(cat engine-floor)" >> "$GITHUB_ENV"
 
-            - name: Setup the floor Node
+            - name: Set up the oldest supported Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: engine-floor
@@ -249,11 +290,12 @@ jobs:
                   smoke="$GITHUB_WORKSPACE/packages/engine/smoke"
                   cp "$smoke"/consumer.mjs "$smoke"/exports.mjs "$smoke"/types.ts "$smoke"/tsconfig.nodenext.json "$smoke"/tsconfig.bundler.json .
 
-            - name: Use the engine on the floor
+            - name: Run the engine on that Node
               working-directory: ${{ runner.temp }}/consumer
               run: node consumer.mjs
 
-            - name: Compile against its types, as Node and as a bundler resolve them
+            # As Node and as a bundler resolve them.
+            - name: Type-check as an installer would
               working-directory: ${{ runner.temp }}/consumer
               run: |
                   node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.nodenext.json
@@ -263,7 +305,7 @@ jobs:
             # job that holds the publish token never installs or builds anything.
             # Kept on every run, so the hand-off is exercised before a release
             # needs it, and long enough to repeat a release's publish.
-            - name: Keep the packed engine for a release
+            - name: Upload the packed engine
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
                   name: engine-package
@@ -278,7 +320,8 @@ jobs:
     # access, so nothing the build installs or runs can deploy, and the
     # deploy job runs only GitHub's own Pages actions.
     site:
-        needs: [verify, browser, floor, visual]
+        name: Build the demo site
+        needs: [verify, browser, lighthouse, floor, visual]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         runs-on: ubuntu-latest
         timeout-minutes: 15
@@ -288,7 +331,7 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Setup Node
+            - name: Set up Node
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .nvmrc
@@ -309,10 +352,17 @@ jobs:
               with:
                   path: packages/storefront/dist
 
+    # One deploy at a time, and none canceled once it starts, since a run that has
+    # handed an artifact to Pages and is then canceled leaves the deployment
+    # pending. A newer deploy waiting replaces an older one still waiting.
     deploy:
+        name: Deploy the demo
         needs: site
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        concurrency:
+            group: pages
+            cancel-in-progress: false
         permissions:
             pages: write
             id-token: write
