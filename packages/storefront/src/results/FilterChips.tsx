@@ -1,48 +1,58 @@
 import { useEffect, useRef } from 'react';
 
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
-import { hasFilters, type SearchState, withoutFilters } from '../app/url.js';
+import {
+    type SearchState,
+    serializeSearchState,
+    withoutFilters,
+    withoutPrice,
+    withoutRating,
+    withoutValue,
+} from '../app/url.js';
 import { priceLabel, ratingLabel } from './Facets.jsx';
 
-/** One filter that is on, as a chip says it, and the state without it. */
+/** One filter that is on, as its chip shows it and a screen reader names it, and the state without it. */
 interface Applied {
     readonly key: string;
     readonly label: string;
+    /** What the filter is, so two values alike in different facets are told apart. */
+    readonly facet: string;
     readonly without: SearchState;
 }
 
+const LIST_TITLES = { brand: 'brand', color: 'color', size: 'size' } as const;
+
 /** Every filter that is on, in the order the column lists them, each with the state that drops it. */
-const appliedFilters = (state: SearchState, store: StoreInfo): Applied[] => {
-    const lists = (['brand', 'color', 'size'] as const).flatMap((name) =>
+const appliedFilters = (state: SearchState, store: StoreInfo): Applied[] => [
+    ...(['brand', 'color', 'size'] as const).flatMap((name) =>
         state[name].map((value) => ({
             key: `${name}:${value}`,
             label: value,
-            without: { ...state, [name]: state[name].filter((other) => other !== value), page: 1 },
+            facet: LIST_TITLES[name],
+            without: withoutValue(state, name, value),
         }))
-    );
-    const { price, rating, ...rest } = state;
-    return [
-        ...lists,
-        ...(price
-            ? [
-                  {
-                      key: 'price',
-                      label: priceLabel(price, store),
-                      without: { ...rest, ...(rating !== undefined && { rating }), page: 1 },
-                  },
-              ]
-            : []),
-        ...(rating !== undefined
-            ? [
-                  {
-                      key: 'rating',
-                      label: ratingLabel(rating, store.locale),
-                      without: { ...rest, ...(price && { price }), page: 1 },
-                  },
-              ]
-            : []),
-    ];
-};
+    ),
+    ...(state.price
+        ? [
+              {
+                  key: 'price',
+                  label: priceLabel(state.price, store),
+                  facet: 'price',
+                  without: withoutPrice(state),
+              },
+          ]
+        : []),
+    ...(state.rating !== undefined
+        ? [
+              {
+                  key: 'rating',
+                  label: ratingLabel(state.rating, store.locale),
+                  facet: 'rating',
+                  without: withoutRating(state),
+              },
+          ]
+        : []),
+];
 
 /**
  * The filters that are on, under the results heading, each a chip that
@@ -62,17 +72,19 @@ export const FilterChips = ({
 }) => {
     const store = useStoreInfo();
     const list = useRef<HTMLUListElement>(null);
-    // The place of the chip just pressed, until the state without it has drawn.
-    const removed = useRef<number | undefined>(undefined);
+    // The place of the chip just pressed, and the state it asked for. Focus moves only once that
+    // state has drawn, and the wish goes at the next change whatever it is.
+    const removed = useRef<{ readonly index: number; readonly to: string } | undefined>(undefined);
     const applied = appliedFilters(state, store);
     useEffect(() => {
-        if (removed.current === undefined) return;
-        const chips = list.current?.querySelectorAll<HTMLButtonElement>('.chip') ?? [];
-        const next = chips[Math.min(removed.current, chips.length - 1)];
-        (next ?? document.getElementById(heading))?.focus();
+        const wish = removed.current;
         removed.current = undefined;
+        if (wish?.to !== serializeSearchState(state)) return;
+        const chips = list.current?.querySelectorAll<HTMLButtonElement>('.chip') ?? [];
+        const next = chips[Math.min(wish.index, chips.length - 1)];
+        (next ?? document.getElementById(heading))?.focus();
     }, [heading, state]);
-    if (!hasFilters(state)) return null;
+    if (applied.length === 0) return null;
     return (
         <ul ref={list} className="chips" aria-label="Filters on">
             {applied.map((filter, index) => (
@@ -80,9 +92,9 @@ export const FilterChips = ({
                     <button
                         type="button"
                         className="chip"
-                        aria-label={`Remove ${filter.label}`}
+                        aria-label={`Remove ${filter.facet} ${filter.label}`}
                         onClick={() => {
-                            removed.current = index;
+                            removed.current = { index, to: serializeSearchState(filter.without) };
                             navigate(filter.without);
                         }}
                     >
@@ -98,8 +110,9 @@ export const FilterChips = ({
                     type="button"
                     className="text-button"
                     onClick={() => {
-                        removed.current = 0;
-                        navigate(withoutFilters(state));
+                        const cleared = withoutFilters(state);
+                        removed.current = { index: 0, to: serializeSearchState(cleared) };
+                        navigate(cleared);
                     }}
                 >
                     Clear all

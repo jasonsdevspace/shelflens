@@ -169,12 +169,32 @@ export const activeFilterCount = (state: SearchState): number =>
         state.rating !== undefined,
     ].filter(Boolean).length;
 
-/** The same state with every facet cleared, back on the first page. */
+/** One value of a list facet dropped, back on the first page. */
+export const withoutValue = (
+    state: SearchState,
+    name: 'brand' | 'color' | 'size',
+    value: string
+): SearchState => ({ ...state, [name]: state[name].filter((other) => other !== value), page: 1 });
+
+/** The price band dropped, back on the first page. */
+export const withoutPrice = (state: SearchState): SearchState => {
+    const { price: _dropped, ...rest } = state;
+    return { ...rest, page: 1 };
+};
+
+/** The rating dropped, back on the first page. */
+export const withoutRating = (state: SearchState): SearchState => {
+    const { rating: _dropped, ...rest } = state;
+    return { ...rest, page: 1 };
+};
+
+/** The same state with every facet cleared, back on the first page, the rules panel left as it was. */
 export const withoutFilters = (state: SearchState): SearchState => ({
     ...(state.phrase && { phrase: state.phrase }),
     ...(state.category && { category: state.category }),
     ...(state.sort && { sort: state.sort }),
     ...(state.explain && { explain: true }),
+    ...(state.rules && { rules: true }),
     brand: [],
     color: [],
     size: [],

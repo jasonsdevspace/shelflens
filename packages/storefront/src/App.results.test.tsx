@@ -114,7 +114,7 @@ describe('narrowing', () => {
         const user = await open('?category=outerwear');
         await settled();
         const group = facet('Category');
-        expect(within(group).getByText('Outerwear')).toHaveAttribute('aria-current', 'page');
+        expect(within(group).getByText('Outerwear')).toHaveAttribute('aria-current', 'location');
         await user.click(within(group).getByRole('button', { name: 'Clothing' }));
         await settled();
         expect(window.location.search).toBe('?category=clothing');
@@ -170,6 +170,37 @@ describe('narrowing', () => {
         expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();
     });
 
+    it('clears the filters and leaves the rules panel open', async () => {
+        const user = await open('?q=jacket&rules=1&explain=1&brand=Ridgeback');
+        await settled();
+        await user.click(
+            within(screen.getByRole('list', { name: 'Filters on' })).getByRole('button', {
+                name: 'Clear all',
+            })
+        );
+        await settled();
+        expect(window.location.search).toBe('?q=jacket&explain=1&rules=1');
+    });
+
+    it('drops a category’s own order with the category, on the way up to every category', async () => {
+        const user = await open('?category=clothing&sort=position');
+        await settled();
+        await user.click(within(facet('Category')).getByRole('button', { name: 'All categories' }));
+        await settled();
+        expect(window.location.search).toBe('');
+    });
+
+    it('shows a rating the address chose that no band counts, checked, as its chip does', async () => {
+        await open('?rating=5');
+        await settled();
+        expect(
+            within(facet('Rating')).getByRole('radio', { name: '5 stars and up' })
+        ).toBeChecked();
+        expect(
+            screen.getByRole('button', { name: 'Remove rating 5 stars and up' })
+        ).toBeInTheDocument();
+    });
+
     it('narrows to a price band and a rating, and clears both at once', async () => {
         const user = await open();
         await user.click(within(facet('Price')).getByRole('radio', { name: /Under/ }));
@@ -185,9 +216,11 @@ describe('narrowing', () => {
 
         // The filters on are chips under the heading, the price and the rating among them.
         const chips = screen.getByRole('list', { name: 'Filters on' });
-        expect(within(chips).getByRole('button', { name: 'Remove Under $50' })).toBeInTheDocument();
         expect(
-            within(chips).getByRole('button', { name: 'Remove 4 stars and up' })
+            within(chips).getByRole('button', { name: 'Remove price Under $50' })
+        ).toBeInTheDocument();
+        expect(
+            within(chips).getByRole('button', { name: 'Remove rating 4 stars and up' })
         ).toBeInTheDocument();
         await user.click(within(chips).getByRole('button', { name: 'Clear all' }));
         await settled();
@@ -360,7 +393,7 @@ describe('when nothing matches', () => {
                 name: /Ridgeback/,
             })
         ).toBeChecked();
-        expect(screen.getByRole('button', { name: 'Remove Ridgeback' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Remove brand Ridgeback' })).toBeInTheDocument();
     });
 
     it('never offers to leave the category being browsed', async () => {

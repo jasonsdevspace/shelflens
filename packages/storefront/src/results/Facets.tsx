@@ -2,7 +2,14 @@ import { useId, useState } from 'react';
 
 import { type CategoryTree, childrenOf } from '../app/categories.js';
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
-import { hasFilters, type PriceBand, type SearchState, withoutFilters } from '../app/url.js';
+import {
+    hasFilters,
+    type PriceBand,
+    type SearchState,
+    withoutFilters,
+    withoutPrice,
+    withoutRating,
+} from '../app/url.js';
 import { count, formatCount } from '../format/count.js';
 import { formatMoney } from '../format/money.js';
 import type { SearchQuery } from '../generated/operations.js';
@@ -107,8 +114,13 @@ const CategoryFacet = ({
     const parent = parentId === undefined ? undefined : categories.get(parentId);
     if (next.length === 0 && !current) return null;
     const up = () => {
-        const { category: _left, ...rest } = state;
-        onChange(parent ? { ...state, category: parent.id, page: 1 } : { ...rest, page: 1 });
+        // Above every category, a category's own order means nothing, so it goes too.
+        const { category: _left, sort, ...rest } = state;
+        onChange(
+            parent
+                ? { ...state, category: parent.id, page: 1 }
+                : { ...rest, ...(sort && sort !== 'position' && { sort }), page: 1 }
+        );
     };
     return (
         <Group title={TITLES['category'] ?? 'Category'}>
@@ -117,7 +129,8 @@ const CategoryFacet = ({
                     <button type="button" className="option-button facet-up" onClick={up}>
                         <span aria-hidden="true">‹</span> {parent ? parent.name : 'All categories'}
                     </button>
-                    <span className="facet-current" aria-current="page">
+                    {/* The breadcrumb names the page. This says where in the categories the shopper is. */}
+                    <span className="facet-current" aria-current="location">
                         {current.name}
                     </span>
                 </>
@@ -215,10 +228,8 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
     if (!('ranges' in facet)) return null;
     const bands = facet.ranges.filter((bucket) => bucket.count > 0);
     if (bands.length === 0) return null;
-    const choose = (price: PriceBand | undefined) => {
-        const { price: _dropped, ...rest } = state;
-        onChange({ ...rest, ...(price && { price }), page: 1 });
-    };
+    const choose = (price: PriceBand | undefined) =>
+        onChange(price ? { ...state, price, page: 1 } : withoutPrice(state));
     return (
         <Group title="Price">
             <label className="facet-option">
@@ -273,12 +284,20 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
     const counted = facet.ranges.flatMap((bucket) =>
         bucket.count > 0 && bucket.from !== null ? [{ ...bucket, from: bucket.from }] : []
     );
-    const bands = distinctBands(counted, state.rating);
+    // A rating the address chose that no band counts stays shown, chosen, so the column and the
+    // chip above the results agree on what is on and it can be cleared here too.
+    const chosen = state.rating;
+    const stranded =
+        chosen !== undefined && !counted.some((bucket) => bucket.from === chosen)
+            ? [{ from: chosen, count: undefined }]
+            : [];
+    const bands: { from: number; count: number | undefined }[] = [
+        ...distinctBands(counted, chosen),
+        ...stranded,
+    ].sort((a, b) => b.from - a.from);
     if (bands.length === 0) return null;
-    const choose = (rating: number | undefined) => {
-        const { rating: _dropped, ...rest } = state;
-        onChange({ ...rest, ...(rating !== undefined && { rating }), page: 1 });
-    };
+    const choose = (rating: number | undefined) =>
+        onChange(rating !== undefined ? { ...state, rating, page: 1 } : withoutRating(state));
     return (
         <Group title="Rating">
             <label className="facet-option">
@@ -303,7 +322,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         <Stars average={bucket.from} />
                         <span>{ratingLabel(bucket.from, locale)}</span>
                     </span>
-                    <FacetCount n={bucket.count} />
+                    {bucket.count !== undefined && <FacetCount n={bucket.count} />}
                 </label>
             ))}
         </Group>
