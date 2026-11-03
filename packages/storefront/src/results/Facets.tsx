@@ -84,13 +84,16 @@ const FacetCount = ({ n }: { readonly n: number }) => {
 const Group = ({
     title,
     id,
+    name,
     children,
 }: {
     readonly title: string;
     readonly id?: string | undefined;
+    /** The facet's own name, so the tour can point at it. */
+    readonly name: string;
     readonly children: React.ReactNode;
 }) => (
-    <fieldset className="facet" id={id}>
+    <fieldset className="facet" id={id} data-facet={name}>
         <legend className="facet-title">{title}</legend>
         {children}
     </fieldset>
@@ -123,7 +126,7 @@ const CategoryFacet = ({
         );
     };
     return (
-        <Group title={TITLES['category'] ?? 'Category'}>
+        <Group title={TITLES['category'] ?? 'Category'} name="category">
             {current && (
                 <>
                     <button type="button" className="option-button facet-up" onClick={up}>
@@ -185,7 +188,7 @@ const ListFacet = ({
         setRevealed(state[name]);
     };
     return (
-        <Group title={title} id={id}>
+        <Group title={title} id={id} name={name}>
             {buckets.map((bucket) => (
                 <label key={bucket.value} className="facet-option">
                     <input
@@ -231,7 +234,7 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
     const choose = (price: PriceBand | undefined) =>
         onChange(price ? { ...state, price, page: 1 } : withoutPrice(state));
     return (
-        <Group title="Price">
+        <Group title="Price" name="price">
             <label className="facet-option">
                 <input
                     type="radio"
@@ -299,7 +302,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
     const choose = (rating: number | undefined) =>
         onChange(rating !== undefined ? { ...state, rating, page: 1 } : withoutRating(state));
     return (
-        <Group title="Rating">
+        <Group title="Rating" name="rating">
             <label className="facet-option">
                 <input
                     type="radio"

@@ -61,6 +61,8 @@ beforeEach(() => {
     window.history.replaceState(null, '', '/');
     // The tour opens itself on a first visit. These tests are not that visit.
     localStorage.setItem('shelflens.tour', 'seen');
+    // And each starts the tour at its first stop, whatever stop the one before left it on.
+    localStorage.removeItem('shelflens.tour.stop');
 });
 
 afterEach(() => {

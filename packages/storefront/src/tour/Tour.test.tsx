@@ -19,7 +19,9 @@ describe('the tour panel', () => {
         );
 
         expect(screen.getByRole('complementary', { name: 'Tour' })).toBeInTheDocument();
-        expect(screen.getByText(`Stop 2 of ${STOPS.length}`)).toBeInTheDocument();
+        expect(document.querySelector('.tour-count')).toHaveTextContent(
+            `Stop 2 of ${STOPS.length}`
+        );
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(second.title);
         expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
         expect(screen.getByRole('link', { name: 'Try it' })).toHaveAttribute(
@@ -49,6 +51,54 @@ describe('the tour panel', () => {
         expect(screen.queryByRole('link', { name: 'Try it' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus();
         await user.click(screen.getByRole('button', { name: 'Finish' }));
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('starts a finished tour over at its first stop', async () => {
+        const onIndex = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <Tour
+                index={STOPS.length - 1}
+                onIndex={onIndex}
+                navigate={vi.fn()}
+                onClose={vi.fn()}
+                takeFocus={false}
+            />
+        );
+        await user.click(screen.getByRole('button', { name: 'Finish' }));
+        expect(onIndex).toHaveBeenCalledWith(0);
+    });
+
+    it('says where the stop is with the stop, and leaves the test files out of what is heard', () => {
+        const second = STOPS[1];
+        if (!second) throw new Error('expected a second stop');
+        render(<Tour index={1} onIndex={vi.fn()} navigate={vi.fn()} onClose={vi.fn()} takeFocus />);
+        const live = document.querySelector('[aria-live]');
+        expect(live).toHaveTextContent(`Stop 2 of ${STOPS.length}`);
+        expect(live).toHaveTextContent(second.title);
+        for (const test of second.tests) expect(live).not.toHaveTextContent(test);
+        // The count drawn at the top is the same words, so it is not read a second time.
+        expect(document.querySelector('.tour-count')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('keeps Previous focusable but off at the first stop, so pressing it there goes nowhere', async () => {
+        const onIndex = vi.fn();
+        const user = userEvent.setup();
+        render(<Tour index={0} onIndex={onIndex} navigate={vi.fn()} onClose={vi.fn()} takeFocus />);
+        const previous = screen.getByRole('button', { name: 'Previous' });
+        expect(previous).toHaveAttribute('aria-disabled', 'true');
+        expect(previous).toBeEnabled();
+        await user.click(previous);
+        expect(onIndex).not.toHaveBeenCalled();
+    });
+
+    it('closes on Escape from inside it', async () => {
+        const onClose = vi.fn();
+        const user = userEvent.setup();
+        render(<Tour index={1} onIndex={vi.fn()} navigate={vi.fn()} onClose={onClose} takeFocus />);
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+        await user.keyboard('{Escape}');
         expect(onClose).toHaveBeenCalledOnce();
     });
 });

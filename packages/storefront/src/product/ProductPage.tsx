@@ -90,9 +90,12 @@ const Bare = ({
     title,
     line,
     note,
+    busy = false,
     children,
 }: {
     readonly view: RefObject<HTMLElement | null>;
+    /** Whether the view stands in for an answer still on its way. */
+    readonly busy?: boolean;
     readonly title?: string;
     /** What the view says, when it is one line. */
     readonly line?: string;
@@ -108,6 +111,7 @@ const Bare = ({
             tabIndex={-1}
             aria-labelledby={line === undefined ? undefined : id}
             aria-describedby={note === undefined ? undefined : `${id}-note`}
+            aria-busy={busy || undefined}
         >
             {title !== undefined && <h1 className="product-name">{title}</h1>}
             {line !== undefined && (
@@ -276,7 +280,8 @@ const useProduct = (client: GraphQLClient, sku: string) => {
 
 /**
  * A view, once the product has answered, so a missing product is not one,
- * and the rail beside it, once it has answered too.
+ * and the rail beside it, once it has answered too. Whether the rail is on
+ * its way, so the product says it is still busy until its rail is in.
  */
 const useViewed = (client: GraphQLClient, viewed: string | undefined) => {
     const record = useRecord();
@@ -293,7 +298,11 @@ const useViewed = (client: GraphQLClient, viewed: string | undefined) => {
     const [answeredFor, setAnsweredFor] = useState<string>();
     if (!rail.loading && rail.data && answeredFor !== viewed) setAnsweredFor(viewed);
     const current = !rail.loading || answeredFor === viewed;
-    return current ? (rail.data?.recommendations ?? undefined) : undefined;
+    return {
+        rail: current ? (rail.data?.recommendations ?? undefined) : undefined,
+        // Until a rail has answered for this product, or failed to, the page is not done.
+        railLoading: viewed !== undefined && answeredFor !== viewed && rail.error === undefined,
+    };
 };
 
 export const ProductPage = ({
@@ -310,7 +319,7 @@ export const ProductPage = ({
     useProductFocus({ sku, loading, answer: data, heading, view });
     useTitle(current && (current.product?.name ?? 'No such product'));
     useOwnScroll();
-    const rail = useViewed(client, data?.product?.sku);
+    const { rail, railLoading } = useViewed(client, data?.product?.sku);
     const back = () => {
         const { product: _dropped, ...rest } = state;
         navigate(rest);
@@ -333,7 +342,7 @@ export const ProductPage = ({
     if (current === undefined) {
         return (
             // Keyed apart from the answer that replaces it, so focus lands on that answer anew.
-            <Bare key="loading" view={view} line="Loading the product.">
+            <Bare key="loading" view={view} line="Loading the product." busy>
                 {backButton}
             </Bare>
         );
@@ -357,7 +366,7 @@ export const ProductPage = ({
         <Details
             product={product}
             heading={heading}
-            busy={loading}
+            busy={loading || railLoading}
             back={backButton}
             rail={rail}
             state={state}

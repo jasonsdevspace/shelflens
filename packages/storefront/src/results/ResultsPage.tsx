@@ -563,7 +563,7 @@ const Answer = ({
             <NoResults state={state} navigate={navigate} offered={result.noResults} />
         )}
         {result.total > 0 && result.items.length === 0 && (
-            <p className="notice">
+            <p className="notice past-last">
                 Page {result.page} is past the last page of results.{' '}
                 <StateLink to={{ ...state, page: result.totalPages }} navigate={navigate}>
                     Go to page {result.totalPages}

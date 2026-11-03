@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 
 import { StateLink } from '../app/StateLink.jsx';
+import type { SearchState } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
+import { land } from './land.js';
 import { STOPS } from './stops.js';
 
 /**
@@ -9,36 +11,27 @@ import { STOPS } from './stops.js';
  * in the state that shows the gotcha, and the test behind it.
  *
  * It is a landmark beside the page, not a dialog over it, so a reviewer
- * can use the page while reading. The stop's text is a live region, so a
- * screen reader hears the next stop when it changes. Which stop is open
- * belongs to the app, so closing the panel and opening it again resumes
- * where it was. When the panel is opened on request, focus moves into it.
+ * can use the page while reading. The stop's position, title and text are
+ * a live region, so a screen reader hears where it is and the next stop
+ * when it changes, and the test files are left for reading. Which stop is
+ * open belongs to the app, so closing the panel and opening it again
+ * resumes where it was. When the panel is opened on request, focus moves
+ * into it, and Escape inside it closes it.
  */
 
 export const TOUR_ID = 'tour';
-
-export interface TourProps {
-    readonly index: number;
-    readonly onIndex: (index: number) => void;
-    readonly navigate: Navigate;
-    readonly onClose: () => void;
-    /** Move focus into the panel as it appears. Not on a first visit, which the page owns. */
-    readonly takeFocus: boolean;
-}
 
 /** The class on the page's root while the tour is open, and the property its height is kept in. */
 const TOURING = 'is-touring';
 const TOUR_HEIGHT = '--tour-height';
 
-export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps) => {
-    const closer = useRef<HTMLButtonElement>(null);
-    useEffect(() => {
-        if (takeFocus) closer.current?.focus();
-    }, [takeFocus]);
-    // Marked on the page while the tour is open, with its height as it is drawn, so whatever
-    // takes focus is scrolled into view above it, on a phone where it is a sheet across the
-    // bottom and on a wide screen where it is a box in the corner.
-    const sheet = useRef<HTMLElement>(null);
+/**
+ * Marks the page while the tour is open, with its height as it is drawn, so
+ * whatever takes focus is scrolled into view above it, on a phone where it
+ * is a sheet across the bottom and on a wide screen where it is a box in
+ * the corner.
+ */
+const useRoomForTour = (sheet: RefObject<HTMLElement | null>) => {
     useEffect(() => {
         const root = document.documentElement;
         root.classList.add(TOURING);
@@ -56,52 +49,138 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             root.classList.remove(TOURING);
             root.style.removeProperty(TOUR_HEIGHT);
         };
-    }, []);
+    }, [sheet]);
+};
+
+/** Escape closes the tour from anywhere inside it, unless a control inside used the key. */
+const closeOnEscape = (onClose: () => void) => (event: React.KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    event.preventDefault();
+    onClose();
+};
+
+/**
+ * What a phone shows on a first visit in place of the sheet: a short bar
+ * across the bottom that says what the tour is, and opens it on Start.
+ */
+export const TourOffer = ({
+    onStart,
+    onDecline,
+}: {
+    readonly onStart: () => void;
+    readonly onDecline: () => void;
+}) => {
+    const bar = useRef<HTMLElement>(null);
+    useRoomForTour(bar);
+    return (
+        <aside
+            ref={bar}
+            id={TOUR_ID}
+            className="tour tour-offer"
+            aria-label="Tour"
+            onKeyDown={closeOnEscape(onDecline)}
+        >
+            <p className="tour-offer-text">A tour of what to try, {STOPS.length} stops</p>
+            <button type="button" className="button" onClick={onStart}>
+                Start
+            </button>
+            <button type="button" className="button" onClick={onDecline}>
+                Not now
+            </button>
+        </aside>
+    );
+};
+
+export interface TourProps {
+    readonly index: number;
+    readonly onIndex: (index: number) => void;
+    readonly navigate: Navigate;
+    readonly onClose: () => void;
+    /** Move focus into the panel as it appears. Not on a first visit, which the page owns. */
+    readonly takeFocus: boolean;
+}
+
+export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps) => {
+    const closer = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (takeFocus) closer.current?.focus();
+    }, [takeFocus]);
+    const sheet = useRef<HTMLElement>(null);
+    useRoomForTour(sheet);
+    // The landing "Try it" started, given up when the stop changes or the tour closes.
+    const landing = useRef<() => void>(undefined);
+    useEffect(() => () => landing.current?.(), [index]);
 
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;
+    const first = index === 0;
     const last = index === STOPS.length - 1;
+    const position = `Stop ${String(index + 1)} of ${String(STOPS.length)}`;
+    const tryIt = (to: SearchState) => {
+        navigate(to);
+        landing.current?.();
+        landing.current = stop.focus === undefined ? undefined : land(to, stop.focus);
+    };
     return (
-        <aside ref={sheet} id={TOUR_ID} className="tour" aria-label="Tour">
+        <aside
+            ref={sheet}
+            id={TOUR_ID}
+            className="tour"
+            aria-label="Tour"
+            onKeyDown={closeOnEscape(onClose)}
+        >
             <div className="tour-head">
-                <p className="tour-count">
-                    Stop {index + 1} of {STOPS.length}
+                {/* Said with the stop below, so it is heard each time the stop changes. */}
+                <p className="tour-count" aria-hidden="true">
+                    {position}
                 </p>
                 <button ref={closer} type="button" className="button" onClick={onClose}>
                     Close
                 </button>
             </div>
             <div aria-live="polite">
+                <p className="visually-hidden">{position}</p>
                 <h2 className="tour-title">{stop.title}</h2>
                 <p className="tour-body">{stop.body}</p>
-                <p className="tour-test">
-                    Tested in{' '}
-                    {stop.tests.map((test, i) => (
-                        <span key={test}>
-                            {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
-                            <code>{test}</code>
-                        </span>
-                    ))}
-                </p>
             </div>
+            <p className="tour-test">
+                Tested in{' '}
+                {stop.tests.map((test, i) => (
+                    <span key={test}>
+                        {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
+                        <code>{test}</code>
+                    </span>
+                ))}
+            </p>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink className="button tour-try" to={stop.to} navigate={navigate}>
+                    <StateLink className="button tour-try" to={stop.to} navigate={tryIt}>
                         Try it
                     </StateLink>
                 )}
+                {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
                 <button
                     type="button"
                     className="button"
-                    disabled={index === 0}
-                    onClick={() => onIndex(index - 1)}
+                    aria-disabled={first}
+                    onClick={() => {
+                        if (!first) onIndex(index - 1);
+                    }}
                 >
                     Previous
                 </button>
                 <button
                     type="button"
                     className="button"
-                    onClick={() => (last ? onClose() : onIndex(index + 1))}
+                    onClick={() => {
+                        if (!last) {
+                            onIndex(index + 1);
+                            return;
+                        }
+                        // A finished tour opens on its first stop next time.
+                        onIndex(0);
+                        onClose();
+                    }}
                 >
                     {last ? 'Finish' : 'Next'}
                 </button>

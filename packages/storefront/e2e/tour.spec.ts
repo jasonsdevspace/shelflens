@@ -149,6 +149,33 @@ const LANDINGS: Readonly<Record<string, Landing>> = {
     telemetry: empty,
 };
 
+/** Whether the focused element is under the tour, even in part. */
+const coveredByTour = (page: Page) =>
+    page.evaluate(() => {
+        const focused = document.activeElement?.getBoundingClientRect();
+        const tour = document.querySelector('.tour')?.getBoundingClientRect();
+        return (
+            focused !== undefined &&
+            tour !== undefined &&
+            focused.right > tour.left &&
+            focused.left < tour.right &&
+            focused.bottom > tour.top &&
+            focused.top < tour.bottom
+        );
+    });
+
+test('keeps focus on Previous when it reaches the first stop', async ({ page }) => {
+    await page.goto('/');
+    const tour = page.getByRole('complementary', { name: 'Tour' });
+    await tour.getByRole('button', { name: 'Next' }).click();
+    const previous = tour.getByRole('button', { name: 'Previous' });
+    await previous.focus();
+    await page.keyboard.press('Enter');
+    await expect(tour).toContainText('Stop 1 of');
+    await expect(previous).toBeFocused();
+    await expect(previous).toHaveAttribute('aria-disabled', 'true');
+});
+
 test('lands every stop on the page its body describes', async ({ page }) => {
     expect(Object.keys(LANDINGS).sort()).toEqual(
         STOPS.filter((stop) => stop.to !== undefined)
@@ -169,9 +196,15 @@ test('lands every stop on the page its body describes', async ({ page }) => {
         await expect(tour, stop.id).toContainText(stop.title);
         const landing = LANDINGS[stop.id];
         if (landing) {
-            await test.step(stop.id, () =>
-                landing(page, main, () => tour.getByRole('link', { name: 'Try it' }).click())
-            );
+            const tryIt = async () => {
+                await tour.getByRole('link', { name: 'Try it' }).click();
+                await expect(
+                    page.locator(stop.focus ?? 'h1'),
+                    `${stop.id} takes focus`
+                ).toBeFocused();
+                expect(await coveredByTour(page), `${stop.id} is clear of the tour`).toBe(false);
+            };
+            await test.step(stop.id, () => landing(page, main, tryIt));
         } else {
             await expect(tour.getByRole('link', { name: 'Try it' })).toHaveCount(0);
         }

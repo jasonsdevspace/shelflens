@@ -16,6 +16,7 @@ import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
+import { NARROW, useMediaQuery } from './app/useMediaQuery.js';
 import { useQuery } from './app/useQuery.js';
 import { type Navigate, useUrlState } from './app/useUrlState.js';
 import {
@@ -32,8 +33,9 @@ import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
-import { hasSeenTour, markTourSeen } from './tour/seen.js';
-import { Tour, TOUR_ID } from './tour/Tour.jsx';
+import { hasSeenTour, keepTourStop, keptTourStop, markTourSeen } from './tour/seen.js';
+import { STOPS } from './tour/stops.js';
+import { Tour, TOUR_ID, TourOffer, type TourProps } from './tour/Tour.jsx';
 import { startFailure } from './worker/register.js';
 
 export interface AppProps {
@@ -102,7 +104,8 @@ const TourToggle = ({
         type="button"
         className="button"
         aria-expanded={touring}
-        aria-controls={TOUR_ID}
+        // Names the tour only while there is one to name.
+        aria-controls={touring ? TOUR_ID : undefined}
         onClick={onToggle}
     >
         Tour
@@ -263,11 +266,31 @@ const useDirectVisit = (product: string | undefined): boolean => {
     return direct;
 };
 
+/** The tour, or on a phone's first visit the short bar that offers it. */
+const TourPlace = ({
+    offering,
+    onStart,
+    ...tour
+}: TourProps & { readonly offering: boolean; readonly onStart: () => void }) =>
+    offering ? <TourOffer onStart={onStart} onDecline={tour.onClose} /> : <Tour {...tour} />;
+
 const useTour = (offered: boolean) => {
     const [touring, setTouring] = useState(() => offered && !hasSeenTour());
-    const [tourStop, setTourStop] = useState(0);
+    // The stop last shown, kept in the browser so a reload resumes it.
+    const [tourStop, setStop] = useState(() => keptTourStop(STOPS.map((stop) => stop.id)));
+    const setTourStop = (index: number) => {
+        keepTourStop(STOPS[index]?.id ?? '');
+        setStop(index);
+    };
     // Whether the panel was asked for, as opposed to opening itself on a first visit.
     const [tourAsked, setTourAsked] = useState(false);
+    // A phone's first visit offers the tour in a short bar, and opens the sheet only on Start.
+    // Whether it is a phone is settled as the page opens, so turning it never swaps the two.
+    const narrow = useMediaQuery(NARROW);
+    const [onPhone] = useState(narrow);
+    const offering = touring && !tourAsked && onPhone;
+    // The Tour button opens and closes the sheet. While the bar only offers it, the sheet is closed.
+    const sheetOpen = touring && !offering;
     const tourButton = useRef<HTMLButtonElement>(null);
     const openTour = () => {
         setTourAsked(true);
@@ -278,7 +301,17 @@ const useTour = (offered: boolean) => {
         setTouring(false);
         tourButton.current?.focus();
     };
-    return { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour };
+    return {
+        touring,
+        offering,
+        sheetOpen,
+        tourStop,
+        setTourStop,
+        tourAsked,
+        tourButton,
+        openTour,
+        closeTour,
+    };
 };
 
 /**
@@ -383,8 +416,17 @@ export const App = ({
         setSwitchedOn(searchKey(state));
         setSwitchHeard(false);
     };
-    const { touring, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
-        useTour(tour);
+    const {
+        touring,
+        offering,
+        sheetOpen,
+        tourStop,
+        setTourStop,
+        tourAsked,
+        tourButton,
+        openTour,
+        closeTour,
+    } = useTour(tour);
     const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
     // Counts the searches submitted, so one run again is remembered again though the page is the same.
     const [searched, setSearched] = useState(0);
@@ -422,8 +464,8 @@ export const App = ({
                                 group={group}
                                 onGroup={switchGroup}
                                 tour={tour}
-                                touring={touring}
-                                onTour={touring ? closeTour : openTour}
+                                touring={sheetOpen}
+                                onTour={sheetOpen ? closeTour : openTour}
                                 tourButton={tourButton}
                             />
                         )
@@ -445,10 +487,12 @@ export const App = ({
                     )}
                 </PageTop>
                 {tourShown && (
-                    <Tour
+                    <TourPlace
+                        offering={offering}
                         index={tourStop}
                         onIndex={setTourStop}
                         navigate={navigate}
+                        onStart={openTour}
                         onClose={closeTour}
                         takeFocus={tourAsked}
                     />
