@@ -21,7 +21,7 @@ import { STOPS } from './stops.js';
  * into it, and Escape inside it closes it.
  */
 
-export const TOUR_ID = 'tour';
+const TOUR_ID = 'tour';
 
 /** The class on the page's root while the tour is open, and the property its height is kept in. */
 const TOURING = 'is-touring';
@@ -70,7 +70,7 @@ const closeOnEscape = (onClose: () => void) => (event: KeyboardEvent) => {
  * What a phone shows on a first visit in place of the sheet: a short bar
  * across the bottom that says what the tour is, and opens it on Start.
  */
-export const TourOffer = ({
+const TourOffer = ({
     onStart,
     onDecline,
 }: {

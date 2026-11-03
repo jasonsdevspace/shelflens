@@ -10,7 +10,13 @@ import { describe, expect, it } from 'vitest';
  * site, which is why it is not one of these.
  */
 
-const SHEETS = ['styles.css', 'try/try.css', 'widget/widget.css', 'search/searchbox.css'];
+const SHEETS = [
+    'styles.css',
+    'about/about.css',
+    'try/try.css',
+    'widget/widget.css',
+    'search/searchbox.css',
+];
 
 /** The search box, whose sizes follow its own text, since it lives on other people's pages too. */
 const RELATIVE = 'search/searchbox.css';
