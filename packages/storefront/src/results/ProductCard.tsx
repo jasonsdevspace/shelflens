@@ -1,7 +1,7 @@
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { count, formatCount } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
-import { ratingText } from '../format/rating.js';
+import { formatAverage, ratingText } from '../format/rating.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
 import { Stars } from './Stars.jsx';
@@ -112,14 +112,15 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     </span>
                     {product.price.memberPrice && <span className="card-member">Member price</span>}
                     {/* Every card has a rating line, so one with none reads as none rather than as missing. */}
-                    {product.rating ? (
+                    {product.rating && product.rating.count > 0 ? (
                         <span className="card-rating">
-                            <Stars average={product.rating.average} />
-                            <span className="card-rating-average" aria-hidden="true">
-                                {product.rating.average.toFixed(1)}
-                            </span>
-                            <span aria-hidden="true">
-                                ({formatCount(product.rating.count, locale)})
+                            {/* What is seen, hidden from a screen reader in one place. */}
+                            <span className="card-rating-seen" aria-hidden="true">
+                                <Stars average={product.rating.average} />
+                                <span className="card-rating-average">
+                                    {formatAverage(product.rating.average, locale)}
+                                </span>
+                                <span>({formatCount(product.rating.count, locale)})</span>
                             </span>
                             {/* The rating in words, said once in place of the stars and the figures. */}
                             <span className="visually-hidden">

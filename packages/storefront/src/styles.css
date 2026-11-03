@@ -715,13 +715,26 @@ h4 {
     font-weight: var(--weight-medium);
 }
 
-.card-meta,
+.card-meta {
+    font-size: var(--text-caption);
+    color: var(--muted);
+}
+
+/* One line where it fits, wrapping on a narrow card rather than spilling past it. */
 .card-rating {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1);
     font-size: var(--text-small);
     color: var(--muted);
+}
+
+.card-rating-seen {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
 }
 
 .card-rating-average {
@@ -745,9 +758,9 @@ h4 {
     overflow: hidden;
 }
 
-.stars-star {
+.stars-row {
     flex: none;
-    width: 1em;
+    width: 5em;
     height: 1em;
 }
 
