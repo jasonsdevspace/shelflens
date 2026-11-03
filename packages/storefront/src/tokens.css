@@ -23,12 +23,11 @@
  *
  * A test holds every sheet to these.
  *
- * A media query cannot read a custom property, so the breakpoints are
- * named here and written out where they are used, and the same test holds
- * every query to one of them:
+ * A media query cannot read a custom property, so the breakpoint is named
+ * here and written out where it is used, and the same test holds every
+ * query to it:
  *
- * - a phone, up to 48rem, where the page lays out for a thumb;
- * - a narrow phone, up to 24rem, where the masthead takes a fourth row.
+ * - a phone, up to 48rem, where the page lays out for a thumb.
  */
 :root,
 .shelflens {

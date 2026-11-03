@@ -52,6 +52,11 @@ test('the popover fits the screen and works from the keyboard', async ({ page })
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
         expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+        // The search box shares its row with the brand, but the list takes the screen's width,
+        // so a product's name, price and swatch have room.
+        const field = await search.boundingBox();
+        expect(field?.width ?? 0).toBeLessThan(320);
+        expect(box.width).toBeGreaterThan(viewport.width - 40);
     }
     await search.press('ArrowDown');
     await search.press('Enter');

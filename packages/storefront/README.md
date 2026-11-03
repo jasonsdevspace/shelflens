@@ -87,10 +87,11 @@ the page.
   and walks the gotchas the project exists to show, one stop each, with a link that puts the page
   in the state that shows it and the name of the test that proves it. A test checks every named
   test exists, and a reviewer can trigger every headline gotcha from it.
-- **A reviewer can shop as a member.** The masthead has a switch between guest and member. The
-  prices change and say so, a product only members may see appears and says so, one line under
-  the toolbar says what the switch changed on the page, and nothing in the URL or the query
-  asked for it: the viewer travels in a header, and every cache keys on it.
+- **A reviewer can shop as a member.** The strip above the masthead has a switch between guest and
+  member, with the demo's tour beside it, apart from what a shopper uses. The prices change and say
+  so, a product only members may see appears and says so, one line under the toolbar says what the
+  switch changed on the page, and nothing in the URL or the query asked for it: the viewer travels
+  in a header, and every cache keys on it.
 - **The URL is the page.** `src/app` holds the state every page reads from the query string:
   the phrase, the category, each facet, the sort, the page and the product being looked at.
   Parse and serialize are pure and tested. A filter is a history entry, so the back button

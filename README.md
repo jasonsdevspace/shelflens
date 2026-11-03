@@ -36,7 +36,7 @@ same store host over HTTP.
 
 ## Two minutes with the demo
 
-Each step is a link into the live storefront. The "Tour" button in the store's masthead, beside
+Each step is a link into the live storefront. The "Tour" button at the top of the store, beside
 "Shopping as", walks all nineteen stops with the test behind each. For the same story without the
 code, the demo carries [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 

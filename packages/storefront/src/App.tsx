@@ -67,9 +67,10 @@ export interface AppProps {
 type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
 
 /**
- * Whether the masthead keeps the room its search box and links will take:
- * only on the store's own page, whose masthead is the one the room fits,
- * and only while the store is on its way, not once it will never come.
+ * Whether the masthead keeps the room its search box and links will take,
+ * and the strip the room of the demo's switches: only on the store's own
+ * page, whose masthead is the one the room fits, and only while the store
+ * is on its way, not once it will never come.
  */
 const keepsRoom = (tour: boolean, readiness: Readiness): boolean => tour && readiness === 'waiting';
 
@@ -177,39 +178,48 @@ const ViewerSwitch = ({
  */
 const switchesViewer = (info: StoreInfo): boolean => info.memberPricing || info.membersOnlyProducts;
 
-/** The masthead once the store is ready: the search box, the viewer switch and the tour. */
+/** The masthead once the store is ready: the search box and the categories. */
 interface MastheadProps {
     readonly client: GraphQLClient;
     readonly state: SearchState;
     readonly fresh: SearchState;
     readonly navigate: Navigate;
     readonly categories: CategoryTree;
-    readonly group: CustomerGroup;
-    readonly onGroup: (group: CustomerGroup) => void;
-    readonly touring: boolean;
-    readonly onTour: () => void;
-    readonly tourButton: RefObject<HTMLButtonElement | null>;
     /** The shopper submitted a search, whether or not it changed the page. */
     readonly onSearched: () => void;
-    readonly tour: boolean;
-    readonly viewerSwitch: boolean;
 }
 
-const Masthead = ({
-    client,
-    state,
-    fresh,
-    onSearched,
-    navigate,
-    categories,
+/**
+ * The demo's own switches, which sit with the strip rather than in the
+ * store's masthead: who the visitor shops as, when the store has groups to
+ * choose between, and the tour, when the page offers it.
+ */
+const DemoTools = ({
+    viewerSwitch,
     group,
     onGroup,
+    tour,
     touring,
     onTour,
     tourButton,
-    tour,
-    viewerSwitch,
-}: MastheadProps) => (
+}: {
+    /** Whether the store has groups to choose between. */
+    readonly viewerSwitch: boolean;
+    readonly group: CustomerGroup;
+    readonly onGroup: (group: CustomerGroup) => void;
+    /** Whether the page offers the tour. */
+    readonly tour: boolean;
+    readonly touring: boolean;
+    readonly onTour: () => void;
+    readonly tourButton: RefObject<HTMLButtonElement | null>;
+}) => (
+    <>
+        {viewerSwitch && <ViewerSwitch group={group} onChange={onGroup} />}
+        {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
+    </>
+);
+
+const Masthead = ({ client, state, fresh, onSearched, navigate, categories }: MastheadProps) => (
     <>
         <SearchBox
             client={client}
@@ -220,8 +230,6 @@ const Masthead = ({
             }}
             onPick={(sku) => navigate({ ...state, product: sku })}
         />
-        {viewerSwitch && <ViewerSwitch group={group} onChange={onGroup} />}
-        {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
         <CategoryNav categories={categories} state={state} navigate={navigate} />
     </>
 );
@@ -407,6 +415,19 @@ export const App = ({
                 <PageTop
                     home="./"
                     waiting={keepsRoom(tour, readiness)}
+                    tools={
+                        isReady && (
+                            <DemoTools
+                                viewerSwitch={switchesViewer(info)}
+                                group={group}
+                                onGroup={switchGroup}
+                                tour={tour}
+                                touring={touring}
+                                onTour={touring ? closeTour : openTour}
+                                tourButton={tourButton}
+                            />
+                        )
+                    }
                     onHome={(event) => {
                         event.preventDefault();
                         navigate(fresh);
@@ -420,13 +441,6 @@ export const App = ({
                             onSearched={() => setSearched((n) => n + 1)}
                             navigate={navigate}
                             categories={tree}
-                            group={group}
-                            onGroup={switchGroup}
-                            touring={touring}
-                            onTour={touring ? closeTour : openTour}
-                            tourButton={tourButton}
-                            tour={tour}
-                            viewerSwitch={switchesViewer(info)}
                         />
                     )}
                 </PageTop>

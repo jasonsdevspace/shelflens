@@ -99,9 +99,42 @@ h4 {
  * one column from the first line to the footer.
  */
 .portfolio,
+.topbar,
 .masthead,
 .colophon {
     padding-inline: calc(max(0px, (100% - var(--column)) / 2) + var(--space-4));
+}
+
+/*
+ * The strip and the demo's own switches, one row on a wide screen: whose
+ * demo it is on the left, who the visitor shops as and the tour on the
+ * right, apart from the masthead a shopper uses.
+ */
+.topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 var(--space-5);
+    border-bottom: 1px solid var(--line);
+}
+
+.topbar .portfolio {
+    justify-content: flex-start;
+    gap: 0 var(--space-5);
+    padding-inline: 0;
+    border-bottom: 0;
+}
+
+.topbar-tools {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block: var(--space-1);
+}
+
+.topbar-tools:empty {
+    display: none;
 }
 
 .portfolio {
@@ -151,29 +184,45 @@ h4 {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4);
-    padding-block: var(--space-4);
+    padding-block: var(--space-3);
     border-bottom: 1px solid var(--line);
 }
 
 /*
- * The room the search box, the switches and the category links take once
- * the store is ready, kept while the masthead holds the brand alone, so the
- * page below does not move when they arrive. One row on a wide screen,
- * three on a phone, and a fourth on a narrow one.
+ * The room the search box and the category links take once the store is
+ * ready, kept while the masthead holds the brand alone, so the page below
+ * does not move when they arrive. One row on a wide screen, and two on a
+ * phone, the brand and the search box, then the categories. The demo's
+ * switches keep their room in the strip the same way, beside its links on
+ * a wide screen and on a row of their own on a phone.
  */
 .masthead.is-waiting {
-    min-height: 6.65rem;
+    min-height: 4.35rem;
+}
+
+/*
+ * A field's height and the padding around it, and the width of the two
+ * switches, as they take once they arrive, so they wrap, or not, as they
+ * will.
+ */
+.topbar.is-waiting .topbar-tools:empty {
+    display: flex;
+    min-width: 15.65rem;
+    min-height: calc(var(--field-height) + var(--space-2));
 }
 
 @media (max-width: 48rem) {
     .masthead.is-waiting {
-        min-height: 9.55rem;
+        min-height: 7.35rem;
     }
-}
 
-@media (max-width: 24rem) {
-    .masthead.is-waiting {
-        min-height: 12.35rem;
+    .topbar-tools {
+        flex-basis: 100%;
+    }
+
+    /* A field is a thumb's height on a phone, so the room kept is too. */
+    .topbar.is-waiting .topbar-tools:empty {
+        min-height: calc(var(--target) + var(--space-2));
     }
 }
 
@@ -253,7 +302,7 @@ h4 {
     color: var(--muted);
 }
 
-/* The masthead's second row: the root categories. */
+/* The masthead: the brand, the search box and the root categories, one row on a wide screen. */
 
 .masthead {
     flex-direction: column;
@@ -265,7 +314,16 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-2) var(--space-5);
+}
+
+/* The search box gives way before anything wraps, so the row holds from a phone's width up. */
+.masthead .searchbox {
+    flex-basis: 12em;
+}
+
+.category-nav {
+    margin-left: auto;
 }
 
 .tour {
@@ -327,34 +385,39 @@ h4 {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin-left: auto;
     font-size: var(--text-small);
     color: var(--muted);
 }
 
+/* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
 .category-list {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-4);
+    gap: 0 var(--space-5);
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
 .category-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
     color: var(--muted);
+    font-weight: var(--weight-medium);
     text-decoration: none;
-    padding: var(--space-1) 0;
     border-bottom: 2px solid transparent;
 }
 
 .category-link:hover,
 .category-link:focus-visible {
     color: var(--fg);
+    border-bottom-color: var(--control);
 }
 
 .category-link[aria-current='page'] {
     color: var(--fg);
+    font-weight: var(--weight-strong);
     border-bottom-color: var(--accent);
 }
 
@@ -1004,15 +1067,30 @@ h4 {
         gap: var(--space-4);
     }
 
-    /* Brand, viewer and tour on one row, the search box on a row of its own below. */
-    .searchbox {
-        order: 1;
-        flex-basis: 100%;
+    /* The three links on one line in small text, the switches on the line below them. */
+    .topbar .portfolio {
+        gap: 0 var(--space-4);
+        font-size: var(--text-caption);
+    }
+
+    .topbar-tools {
+        padding-block: 0 var(--space-2);
+    }
+
+    /* The brand and the search box on one row, the categories below, as focus takes them. */
+    .masthead-row {
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-3);
+    }
+
+    .masthead .searchbox {
+        flex: 1 1 10em;
         max-width: none;
     }
 
     .category-nav {
-        order: 2;
+        flex-basis: 100%;
+        margin-left: 0;
     }
 }
 
