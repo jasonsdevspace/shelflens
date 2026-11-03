@@ -39,7 +39,7 @@ export default {
                     Brand: '@shelflens/catalog#Brand as BrandModel',
                     Category: '@shelflens/catalog#Category as CategoryModel',
                     Recommendations: '../recommend.js#RecommendationsModel',
-                    SearchHit: '../resolvers.js#HitModel',
+                    SearchHit: '../hits.js#HitModel',
                     SearchResult: '../resolvers.js#SearchResultModel',
                     NoResults: '../resolvers.js#NoResultsModel',
                     RelaxedSearch: '../resolvers.js#RelaxedModel',

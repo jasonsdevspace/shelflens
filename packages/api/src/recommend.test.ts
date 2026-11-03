@@ -1,9 +1,11 @@
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
-import { type Context, createStore, viewerFromHeader } from './context.js';
+import type { Context } from './context.js';
 import type { StoreEvent } from './events.js';
+import { viewerFromHeader } from './http.js';
 import { recommend, viewedWith } from './recommend.js';
+import { createStore } from './store.js';
 
 /*
  * The cold start, and what replaces it: with no history the rail is the
@@ -130,10 +132,5 @@ describe('the rail', () => {
         });
         const rail = recommend({ sku: subject.sku, limit: 6 }, [], { ...context(), store: lone });
         expect(rail?.items).toEqual([]);
-    });
-
-    it('keeps the limit within bounds', () => {
-        expect(recommend({ sku: subject.sku, limit: 100 }, [], context())?.items.length).toBe(12);
-        expect(recommend({ sku: subject.sku, limit: -1 }, [], context())?.items).toEqual([]);
     });
 });

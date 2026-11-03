@@ -52,7 +52,6 @@ const node = createServer({
         source: () => Promise.resolve({ catalog, rules: [] }),
         events: nodeEvents,
     }),
-    events: nodeEvents,
     allowFullQueries: true,
 });
 let nodeBase = '';

@@ -9,7 +9,7 @@
 export type Route = 'graphql' | 'events' | 'rules' | 'catalog';
 
 /** What every host serves: the API, the events it collects, and the rules it keeps. */
-type StoreRoute = Exclude<Route, 'catalog'>;
+export type StoreRoute = Exclude<Route, 'catalog'>;
 
 export const STORE_ROUTES: readonly StoreRoute[] = ['graphql', 'events', 'rules'];
 

@@ -61,8 +61,8 @@ to a third of a second.
 - The worker's own code is now its transport and its catalog: which catalog to load, the
   database a visitor's catalog keeps, and the answers it caches.
 - The Node server answers `/rules` as the worker does, kept in memory for as long as it runs. A
-  server that should not take saves is given a fixed API instead of a host.
-- A fixed API is still accepted, for a store that never changes and for tests that want one.
+  server that should not take saves is given a host with no rule store, and answers `/rules` with
+  a 404.
 - The host's rules for building again are tested once, in the API package, rather than in each
   transport.
 
@@ -76,11 +76,16 @@ to a third of a second.
   has when a new source cannot be built, when a visit cannot build again, and when the host cannot
   tidy up after a build, and a request during a change is answered rather than kept waiting.
 - `apps/server/src/server.test.ts`: clicks posted over a real socket rank on the next visit and
-  not mid-visit, `/rules` answers 404 where the host keeps none, and the server takes a host or a
-  fixed API, never both.
+  not mid-visit, and `/rules` answers 404 where the host keeps none.
 - `apps/storefront/src/dev/hosts-agree.test.ts`: the same batch of clicks sent to the worker
   and to the Node server nudges the same products by the same amount on the next visit to each.
 - `apps/storefront/src/worker/handle-catalog.test.ts`: a visitor's catalog is loaded, replaced
   and removed, a file just loaded is built from the one in hand without being read back, a catalog
   that cannot be built leaves the last one serving with its rules, and a load and a removal that
   arrive together end in agreement.
+
+**Amended with the fixed API gone.** The server kept a fixed API beside the host, for a store that
+never changes and for tests, and only its own tests used it, which left those tests running a store
+no host serves. The server now takes a host and nothing else, and reads the events from it, so its
+tests run the store the hosts run, response cache included. The local server and the dev server
+build that host the same way, through `createLocalHost` in the server package.

@@ -1,13 +1,7 @@
-import { readFileSync } from 'node:fs';
-
-import {
-    createMemoryEventStore,
-    createMemoryRuleStore,
-    createStoreHost,
-    parseRulesFile,
-} from '@shelflens/api';
+import { STORE_ROUTES } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 
+import { createLocalHost, readRulesFile } from './local.js';
 import { createServer, type OriginPath, type OriginsSupport } from './server.js';
 
 /**
@@ -27,17 +21,14 @@ import { createServer, type OriginPath, type OriginsSupport } from './server.js'
  */
 const port = Number(process.env['PORT'] ?? 8080);
 const products = Number(process.env['PRODUCTS'] ?? 2000);
-const rules =
-    process.env['RULES'] === undefined
-        ? []
-        : parseRulesFile(JSON.parse(readFileSync(process.env['RULES'], 'utf8')));
+const rules = process.env['RULES'] === undefined ? [] : readRulesFile(process.env['RULES']);
 const listed = (name: string): readonly string[] =>
     (process.env[name] ?? '')
         .split(',')
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
 const isOriginPath = (path: string): path is OriginPath =>
-    path === 'graphql' || path === 'events' || path === 'rules';
+    (STORE_ROUTES as readonly string[]).includes(path);
 /** An origin as a browser sends it: scheme and host, no path, no trailing slash, lowercase. */
 const asOrigin = (entry: string): string => {
     const origin = new URL(entry).origin;
@@ -62,21 +53,12 @@ const origins: OriginsSupport | undefined =
           }
         : undefined;
 
-const catalog = generateCatalog({ products });
-const events = createMemoryEventStore();
-// The same host the service worker runs: the clicks folded in when a visit begins,
-// and rules a merchandiser saves kept in memory for as long as the server runs.
-const host = createStoreHost({
-    source: () => Promise.resolve({ catalog, rules }),
-    events,
-    rules: createMemoryRuleStore(),
-});
+const host = createLocalHost({ catalog: generateCatalog({ products }), rules });
 const server = createServer({
     host,
     allowFullQueries: process.env['FULL_QUERIES'] === 'true',
     // Only behind a proxy that sets the forwarded headers, which a client could otherwise forge.
     trustProxy: process.env['TRUST_PROXY'] === 'true',
-    events,
     ...(origins && { origins }),
 });
 

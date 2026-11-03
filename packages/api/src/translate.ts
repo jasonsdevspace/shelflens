@@ -5,16 +5,19 @@ import type {
     MatchMode,
     Rule,
     RuleAdjustment,
+    RuleEffect,
     RuleTrigger,
     SortClause,
 } from '@jasonsdevspace/shelflens';
 import { GraphQLError } from 'graphql';
 
+import type { UserCode } from './errors.js';
 import type {
     FilterAttribute,
     FilterInput,
     Matching,
     MatchRoute,
+    RuleAction,
     RuleAdjustmentInput,
     RuleInput,
     SortClause as SortClauseModel,
@@ -65,7 +68,7 @@ const SORT_FIELD_NAMES = new Map(
 
 /** A request's mistake, reported as one. */
 export const badInput = (message: string): GraphQLError =>
-    new GraphQLError(message, { extensions: { code: 'BAD_USER_INPUT' } });
+    new GraphQLError(message, { extensions: { code: 'BAD_USER_INPUT' satisfies UserCode } });
 
 /** An input field the client gave, as opposed to one left out or set to null. */
 const isSet = <T>(value: T | null | undefined): value is T => value !== null && value !== undefined;
@@ -160,6 +163,12 @@ const ROUTES: Readonly<Record<MatchKind, MatchRoute>> = {
 
 const fromKind = (kind: MatchKind): MatchRoute => ROUTES[kind];
 
+const ACTIONS: Readonly<Record<RuleEffect['action'], RuleAction>> = {
+    pin: 'PIN',
+    boost: 'BOOST',
+    bury: 'BURY',
+};
+
 /** The schema's view of why a hit ranked where it did. */
 export const explanationOf = (hit: Hit) => ({
     matches: hit.matches.map((match) => ({
@@ -171,7 +180,7 @@ export const explanationOf = (hit: Hit) => ({
     })),
     rules: hit.rules.map((effect) => ({
         ruleId: effect.ruleId,
-        action: effect.action.toUpperCase() as 'PIN' | 'BOOST' | 'BURY',
+        action: ACTIONS[effect.action],
         weight: effect.weight ?? null,
     })),
     popularity: hit.signal ? { clicks: hit.signal.count, weight: hit.signal.weight } : null,

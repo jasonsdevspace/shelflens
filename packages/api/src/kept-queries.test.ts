@@ -2,8 +2,9 @@ import { generateCatalog } from '@shelflens/catalog';
 import { parse } from 'graphql';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createStore, viewerFromHeader } from './context.js';
 import { createStoreApi, KEPT_QUERIES, KEPT_QUERY_LENGTH } from './execute.js';
+import { viewerFromHeader } from './http.js';
+import { createStore } from './store.js';
 
 /** When every request in this file arrives. */
 const NOW = new Date('2026-11-01T12:00:00Z');

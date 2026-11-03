@@ -1,6 +1,9 @@
 import {
+    answerOf,
     createStoreHost,
+    errorBody,
     type EventStore,
+    type HostAnswer,
     type HostedStore,
     INTERNAL_MESSAGE,
     parseCatalogFile,
@@ -37,6 +40,8 @@ export interface WorkerApiOptions {
      * set, and the public demo never sets it.
      */
     readonly allowFullQueries?: boolean;
+    /** The clock, read once for each answer, so a test can pin the time as the Node server's can. */
+    readonly now?: () => Date;
     /** Where to keep answers across requests, such as a `Cache` from the Cache API. */
     readonly answers?: () => Promise<AnswerStore>;
     /** Where to keep the events the page sends. Without one, events are refused. */
@@ -100,8 +105,22 @@ class NoCatalogError extends Error {
     }
 }
 
-const noCatalog = () =>
-    json(404, { errors: [{ message: 'no catalog is loaded, so there is nothing to search yet' }] });
+/** A refusal or a failure, in the one error shape every host answers with. */
+const refuse = (status: number, message: string, extensions?: Record<string, unknown>) =>
+    json(status, errorBody(status, message, extensions));
+
+/** A receiver's answer as the worker writes it. */
+const write = ({ status, body, headers = {} }: HostAnswer): Response =>
+    body === undefined ? new Response(null, { status, headers }) : json(status, body);
+
+/** A request as the API's receivers read it, from what a fetch event gives. */
+const asHttp = async (request: Request) => ({
+    method: request.method,
+    body: request.method === 'GET' ? undefined : await request.text(),
+    header: (name: string) => request.headers.get(name),
+});
+
+const noCatalog = () => refuse(404, 'no catalog is loaded, so there is nothing to search yet');
 
 const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
     const response = await fetchImpl(url);
@@ -147,6 +166,7 @@ export const createWorkerApi = ({
     base = '/',
     fetch: fetchImpl = fetch,
     allowFullQueries = false,
+    now = () => new Date(),
     answers,
     events,
     rules,
@@ -202,33 +222,14 @@ export const createWorkerApi = ({
     });
 
     const receive = async (request: Request): Promise<Response> => {
-        if (!events) return json(404, { errors: [{ message: 'this store keeps no events' }] });
-        const receipt = await receiveEvents(
-            {
-                method: request.method,
-                body: await request.text(),
-                header: (name) => request.headers.get(name),
-            },
-            events
-        );
-        if (receipt.status === 204) return new Response(null, { status: 204 });
-        return json(receipt.status, { errors: [{ message: receipt.message }] });
+        if (!events) return refuse(404, 'this store keeps no events');
+        const receipt = await receiveEvents(await asHttp(request), events, now());
+        return write(answerOf(receipt));
     };
 
     /** The rules path: read, replace or reset the saved set, building again on a change. */
     const receiveRuleSet = async (request: Request): Promise<Response> => {
-        const answer = await host.receiveRules({
-            method: request.method,
-            body: await request.text(),
-        });
-        if (answer.status === 200) return json(200, answer.body);
-        if (answer.status !== 204) {
-            return json(answer.status, { errors: [{ message: answer.message }] });
-        }
-        return new Response(null, {
-            status: 204,
-            headers: answer.version === undefined ? {} : { [VERSION_HEADER]: answer.version },
-        });
+        return write(answerOf(await host.receiveRules(await asHttp(request))));
     };
 
     /**
@@ -301,15 +302,11 @@ export const createWorkerApi = ({
 
     /** The answer to a change refused because it would discard the visitor's saved rules. */
     const rulesKept = () =>
-        json(409, {
-            errors: [
-                {
-                    message:
-                        'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
-                    code: 'saved-rules',
-                },
-            ],
-        });
+        refuse(
+            409,
+            'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
+            { code: 'SAVED_RULES' }
+        );
 
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
@@ -328,9 +325,7 @@ export const createWorkerApi = ({
             return removed === KEEPS_RULES ? rulesKept() : new Response(null, { status: 204 });
         }
         if (request.method !== 'PUT') {
-            return json(405, {
-                errors: [{ message: 'the catalog path takes GET, PUT and DELETE' }],
-            });
+            return refuse(405, 'the catalog path takes GET, PUT and DELETE');
         }
         // The worker's own work is timed, reading, checking and versioning the
         // catalog and building the store, without the transfer of the body or a
@@ -342,15 +337,13 @@ export const createWorkerApi = ({
         try {
             catalog = withContentVersion(parseCatalogFile(JSON.parse(body)));
         } catch (error) {
-            return json(400, {
-                errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],
-            });
+            return refuse(400, error instanceof Error ? error.message : 'not a catalog');
         }
         const readMs = performance.now() - began;
         const timing = { buildMs: 0 };
         const result = await loadCatalog(held, catalog, { timing, discard });
         if (result === KEEPS_RULES) return rulesKept();
-        if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
+        if (typeof result === 'string') return refuse(400, result);
         return new Response(null, {
             status: 204,
             headers: {
@@ -362,30 +355,30 @@ export const createWorkerApi = ({
 
     const answer = async (request: Request): Promise<Response> => {
         const resolved = resolveRequest(
-            {
-                method: request.method,
-                url: request.url,
-                body: request.method === 'POST' ? await request.text() : undefined,
-                header: (name) => request.headers.get(name),
-            },
+            { ...(await asHttp(request)), url: request.url },
             { persisted: PERSISTED_OPERATIONS, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
-            return json(resolved.status, { errors: [{ message: resolved.message }] });
+            return refuse(resolved.status, resolved.message);
         }
         let api: StoreApi;
         try {
             api = (await host.current()).api;
         } catch (error) {
             if (error instanceof NoCatalogError) return noCatalog();
-            return json(503, { errors: [{ message: 'the store is not ready' }] });
+            return refuse(503, 'the store is not ready');
         }
-        const now = new Date();
-        const response = await api.run(resolved.request, resolved.viewer, now);
+        const at = now();
+        const response = await api.run(resolved.request, resolved.viewer, at);
         return json(
             200,
             response,
-            responseHeaders({ version: api.version, now, expected: resolved.expected, response })
+            responseHeaders({
+                version: api.version,
+                now: at,
+                expected: resolved.expected,
+                response,
+            })
         );
     };
 
@@ -396,7 +389,7 @@ export const createWorkerApi = ({
     const query = async (request: Request): Promise<Response> => {
         const kept = request.method === 'GET' && answers ? await answers() : undefined;
         const held = await kept?.match(request);
-        if (held && fresh(held, new Date())) return held;
+        if (held && fresh(held, now())) return held;
         const response = await answer(request);
         // Kept only while the store that made it is still the one served, so
         // an answer that finishes after its catalog was replaced or removed
@@ -449,9 +442,7 @@ export const createWorkerApi = ({
                     `request ${requestId} to ${new URL(request.url).pathname} failed`,
                     error
                 );
-                return json(500, {
-                    errors: [{ message: INTERNAL_MESSAGE, extensions: { requestId } }],
-                });
+                return refuse(500, INTERNAL_MESSAGE, { requestId });
             }
         },
     };

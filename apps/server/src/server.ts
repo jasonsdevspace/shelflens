@@ -6,8 +6,10 @@ import {
 } from 'node:http';
 
 import {
-    type EventStore,
+    answerOf,
+    errorBody,
     GROUP_HEADER,
+    type HostAnswer,
     INTERNAL_MESSAGE,
     PERSISTED_OPERATIONS,
     receiveEvents,
@@ -16,6 +18,7 @@ import {
     routeOf,
     type StoreApi,
     type StoreHost,
+    type StoreRoute,
     VERSION_HEADER,
     viewerFromHeader,
 } from '@shelflens/api';
@@ -41,27 +44,14 @@ const BODY_LIMIT_BYTES = 16 * 1024;
 const DRAIN_LIMIT_BYTES = 1024 * 1024;
 const DRAIN_MS = 5_000;
 
-/**
- * What answers: a store host, which folds in the clicks when a visit begins
- * and builds again when rules are saved, as the service worker's does, or a
- * fixed `api`, one store that never changes, for a host that keeps no rules
- * and no clicks. One or the other, never both.
- */
-type StoreSupply =
-    | { readonly host: StoreHost; readonly api?: never }
-    | { readonly api: StoreApi; readonly host?: never };
-
-/** The API to answer from now: the host's current store, or the fixed one. */
-const answerFrom = (supply: StoreSupply): (() => Promise<StoreApi>) => {
-    if (supply.host !== undefined) {
-        const { host } = supply;
-        return async () => (await host.current()).api;
-    }
-    const { api } = supply;
-    return () => Promise.resolve(api);
-};
-
-export type ServerOptions = StoreSupply & {
+export interface ServerOptions {
+    /**
+     * The store host that answers, the one the service worker runs too, so
+     * the server folds in clicks when a visit begins and builds again when
+     * rules are saved, as the worker does. Events are received into the
+     * host's own store, and refused when it keeps none.
+     */
+    readonly host: StoreHost;
     /** Requests each client may make per minute. */
     readonly rateLimitPerMinute?: number;
     readonly now?: () => Date;
@@ -76,8 +66,6 @@ export type ServerOptions = StoreSupply & {
     readonly maxAgeSeconds?: number;
     /** The path the API is served under, so `graphql` is answered only there. */
     readonly base?: string;
-    /** Where to keep the events the storefront sends. Without one, events are refused. */
-    readonly events?: EventStore;
     /**
      * The pages on other origins that may use the API, as the widget does when
      * it is mounted on a page the store does not serve. Without this, a
@@ -91,10 +79,10 @@ export type ServerOptions = StoreSupply & {
      * and the server's own origin is read from the connection.
      */
     readonly trustProxy?: boolean;
-};
+}
 
-/** The paths an outside origin may use. */
-export type OriginPath = 'graphql' | 'events' | 'rules';
+/** The paths an outside origin may use: the store's own. */
+export type OriginPath = StoreRoute;
 
 export interface OriginsSupport {
     /** The origins allowed, each as a scheme and a host, never a wildcard. */
@@ -350,7 +338,53 @@ const JSON_HEADERS = {
 };
 
 const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
-    send(response, { status, body: { errors: [{ message }] }, requestId });
+    send(response, { status, body: errorBody(status, message), requestId });
+
+/**
+ * A store that could not start. Nothing in the request was wrong, and asking
+ * again can succeed, so it is a 503 with a while to wait, as the service
+ * worker answers a store that did not build, with the id the log holds.
+ */
+const notReady = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} found no store`, error);
+    response.setHeader('retry-after', '5');
+    send(response, {
+        status: 503,
+        body: errorBody(503, 'the store is not ready', { requestId }),
+        requestId,
+    });
+};
+
+/** A failure that is ours, in the one error shape, with the id the log holds. */
+const failed = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} failed`, error);
+    send(response, {
+        status: 500,
+        body: errorBody(500, INTERNAL_MESSAGE, { requestId }),
+        requestId,
+    });
+};
+
+/** A receiver's answer as the server writes it. */
+const write = (response: ServerResponse, answer: HostAnswer, requestId: string) => {
+    if (answer.body === undefined) {
+        response.writeHead(answer.status, {
+            ...SECURITY_HEADERS,
+            'x-request-id': requestId,
+            ...answer.headers,
+        });
+        response.end();
+        return;
+    }
+    send(response, { status: answer.status, body: answer.body, requestId });
+};
+
+/** A request as the API's receivers read it, from what Node gives. */
+const asHttp = (request: IncomingMessage, body: string | undefined) => ({
+    method: request.method ?? 'GET',
+    body,
+    header: (name: string) => request.headers[name]?.toString(),
+});
 
 export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 
@@ -367,11 +401,10 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         allowFullQueries = false,
         maxAgeSeconds,
         base = '/',
-        events,
         origins,
         trustProxy = false,
     } = options;
-    const apiNow = answerFrom(options);
+    const { events } = host;
     const { allow } = createRateLimit(rateLimitPerMinute, now);
 
     const receiveRuleSet = async (
@@ -379,7 +412,8 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         response: ServerResponse,
         requestId: string
     ) => {
-        if (!host) {
+        // Said before any allowance is spent or any body read, as the events path does.
+        if (!host.keepsRules) {
             refuse(response, 404, 'this store keeps no rules', requestId);
             return;
         }
@@ -390,21 +424,16 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
-        const answer = await host.receiveRules({ method: request.method ?? 'GET', body });
-        if (answer.status === 200) {
-            send(response, { status: 200, body: answer.body, requestId });
+        let answer: HostAnswer;
+        try {
+            answer = answerOf(await host.receiveRules(asHttp(request, body)));
+        } catch (error) {
+            // Answering the rules builds the store first, and a store that cannot start is
+            // answered as the query path answers it.
+            notReady(response, requestId, error);
             return;
         }
-        if (answer.status !== 204) {
-            refuse(response, answer.status, answer.message ?? 'refused', requestId);
-            return;
-        }
-        response.writeHead(204, {
-            ...SECURITY_HEADERS,
-            'x-request-id': requestId,
-            ...(answer.version !== undefined && { [VERSION_HEADER]: answer.version }),
-        });
-        response.end();
+        write(response, answer, requestId);
     };
     // Beacons have a budget of their own, per address, since they carry no group and
     // must not bring a shopper's searches closer to the limit.
@@ -447,20 +476,14 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         }
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
-        const receipt = await receiveEvents(
-            {
-                method: request.method ?? 'GET',
-                body,
-                header: (name) => request.headers[name]?.toString(),
-            },
-            events
-        );
-        if (receipt.status === 204) {
-            response.writeHead(204, { ...SECURITY_HEADERS, 'x-request-id': requestId });
-            response.end();
+        let receipt: Awaited<ReturnType<typeof receiveEvents>>;
+        try {
+            receipt = await receiveEvents(asHttp(request, body), events, now());
+        } catch (error) {
+            failed(response, requestId, error);
             return;
         }
-        refuse(response, receipt.status, receipt.message ?? 'refused', requestId);
+        write(response, answerOf(receipt), requestId);
     };
 
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
@@ -494,12 +517,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         const { body, refused } = await bodyOf(request, response, requestId);
         if (refused) return;
         const resolved = resolveRequest(
-            {
-                method: request.method ?? 'GET',
-                url,
-                body,
-                header: (name) => request.headers[name]?.toString(),
-            },
+            { ...asHttp(request, body), url },
             { persisted, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
@@ -507,34 +525,34 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
             return;
         }
 
+        let api: StoreApi;
         try {
             // A request that names no store version is a page's first question,
             // the start of a visit, so the clicks collected since are folded in
             // first, as the service worker does when a page loads.
-            if (host && resolved.expected === undefined) await host.refresh();
-            const api = await apiNow();
-            const answer = await api.run(resolved.request, resolved.viewer, now());
+            if (resolved.expected === undefined) await host.refresh();
+            ({ api } = await host.current());
+        } catch (error) {
+            notReady(response, requestId, error);
+            return;
+        }
+        try {
+            const at = now();
+            const answer = await api.run(resolved.request, resolved.viewer, at);
             send(response, {
                 status: 200,
                 body: answer,
                 requestId,
                 headers: responseHeaders({
                     version: api.version,
-                    now: now(),
+                    now: at,
                     expected: resolved.expected,
                     response: answer,
                     maxAgeSeconds,
                 }),
             });
         } catch (error) {
-            console.error(`request ${requestId} failed`, error);
-            send(response, {
-                status: 500,
-                body: {
-                    errors: [{ message: INTERNAL_MESSAGE, extensions: { requestId } }],
-                },
-                requestId,
-            });
+            failed(response, requestId, error);
         }
     };
 };

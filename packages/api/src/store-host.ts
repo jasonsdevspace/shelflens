@@ -2,12 +2,13 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import type { Catalog } from '@shelflens/catalog';
 
 import { withResponseCache } from './cache.js';
-import { createStore, type Store } from './context.js';
+import type { Store } from './context.js';
 import type { EventStore } from './events.js';
 import { createStoreApi, type StoreApi } from './execute.js';
 import { fingerprint } from './fingerprint.js';
 import { receiveRules, type RulesReceipt, type RulesRequest, type RuleStore } from './rules.js';
 import { signalsOf } from './signals.js';
+import { createStore } from './store.js';
 
 /**
  * The store as every host serves it: the service worker, the Node server
@@ -46,12 +47,25 @@ export interface StoreHostOptions {
     readonly onServed?: ((api: StoreApi) => Promise<void>) | undefined;
 }
 
-/** A store as served: the API that answers, the model behind it, and what it was made from. */
+/** A store as served: the API that answers and the model behind it. */
 export interface HostedStore {
     readonly api: StoreApi;
     readonly model: Store;
-    readonly from: { readonly clicks: string; readonly rules: string; readonly catalog: string };
 }
+
+/** What a store was made from, in the form two stores are compared by. */
+interface MadeFrom {
+    readonly clicks: string;
+    readonly rules: string;
+    readonly edited: boolean;
+    readonly catalog: string;
+}
+
+const sameFrom = (a: MadeFrom, b: MadeFrom): boolean =>
+    a.clicks === b.clicks &&
+    a.rules === b.rules &&
+    a.edited === b.edited &&
+    a.catalog === b.catalog;
 
 /** How long the first build took, for the cold visit measurement. */
 export interface Startup {
@@ -65,6 +79,14 @@ export interface Startup {
 type RulesAnswer = RulesReceipt & { readonly version?: string };
 
 export interface StoreHost {
+    /**
+     * The events the host was given, which it folds into ranking and the
+     * recommendations read, so a server receives into the same store.
+     * Nothing for a host that keeps none.
+     */
+    readonly events: EventStore | undefined;
+    /** Whether the host keeps saved rules, so a host without them answers the rules path at once. */
+    readonly keepsRules: boolean;
     /** The store being served, built the first time anything asks. */
     current(): Promise<HostedStore>;
     /** The store being served, or nothing when none has been built or the build failed. */
@@ -98,11 +120,11 @@ export const createStoreHost = ({
     /** The store being served or being built first, for a request to wait on. */
     let store: Promise<HostedStore> | undefined;
     /**
-     * The last store built, held apart from `store` so a change in its turn
-     * compares with it and builds over it without awaiting a build queued
-     * behind that same turn.
+     * The last store built and what it was made from, held apart from `store`
+     * so a change in its turn compares with it and builds over it without
+     * awaiting a build queued behind that same turn.
      */
-    let last: HostedStore | undefined;
+    let last: { readonly hosted: HostedStore; readonly from: MadeFrom } | undefined;
     let read: Promise<StoreSource> | undefined;
     let timing: Startup = { downloadMs: 0, buildMs: 0 };
 
@@ -124,10 +146,17 @@ export const createStoreHost = ({
         return { signals: signalsOf(kept), saved, catalog, shipped };
     };
 
-    /** What a store is made from, in the form two stores are compared by. */
-    const fromOf = ({ signals, saved, catalog }: Awaited<ReturnType<typeof inputs>>) => ({
+    type Inputs = Awaited<ReturnType<typeof inputs>>;
+
+    /**
+     * What a store is made from. The rules in effect are compared as their
+     * text, so two sets that differ are never taken for the same, as two whose
+     * short fingerprints collided would be, and a save is never lost to that.
+     */
+    const fromOf = ({ signals, saved, catalog, shipped }: Inputs): MadeFrom => ({
         clicks: fingerprint(signals),
-        rules: JSON.stringify(saved ?? null),
+        rules: JSON.stringify(saved ?? shipped),
+        edited: saved !== undefined,
         catalog: catalog.version,
     });
 
@@ -144,17 +173,23 @@ export const createStoreHost = ({
     };
 
     /** A store from these inputs, over the last index when the catalog is the same. */
-    const build = (now: Awaited<ReturnType<typeof inputs>>): HostedStore => {
-        const { signals, saved, catalog, shipped } = now;
+    const build = ({ signals, saved, catalog, shipped }: Inputs): HostedStore => {
         const model = createStore({
             catalog,
             rules: saved ?? shipped,
             rulesEdited: saved !== undefined,
             signals,
-            basis: last?.model,
+            basis: last?.hosted.model,
         });
-        const api = withResponseCache(createStoreApi(model, { events }));
-        return { api, model, from: fromOf(now) };
+        return { api: withResponseCache(createStoreApi(model, { events })), model };
+    };
+
+    /** Makes a store the one served, remembered with what it was made from, and tells `onServed`. */
+    const serve = async (hosted: HostedStore, from: MadeFrom): Promise<HostedStore> => {
+        last = { hosted, from };
+        store = Promise.resolve(hosted);
+        await announce(hosted);
+        return hosted;
     };
 
     /**
@@ -164,18 +199,8 @@ export const createStoreHost = ({
     const buildAgain = async (): Promise<{ store: HostedStore; built: boolean }> => {
         const now = await inputs();
         const from = fromOf(now);
-        if (
-            last?.from.clicks === from.clicks &&
-            last.from.rules === from.rules &&
-            last.from.catalog === from.catalog
-        ) {
-            return { store: last, built: false };
-        }
-        const next = build(now);
-        last = next;
-        store = Promise.resolve(next);
-        await announce(next);
-        return { store: next, built: true };
+        if (last && sameFrom(last.from, from)) return { store: last.hosted, built: false };
+        return { store: await serve(build(now), from), built: true };
     };
 
     // One change to the store at a time, in the order asked.
@@ -188,16 +213,13 @@ export const createStoreHost = ({
 
     /** The last store built, or the first one built now. Run only in a turn. */
     const ensure = async (): Promise<HostedStore> => {
-        if (last) return last;
+        if (last) return last.hosted;
         const began = performance.now();
         const now = await inputs();
         const downloaded = performance.now();
         const built = build(now);
         timing = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
-        last = built;
-        store = Promise.resolve(built);
-        await announce(built);
-        return built;
+        return serve(built, fromOf(now));
     };
 
     const current = (): Promise<HostedStore> => {
@@ -213,6 +235,8 @@ export const createStoreHost = ({
     };
 
     return {
+        events,
+        keepsRules: rules !== undefined,
         current,
         served,
         refresh: async () => {

@@ -1,14 +1,6 @@
-import { readFileSync } from 'node:fs';
-
-import {
-    createMemoryEventStore,
-    createMemoryRuleStore,
-    createStoreHost,
-    parseRulesFile,
-    routeOf,
-} from '@shelflens/api';
+import { routeOf } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
-import { createHandler } from '@shelflens/server';
+import { createHandler, createLocalHost, readRulesFile } from '@shelflens/server';
 import type { Plugin } from 'vite';
 
 /**
@@ -23,29 +15,18 @@ import type { Plugin } from 'vite';
  */
 
 /** The rules file the production build ships, read here at startup. */
-const rules = () =>
-    parseRulesFile(
-        JSON.parse(readFileSync(new URL('../../public/rules.json', import.meta.url), 'utf8'))
-    );
+const RULES_FILE = new URL('../../public/rules.json', import.meta.url);
 
 export const storeApi = (): Plugin => ({
     name: 'shelflens-store-api',
     apply: 'serve',
     configureServer(server) {
         const base = server.config.base;
-        const events = createMemoryEventStore();
-        const catalog = generateCatalog();
-        const shipped = rules();
-        // The same host the service worker runs, so the dev server ranks as the demo
-        // does: clicks folded in when a visit begins, and rules saved in this session.
+        // The same host the Node server runs locally, and the service worker in
+        // production: clicks folded in when a visit begins, and rules saved in this session.
         const handle = createHandler({
-            host: createStoreHost({
-                source: () => Promise.resolve({ catalog, rules: shipped }),
-                events,
-                rules: createMemoryRuleStore(),
-            }),
+            host: createLocalHost({ catalog: generateCatalog(), rules: readRulesFile(RULES_FILE) }),
             base,
-            events,
         });
         server.middlewares.use((request, response, next) => {
             // Only the store's own routes, as the Node server serves them. A visitor's catalog is

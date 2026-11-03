@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import { createResponseCache, withResponseCache } from './cache.js';
 import { type CacheKey, cacheKey } from './cache-key.js';
-import { createStore, type Viewer, viewerFromHeader } from './context.js';
+import type { Viewer } from './context.js';
 import { createStoreApi, type StoreResponse } from './execute.js';
 import { canonical, fingerprint } from './fingerprint.js';
+import { viewerFromHeader } from './http.js';
+import { createStore } from './store.js';
 
 /** When every request in this file arrives. */
 const NOW = new Date('2026-11-01T12:00:00Z');
@@ -164,9 +166,6 @@ describe('the store version', () => {
         const again = createStore({ catalog, rules: [{ ...rule }] });
         expect(ruled.version).not.toBe(plain.version);
         expect(again.version).toBe(ruled.version);
-        expect(createStore({ catalog, rulesVersion: '7' }).version).toBe(
-            `${catalog.version}+rules.7`
-        );
     });
 
     it('gives a different key for the same request', () => {

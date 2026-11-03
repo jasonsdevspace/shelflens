@@ -3,6 +3,7 @@ import {
     createMemoryEventStore,
     createMemoryRuleStore,
     createStore,
+    errorBody,
     GPC_HEADER,
     GROUP_HEADER,
     INTERNAL_MESSAGE,
@@ -92,7 +93,7 @@ describe('the API inside the worker', () => {
         const full = await api.handle(posted({ query: '{ store { name } }' }));
         expect(full?.status).toBe(400);
         expect(await full?.json()).toEqual({
-            errors: [{ message: 'this store accepts persisted operations only' }],
+            ...errorBody(400, 'this store accepts persisted operations only'),
         });
         expect((await api.handle(persisted({ op: 'unknown' })))?.status).toBe(404);
         expect((await api.handle(persisted({ op: 'constructor' })))?.status).toBe(404);

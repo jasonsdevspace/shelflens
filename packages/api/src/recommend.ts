@@ -3,6 +3,7 @@ import { mostRated } from '@shelflens/search';
 
 import type { Context } from './context.js';
 import type { StoreEvent } from './events.js';
+import type { RecommendationSource as SchemaRecommendationSource } from './generated/schema.js';
 import { hitsOf } from './hits.js';
 
 /**
@@ -21,7 +22,8 @@ import { hitsOf } from './hits.js';
  * opened a second expects the first beside it now, not after a reload.
  */
 
-type RecommendationSource = 'VIEWED_TOGETHER' | 'CATEGORY_MOST_RATED';
+/** The rail's sources this API gives, the schema's deprecated one aside. */
+type RecommendationSource = Exclude<SchemaRecommendationSource, 'CATEGORY_BESTSELLERS'>;
 
 export interface RecommendationsModel {
     readonly source: RecommendationSource;
@@ -33,13 +35,14 @@ export interface RecommendationsModel {
 
 export interface RecommendationRequest {
     readonly sku: string;
+    /** How many to give, already bounded by the caller, between none and `RECOMMENDATION_LIMIT`. */
     readonly limit: number;
     /** The tab asking, whose earlier views count as viewed with this product. */
     readonly session?: string | undefined;
 }
 
 /** The most a rail may ask for. */
-const RECOMMENDATION_LIMIT = 12;
+export const RECOMMENDATION_LIMIT = 12;
 
 interface Seen {
     count: number;
@@ -102,20 +105,19 @@ export const recommend = (
     if (!product?.visibleTo.includes(viewer.group)) return null;
     const category = store.categories.get(product.categoryId);
     if (!category) return null;
-    const wanted = Math.min(Math.max(limit, 0), RECOMMENDATION_LIMIT);
 
     const items: Product[] = [];
     const taken = new Set<string>([sku]);
     const take = (candidate: Product | undefined) => {
-        if (!candidate || taken.has(candidate.sku) || items.length >= wanted) return;
+        if (!candidate || taken.has(candidate.sku) || items.length >= limit) return;
         if (!candidate.visibleTo.includes(viewer.group)) return;
         taken.add(candidate.sku);
         items.push(candidate);
     };
     for (const other of viewedWith(events, sku, session)) take(store.products.get(other));
     const together = items.length;
-    // One more than wanted, since the product itself may be among its category's best.
-    for (const best of mostRatedIn(product.categoryId, wanted + 1, context)) take(best);
+    // One more than limit, since the product itself may be among its category's best.
+    for (const best of mostRatedIn(product.categoryId, limit + 1, context)) take(best);
 
     return {
         source: together > 0 ? 'VIEWED_TOGETHER' : 'CATEGORY_MOST_RATED',

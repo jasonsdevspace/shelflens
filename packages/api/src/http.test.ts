@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { GROUP_HEADER } from './context.js';
-import { resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
+import { GROUP_HEADER, resolveRequest, responseHeaders, VERSION_HEADER } from './http.js';
 
 /*
  * What a request over HTTP means, and what its answer may be cached as.
@@ -130,21 +129,22 @@ describe('the answer', () => {
             'cache-control': 'public, max-age=300',
         });
         expect(
-            responseHeaders({ version: '7', expected: '7', response, maxAgeSeconds: 60 })[
+            responseHeaders({ version: '7', now, expected: '7', response, maxAgeSeconds: 60 })[
                 'cache-control'
             ]
         ).toBe('public, max-age=60');
     });
 
     it('may not be cached under another version, under none, or with errors', () => {
-        expect(responseHeaders({ version: '7', expected: '6', response })['cache-control']).toBe(
-            'no-store'
-        );
         expect(
-            responseHeaders({ version: '7', expected: undefined, response })['cache-control']
+            responseHeaders({ version: '7', now, expected: '6', response })['cache-control']
+        ).toBe('no-store');
+        expect(
+            responseHeaders({ version: '7', now, expected: undefined, response })['cache-control']
         ).toBe('no-store');
         expect(
             responseHeaders({
+                now,
                 version: '7',
                 expected: '7',
                 response: { errors: [{ message: 'no' }] },
@@ -152,6 +152,7 @@ describe('the answer', () => {
         ).toBe('no-store');
         expect(
             responseHeaders({
+                now,
                 version: '7',
                 expected: '7',
                 response: { data: {}, extensions: { volatile: true } },

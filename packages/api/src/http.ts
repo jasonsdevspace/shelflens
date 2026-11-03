@@ -1,5 +1,7 @@
-import { GROUP_HEADER, type Viewer, viewerFromHeader } from './context.js';
-import { isStoreRequest, type StoreRequest, type StoreResponse } from './execute.js';
+import type { Viewer } from './context.js';
+import { errorBody } from './errors.js';
+import type { StoreRequest, StoreResponse } from './execute.js';
+import { isRecord, parseJson } from './guards.js';
 
 /**
  * The API's shape over HTTP, shared by every host.
@@ -59,13 +61,17 @@ const refused = (status: number, message: string): Resolution => ({
     message,
 });
 
-const parseJson = (text: string): unknown => {
-    try {
-        return JSON.parse(text) as unknown;
-    } catch {
-        return undefined;
-    }
-};
+/** The request header that says who is shopping, read by every host of the API. */
+export const GROUP_HEADER = 'shelflens-customer-group';
+
+/** The customer group a request declared, or guest for anything but member. */
+export const viewerFromHeader = (value: string | null | undefined): Viewer => ({
+    group: value?.trim().toLowerCase() === 'member' ? 'member' : 'guest',
+});
+
+/** Whether a parsed request body is a request at all: an object with a query in it. */
+const isStoreRequest = (value: unknown): value is StoreRequest =>
+    isRecord(value) && typeof value['query'] === 'string';
 
 const persistedRequest = (url: URL, { persisted }: HttpOptions): Resolution | StoreRequest => {
     const id = url.searchParams.get('op');
@@ -112,8 +118,8 @@ export const resolveRequest = (http: HttpRequest, options: HttpOptions): Resolut
 export interface ResponseHeaderInput {
     /** The version of the store that answered. */
     readonly version: string;
-    /** When it answered, for a cache that ages what it keeps. */
-    readonly now?: Date | undefined;
+    /** When the answer was made, by the host's clock, for the date a kept answer is aged from. */
+    readonly now: Date;
     /** The version the client expected, from the URL. */
     readonly expected: string | undefined;
     readonly response: StoreResponse;
@@ -124,7 +130,7 @@ export interface ResponseHeaderInput {
 /** The headers every answer carries, and the caching the answer allows. */
 export const responseHeaders = ({
     version,
-    now = new Date(),
+    now,
     expected,
     response,
     maxAgeSeconds = 300,
@@ -138,3 +144,40 @@ export const responseHeaders = ({
             ? `public, max-age=${maxAgeSeconds}`
             : 'no-store',
 });
+
+/**
+ * A receiver's answer in the one form both hosts write, so neither turns a
+ * receipt into a response its own way.
+ */
+export interface HostAnswer {
+    readonly status: number;
+    readonly body?: unknown;
+    readonly headers?: Readonly<Record<string, string>>;
+}
+
+/**
+ * A receiver's receipt as a host writes it, so the service worker and the
+ * Node server answer the events and the rules paths alike: no body for a
+ * batch kept or a change taken, with the store version the change made when
+ * there is one, the body for a read, and the one error shape for a refusal.
+ */
+export const answerOf = (receipt: {
+    readonly status: number;
+    readonly message?: string | undefined;
+    readonly body?: unknown;
+    readonly version?: string | undefined;
+}): HostAnswer => {
+    if (receipt.status === 204) {
+        return {
+            status: 204,
+            ...(receipt.version !== undefined && {
+                headers: { [VERSION_HEADER]: receipt.version },
+            }),
+        };
+    }
+    if (receipt.status === 200) return { status: 200, body: receipt.body };
+    return {
+        status: receipt.status,
+        body: errorBody(receipt.status, receipt.message ?? 'refused'),
+    };
+};

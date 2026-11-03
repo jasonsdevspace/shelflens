@@ -1,18 +1,16 @@
-import type { Engine, Rule } from '@jasonsdevspace/shelflens';
+import type { Engine } from '@jasonsdevspace/shelflens';
 import type { Brand, Catalog, Category, CustomerGroup, Product } from '@shelflens/catalog';
-import { type Completions, createCompletions, createStoreEngine } from '@shelflens/search';
+import type { Completions } from '@shelflens/search';
 
 import type { EventStore } from './events.js';
-import { fingerprint } from './fingerprint.js';
-import { pricesDiffer } from './prices.js';
 import type { Signals } from './signals.js';
 
 /**
  * What every resolver can reach.
  *
- * The store part is built once per catalog and shared by every request. The
- * viewer part is built per request, from the request, which is the only
- * place a customer group may come from.
+ * The store part is built in store.ts, once for each store version, and
+ * shared by every request. The viewer part is built per request, from the
+ * request, which is the only place a customer group may come from.
  */
 
 export interface Store {
@@ -25,6 +23,8 @@ export interface Store {
     readonly brands: ReadonlyMap<string, Brand>;
     /** How often each product was clicked, folded in when the store was built. */
     readonly signals: Signals;
+    /** Whether anything was clicked, so the clicks are folded in at all. */
+    readonly clicked: boolean;
     /** Whether the rules are a set a visitor saved rather than the ones the store ships. */
     readonly rulesEdited: boolean;
     /** Whether a member's price differs from a guest's for anything, so a switch between them means something. */
@@ -57,101 +57,3 @@ export interface Context {
     readonly events: EventStore | undefined;
     readonly answer: Answer;
 }
-
-export interface StoreOptions {
-    readonly name?: string;
-    readonly catalog: Catalog;
-    readonly rules?: readonly Rule[];
-    /**
-     * A version for the rules, folded into the store version. Without one
-     * the rules are fingerprinted, so a change to them changes the version
-     * whether or not anyone remembered to say so.
-     */
-    readonly rulesVersion?: string;
-    /**
-     * How often each product was clicked, from the events the host collected
-     * so far. Folded into the version too, so a store built with new clicks
-     * is a new version and nothing kept under the old one is served again.
-     */
-    readonly signals?: Signals;
-    /** Whether the rules are a set a visitor saved, which the page says. */
-    readonly rulesEdited?: boolean;
-    /**
-     * A store built from this same catalog, whose index, completions and
-     * lookups are reused, so only the rules and the clicks are applied
-     * anew. Building again after a save or a visit then costs a
-     * reconfigure of the engine rather than indexing the catalog.
-     */
-    readonly basis?: Store | undefined;
-}
-
-/**
- * The engine for a store: a reconfigure of one built from this catalog
- * already, or a new index. An engine's settings carry over a reconfigure,
- * so a reused one is given the rules and the clicks both, the clicks empty
- * when there are none.
- */
-const engineFor = (
-    catalog: Catalog,
-    rules: readonly Rule[],
-    signals: Signals,
-    reused: Store | undefined
-) => {
-    if (reused) return reused.engine.reconfigure({ rules, signals });
-    const base = createStoreEngine(catalog);
-    const chosen = Object.keys(signals).length > 0;
-    return rules.length > 0 || chosen
-        ? base.reconfigure({ rules, ...(chosen && { signals }) })
-        : base;
-};
-
-/** What a store looks things up in, built from the catalog. */
-const lookupsFor = (catalog: Catalog) => ({
-    completions: createCompletions(catalog),
-    products: new Map(catalog.products.map((product) => [product.sku, product])),
-    categories: new Map(catalog.categories.map((category) => [category.id, category])),
-    brands: new Map(catalog.brands.map((brand) => [brand.id, brand])),
-});
-
-/** The same lookups, taken from a store over the same catalog. */
-const lookupsOf = ({ completions, products, categories, brands }: Store) => ({
-    completions,
-    products,
-    categories,
-    brands,
-});
-
-export const createStore = ({
-    name = 'ShelfLens',
-    catalog,
-    rules = [],
-    rulesVersion = fingerprint(rules),
-    signals = {},
-    rulesEdited = false,
-    basis,
-}: StoreOptions): Store => {
-    const chosen = Object.keys(signals).length > 0;
-    // Only a store over this very catalog shares an index with it.
-    const reused = basis?.catalog === catalog ? basis : undefined;
-    return {
-        name,
-        catalog,
-        engine: engineFor(catalog, rules, signals, reused),
-        ...(reused ? lookupsOf(reused) : lookupsFor(catalog)),
-        signals,
-        rulesEdited,
-        memberPricing: catalog.products.some(pricesDiffer),
-        membersOnlyProducts: catalog.products.some(
-            (product) => !product.visibleTo.includes('guest')
-        ),
-        version: `${catalog.version}+rules.${rulesVersion}${chosen ? `+clicks.${fingerprint(signals)}` : ''}`,
-    };
-};
-
-/** The request header that says who is shopping, read by every host of the API. */
-export const GROUP_HEADER = 'shelflens-customer-group';
-
-/** The customer group a request declared, or guest when it declared none. */
-export const viewerFromHeader = (value: string | null | undefined): Viewer => ({
-    group: value?.trim().toLowerCase() === 'member' ? 'member' : 'guest',
-});

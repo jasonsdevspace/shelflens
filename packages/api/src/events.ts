@@ -1,3 +1,5 @@
+import { isRecord, parseJson } from './guards.js';
+
 /**
  * The events a storefront collects, and where they land.
  *
@@ -74,9 +76,6 @@ const FIELDS: ReadonlySet<string> = new Set([
 /** A phrase as the store keeps it: lower case, one space between words, capped. */
 const foldPhrase = (phrase: string): string =>
     phrase.toLowerCase().trim().split(/\s+/).join(' ').slice(0, PHRASE_LIMIT);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const text = (value: unknown, limit: number): string | undefined =>
     typeof value === 'string' && value.length > 0 && value.length <= limit ? value : undefined;
@@ -192,21 +191,18 @@ export interface Receipt {
 export const receiveEvents = async (
     request: EventsRequest,
     store: EventStore,
-    now: () => number = Date.now
+    /** When the batch arrived, by the host's clock, which no event's time is let past. */
+    now: Date
 ): Promise<Receipt> => {
     if (request.method !== 'POST') return { status: 405, message: 'events are posted' };
     if (request.header(GPC_HEADER) === '1') return { status: 204 };
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(request.body ?? '');
-    } catch {
-        return { status: 400, message: 'the batch is not JSON' };
-    }
+    const parsed = parseJson(request.body ?? '');
+    if (parsed === undefined) return { status: 400, message: 'the batch is not JSON' };
     const batch = parseEventBatch(parsed);
     if (!batch) return { status: 400, message: 'the batch is not a list of events' };
     // A page's clock decides what the store keeps past its limit, so a time
     // ahead of the receiver's own is brought back to it.
-    const received = now();
+    const received = now.getTime();
     await store.append(
         batch.map((event) => (event.at > received ? { ...event, at: received } : event))
     );

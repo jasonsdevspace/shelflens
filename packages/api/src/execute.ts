@@ -15,6 +15,7 @@ import {
 } from 'graphql';
 
 import type { Context, Store, Viewer } from './context.js';
+import { INTERNAL_CODE, type StoreError, USER_CODES } from './errors.js';
 import type { EventStore } from './events.js';
 import type { Resolvers } from './generated/schema.js';
 import { touch, trimOldest } from './recent.js';
@@ -38,11 +39,7 @@ export interface StoreRequest {
 
 export interface StoreResponse {
     readonly data?: Record<string, unknown> | null;
-    readonly errors?: readonly {
-        readonly message: string;
-        readonly extensions?: Readonly<Record<string, unknown>>;
-        readonly path?: readonly (string | number)[];
-    }[];
+    readonly errors?: readonly StoreError[];
     readonly extensions?: {
         /** The answer depends on the events collected so far, so no cache may keep it. */
         readonly volatile?: boolean;
@@ -120,12 +117,6 @@ const withinLimits =
         };
     };
 
-/** Whether a parsed request body is a request at all: an object with a query in it. */
-export const isStoreRequest = (value: unknown): value is StoreRequest =>
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { query?: unknown }).query === 'string';
-
 export interface StoreApi {
     readonly schema: GraphQLSchema;
     /** The store's version, part of every cache key. */
@@ -138,13 +129,10 @@ export interface StoreApi {
 export const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 
 /** Keeps a user's mistakes as they are, and replaces everything else. */
-const shaped = (
-    error: GraphQLError
-): StoreResponse['errors'] extends readonly (infer E)[] | undefined ? E : never => {
+const shaped = (error: GraphQLError): StoreError => {
     const code = error.extensions['code'];
     const isUserError =
-        typeof code === 'string' &&
-        ['BAD_USER_INPUT', 'QUERY_TOO_DEEP', 'QUERY_TOO_WIDE'].includes(code);
+        typeof code === 'string' && (USER_CODES as readonly string[]).includes(code);
     // Only a resolver's failure has a path. Anything without one was found
     // before any field ran: validation, or a variable that did not fit.
     const fromRequest = error.path === undefined;
@@ -152,7 +140,7 @@ const shaped = (
     return {
         message,
         extensions: {
-            code: isUserError ? code : fromRequest ? 'GRAPHQL_VALIDATION_FAILED' : 'INTERNAL',
+            code: isUserError ? code : fromRequest ? 'GRAPHQL_VALIDATION_FAILED' : INTERNAL_CODE,
         },
         ...(error.path && { path: error.path }),
     };
