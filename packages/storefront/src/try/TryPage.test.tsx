@@ -148,6 +148,27 @@ describe('the page for a visitor’s own catalog', () => {
         );
     });
 
+    it('reads a browser’s own reason after “since” as the end of the sentence', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.resolve(
+                Response.json(
+                    { errors: [{ message: 'The quota has been exceeded.' }] },
+                    // As the worker answers a catalog it could not build, with the browser's words.
+                    { status: 400 }
+                )
+            )
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The store could not use these products, since the quota has been exceeded. Press “Search 200 products” to try again.'
+        );
+    });
+
     it('keeps the products, and says so, when removing them fails', async () => {
         page();
         await loadSample();
@@ -485,7 +506,10 @@ describe('the page for a visitor’s own catalog', () => {
         });
         const input = screen.getByLabelText('Choose a file');
         const slowFile = new File(['x'], 'slow.csv', { type: 'text/csv' });
-        Object.defineProperty(slowFile, 'text', { value: () => slow });
+        // The page reads a chosen file's bytes, so they are what arrives late.
+        Object.defineProperty(slowFile, 'arrayBuffer', {
+            value: () => slow.then((text) => new TextEncoder().encode(text).buffer),
+        });
         await userEvent.upload(input, slowFile);
         expect(await screen.findByRole('status')).toHaveTextContent('Reading slow.csv.');
         await userEvent.upload(

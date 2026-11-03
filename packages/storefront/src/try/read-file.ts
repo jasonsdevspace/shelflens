@@ -19,14 +19,38 @@ export interface FileLike {
     readonly name: string;
     readonly size: number;
     text(): Promise<string>;
+    /** The file's bytes, which a file chosen or dropped has, so its encoding can be checked. */
+    arrayBuffer?(): Promise<ArrayBuffer>;
 }
 
 /**
- * Megabytes to one place. A file's size rounds up and the limit is exact, so a
+ * Megabytes to one place, with no place when whole. A size rounds up, so a
  * file just past the limit never reads as the limit itself.
  */
-const megabytes = (bytes: number, round: (n: number) => number = Math.round) =>
-    `${(round((bytes / 1024 / 1024) * 10) / 10).toFixed(1)} MB`;
+const megabytes = (bytes: number) => {
+    const tenths = Math.ceil((bytes / 1024 / 1024) * 10) / 10;
+    return `${Number.isInteger(tenths) ? String(tenths) : tenths.toFixed(1)} MB`;
+};
+
+/**
+ * The file's text, refused when it is not UTF-8. Its bytes are decoded so a
+ * byte UTF-8 has no letter for refuses the file, while a file saved as UTF-8
+ * is read whatever letters it holds. A UTF-16 file, as Excel saves "Unicode
+ * Text", decodes with a nothing beside each letter, which a product list never
+ * holds.
+ */
+const textOf = async (file: FileLike): Promise<string> => {
+    let text: string;
+    if (file.arrayBuffer) {
+        try {
+            text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer());
+        } catch {
+            throw new Error(NOT_UTF8);
+        }
+    } else text = await file.text();
+    if (text.includes('\u0000')) throw new Error(NOT_UTF8);
+    return text;
+};
 
 const isJson = (name: string, text: string): boolean => {
     if (/\.json$/i.test(name)) return true;
@@ -38,13 +62,10 @@ const isJson = (name: string, text: string): boolean => {
 export const readFile = async (file: FileLike): Promise<Table> => {
     if (file.size > CATALOG_FILE_BYTES_CAP) {
         throw new Error(
-            `This file is ${megabytes(file.size, Math.ceil)}, and the largest this page reads is ${String(CATALOG_FILE_BYTES_CAP / 1024 / 1024)} MB. Choose a smaller file, or delete rows from this one.`
+            `This file is ${megabytes(file.size)}, and the largest this page reads is ${megabytes(CATALOG_FILE_BYTES_CAP)}. Choose a smaller file, or delete rows from this one.`
         );
     }
-    const text = await file.text();
-    // A file saved in another encoding reads as UTF-8 with letters it cannot make out, and a
-    // UTF-16 file, as Excel saves "Unicode Text", with a nothing between every letter.
-    if (text.includes('\uFFFD') || text.includes('\u0000')) throw new Error(NOT_UTF8);
+    const text = await textOf(file);
     const table = isJson(file.name, text) ? parseJsonTable(text) : parseCsv(text);
     if (table.rows.length === 0) {
         throw new Error(

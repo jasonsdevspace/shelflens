@@ -80,12 +80,24 @@ type Stage =
           readonly focusRemove?: boolean;
       };
 
+/**
+ * A reason as the end of a sentence: no closing period, and a capital that
+ * only starts a sentence made small, so a browser's own message reads after
+ * "since" as well as the engine's does.
+ */
+const asClause = (reason: string): string => {
+    const trimmed = reason.trim().replace(/\.$/, '');
+    return /^[A-Z][a-z]/.test(trimmed)
+        ? `${trimmed[0]?.toLowerCase() ?? ''}${trimmed.slice(1)}`
+        : trimmed;
+};
+
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {
     const again = `Press \u201c${retry}\u201d to try again.`;
     const reason = await reasonOf(response);
     return reason
-        ? `The store could not use these products, since ${reason}. ${again}`
+        ? `The store could not use these products, since ${asClause(reason)}. ${again}`
         : `The store could not load these products (error ${response.status}). ${again}`;
 };
 

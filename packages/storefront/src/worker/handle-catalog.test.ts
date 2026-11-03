@@ -329,8 +329,7 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(refused?.status).toBe(400);
         // The reason alone, which the page says after "since", with nothing wrapped around it.
         const { errors } = (await refused?.json()) as { errors: { message: string }[] };
-        expect(errors[0]?.message).not.toMatch(/catalog could not be built/);
-        expect(errors[0]?.message.length).toBeGreaterThan(0);
+        expect(errors[0]?.message).toMatch(/^rule odd /);
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
             version: LAMPS.version,
             products: 2,

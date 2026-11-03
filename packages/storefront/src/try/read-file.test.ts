@@ -20,18 +20,38 @@ describe('reading a visitor’s file', () => {
         );
     });
 
-    it('says a file not saved as UTF-8 must be, whether its letters cannot be made out or it is UTF-16', async () => {
-        const as = (text: string) => ({
-            name: 'products.csv',
-            size: text.length,
-            text: () => Promise.resolve(text),
-        });
-        // As a file saved in Windows-1252 reads, with its é made out as nothing.
-        await expect(readFile(as('name,price\nCaf\uFFFD,1\n'))).rejects.toThrow(NOT_UTF8);
-        // As a UTF-16 file reads, with a nothing between every letter.
-        await expect(readFile(as('n\u0000a\u0000m\u0000e\u0000'))).rejects.toThrow(NOT_UTF8);
+    it('says a file not saved as UTF-8 must be, whether a byte has no letter in UTF-8 or it is UTF-16', async () => {
+        const bytes = (data: number[]) => new File([new Uint8Array(data)], 'products.csv');
+        const ascii = (text: string) => [...text].map((char) => char.charCodeAt(0));
+        // "Café" as Windows-1252 saves it, with an é that is no letter in UTF-8.
+        await expect(
+            readFile(bytes([...ascii('name,price\nCaf'), 0xe9, ...ascii(',1\n')]))
+        ).rejects.toThrow(NOT_UTF8);
+        // As a UTF-16 file saves it, with a nothing beside every letter.
+        await expect(
+            readFile(bytes(ascii('name,price\nCap,1\n').flatMap((code) => [code, 0])))
+        ).rejects.toThrow(NOT_UTF8);
         expect(NOT_UTF8).toContain(
             'Save it as UTF-8, which Excel calls “CSV UTF-8”, then choose it again.'
+        );
+    });
+
+    it('reads a file saved as UTF-8 whatever letters it holds, a replacement character among them', async () => {
+        const file = new File(['name,price\nCaf\uFFFD Mug,1\nCafé,2\n'], 'products.csv');
+        expect((await readFile(file)).rows).toEqual([
+            ['Caf\uFFFD Mug', '1'],
+            ['Café', '2'],
+        ]);
+    });
+
+    it('says how large a file and the limit are, the limit in whole megabytes', async () => {
+        const big = {
+            name: 'big.csv',
+            size: 40 * 1024 * 1024 + 1,
+            text: () => Promise.resolve(''),
+        };
+        await expect(readFile(big)).rejects.toThrow(
+            'This file is 40.1 MB, and the largest this page reads is 40 MB. Choose a smaller file, or delete rows from this one.'
         );
     });
 
