@@ -1,4 +1,4 @@
-import { audit, expect, test } from './support.js';
+import { audit, expect, rulesPanel, test } from './support.js';
 
 /*
  * Why each result ranked where it did, and a rule previewed, saved and given back.
@@ -102,4 +102,15 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
     await notice.getByRole('button', { name: 'Yes, discard' }).click();
     await expect(notice).toBeHidden();
     await expect.poll(order).toEqual(before);
+});
+
+test('the rule form says a boost applies only under relevance', async ({ page, isMobile }) => {
+    await page.goto('/?q=boots&category=boots&explain=1&rules=1');
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const panel = await rulesPanel(page, isMobile);
+    await panel.getByRole('button', { name: /Ridgeback boots first/ }).click();
+    await expect(panel.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+        'A boost applies only under “Relevance”, where a search starts. Every other sort sets it aside, “Featured” included.'
+    );
+    await audit(page);
 });

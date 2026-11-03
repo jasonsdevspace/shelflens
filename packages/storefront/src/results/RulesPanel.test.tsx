@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RulesPanel, type RulesPanelProps, useRulesEditor } from './RulesPanel.jsx';
+import { onlyUnderRelevance } from './setAside.js';
 
 /*
  * The panel on its own, over the rules path of a small host: the shipped
@@ -315,6 +316,37 @@ describe('the rules panel', () => {
             active: { from: '2024-01-01' },
             hide: ['SL-7'],
         });
+    });
+
+    it('says under How much that a boost or a bury applies only under relevance', async () => {
+        const { user } = open({
+            phrase: 'boots',
+            applied: ['all-boots'],
+            products: [{ sku: 'SL-7', name: 'Mud Boot' }],
+        });
+        await user.click(await screen.findByRole('button', { name: /all-boots/ }));
+        const said = onlyUnderRelevance('boost');
+        expect(screen.queryByText(said)).toBeNull();
+        await user.click(screen.getByRole('radio', { name: /^Boost/ }));
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            said
+        );
+        await user.click(screen.getByRole('radio', { name: /^Bury/ }));
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            onlyUnderRelevance('bury')
+        );
+        // A pin or a hide is not about a score, so it is told nothing.
+        await user.click(screen.getByRole('radio', { name: /^Pin/ }));
+        expect(screen.queryByText(/applies only under/)).toBeNull();
+    });
+
+    it('says it for a rule with no category filter as well', async () => {
+        const { user } = open();
+        await user.click(await screen.findByRole('button', { name: /Featured jackets/ }));
+        await user.click(screen.getByRole('radio', { name: /^Boost/ }));
+        expect(screen.getByRole('combobox', { name: 'How much' })).toHaveAccessibleDescription(
+            onlyUnderRelevance('boost')
+        );
     });
 
     it('lists what the engine applied, not what the words suggest', async () => {

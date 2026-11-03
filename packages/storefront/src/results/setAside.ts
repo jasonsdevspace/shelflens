@@ -4,6 +4,14 @@ import { type SortKey, SORTS } from '../app/url.js';
 const SCOPED: SortKey = 'position';
 
 /**
+ * What the rule form says of a boost or a bury. Each changes a product's
+ * score, which only relevance reads, so every other sort sets it aside,
+ * the category's own sort included, whatever the rule applies to.
+ */
+export const onlyUnderRelevance = (action: 'boost' | 'bury'): string =>
+    `A ${action} applies only under \u201c${SORTS.relevance.label}\u201d, where a search starts. Every other sort sets it aside, \u201c${SORTS[SCOPED].label}\u201d included.`;
+
+/**
  * What the page says about the rules a sort set aside, or nothing when it
  * set none aside. A sort only reorders, so the pins, boosts and buries give
  * way to it, while a rule's hides still hold. The category's own sort also

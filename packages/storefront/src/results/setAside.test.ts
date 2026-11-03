@@ -1,6 +1,8 @@
+import { generateCatalog } from '@shelflens/catalog';
+import { createStoreEngine, searchStore } from '@shelflens/search';
 import { describe, expect, it } from 'vitest';
 
-import { setAsideBySort } from './setAside.js';
+import { onlyUnderRelevance, setAsideBySort } from './setAside.js';
 
 describe('what the page says about rules a sort set aside', () => {
     it('says nothing when the sort set none aside', () => {
@@ -23,5 +25,41 @@ describe('what the page says about rules a sort set aside', () => {
         expect(setAsideBySort('position', ['a', 'b'])).toContain(
             'the rules a, b make to the order.'
         );
+    });
+});
+
+describe('what the rule form says of a boost or a bury', () => {
+    it('is what the store does: every sort but relevance sets a boost aside, the category’s own included', () => {
+        const store = createStoreEngine(generateCatalog({ seed: 42, products: 50 })).reconfigure({
+            rules: [
+                {
+                    id: 'for-the-category',
+                    when: { filter: { attribute: 'category', value: 'boots' } },
+                    boost: [{ attribute: { name: 'brand', value: 'Ridgeback' }, weight: 1.5 }],
+                },
+                {
+                    id: 'for-the-words',
+                    when: { queries: ['boot'] },
+                    bury: [{ attribute: { name: 'brand', value: 'Ridgeback' }, weight: 0.5 }],
+                },
+            ],
+        });
+        for (const by of ['position', 'rating'] as const) {
+            const result = searchStore(store, {
+                group: 'guest',
+                query: 'boot',
+                filters: [{ attribute: 'category', eq: 'boots' }],
+                sort: [{ by, direction: 'desc' }],
+            });
+            expect(result.sort[0]?.by, by).toBe(by);
+            expect(result.rules.setAsideBySort, by).toEqual(['for-the-category', 'for-the-words']);
+        }
+    });
+
+    it('says so in the sorts’ own names', () => {
+        expect(onlyUnderRelevance('boost')).toBe(
+            'A boost applies only under “Relevance”, where a search starts. Every other sort sets it aside, “Featured” included.'
+        );
+        expect(onlyUnderRelevance('bury')).toContain('A bury applies only under “Relevance”');
     });
 });
