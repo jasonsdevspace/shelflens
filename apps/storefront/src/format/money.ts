@@ -4,13 +4,7 @@ export interface Money {
     readonly currency: string;
 }
 
-/**
- * Amounts formatted for the store's currency and locale.
- *
- * The currency travels with every amount and the locale comes from the
- * store, so nothing on the page types a symbol or guesses a separator. A
- * formatter is kept per currency and locale, since making one is slow.
- */
+/** Formatters by locale, currency and whether the amount is whole, since making one is slow. */
 const formatters = new Map<string, Intl.NumberFormat>();
 
 /** A whole amount shows no fraction, and any other shows the currency's usual digits. */
@@ -28,10 +22,15 @@ const formatterFor = (currency: string, locale: string, whole: boolean): Intl.Nu
     return formatter;
 };
 
-/** How many minor units make one of the currency: 100 for a dollar, 1 for a yen, 1000 for a dinar. */
+/** Minor units in one of the currency: 100 for a dollar, 1 for a yen, 1000 for a dinar. */
 const minorUnitsOf = (currency: string, locale: string): number =>
     10 ** (formatterFor(currency, locale, false).resolvedOptions().maximumFractionDigits ?? 2);
 
+/**
+ * An amount formatted for the store's currency and locale. The currency travels with every
+ * amount and the locale comes from the store, so nothing on the page types a symbol or guesses a
+ * separator.
+ */
 export const formatMoney = ({ amount, currency }: Money, locale: string): string => {
     const units = minorUnitsOf(currency, locale);
     return formatterFor(currency, locale, amount % units === 0).format(amount / units);

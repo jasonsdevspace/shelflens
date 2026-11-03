@@ -3,7 +3,6 @@ import { type Catalog, categoryNames, type Product } from '@shelflens/catalog';
 import { useId, useMemo, useState } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
-import { DEFAULT_LOCALE } from '../format/locale.js';
 import { formatMoney, formatPriceRange } from '../format/money.js';
 import { ratingText } from '../format/rating.js';
 import type { Table } from './csv.js';
@@ -258,14 +257,14 @@ const PreviewCard = ({
             <span>
                 {formatMoney(
                     { amount: product.price.guest.min, currency: catalog.currency },
-                    DEFAULT_LOCALE
+                    catalog.locale
                 )}
                 {/* By the store's own rule, so the preview and the cards say the same. */}
                 {paysLess(product, 'member') &&
                     `, member price ${formatPriceRange(
                         { amount: product.price.member.min, currency: catalog.currency },
                         { amount: product.price.member.max, currency: catalog.currency },
-                        DEFAULT_LOCALE
+                        catalog.locale
                     )}`}
                 {variant?.inStock === false && ', out of stock'}
             </span>
@@ -275,7 +274,7 @@ const PreviewCard = ({
             )}
             {product.rating.count > 0 && (
                 <span className="notice">
-                    {ratingText(product.rating.average, product.rating.count, DEFAULT_LOCALE)}
+                    {ratingText(product.rating.average, product.rating.count, catalog.locale)}
                 </span>
             )}
             <span className="notice">ID {product.sku}</span>
@@ -331,7 +330,7 @@ export const Preview = ({
             ? ''
             : [
                   note,
-                  `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency }, DEFAULT_LOCALE)}.`,
+                  `Preview updated. The first product is ${first.name}, ${formatMoney({ amount: first.price.guest.min, currency: catalog.currency }, catalog.locale)}.`,
               ]
                   .filter((line) => line !== undefined)
                   .join(' ');

@@ -88,7 +88,7 @@ interface Loaded extends RulesBody {
     readonly revision: number;
 }
 
-const NOT_READ = 'The rules could not be loaded, so nothing changed.';
+const NOT_READ = 'Nothing was saved. Load the rules again first.';
 // For a developer: the read either never reached the host or came back as something else.
 const READ_FAILED = 'the rules path did not answer with a set of rules';
 const NOT_YET = 'The rules are being read again. Try again in a moment.';
@@ -107,8 +107,7 @@ const useLoadedRules = (rulesUrl: string, storeRevision: number, enabled: boolea
     const [failedFor, setFailedFor] = useState<number>();
     // The revision this panel's own save made, whose read is skipped, once.
     const own = useRef<number>(undefined);
-    // Only the newest read's answer is kept, so an older one landing later never
-    // overwrites it.
+    // Only the newest read's answer is kept, so an older one landing later never overwrites it.
     const [latest] = useState(createLatest);
     // Counts the times asked again after a failed read.
     const [attempt, setAttempt] = useState(0);
@@ -445,15 +444,29 @@ export const RulesPanel = ({
     const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
         editor;
     const edit = (next: Form) => editor.edit(next, products);
+    const title = useRef<HTMLHeadingElement>(null);
     return (
         <div className="rules">
-            <h2 className="rules-title">{phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}</h2>
+            {/* Takes focus from Try again, which goes while the rules are read. */}
+            <h2 className="rules-title" tabIndex={-1} ref={title}>
+                {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
+            </h2>
             {message && (
                 <p className="callout" role="status">
                     {message}
                 </p>
             )}
-            {failed && <LoadFailure what="The rules" reason={READ_FAILED} onRetry={editor.retry} />}
+            {failed && (
+                <LoadFailure
+                    what="The rules"
+                    reason={READ_FAILED}
+                    onRetry={() => {
+                        title.current?.focus();
+                        editor.retry();
+                    }}
+                />
+            )}
+            {!failed && !editable && !form && <p className="notice">Reading the rules.</p>}
             {form ? (
                 <RuleForm
                     form={form}

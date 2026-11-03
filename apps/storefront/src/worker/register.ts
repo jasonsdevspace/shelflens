@@ -58,8 +58,8 @@ export class StoreDidNotStart extends Error {
 }
 
 /**
- * The page needs the worker, which the dev server does not run, so it works
- * only on the built site.
+ * A visitor's own catalog lives in the worker, which the dev server does not run, so a page over
+ * one works only on the built site.
  */
 export class OnlyOnTheBuiltSite extends Error {
     override readonly name = 'OnlyOnTheBuiltSite';

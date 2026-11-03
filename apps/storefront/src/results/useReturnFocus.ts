@@ -8,10 +8,11 @@ const headingOf = (id: string) => document.getElementById(id);
 /**
  * Puts focus back where the visitor was when a product closes: on the card
  * for the product just closed, or on the results heading when that card is
- * no longer on the page. Runs once the request has settled, succeeds or
- * not, and steps aside if the visitor has already put focus somewhere, so
- * a facet ticked while the results were loading keeps it. Tells the caller
- * either way, so the request is not repeated on a later load.
+ * no longer on the page. Runs once the request has settled, whether it
+ * succeeded or not, and steps aside if the visitor has already put focus
+ * somewhere, so a facet ticked while the results were loading keeps it.
+ * Tells the caller either way, so the return is not tried again on a later
+ * load.
  */
 export const useReturnFocus = ({
     container,

@@ -5,9 +5,9 @@ the page.
 
 - **The client is written here.** `src/client` sends typed documents, generated from the
   operations in `src/operations` and named at build time by the hash of their text. The page keeps
-  the names and the types, and leaves the text to the API's manifest, since it never sends it. A named
-  operation goes as a `GET` with its variables and the store version in the URL, so a cache can
-  keep the answer under it. The client remembers answers too, on the API's one cache key, for a
+  the names and the types, and leaves the text to the API's manifest, since it never sends it. A
+  named operation goes as a `GET` with its variables and the store version in the URL, so a cache
+  can keep the answer under it. The client remembers answers too, on the API's one cache key, for a
   count and an age, in a memory the page holds and shares between viewers. Beside it are the
   latest-request helper, which gives each request a ticket, aborts the one before, and marks a
   late answer stale, and the clients of the rules path and of a visitor's catalog, whose refusals

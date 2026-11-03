@@ -479,9 +479,21 @@ describe('the rules panel', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'The rules could not be loaded.'
         );
-        vi.stubGlobal('fetch', live);
+        let land: (() => void) | undefined;
+        vi.stubGlobal(
+            'fetch',
+            (input: RequestInfo | URL, init?: RequestInit) =>
+                new Promise<Response>((resolve) => {
+                    land = () => void live(input, init).then(resolve);
+                })
+        );
         await user.click(screen.getByRole('button', { name: 'Try again' }));
+        // The button goes while the rules are read, so focus waits on the panel's title.
+        expect(screen.getByRole('heading', { name: 'Rules for \u201cjacket\u201d' })).toHaveFocus();
+        expect(screen.getByText('Reading the rules.')).toBeInTheDocument();
+        land?.();
         expect(await screen.findByRole('button', { name: 'Add a rule' })).toBeInTheDocument();
+        expect(screen.queryByText('Reading the rules.')).toBeNull();
         expect(screen.queryByRole('alert')).toBeNull();
     });
 

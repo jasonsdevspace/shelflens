@@ -234,20 +234,16 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
             </label>
             {bands.map((bucket) => {
                 const band = bandOf(bucket);
+                const text = priceBandText(band, store.currency, store.locale);
                 return (
-                    <label
-                        key={priceBandText(band, store.currency, store.locale)}
-                        className="facet-option"
-                    >
+                    <label key={text} className="facet-option">
                         <input
                             type="radio"
                             name="price"
                             checked={sameBand(state.price, band)}
                             onChange={() => choose(band)}
                         />
-                        <span className="facet-label">
-                            {priceBandText(band, store.currency, store.locale)}
-                        </span>
+                        <span className="facet-label">{text}</span>
                         <FacetCount n={bucket.count} />
                     </label>
                 );
