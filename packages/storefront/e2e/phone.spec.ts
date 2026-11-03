@@ -309,6 +309,36 @@ test.describe('on a first visit', () => {
         expect(row.textRight).toBeLessThanOrEqual(row.startLeft);
     });
 
+    test('at larger text the page is never zoomed out, and every control of the top bar and the tour can be tapped', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.goto('/?q=jacket');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await expect(tour).toContainText('A tour of what to try');
+        await page.evaluate(() => document.documentElement.style.setProperty('font-size', '150%'));
+        const zoom = () =>
+            page.evaluate(() => ({ scale: window.visualViewport?.scale ?? 1, width: innerWidth }));
+        expect(await zoom()).toEqual({ scale: 1, width: 320 });
+        // A trial tap checks each is in view and that nothing else takes the tap at its center.
+        const tappable = [
+            page.getByRole('combobox', { name: 'Shopping as' }),
+            page.getByRole('button', { name: 'Tour' }),
+            tour.getByRole('button', { name: 'Not now' }),
+            tour.getByRole('button', { name: 'Start' }),
+        ];
+        for (const control of tappable) await control.tap({ trial: true });
+        await tour.getByRole('button', { name: 'Start' }).tap();
+        await expect(tour).toContainText('Stop 1 of');
+        expect(await zoom()).toEqual({ scale: 1, width: 320 });
+        await tour.getByRole('button', { name: 'Close' }).tap({ trial: true });
+        await tour.getByRole('link', { name: 'Try it' }).tap({ trial: true });
+        await tour.getByRole('button', { name: 'Next' }).tap({ trial: true });
+        // Previous is off at the first stop, so it is checked for being on screen instead.
+        const previous = await tour.getByRole('button', { name: 'Previous' }).boundingBox();
+        expect(previous && previous.x >= 0 && previous.x + previous.width <= 320).toBe(true);
+    });
+
     test('Not now puts the bar away for good', async ({ page }) => {
         await page.goto('/');
         const tour = page.getByRole('complementary', { name: 'Tour' });

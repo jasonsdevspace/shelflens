@@ -130,8 +130,10 @@ h4 {
     border-bottom: 0;
 }
 
+/* The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row. */
 .topbar-tools {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
     padding-block: var(--space-1);
@@ -224,8 +226,12 @@ h4 {
         flex-basis: 100%;
     }
 
-    /* A field is a thumb's height on a phone, so the room kept is too. */
+    /*
+     * A field is a thumb's height on a phone, so the room kept is too. Its
+     * width is the row's already, so it never asks for more than the screen.
+     */
     .topbar.is-waiting .topbar-tools:empty {
+        min-width: 0;
         min-height: calc(var(--target) + var(--space-2));
     }
 }
@@ -488,8 +494,10 @@ h4 {
     font-size: var(--text-small);
 }
 
+/* Its select drops under its label where larger text leaves no room beside it. */
 .viewer {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-small);
@@ -558,7 +566,9 @@ h4 {
  * answer never flickers. They come back at once, and with reduced motion
  * they change without fading.
  */
+/* The column takes the track's width, not the width its widest content asks for. */
 .results-main {
+    min-width: 0;
     transition: opacity 0.15s;
 }
 
@@ -776,9 +786,16 @@ h4 {
 
 .sort {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+    min-width: 0;
     font-size: var(--text-small);
+}
+
+/* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
+.sort .select {
+    min-width: 0;
 }
 
 /*
@@ -939,7 +956,8 @@ h4 {
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    /* A card is never wider than the screen, where larger text makes its usual width too wide. */
+    grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
     gap: var(--space-4);
 }
 
@@ -1146,6 +1164,7 @@ h4 {
 
 .pagination-list {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-1);
     list-style: none;
     margin: 0;
@@ -1220,6 +1239,12 @@ h4 {
 .product-subheading {
     font-size: var(--text-body);
     margin: var(--space-5) 0 var(--space-2);
+}
+
+/* The table scrolls inside its own frame where the screen is too narrow for it, never the page. */
+.variants-frame {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .variants {
@@ -1476,6 +1501,7 @@ h4 {
 
 .about code {
     font-size: var(--text-small);
+    overflow-wrap: anywhere;
 }
 
 .about-where {

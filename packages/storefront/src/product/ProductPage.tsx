@@ -240,26 +240,38 @@ const Details = ({
             <h2 id="product-variants" className="product-subheading">
                 Sizes and colors
             </h2>
-            <table className="variants" aria-labelledby="product-variants">
-                <thead>
-                    <tr>
-                        <th scope="col">Color</th>
-                        <th scope="col">Sizes</th>
-                        <th scope="col">Price</th>
-                        <th scope="col">Stock</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {variantRows(product.variants).map((row) => (
-                        <tr key={row.key}>
-                            <td>{row.color}</td>
-                            <td>{row.sizes}</td>
-                            <td>{formatMoney(row.price, locale)}</td>
-                            <td>{row.stock}</td>
+            {/*
+             * Where the screen is too narrow for the table, it scrolls inside this
+             * frame rather than the page, named by its heading and reachable from
+             * the keyboard so it can be scrolled without a pointer.
+             */}
+            <div
+                className="variants-frame"
+                role="region"
+                aria-labelledby="product-variants"
+                tabIndex={0}
+            >
+                <table className="variants" aria-labelledby="product-variants">
+                    <thead>
+                        <tr>
+                            <th scope="col">Color</th>
+                            <th scope="col">Sizes</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Stock</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {variantRows(product.variants).map((row) => (
+                            <tr key={row.key}>
+                                <td>{row.color}</td>
+                                <td>{row.sizes}</td>
+                                <td>{formatMoney(row.price, locale)}</td>
+                                <td>{row.stock}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
             {rail && <Rail rail={rail} state={state} navigate={navigate} />}
         </article>
     );
