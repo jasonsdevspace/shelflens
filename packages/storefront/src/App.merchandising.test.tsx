@@ -1,6 +1,7 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { setAsideBySort } from './results/setAside.js';
 import { cards, featured, open, settled } from './test/store.jsx';
 
 /* Why each result ranked where it did, and the rules a merchandiser previews and saves. */
@@ -56,18 +57,23 @@ describe('explain mode', () => {
 });
 
 describe('the rules a sort set aside', () => {
-    it('are said to a shopper and to a merchandiser alike', async () => {
-        const line =
-            'The sort “Price, low to high” sets aside the pins, boosts and buries of the rule featured-jacket.';
-        for (const search of [
-            '?q=jacket&sort=price-asc',
-            '?q=jacket&sort=price-asc&rules=1&explain=1',
-        ]) {
-            await open(search);
-            await settled();
-            expect(screen.getByText(/sets aside the pins/), search).toHaveTextContent(line);
-            cleanup();
+    it.each([
+        { who: 'a shopper', search: '?q=jacket&sort=price-asc', on: false },
+        { who: 'a merchandiser', search: '?q=jacket&sort=price-asc&rules=1&explain=1', on: true },
+    ])('are said to $who', async ({ search, on }) => {
+        await open(search);
+        await settled();
+        // The visitor is who the case says: Rules and Explain ranking are on only for a merchandiser.
+        for (const name of ['Rules', 'Explain ranking']) {
+            expect(screen.getByRole('button', { name })).toHaveAttribute(
+                'aria-pressed',
+                String(on)
+            );
         }
+        expect(screen.queryAllByRole('heading', { name: /^Rules for/ })).toHaveLength(on ? 1 : 0);
+        expect(screen.getByText(/sets aside the pins/)).toHaveTextContent(
+            setAsideBySort('price-asc', ['featured-jacket']) ?? ''
+        );
     });
 });
 
