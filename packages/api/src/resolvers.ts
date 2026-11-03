@@ -4,14 +4,14 @@ import {
     type Recovery,
     type SearchResult,
 } from '@jasonsdevspace/shelflens';
-import type { Category, CustomerGroup, Product } from '@shelflens/catalog';
+import type { Brand, Category, CustomerGroup, Product } from '@shelflens/catalog';
 import { mostRated, recoverStore, searchStore, type StoreSearchRequest } from '@shelflens/search';
 
 import type { Context } from './context.js';
-import type { Resolvers, SearchInput } from './generated/schema.js';
+import type { FilterAttribute, Resolvers, SearchInput } from './generated/schema.js';
 import { type HitModel, hitsOf } from './hits.js';
 import { paysLess } from './prices.js';
-import { recommend } from './recommend.js';
+import { recommend, RECOMMENDATION_LIMIT } from './recommend.js';
 import {
     attributeEnum,
     badInput,
@@ -31,9 +31,6 @@ import {
  * there too. A resolver reads the viewer from the context, which the
  * request set, and never from an argument.
  */
-
-// The schema's generated types name the hit model here, where the resolvers live.
-export type { HitModel } from './hits.js';
 
 export interface SearchResultModel {
     readonly result: SearchResult;
@@ -58,15 +55,17 @@ const MAX_SUGGESTIONS = 20;
 /** How many products stand in for nothing. */
 const POPULAR = 8;
 const RELAXED_PAGE_SIZE = 12;
-/** How many products stand beside one when the request does not say. */
+/** How many products stand beside one, and how many suggestions, when the request does not say. */
 const RAIL_DEFAULT = 6;
+const SUGGEST_DEFAULT = 5;
 
 /**
- * The generated type says the schema's default always applies, but a null
- * sent on purpose reaches the resolver as null, and means the same as
- * nothing sent.
+ * A field's limit, between none and the most it gives. The generated type
+ * says the schema's default always applies, but a null sent on purpose
+ * reaches the resolver as null, and means the same as nothing sent.
  */
-const railLimit = (limit: number | null | undefined): number => limit ?? RAIL_DEFAULT;
+const limitOf = (limit: number | null | undefined, fallback: number, most: number): number =>
+    Math.min(Math.max(limit ?? fallback, 0), most);
 /** A browsed category is a place, not a filter the shopper chose, so it is never offered up. */
 const FIXED_ATTRIBUTES = ['category'];
 
@@ -108,8 +107,7 @@ const POPULAR_CANDIDATES = 50;
  * like any other.
  */
 const popularFor = (input: SearchInput, context: Context): Product[] => {
-    const { signals } = context.store;
-    const chosen = Object.keys(signals).length > 0;
+    const { signals, clicked: chosen } = context.store;
     const result = mostRated(context.store.engine, {
         group: context.viewer.group,
         filters: (input.filters ?? []).filter((f) => f.attribute === 'CATEGORY').map(toFilter),
@@ -154,12 +152,33 @@ const categoryOf = (id: string, context: Context): Category => {
     return category;
 };
 
+const brandOf = (id: string, context: Context): Brand => {
+    const brand = context.store.brands.get(id);
+    if (!brand) throw new Error(`a product names a brand that does not exist: ${id}`);
+    return brand;
+};
+
+/**
+ * A facet's attribute as the schema names it. One the schema does not name
+ * is a mistake in the store's configuration, not the request's, so it fails
+ * as ours.
+ */
+const facetAttribute = (facet: Facet): FilterAttribute => {
+    const attribute = attributeEnum(facet.attribute);
+    if (attribute === undefined) {
+        throw new Error(
+            `a facet reports an attribute the schema does not name: ${facet.attribute}`
+        );
+    }
+    return attribute;
+};
+
 export const resolvers: Resolvers = {
     Query: {
         search: (_root, { input }, context) => runSearch(input, context),
 
         suggest: (_root, { phrase, limit }, context) => {
-            const count = Math.min(Math.max(limit, 0), MAX_SUGGESTIONS);
+            const count = limitOf(limit, SUGGEST_DEFAULT, MAX_SUGGESTIONS);
             const products = runSearch(
                 { phrase, partial: true, pageSize: count, facets: [] },
                 context
@@ -193,7 +212,11 @@ export const resolvers: Resolvers = {
             context.answer.volatile = true;
             const events = (await context.events?.all()) ?? [];
             return recommend(
-                { sku, limit: railLimit(limit), session: session ?? undefined },
+                {
+                    sku,
+                    limit: limitOf(limit, RAIL_DEFAULT, RECOMMENDATION_LIMIT),
+                    session: session ?? undefined,
+                },
                 events,
                 context
             );
@@ -263,11 +286,11 @@ export const resolvers: Resolvers = {
                   : 'StatsFacet',
     },
     ValueFacet: {
-        attribute: (facet) => attributeEnum(facet.attribute) ?? badInputAttribute(facet.attribute),
+        attribute: facetAttribute,
         buckets: (facet) => (facet.kind === 'keyword' ? facet.buckets : []),
     },
     RangeFacet: {
-        attribute: (facet) => attributeEnum(facet.attribute) ?? badInputAttribute(facet.attribute),
+        attribute: facetAttribute,
         buckets: (facet) =>
             facet.kind === 'range'
                 ? facet.buckets.map((bucket) => ({
@@ -278,19 +301,14 @@ export const resolvers: Resolvers = {
                 : [],
     },
     StatsFacet: {
-        attribute: (facet) => attributeEnum(facet.attribute) ?? badInputAttribute(facet.attribute),
+        attribute: facetAttribute,
         count: (facet) => (facet.kind === 'stats' ? facet.count : 0),
         min: (facet) => (facet.kind === 'stats' ? (facet.min ?? null) : null),
         max: (facet) => (facet.kind === 'stats' ? (facet.max ?? null) : null),
     },
 
     Product: {
-        brand: (product, _args, context) => {
-            const brand = context.store.brands.get(product.brandId);
-            if (!brand)
-                throw new Error(`a product names a brand that does not exist: ${product.brandId}`);
-            return brand;
-        },
+        brand: (product, _args, context) => brandOf(product.brandId, context),
         category: (product, _args, context) => categoryOf(product.categoryId, context),
         categoryPath: (product, _args, context) =>
             product.categoryPath.map((id) => categoryOf(id, context)),
@@ -313,12 +331,4 @@ export const resolvers: Resolvers = {
         parent: (category, _args, context) =>
             category.parentId ? (context.store.categories.get(category.parentId) ?? null) : null,
     },
-};
-
-/**
- * A facet over an attribute the schema does not name is a configuration
- * mistake, not a request's.
- */
-const badInputAttribute = (attribute: string): never => {
-    throw new Error(`a facet reports an attribute the schema does not name: ${attribute}`);
 };

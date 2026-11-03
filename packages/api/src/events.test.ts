@@ -113,14 +113,14 @@ describe('the receiver', () => {
 
     it('keeps a posted batch and answers with nothing to say', async () => {
         const store = createMemoryEventStore();
-        expect(await receiveEvents(post([event()]), store)).toEqual({ status: 204 });
+        expect(await receiveEvents(post([event()]), store, new Date())).toEqual({ status: 204 });
         expect(await kept(store)).toEqual(['e1']);
     });
 
     it('keeps a batch delivered twice once', async () => {
         const store = createMemoryEventStore();
-        await receiveEvents(post([event(), event({ id: 'e2' })]), store);
-        await receiveEvents(post([event(), event({ id: 'e2' })]), store);
+        await receiveEvents(post([event(), event({ id: 'e2' })]), store, new Date());
+        await receiveEvents(post([event(), event({ id: 'e2' })]), store, new Date());
         expect(await kept(store)).toEqual(['e1', 'e2']);
     });
 
@@ -129,7 +129,7 @@ describe('the receiver', () => {
         await receiveEvents(
             post([event({ at: 5_000 }), event({ id: 'e2', at: 500 })]),
             store,
-            () => 1_000
+            new Date(1_000)
         );
         expect((await store.all()).map((e) => [e.id, e.at])).toEqual([
             ['e2', 500],
@@ -139,7 +139,9 @@ describe('the receiver', () => {
 
     it('keeps nothing when the browser sends Global Privacy Control', async () => {
         const store = createMemoryEventStore();
-        expect(await receiveEvents(post([event()], { [GPC_HEADER]: '1' }), store)).toEqual({
+        expect(
+            await receiveEvents(post([event()], { [GPC_HEADER]: '1' }), store, new Date())
+        ).toEqual({
             status: 204,
         });
         expect(await kept(store)).toEqual([]);
@@ -147,11 +149,11 @@ describe('the receiver', () => {
 
     it('refuses what is not a batch, and anything but a post', async () => {
         const store = createMemoryEventStore();
-        expect((await receiveEvents(post('{'), store)).status).toBe(400);
-        expect((await receiveEvents(post([{ id: 'x' }]), store)).status).toBe(400);
-        expect((await receiveEvents({ ...post([event()]), method: 'GET' }, store)).status).toBe(
-            405
-        );
+        expect((await receiveEvents(post('{'), store, new Date())).status).toBe(400);
+        expect((await receiveEvents(post([{ id: 'x' }]), store, new Date())).status).toBe(400);
+        expect(
+            (await receiveEvents({ ...post([event()]), method: 'GET' }, store, new Date())).status
+        ).toBe(405);
         expect(await kept(store)).toEqual([]);
     });
 });

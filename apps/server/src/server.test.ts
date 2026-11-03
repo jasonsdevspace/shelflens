@@ -3,9 +3,9 @@ import type { AddressInfo } from 'node:net';
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
-    createStore,
-    createStoreApi,
     createStoreHost,
+    errorBody,
+    type EventStore,
     GROUP_HEADER,
     PERSISTED_OPERATIONS,
     VERSION_HEADER,
@@ -15,12 +15,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createRateLimit, createServer } from './server.js';
 
-const api = createStoreApi(createStore({ catalog: generateCatalog({ seed: 42, products: 200 }) }));
-const server = createServer({ api, rateLimitPerMinute: 5, allowFullQueries: true });
+const shared = generateCatalog({ seed: 42, products: 200 });
+/** The store host every host serves, over a small catalog with no rules, keeping events if given. */
+const hostOf = (events?: EventStore) =>
+    createStoreHost({
+        source: () => Promise.resolve({ catalog: shared, rules: [] }),
+        ...(events && { events }),
+    });
+const server = createServer({ host: hostOf(), rateLimitPerMinute: 5, allowFullQueries: true });
 const events = createMemoryEventStore();
-const demo = createServer({ api, events });
-/** A host given nowhere to keep events. */
-const bare = createServer({ api, allowFullQueries: true });
+const demoHost = hostOf(events);
+const demo = createServer({ host: demoHost });
+/** A host given nowhere to keep events or rules. */
+const bare = createServer({ host: hostOf(), allowFullQueries: true });
 let base = '';
 let demoBase = '';
 let bareBase = '';
@@ -76,6 +83,7 @@ describe('the API over HTTP', () => {
     });
 
     it('answers a persisted operation by GET, and says what may be cached', async () => {
+        const { api } = await demoHost.current();
         const params = new URLSearchParams({ op: STORE, v: api.version });
         const versioned = await fetch(`${demoBase}/graphql?${params.toString()}`);
         expect(versioned.status).toBe(200);
@@ -98,9 +106,9 @@ describe('the API over HTTP', () => {
             body: JSON.stringify({ query: '{ store { name } }' }),
         });
         expect(response.status).toBe(400);
-        expect(await response.json()).toEqual({
-            errors: [{ message: 'this store accepts persisted operations only' }],
-        });
+        expect(await response.json()).toEqual(
+            errorBody(400, 'this store accepts persisted operations only')
+        );
     });
 
     it('answers only under its own path', async () => {
@@ -121,7 +129,7 @@ describe('the API over HTTP', () => {
         }
         if (!refused) throw new Error('expected a request past the allowance to be refused');
         expect(refused.headers.get('retry-after')).toBe('60');
-        expect(await refused.json()).toEqual({ errors: [{ message: 'too many requests' }] });
+        expect(await refused.json()).toEqual(errorBody(429, 'too many requests'));
         // A member is another client, and still has its allowance.
         expect(
             (await post({ query: '{ store { name } }' }, { [GROUP_HEADER]: 'member' })).status
@@ -140,11 +148,31 @@ describe('events over HTTP', () => {
 
         const refused = await post('not json');
         expect(refused.status).toBe(400);
-        expect(await refused.json()).toEqual({ errors: [{ message: 'the batch is not JSON' }] });
+        expect(await refused.json()).toEqual(errorBody(400, 'the batch is not JSON'));
         const got = await fetch(`${demoBase}/events`);
         expect(got.status).toBe(405);
         const nowhere = await fetch(`${bareBase}/events`, { method: 'POST', body: '[]' });
         expect(nowhere.status).toBe(404);
+    });
+});
+
+describe('a store that cannot start', () => {
+    it('answers 503, since nothing in the request was wrong and asking again can succeed', async () => {
+        const broken = createServer({
+            host: createStoreHost({ source: () => Promise.reject(new Error('no catalog')) }),
+        });
+        await new Promise<void>((resolve) => broken.listen(0, resolve));
+        const at = `http://127.0.0.1:${(broken.address() as AddressInfo).port}`;
+        const quiet = console.error;
+        console.error = () => undefined;
+        try {
+            const response = await fetch(`${at}/graphql?op=${STORE}`);
+            expect(response.status).toBe(503);
+            expect(await response.json()).toEqual(errorBody(503, 'the store is not ready'));
+        } finally {
+            console.error = quiet;
+            broken.close();
+        }
     });
 });
 
@@ -206,7 +234,7 @@ describe('rules over HTTP', () => {
         for (let sent = 0; sent < 3; sent += 1) expect((await rules('GET')).status).toBe(200);
         const limited = await rules('GET');
         expect(limited.status).toBe(429);
-        expect(await limited.json()).toEqual({ errors: [{ message: 'too many requests' }] });
+        expect(await limited.json()).toEqual(errorBody(429, 'too many requests'));
     });
 
     it('folds the clicks posted since in when a visit begins, and not mid-visit', async () => {
@@ -216,7 +244,6 @@ describe('rules over HTTP', () => {
                 source: () => Promise.resolve({ catalog, rules: shipped }),
                 events: folding,
             }),
-            events: folding,
         });
         await new Promise<void>((resolve) => visited.listen(0, resolve));
         const at = `http://127.0.0.1:${(visited.address() as AddressInfo).port}`;
@@ -252,23 +279,15 @@ describe('rules over HTTP', () => {
     it('is refused where the host keeps no rules', async () => {
         expect((await fetch(`${bareBase}/rules`)).status).toBe(404);
     });
-
-    it('takes a store host or a fixed API, and never both', () => {
-        const either = createStoreHost({ source: () => Promise.resolve({ catalog, rules: [] }) });
-        // @ts-expect-error A server given both could only ignore one of them.
-        expect(() => createServer({ host: either, api })).not.toThrow();
-    });
 });
 
 describe('a page on another origin', () => {
     const open = createServer({
-        api,
-        events: createMemoryEventStore(),
+        host: hostOf(createMemoryEventStore()),
         origins: { allowed: ['https://host.example'] },
     });
     const wide = createServer({
-        api,
-        events: createMemoryEventStore(),
+        host: hostOf(createMemoryEventStore()),
         origins: { allowed: ['https://host.example'], paths: ['graphql', 'events'] },
     });
     let openBase = '';
@@ -312,9 +331,7 @@ describe('a page on another origin', () => {
         });
         expect(refused.status).toBe(403);
         expect(refused.headers.get('access-control-allow-origin')).toBeNull();
-        expect(await refused.json()).toEqual({
-            errors: [{ message: 'this origin may not use the store' }],
-        });
+        expect(await refused.json()).toEqual(errorBody(403, 'this origin may not use the store'));
         // A host that names no origins at all refuses every other origin.
         expect(
             (await fetch(`${base}/graphql?op=${STORE}`, { headers: from('https://host.example') }))
@@ -355,7 +372,7 @@ describe('a page on another origin', () => {
 
     it('takes the store\u2019s own origin from the host when a proxy rewrites the host', async () => {
         const fronted = createServer({
-            api,
+            host: hostOf(),
             origins: { allowed: [], own: 'https://shop.example' },
         });
         await new Promise<void>((resolve) => fronted.listen(0, resolve));
@@ -416,16 +433,14 @@ describe('what every answer carries', () => {
             body: JSON.stringify({ query: `{ store { name } } # ${'x'.repeat(768 * 1024)}` }),
         });
         expect(response.status).toBe(413);
-        expect(await response.json()).toEqual({
-            errors: [{ message: 'the request body is too large' }],
-        });
+        expect(await response.json()).toEqual(errorBody(413, 'the request body is too large'));
     });
 });
 
 describe('behind a proxy', () => {
     const listen = async (trustProxy: boolean) => {
         const server = createServer({
-            api,
+            host: hostOf(),
             rateLimitPerMinute: 1,
             trustProxy,
             origins: { allowed: [] },

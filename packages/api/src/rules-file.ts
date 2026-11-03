@@ -1,5 +1,7 @@
 import type { Rule } from '@jasonsdevspace/shelflens';
 
+import { isRecord } from './guards.js';
+
 /**
  * The merchandising rules file, read once and the same way by every host.
  *
@@ -9,13 +11,11 @@ import type { Rule } from '@jasonsdevspace/shelflens';
  * a misspelled key cannot ship a store with no merchandising and no error.
  */
 export const parseRulesFile = (json: unknown): readonly Rule[] => {
-    if (typeof json !== 'object' || json === null || Array.isArray(json)) {
-        throw new Error('the rules file is not an object');
-    }
+    if (!isRecord(json)) throw new Error('the rules file is not an object');
     const { rules } = json as { rules?: unknown };
     if (!Array.isArray(rules)) throw new Error('the rules file has no "rules" array');
     rules.forEach((rule: unknown, index) => {
-        if (typeof rule !== 'object' || rule === null || typeof (rule as Rule).id !== 'string') {
+        if (!isRecord(rule) || typeof rule['id'] !== 'string') {
             throw new Error(`rule ${index + 1} in the rules file has no id`);
         }
     });

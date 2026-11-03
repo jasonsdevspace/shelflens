@@ -1,6 +1,9 @@
 import {
+    answerOf,
     createStoreHost,
+    errorBody,
     type EventStore,
+    type HostAnswer,
     type HostedStore,
     INTERNAL_MESSAGE,
     parseCatalogFile,
@@ -100,8 +103,17 @@ class NoCatalogError extends Error {
     }
 }
 
-const noCatalog = () =>
-    json(404, { errors: [{ message: 'no catalog is loaded, so there is nothing to search yet' }] });
+/** A refusal or a failure, in the one error shape every host answers with. */
+const refuse = (status: number, message: string, extensions?: Record<string, unknown>) =>
+    json(status, errorBody(status, message, extensions));
+
+/** A receiver's answer as the worker writes it. */
+const write = ({ status, body, headers = {} }: HostAnswer): Response =>
+    body === undefined
+        ? new Response(null, { status, headers })
+        : json(status, body, { 'content-type': 'application/json; charset=utf-8', ...headers });
+
+const noCatalog = () => refuse(404, 'no catalog is loaded, so there is nothing to search yet');
 
 const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
     const response = await fetchImpl(url);
@@ -202,17 +214,17 @@ export const createWorkerApi = ({
     });
 
     const receive = async (request: Request): Promise<Response> => {
-        if (!events) return json(404, { errors: [{ message: 'this store keeps no events' }] });
+        if (!events) return refuse(404, 'this store keeps no events');
         const receipt = await receiveEvents(
             {
                 method: request.method,
                 body: await request.text(),
                 header: (name) => request.headers.get(name),
             },
-            events
+            events,
+            new Date()
         );
-        if (receipt.status === 204) return new Response(null, { status: 204 });
-        return json(receipt.status, { errors: [{ message: receipt.message }] });
+        return write(answerOf(receipt));
     };
 
     /** The rules path: read, replace or reset the saved set, building again on a change. */
@@ -221,14 +233,7 @@ export const createWorkerApi = ({
             method: request.method,
             body: await request.text(),
         });
-        if (answer.status === 200) return json(200, answer.body);
-        if (answer.status !== 204) {
-            return json(answer.status, { errors: [{ message: answer.message }] });
-        }
-        return new Response(null, {
-            status: 204,
-            headers: answer.version === undefined ? {} : { [VERSION_HEADER]: answer.version },
-        });
+        return write(answerOf(answer));
     };
 
     /**
@@ -301,15 +306,11 @@ export const createWorkerApi = ({
 
     /** The answer to a change refused because it would discard the visitor's saved rules. */
     const rulesKept = () =>
-        json(409, {
-            errors: [
-                {
-                    message:
-                        'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
-                    code: 'saved-rules',
-                },
-            ],
-        });
+        refuse(
+            409,
+            'this would discard the rules you saved, so nothing changed. Reload the page to be asked first',
+            { code: 'SAVED_RULES' }
+        );
 
     /** The catalog path: say what is loaded, load a new catalog, or remove it. */
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
@@ -328,9 +329,7 @@ export const createWorkerApi = ({
             return removed === KEEPS_RULES ? rulesKept() : new Response(null, { status: 204 });
         }
         if (request.method !== 'PUT') {
-            return json(405, {
-                errors: [{ message: 'the catalog path takes GET, PUT and DELETE' }],
-            });
+            return refuse(405, 'the catalog path takes GET, PUT and DELETE');
         }
         // The worker's own work is timed, reading, checking and versioning the
         // catalog and building the store, without the transfer of the body or a
@@ -342,15 +341,13 @@ export const createWorkerApi = ({
         try {
             catalog = withContentVersion(parseCatalogFile(JSON.parse(body)));
         } catch (error) {
-            return json(400, {
-                errors: [{ message: error instanceof Error ? error.message : 'not a catalog' }],
-            });
+            return refuse(400, error instanceof Error ? error.message : 'not a catalog');
         }
         const readMs = performance.now() - began;
         const timing = { buildMs: 0 };
         const result = await loadCatalog(held, catalog, { timing, discard });
         if (result === KEEPS_RULES) return rulesKept();
-        if (typeof result === 'string') return json(400, { errors: [{ message: result }] });
+        if (typeof result === 'string') return refuse(400, result);
         return new Response(null, {
             status: 204,
             headers: {
@@ -371,14 +368,14 @@ export const createWorkerApi = ({
             { persisted: PERSISTED_OPERATIONS, allowFullQueries }
         );
         if (resolved.kind === 'refused') {
-            return json(resolved.status, { errors: [{ message: resolved.message }] });
+            return refuse(resolved.status, resolved.message);
         }
         let api: StoreApi;
         try {
             api = (await host.current()).api;
         } catch (error) {
             if (error instanceof NoCatalogError) return noCatalog();
-            return json(503, { errors: [{ message: 'the store is not ready' }] });
+            return refuse(503, 'the store is not ready');
         }
         const now = new Date();
         const response = await api.run(resolved.request, resolved.viewer, now);
@@ -449,9 +446,7 @@ export const createWorkerApi = ({
                     `request ${requestId} to ${new URL(request.url).pathname} failed`,
                     error
                 );
-                return json(500, {
-                    errors: [{ message: INTERNAL_MESSAGE, extensions: { requestId } }],
-                });
+                return refuse(500, INTERNAL_MESSAGE, { requestId });
             }
         },
     };

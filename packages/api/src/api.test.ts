@@ -2,9 +2,10 @@ import { signalWeight } from '@jasonsdevspace/shelflens';
 import { generateCatalog } from '@shelflens/catalog';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { createStore, viewerFromHeader } from './context.js';
 import { createMemoryEventStore } from './events.js';
 import { createStoreApi, type StoreApi, type StoreResponse } from './execute.js';
+import { viewerFromHeader } from './http.js';
+import { createStore } from './store.js';
 
 /** When every request in this file arrives. */
 const NOW = new Date('2026-11-01T12:00:00Z');
@@ -676,5 +677,44 @@ describe('what a request may not do', () => {
                 path: ['product', 'brand'],
             },
         ]);
+    });
+});
+
+describe('the limits a field takes', () => {
+    const api = createStoreApi(createStore({ catalog }));
+    const ask = async (query: string, variables: Record<string, unknown>) =>
+        data(await api.run({ query, variables }, guest, NOW));
+    // A product in the largest category every viewer may see, so a rail has more than it may give.
+    const byCategory = new Map<string, (typeof catalog.products)[number][]>();
+    for (const p of catalog.products.filter((p) => p.visibleTo.length === 2)) {
+        byCategory.set(p.categoryId, [...(byCategory.get(p.categoryId) ?? []), p]);
+    }
+    const largest = [...byCategory.values()].sort((a, b) => b.length - a.length)[0];
+    const sku = largest?.[0]?.sku;
+
+    it('bounds a rail between none and the most it gives, and takes a null as the default', async () => {
+        const rail = async (limit: number | null) =>
+            (
+                (await ask(
+                    'query ($sku: ID!, $limit: Int) { recommendations(sku: $sku, limit: $limit) { items { sku } } }',
+                    { sku, limit }
+                )) as { recommendations: { items: unknown[] } }
+            ).recommendations.items.length;
+        expect(largest?.length).toBeGreaterThan(13);
+        expect(await rail(100)).toBe(12);
+        expect(await rail(-1)).toBe(0);
+        expect(await rail(null)).toBe(6);
+    });
+
+    it('takes a null limit on suggestions as the default, as a rail does', async () => {
+        const suggest = async (limit: number | null) =>
+            (
+                (await ask(
+                    'query ($limit: Int) { suggest(phrase: "jacket", limit: $limit) { products { product { sku } } } }',
+                    { limit }
+                )) as { suggest: { products: unknown[] } }
+            ).suggest.products.length;
+        expect(await suggest(5)).toBe(5);
+        expect(await suggest(null)).toBe(5);
     });
 });

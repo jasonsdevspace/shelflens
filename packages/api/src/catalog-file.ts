@@ -1,6 +1,7 @@
 import { type Catalog, CUSTOMER_GROUPS, type Product } from '@shelflens/catalog';
 
 import { hashText } from './fingerprint.js';
+import { isRecord } from './guards.js';
 
 /**
  * A catalog file a host is handed, read and checked before anything is
@@ -62,14 +63,11 @@ const isRange = (value: unknown): boolean => {
     return range !== null && typeof range === 'object' && isWhole(range.min) && isWhole(range.max);
 };
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === 'object' && !Array.isArray(value);
-
 const GROUPS = new Set<string>(CUSTOMER_GROUPS);
 
 /** What is wrong with one variant, or undefined when nothing is. */
 const variantProblem = (variant: unknown): string | undefined => {
-    if (!isObject(variant)) return 'has a variant that is not an object';
+    if (!isRecord(variant)) return 'has a variant that is not an object';
     if (!['sku', 'color', 'size'].every((field) => isString(variant[field]))) {
         return 'has a variant without its sku, color and size';
     }
@@ -144,13 +142,13 @@ const headProblem = (catalog: Partial<Record<keyof Catalog, unknown>>): string |
     }
     if (
         !(catalog.brands as unknown[]).every(
-            (brand) => isObject(brand) && isString(brand['id']) && isString(brand['name'])
+            (brand) => isRecord(brand) && isString(brand['id']) && isString(brand['name'])
         )
     ) {
         return 'the catalog has a brand without its id and name';
     }
     const categoryOk = (category: unknown) =>
-        isObject(category) &&
+        isRecord(category) &&
         isString(category['id']) &&
         isString(category['name']) &&
         isStrings(category['path']);
@@ -173,10 +171,11 @@ const productsProblem = (catalog: Partial<Record<keyof Catalog, unknown>>): stri
     const categories = idsOf(catalog.categories);
     const skus = new Set<string>();
     for (const [index, entry] of (catalog.products as unknown[]).entries()) {
-        if (!entry || typeof entry !== 'object') return `product ${index + 1} is not an object`;
-        const problem = productProblem(entry as Record<string, unknown>);
+        if (!isRecord(entry)) return `product ${index + 1} is not an object`;
+        const problem = productProblem(entry);
         if (problem) return `product ${index + 1} ${problem}`;
-        const { sku, brandId, categoryId, categoryPath } = entry as Product;
+        // Checked field by field above.
+        const { sku, brandId, categoryId, categoryPath } = entry as unknown as Product;
         if (skus.has(sku)) return `the sku ${sku} is on more than one product`;
         skus.add(sku);
         if (!brands.has(brandId)) return `product ${sku} names a brand the catalog does not have`;
@@ -192,9 +191,10 @@ const productsProblem = (catalog: Partial<Record<keyof Catalog, unknown>>): stri
 
 /** The catalog, or an error naming the first thing wrong with it. */
 export const parseCatalogFile = (value: unknown): Catalog => {
-    if (!value || typeof value !== 'object') throw new Error('the catalog is not an object');
+    if (!isRecord(value)) throw new Error('the catalog is not an object');
     const catalog = value as Partial<Record<keyof Catalog, unknown>>;
     const problem = headProblem(catalog) ?? productsProblem(catalog);
     if (problem) throw new Error(problem);
-    return value as Catalog;
+    // Checked part by part above.
+    return value as unknown as Catalog;
 };

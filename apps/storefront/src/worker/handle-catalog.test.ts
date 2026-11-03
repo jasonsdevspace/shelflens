@@ -3,6 +3,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import {
     createMemoryRuleStore,
     createStore,
+    errorBody,
     PERSISTED_OPERATIONS,
     type RuleStore,
     VERSION_HEADER,
@@ -166,7 +167,7 @@ describe('the worker for a visitor’s own catalog', () => {
             catalogRequest('PUT', { ...LAMPS, products: [{ sku: 'X' }] })
         );
         expect(broken?.status).toBe(400);
-        expect(await broken?.json()).toEqual({ errors: [{ message: 'product 1 has no name' }] });
+        expect(await broken?.json()).toEqual(errorBody(400, 'product 1 has no name'));
         expect((await api.handle(catalogRequest('PUT', '{not json')))?.status).toBe(400);
         expect(await versionOf(await api.handle(get({ op: STORE })))).toBe(storeVersion(LAMPS));
     });
@@ -221,7 +222,9 @@ describe('the worker for a visitor’s own catalog', () => {
             await api.handle(catalogRequest('DELETE')),
         ]) {
             expect(refused?.status).toBe(409);
-            expect(await refused?.json()).toMatchObject({ errors: [{ code: 'saved-rules' }] });
+            expect(await refused?.json()).toMatchObject({
+                errors: [{ extensions: { code: 'SAVED_RULES' } }],
+            });
         }
         expect(await rules.current()).toEqual(pinFirst(LAMPS));
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toMatchObject({

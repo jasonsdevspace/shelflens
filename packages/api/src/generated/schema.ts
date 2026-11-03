@@ -6,7 +6,8 @@ import type {
     Category as CategoryModel,
 } from '@shelflens/catalog';
 import type { RecommendationsModel } from '../recommend.js';
-import type { HitModel, SearchResultModel, NoResultsModel, RelaxedModel } from '../resolvers.js';
+import type { HitModel } from '../hits.js';
+import type { SearchResultModel, NoResultsModel, RelaxedModel } from '../resolvers.js';
 import type { Facet as FacetModel } from '@jasonsdevspace/shelflens';
 import type { Context } from '../context.js';
 export type Maybe<T> = T | null;

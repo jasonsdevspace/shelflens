@@ -29,8 +29,8 @@ long as the server runs. A save keeps the index and applies the new set, under a
 `createHandler` is the request handler on its own, for a host that already has a server. The
 storefront's dev server uses it with a store host of its own, so the store that answers in
 development is built and refreshed as the worker's is in production. `createServer` wraps it in
-`node:http`. Either takes a `host`, or a fixed `api` for a store that never changes, which answers
-`/rules` with a 404.
+`node:http`. Either takes the `host`, and the events it keeps are the ones the server receives.
+`createLocalHost` builds the one a local run serves, as `npm run api` and the dev server do.
 
 `RULES=path` loads the merchandising the server starts with from a JSON file of the shape the demo
 ships in `apps/storefront/public/rules.json`: an object with the rules under `rules`, each with an
