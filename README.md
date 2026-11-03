@@ -1,8 +1,8 @@
 # ShelfLens
 
 A product search engine, and the store built on it. **[Open the
-demo](https://jasonsdevspace.com/shelflens/)**, which opens a tour of the interesting parts on a
-first visit.
+demo](https://jasonsdevspace.com/shelflens/)**, which offers a tour of the interesting parts on a
+first visit, opening it on a wide screen and asking first on a phone.
 
 ShelfLens is a fictional store. Its search has to do what a real store's does: find the right
 product from a few typed letters, forgive a typo, know that trainers are sneakers, count how many

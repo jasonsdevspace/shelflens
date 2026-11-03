@@ -83,10 +83,11 @@ the page.
   and the tour in words a non-engineer can follow. A test holds its links to the README's steps
   and its stop count to the tour's, and a link from it into the store marks the tour seen, so
   the tour does not open over what the reader was sent to see.
-- **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit
-  and walks the gotchas the project exists to show, one stop each, with a link that puts the page
-  in the state that shows it and the name of the test that proves it. A test checks every named
-  test exists, and a reviewer can trigger every headline gotcha from it.
+- **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit, or
+  on a phone a short bar that opens it on Start, and walks the gotchas the project exists to show,
+  one stop each, with a link that puts the page in the state that shows it and the name of the test
+  that proves it. A test checks every named test exists, and a reviewer can trigger every headline
+  gotcha from it.
 - **A reviewer can shop as a member.** The strip above the masthead has a switch between guest and
   member, with the demo's tour beside it, apart from what a shopper uses. The prices change and say
   so, a product only members may see appears and says so, one line under the toolbar says what the
