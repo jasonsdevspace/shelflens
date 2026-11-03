@@ -5,7 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { hostConfig } from '../widget/host-config.js';
-import { controlledByWorker } from '../worker/register.js';
+import { controlledByWorker, OnlyOnTheBuiltSite } from '../worker/register.js';
 import { TryPage } from './TryPage.jsx';
 
 /**
@@ -21,7 +21,7 @@ const root = document.getElementById('root');
 if (!root) throw new Error('the page has no root element');
 
 const ready = import.meta.env.DEV
-    ? Promise.reject(new Error('the page for your own catalog runs on the built site'))
+    ? Promise.reject(new OnlyOnTheBuiltSite())
     : controlledByWorker(config.scriptUrl, base);
 
 createRoot(root).render(

@@ -106,6 +106,90 @@ const METHODS: Readonly<Record<OriginPath, string>> = {
 /** The store's headers a page on another origin may read. */
 const EXPOSED = `${VERSION_HEADER}, x-request-id`;
 
+/**
+ * On every answer: a JSON body is never read as anything else, and a page
+ * that frames or loads one gets nothing from it.
+ */
+const SECURITY_HEADERS = {
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+};
+
+/**
+ * The headers of an answer the server writes itself, a refusal or a failure,
+ * which no cache may keep.
+ */
+const JSON_HEADERS = {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+};
+
+interface Reply {
+    readonly status: number;
+    readonly body: unknown;
+    readonly requestId: string;
+    readonly headers?: Record<string, string>;
+}
+
+const send = (
+    response: ServerResponse,
+    { status, body, requestId, headers = JSON_HEADERS }: Reply
+) => {
+    // An answer to another origin already varies on it, and keeps varying on it.
+    const vary = [response.getHeader('vary'), headers['vary']]
+        .filter((value): value is string => typeof value === 'string')
+        .join(', ');
+    response.writeHead(status, {
+        ...SECURITY_HEADERS,
+        ...headers,
+        ...(vary && { vary }),
+        'x-request-id': requestId,
+    });
+    response.end(JSON.stringify(body));
+};
+
+const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
+    send(response, { status, body: errorBody(status, message), requestId });
+
+/**
+ * A store that could not start. Nothing in the request was wrong, and asking
+ * again can succeed, so it is a 503 with a while to wait, as the service
+ * worker answers a store that did not build, with the id the log holds.
+ */
+const notReady = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} found no store`, error);
+    response.setHeader('retry-after', '5');
+    send(response, {
+        status: 503,
+        body: errorBody(503, 'the store is not ready', { requestId }),
+        requestId,
+    });
+};
+
+/** A failure that is ours, in the one error shape, with the id the log holds. */
+const failed = (response: ServerResponse, requestId: string, error: unknown) => {
+    console.error(`request ${requestId} failed`, error);
+    send(response, {
+        status: 500,
+        body: errorBody(500, INTERNAL_MESSAGE, { requestId }),
+        requestId,
+    });
+};
+
+/** A receiver's answer as the server writes it. */
+const write = (response: ServerResponse, answer: HostAnswer, requestId: string) => {
+    if (answer.body === undefined) {
+        response.writeHead(answer.status, {
+            ...SECURITY_HEADERS,
+            'x-request-id': requestId,
+            ...answer.headers,
+        });
+        response.end();
+        return;
+    }
+    send(response, { status: answer.status, body: answer.body, requestId });
+};
+
 /** A request as it arrives, with what the handler knows about where it is going. */
 interface Arrival {
     readonly request: IncomingMessage;
@@ -294,90 +378,6 @@ const readBody = (request: IncomingMessage): Promise<string | undefined> =>
         });
         request.on('error', () => resolve(undefined));
     });
-
-interface Reply {
-    readonly status: number;
-    readonly body: unknown;
-    readonly requestId: string;
-    readonly headers?: Record<string, string>;
-}
-
-const send = (
-    response: ServerResponse,
-    { status, body, requestId, headers = JSON_HEADERS }: Reply
-) => {
-    // An answer to another origin already varies on it, and keeps varying on it.
-    const vary = [response.getHeader('vary'), headers['vary']]
-        .filter((value): value is string => typeof value === 'string')
-        .join(', ');
-    response.writeHead(status, {
-        ...SECURITY_HEADERS,
-        ...headers,
-        ...(vary && { vary }),
-        'x-request-id': requestId,
-    });
-    response.end(JSON.stringify(body));
-};
-
-/**
- * On every answer: a JSON body is never read as anything else, and a page
- * that frames or loads one gets nothing from it.
- */
-const SECURITY_HEADERS = {
-    'x-content-type-options': 'nosniff',
-    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
-};
-
-/**
- * The headers of an answer the server writes itself, a refusal or a failure,
- * which no cache may keep.
- */
-const JSON_HEADERS = {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-};
-
-const refuse = (response: ServerResponse, status: number, message: string, requestId: string) =>
-    send(response, { status, body: errorBody(status, message), requestId });
-
-/**
- * A store that could not start. Nothing in the request was wrong, and asking
- * again can succeed, so it is a 503 with a while to wait, as the service
- * worker answers a store that did not build, with the id the log holds.
- */
-const notReady = (response: ServerResponse, requestId: string, error: unknown) => {
-    console.error(`request ${requestId} found no store`, error);
-    response.setHeader('retry-after', '5');
-    send(response, {
-        status: 503,
-        body: errorBody(503, 'the store is not ready', { requestId }),
-        requestId,
-    });
-};
-
-/** A failure that is ours, in the one error shape, with the id the log holds. */
-const failed = (response: ServerResponse, requestId: string, error: unknown) => {
-    console.error(`request ${requestId} failed`, error);
-    send(response, {
-        status: 500,
-        body: errorBody(500, INTERNAL_MESSAGE, { requestId }),
-        requestId,
-    });
-};
-
-/** A receiver's answer as the server writes it. */
-const write = (response: ServerResponse, answer: HostAnswer, requestId: string) => {
-    if (answer.body === undefined) {
-        response.writeHead(answer.status, {
-            ...SECURITY_HEADERS,
-            'x-request-id': requestId,
-            ...answer.headers,
-        });
-        response.end();
-        return;
-    }
-    send(response, { status: answer.status, body: answer.body, requestId });
-};
 
 /** A request as the API's receivers read it, from what Node gives. */
 const asHttp = (request: IncomingMessage, body: string | undefined) => ({

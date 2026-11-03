@@ -10,8 +10,8 @@ the page.
   keep the answer under it. The client remembers answers too, on the API's one cache key, for a
   count and an age, in a memory the page holds and shares between viewers. Beside it are the
   latest-request helper, which gives each request a ticket, aborts the one before, and marks a
-  late answer stale, and the clients of the rules path and of a visitor's catalog, which read a
-  host's reason for a refusal one way.
+  late answer stale, and the clients of the rules path and of a visitor's catalog, whose refusals
+  are read for the host's reason one way.
   [Decision record 7](../../docs/decisions/0007-a-client-of-our-own.md) explains why it is not
   Apollo or urql, and [decision record 8](../../docs/decisions/0008-one-cache-key.md) the key.
 - **The first screen is in the page.** The build renders the strip, the masthead and the line for

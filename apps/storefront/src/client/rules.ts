@@ -53,7 +53,7 @@ export const readRules = async (
     rulesUrl: string,
     signal?: AbortSignal
 ): Promise<RulesBody | undefined> => {
-    const response = await ask(rulesUrl, { signal });
+    const response = await ask(rulesUrl, signal && { signal });
     if (!response?.ok) return undefined;
     try {
         const body: unknown = await response.json();

@@ -1,4 +1,8 @@
-export type StartFailureKind = 'unsupported' | 'unavailable';
+import type { StartFailureKind } from '../worker/register.js';
+
+/** What a browser that cannot run the store is told, here and by the widget's demo. */
+export const UNSUPPORTED_ADVICE =
+    'It runs as a small program the page installs, and this browser did not allow it. Open this page in a regular, non-private window.';
 
 const reloadPage = () => globalThis.location.reload();
 
@@ -20,10 +24,7 @@ export const StartFailure = ({
     kind === 'unsupported' ? (
         <div className="notice standby" role="alert">
             <h1 className="standby-heading">The store could not start in this browser</h1>
-            <p>
-                It runs as a small program the page installs, and this browser did not allow it.
-                Open this page in a regular, non-private window.
-            </p>
+            <p>{UNSUPPORTED_ADVICE}</p>
         </div>
     ) : (
         <div className="notice standby" role="alert">

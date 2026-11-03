@@ -1,7 +1,9 @@
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { controlledByWorker, startFailure } from '../worker/register.js';
+import { UNSUPPORTED_ADVICE } from '../app/StartFailure.jsx';
+import { readLoaded } from '../client/catalog.js';
+import { controlledByWorker, OnlyOnTheBuiltSite, startFailure } from '../worker/register.js';
 import { hostConfig, storeOf } from './host-config.js';
 import type { mountShelfLens } from './index.jsx';
 
@@ -70,20 +72,15 @@ const say = (
 };
 
 /** Whether the store this page searches has something to search. Only a visitor's can be empty. */
-const hasCatalog = async (): Promise<boolean> => {
-    if (config.catalogUrl === undefined) return true;
-    const response = await fetch(config.catalogUrl);
-    if (response.status === 404) return false;
-    if (!response.ok) throw new Error(`the store answered ${response.status}`);
-    return true;
-};
+const hasCatalog = async (): Promise<boolean> =>
+    config.catalogUrl === undefined || (await readLoaded(config.catalogUrl)) !== undefined;
 
 // In development the dev server answers the demo's API. In production the worker
 // does, once it controls this page, which is under its scope like the store's own.
 const ready = import.meta.env.DEV
     ? store === 'demo'
         ? Promise.resolve()
-        : Promise.reject(new Error('the page for your own catalog runs on the built site'))
+        : Promise.reject(new OnlyOnTheBuiltSite())
     : controlledByWorker(config.scriptUrl, config.scope);
 // The store is asked whether it has anything to search while the widget's file
 // arrives, so an empty store is said without waiting for a box it will not use.
@@ -105,12 +102,11 @@ Promise.all([ready.then(hasCatalog), widget()])
         // The dev server, a browser that cannot run the store, or a start that failed
         // this time: said in place, and told apart, since only the last is helped by
         // reloading.
-        const reason = failure instanceof Error ? failure.message : '';
         say(
-            reason.includes('built site')
+            failure instanceof OnlyOnTheBuiltSite
                 ? 'The search box over your own products runs on the built site, not the dev server.'
                 : startFailure(failure) === 'unsupported'
-                  ? 'The search box could not start in this browser. It runs as a small program the page installs, and this browser did not allow it. Open this page in a regular, non-private window.'
+                  ? `The search box could not start in this browser. ${UNSUPPORTED_ADVICE}`
                   : 'The search box could not start. Check your connection and reload the page.'
         );
         console.error(failure);

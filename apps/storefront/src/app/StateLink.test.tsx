@@ -7,7 +7,7 @@ import { EMPTY_STATE } from './url.js';
 const link = () => {
     const navigate = vi.fn();
     render(
-        <StateLink to={{ ...EMPTY_STATE, query: 'jacket' }} navigate={navigate}>
+        <StateLink to={{ ...EMPTY_STATE, phrase: 'jacket' }} navigate={navigate}>
             Jackets
         </StateLink>
     );

@@ -580,15 +580,30 @@ const Answer = ({
 const layoutClass = (loading: boolean, empty: boolean) =>
     ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
 
-export const ResultsPage = (props: ResultsPageProps) => {
+export const ResultsPage = ({
+    client,
+    state,
+    navigate,
+    categories,
+    focusSku,
+    onFocused,
+    group,
+    switchedOn,
+    switchHeard,
+    onSwitchHeard,
+    rulesUrl,
+    onStoreChanged,
+    storeRevision,
+    searched,
+    arrival,
+}: ResultsPageProps) => {
     const { locale } = useStoreInfo();
-    const { client, state, navigate, categories, focusSku, onFocused, group, switchedOn } = props;
-    const id = useId();
+    const headingId = `${useId()}-heading`;
     const main = useRef<HTMLElement>(null);
     const editor = useRulesEditor({
-        rulesUrl: props.rulesUrl,
-        onStoreChanged: props.onStoreChanged,
-        storeRevision: props.storeRevision,
+        rulesUrl,
+        onStoreChanged,
+        storeRevision,
         enabled: state.rules === true,
     });
     const draft = editor.draft;
@@ -599,20 +614,24 @@ export const ResultsPage = (props: ResultsPageProps) => {
     );
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
-    useRememberedSearch(state.phrase, result, own, props.searched);
-    useReturnFocus(main, focusSku, !loading, onFocused);
-    useArrivalFocus(main, props.arrival, answered);
-    // Try again takes its own button away, so the results heading takes focus once they land.
-    const [retried, setRetried] = useState<number>();
-    useArrivalFocus(main, retried, answered);
-    useKeptFocus(main, answered);
-    // A new page under the button pressed, so its heading takes focus once it lands.
-    const [paged, setPaged] = useState<number>();
-    useArrivalFocus(main, paged, answered);
+    useRememberedSearch(state.phrase, result, own, searched);
+    useReturnFocus({
+        container: main,
+        headingId,
+        sku: focusSku,
+        settled: !loading,
+        onDone: onFocused,
+    });
+    useArrivalFocus(headingId, arrival, answered);
+    useKeptFocus(headingId, answered);
+    // Try again takes its own button away, and a new page comes under the button pressed,
+    // so either way the results heading takes focus once the answer lands.
+    const [landing, setLanding] = useState<number>();
+    useArrivalFocus(headingId, landing, answered);
     const toPage = (page: number) => {
         if (page === state.page) return;
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-        setPaged(performance.now());
+        setLanding(performance.now());
         navigate({ ...state, page });
     };
     const status = (
@@ -627,7 +646,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
             what="The products"
             reason={error}
             onRetry={() => {
-                setRetried(performance.now());
+                setLanding(performance.now());
                 retry();
             }}
         />
@@ -652,7 +671,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
         navigate(rest);
     };
     const side = state.rules ? (
-        <RulesColumn narrow={narrow} heading={`${id}-heading`}>
+        <RulesColumn narrow={narrow} heading={headingId}>
             <RulesPanel
                 editor={editor}
                 phrase={state.phrase}
@@ -671,7 +690,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                 narrow={narrow}
                 active={activeFilterCount(state)}
                 total={result.total}
-                heading={`${id}-heading`}
+                heading={headingId}
             >
                 <Facets
                     facets={result.facets}
@@ -690,10 +709,10 @@ export const ResultsPage = (props: ResultsPageProps) => {
             {status}
             <div className={layout} aria-busy={loading}>
                 {!narrow && side}
-                <section className="results-main" aria-labelledby={`${id}-heading`} ref={main}>
+                <section className="results-main" aria-labelledby={headingId} ref={main}>
                     <Crumbs state={state} navigate={navigate} categories={categories} />
                     <Toolbar
-                        id={`${id}-heading`}
+                        id={headingId}
                         state={state}
                         navigate={navigate}
                         categories={categories}
@@ -702,14 +721,14 @@ export const ResultsPage = (props: ResultsPageProps) => {
                         onCloseRules={closeRules}
                         drawer={narrow && side}
                     />
-                    <FilterChips state={state} navigate={navigate} heading={`${id}-heading`} />
+                    <FilterChips state={state} navigate={navigate} heading={headingId} />
                     <ViewerNotice
                         group={group}
                         items={result.items}
                         shown={switchedOn === searchKey(state)}
                         answered={answered}
-                        heard={props.switchHeard}
-                        onHeard={props.onSwitchHeard}
+                        heard={switchHeard}
+                        onHeard={onSwitchHeard}
                     />
                     {alert ?? (
                         <Answer
@@ -718,7 +737,7 @@ export const ResultsPage = (props: ResultsPageProps) => {
                             navigate={navigate}
                             previewing={previewing}
                             sortKey={sortKey}
-                            heading={`${id}-heading`}
+                            heading={headingId}
                             onPage={toPage}
                             onSortByRelevance={() => {
                                 const { sort: _sort, ...rest } = state;

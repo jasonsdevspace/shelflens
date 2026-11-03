@@ -36,7 +36,7 @@ import { SearchBox } from './search/SearchBox.jsx';
 import { hasSeenTour, keepTourStop, keptTourStop, markTourSeen } from './tour/seen.js';
 import { STOPS } from './tour/stops.js';
 import { Tour, TOUR_ID, TourOffer, type TourProps } from './tour/Tour.jsx';
-import { startFailure } from './worker/register.js';
+import { startFailure, type StartFailureKind } from './worker/register.js';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -66,7 +66,7 @@ export interface AppProps {
  * Whether the store answers yet. A browser that cannot run it is told what
  * to do instead, and a store that did not start this time can be tried again.
  */
-type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
+type Readiness = 'waiting' | 'ready' | StartFailureKind;
 
 /**
  * Whether the masthead keeps the room its search box and links will take,
@@ -322,7 +322,7 @@ const useTour = (offered: boolean) => {
  */
 const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
     // One memory for both viewers: the viewer is in the key, so switching keeps both.
-    const memory = useMemo(() => createClientMemory(), []);
+    const [memory] = useState(createClientMemory);
     const [revision, setRevision] = useState(0);
     // The count is kept beside the state so a caller learns the revision its change made.
     const counted = useRef(0);

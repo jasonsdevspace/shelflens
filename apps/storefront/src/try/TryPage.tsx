@@ -14,13 +14,13 @@ import { LiveStatus, useSaidLater } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
-import { StartFailure, type StartFailureKind } from '../app/StartFailure.jsx';
+import { StartFailure } from '../app/StartFailure.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
 import { reasonOf } from '../client/reason.js';
 import { readRules } from '../client/rules.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
-import { startFailure } from '../worker/register.js';
+import { startFailure, type StartFailureKind } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type Mapping } from './mapping.js';
@@ -807,7 +807,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         };
     }, [takesFile, onFile]);
 
-    const onSample = useCallback(async () => {
+    const onSample = async () => {
         setActed(true);
         try {
             const response = await fetch(`${base}${SAMPLE_FILE}`);
@@ -824,89 +824,83 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 problem: `The sample could not be loaded (${messageOf(error)}). Press \u201c${SAMPLE_BUTTON}\u201d again, or download the sample and choose it as a file.`,
             });
         }
-    }, [base, onFile]);
+    };
 
     // Loading a file replaces the products being searched, and the worker
     // refuses to when that would discard the visitor's saved rules, so the
     // page asks then and loads again once the visitor agrees.
-    const load = useCallback(
-        async (discardRules: boolean) => {
-            if (stage.kind !== 'review' || pending.current) return;
-            const { replacing: _replacing, ...current } = stage;
-            const whole = current.partial
-                ? toCatalog(current.table, current.mapping)
-                : current.result;
-            const review = { ...current, result: whole, partial: false };
-            if (!whole.ok) {
-                setStage(review);
-                return;
-            }
-            const { catalog } = whole;
-            const retry = searchLabel(catalog.products.length);
-            pending.current = true;
-            choice.current += 1;
-            const mine = choice.current;
-            // Asked before the store is built, so the page never says it is building and then
-            // asks. The worker still refuses on its own, in case the rules changed meanwhile.
-            const ask =
-                !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
-            // A file chosen or dropped while the rules were read is the visitor's latest choice.
-            if (mine !== choice.current) {
-                pending.current = false;
-                return;
-            }
-            if (ask) {
-                pending.current = false;
+    const load = async (discardRules: boolean) => {
+        if (stage.kind !== 'review' || pending.current) return;
+        const { replacing: _replacing, ...current } = stage;
+        const whole = current.partial ? toCatalog(current.table, current.mapping) : current.result;
+        const review = { ...current, result: whole, partial: false };
+        if (!whole.ok) {
+            setStage(review);
+            return;
+        }
+        const { catalog } = whole;
+        const retry = searchLabel(catalog.products.length);
+        pending.current = true;
+        choice.current += 1;
+        const mine = choice.current;
+        // Asked before the store is built, so the page never says it is building and then
+        // asks. The worker still refuses on its own, in case the rules changed meanwhile.
+        const ask = !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
+        // A file chosen or dropped while the rules were read is the visitor's latest choice.
+        if (mine !== choice.current) {
+            pending.current = false;
+            return;
+        }
+        if (ask) {
+            pending.current = false;
+            const { problem: _last, ...asking } = review;
+            setStage({ ...asking, replacing: true });
+            return;
+        }
+        setStage({ kind: 'loading', products: catalog.products.length });
+        try {
+            // Preparing a large file for the worker holds the page, so the stage shows first.
+            await nextPaint();
+            const response = await changeCatalog(
+                catalogUrl,
+                { method: 'PUT', body: JSON.stringify(catalog) },
+                discardRules
+            );
+            if (response === 'refused') {
                 const { problem: _last, ...asking } = review;
                 setStage({ ...asking, replacing: true });
                 return;
             }
-            setStage({ kind: 'loading', products: catalog.products.length });
-            try {
-                // Preparing a large file for the worker holds the page, so the stage shows first.
-                await nextPaint();
-                const response = await changeCatalog(
-                    catalogUrl,
-                    { method: 'PUT', body: JSON.stringify(catalog) },
-                    discardRules
-                );
-                if (response === 'refused') {
-                    const { problem: _last, ...asking } = review;
-                    setStage({ ...asking, replacing: true });
-                    return;
-                }
-                if (!response.ok) {
-                    setStage({ ...review, problem: await errorOf(response, retry) });
-                    return;
-                }
-                // The products the visitor could have gone back to are replaced now.
-                setBack(false);
-                const loaded = await readLoaded(catalogUrl);
-                clearSearch(base);
-                setStage(
-                    loaded
-                        ? { kind: 'searching', loaded, arrival: performance.now() }
-                        : {
-                              ...review,
-                              problem: `The store did not keep your products. Press \u201c${retry}\u201d to try again.`,
-                          }
-                );
-            } catch (error) {
-                setStage({
-                    ...review,
-                    problem: `The store could not be reached (${messageOf(error)}). Press \u201c${retry}\u201d to try again.`,
-                });
-            } finally {
-                pending.current = false;
+            if (!response.ok) {
+                setStage({ ...review, problem: await errorOf(response, retry) });
+                return;
             }
-        },
-        [stage, catalogUrl, base]
-    );
+            // The products the visitor could have gone back to are replaced now.
+            setBack(false);
+            const loaded = await readLoaded(catalogUrl);
+            clearSearch(base);
+            setStage(
+                loaded
+                    ? { kind: 'searching', loaded, arrival: performance.now() }
+                    : {
+                          ...review,
+                          problem: `The store did not keep your products. Press \u201c${retry}\u201d to try again.`,
+                      }
+            );
+        } catch (error) {
+            setStage({
+                ...review,
+                problem: `The store could not be reached (${messageOf(error)}). Press \u201c${retry}\u201d to try again.`,
+            });
+        } finally {
+            pending.current = false;
+        }
+    };
 
     // Back to the products the visitor was searching, with their search, from the chooser or
     // from a file they looked at instead. Pressing it is the visitor's latest choice, so a file
     // still being read is let go, and a file chosen while the products are read wins over it.
-    const keepProducts = useCallback(async () => {
+    const keepProducts = async () => {
         if (stage.kind !== 'choose' && stage.kind !== 'reading' && stage.kind !== 'review') return;
         if (pending.current) return;
         const from = stage;
@@ -943,63 +937,53 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         } finally {
             pending.current = false;
         }
-    }, [stage, catalogUrl, base]);
+    };
 
     // Removing the products discards the visitor's saved rules, so the worker
     // refuses to unless the visitor agreed, and the page asks then.
-    const onRemove = useCallback(
-        async (discardRules: boolean) => {
-            if (stage.kind !== 'searching' || pending.current) return;
-            const { loaded } = stage;
-            pending.current = true;
-            setActed(true);
+    const onRemove = async (discardRules: boolean) => {
+        if (stage.kind !== 'searching' || pending.current) return;
+        const { loaded } = stage;
+        pending.current = true;
+        setActed(true);
 
-            try {
-                const response = await changeCatalog(
-                    catalogUrl,
-                    { method: 'DELETE' },
-                    discardRules
-                );
-                if (response === 'refused') {
-                    setStage({ kind: 'searching', loaded, confirm: true });
-                    return;
-                }
-                if (!response.ok) throw new Error(`error ${response.status}`);
-                clearSearch(base);
-                setStage({
-                    kind: 'choose',
-                    notice: discardRules
-                        ? 'Your products and the rules you saved for them were removed from this browser.'
-                        : 'Your products were removed from this browser.',
-                });
-            } catch (error) {
-                setStage({
-                    kind: 'searching',
-                    loaded,
-                    focusRemove: true,
-                    problemAt: performance.now(),
-                    problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
-                });
-            } finally {
-                pending.current = false;
+        try {
+            const response = await changeCatalog(catalogUrl, { method: 'DELETE' }, discardRules);
+            if (response === 'refused') {
+                setStage({ kind: 'searching', loaded, confirm: true });
+                return;
             }
-        },
-        [stage, catalogUrl, base]
-    );
+            if (!response.ok) throw new Error(`error ${response.status}`);
+            clearSearch(base);
+            setStage({
+                kind: 'choose',
+                notice: discardRules
+                    ? 'Your products and the rules you saved for them were removed from this browser.'
+                    : 'Your products were removed from this browser.',
+            });
+        } catch (error) {
+            setStage({
+                kind: 'searching',
+                loaded,
+                focusRemove: true,
+                problemAt: performance.now(),
+                problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
+            });
+        } finally {
+            pending.current = false;
+        }
+    };
 
     // A changed mapping is a new catalog, made again from the rows already read. A small
     // file is made again at once. A large one shows its first rows at once and is made
     // again whole once the visitor pauses, so each change stays quick on a phone.
-    const onMapping = useCallback(
-        (mapping: Mapping, note?: string) => {
-            if (stage.kind !== 'review') return;
-            const { problem: _last, note: _said, ...review } = stage;
-            const quick = stage.table.rows.length <= QUICK_ROWS;
-            const result = toCatalog(quick ? stage.table : firstRows(stage.table), mapping);
-            setStage({ ...review, mapping, result, partial: !quick, ...(note && { note }) });
-        },
-        [stage]
-    );
+    const onMapping = (mapping: Mapping, note?: string) => {
+        if (stage.kind !== 'review') return;
+        const { problem: _last, note: _said, ...review } = stage;
+        const quick = stage.table.rows.length <= QUICK_ROWS;
+        const result = toCatalog(quick ? stage.table : firstRows(stage.table), mapping);
+        setStage({ ...review, mapping, result, partial: !quick, ...(note && { note }) });
+    };
 
     useEffect(() => {
         if (stage.kind !== 'review' || !stage.partial) return undefined;
@@ -1017,7 +1001,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         return () => window.clearTimeout(timer);
     }, [stage]);
 
-    const onAnother = useCallback(() => {
+    const onAnother = () => {
         // Nothing moves while a change is with the worker, so its answer lands where it was asked.
         if (pending.current) return;
         setActed(true);
@@ -1028,7 +1012,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         }
         clearSearch(base);
         setStage({ kind: 'choose' });
-    }, [base, stage]);
+    };
 
     const focused = useCallback(() => {
         setStage((current) => {

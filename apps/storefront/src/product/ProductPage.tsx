@@ -43,7 +43,7 @@ const forMembers = ({
     switchable,
     membersOnly,
 }: Pick<ProductPageProps, 'group' | 'switchable' | 'membersOnly'>): string | undefined =>
-    group === 'guest' && switchable === true && membersOnly !== false ? FOR_MEMBERS : undefined;
+    group === 'guest' && switchable && membersOnly ? FOR_MEMBERS : undefined;
 
 /** How many products stand beside one. */
 const RAIL_SIZE = 6;
@@ -54,16 +54,13 @@ export interface ProductPageProps {
     readonly state: SearchState;
     readonly navigate: Navigate;
     /** Whether the visit began on this product, rather than opening it from the results. */
-    readonly direct?: boolean;
+    readonly direct: boolean;
     /** Who is shopping, so a missing product can say how a member would see more. */
-    readonly group?: CustomerGroup;
+    readonly group: CustomerGroup;
     /** Whether the viewer switch is beside the page, so the way to it can be named. */
-    readonly switchable?: boolean;
-    /**
-     * Whether the store has products for members only, so a missing one may
-     * be one of them. Unless told otherwise, a store has.
-     */
-    readonly membersOnly?: boolean | undefined;
+    readonly switchable: boolean;
+    /** Whether the store has products for members only, so a missing one may be one of them. */
+    readonly membersOnly: boolean;
 }
 
 /**
@@ -347,7 +344,7 @@ export const ProductPage = ({
     sku,
     state,
     navigate,
-    direct = false,
+    direct,
     ...viewer
 }: ProductPageProps) => {
     const { data, loading, error, retry, current } = useProduct(client, sku);
