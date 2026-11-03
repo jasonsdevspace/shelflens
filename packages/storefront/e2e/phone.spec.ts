@@ -189,6 +189,8 @@ test.describe('on a first visit', () => {
     test('the sheet keeps one height from stop to stop, with its buttons in view', async ({
         page,
     }) => {
+        // The narrowest phone the page is built for, where a long file name has the least room.
+        await page.setViewportSize({ width: 320, height: 640 });
         await page.goto('/');
         const tour = page.getByRole('complementary', { name: 'Tour' });
         await tour.getByRole('button', { name: 'Start' }).click();
@@ -196,20 +198,26 @@ test.describe('on a first visit', () => {
         for (let stop = 1; stop <= STOPS.length; stop += 1) {
             await expect(tour).toContainText(`Stop ${String(stop)} of`);
             const drawn = await page.evaluate(() => {
-                const sheet = document.querySelector('.tour')?.getBoundingClientRect();
-                const nav = document.querySelector('.tour-nav')?.getBoundingClientRect();
+                const scroller = document.querySelector('.tour');
+                const nav = document.querySelector('.tour-nav');
+                if (!scroller || !nav) throw new Error('expected the sheet and its buttons');
+                const sheet = scroller.getBoundingClientRect();
+                const buttons = nav.getBoundingClientRect();
                 return {
-                    height: Math.round(sheet?.height ?? 0),
+                    height: Math.round(sheet.height),
+                    // Nothing scrolls sideways, and no strip of the sheet shows under its buttons.
+                    sideways: scroller.scrollWidth > scroller.clientWidth,
+                    gapUnderButtons: Math.round(sheet.bottom - buttons.bottom),
                     navInSheet:
-                        sheet !== undefined &&
-                        nav !== undefined &&
-                        nav.top >= sheet.top &&
-                        nav.bottom <= sheet.bottom + 1 &&
-                        nav.bottom <= window.innerHeight + 1,
+                        buttons.top >= sheet.top &&
+                        buttons.bottom <= sheet.bottom + 1 &&
+                        buttons.bottom <= window.innerHeight + 1,
                 };
             });
             heights.add(drawn.height);
             expect(drawn.navInSheet, `the buttons at stop ${String(stop)}`).toBe(true);
+            expect(drawn.sideways, `sideways at stop ${String(stop)}`).toBe(false);
+            expect(drawn.gapUnderButtons, `under the buttons at stop ${String(stop)}`).toBe(0);
             if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
         }
         expect([...heights], 'the heights the sheet was drawn at').toHaveLength(1);

@@ -1,6 +1,7 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { REPO_URL } from './app/Portfolio.jsx';
 import { NARROW } from './app/useMediaQuery.js';
 import { open } from './test/store.jsx';
 import { STOPS } from './tour/stops.js';
@@ -84,10 +85,12 @@ describe('the tour', () => {
         expect(tour.querySelector('.tour-test')).toHaveTextContent(
             'Tested in search.test.ts, synonyms.test.ts, rules.test.ts and ProductCard.test.tsx'
         );
-        // Each file keeps its path from the repository root, on hover.
-        expect(
-            [...tour.querySelectorAll('.tour-test code')].map((code) => code.getAttribute('title'))
-        ).toEqual(STOPS[index]?.tests);
+        // Each file is a link to it in the repository, with its path on hover.
+        const files = [...tour.querySelectorAll<HTMLAnchorElement>('.tour-test-file')];
+        expect(files.map((file) => file.getAttribute('title'))).toEqual(STOPS[index]?.tests);
+        expect(files.map((file) => file.href)).toEqual(
+            STOPS[index]?.tests.map((test) => `${REPO_URL}/blob/main/${test}`)
+        );
     });
 
     it('keeps focus on Previous when it reaches the first stop', async () => {

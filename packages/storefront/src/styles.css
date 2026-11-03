@@ -385,6 +385,12 @@ h4 {
 
 .button.tour-close:hover {
     color: var(--fg);
+    border-color: transparent;
+}
+
+/* The panel's buttons sit on its raised surface, not in wells of the page's. */
+.tour .button:not(.button-primary) {
+    background: var(--raised);
 }
 
 /* How far through the tour the visitor is, drawn under the count it repeats. */
@@ -420,14 +426,16 @@ h4 {
     color: var(--muted);
 }
 
-/* Each file on one line, wrapping between files rather than inside a name. */
-.tour-test code {
+/* Each file whole on a line where it fits, broken inside its name only where it cannot. */
+.tour-test-file {
     color: var(--fg);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
+/* The buttons wrap onto a second line where larger text leaves no room for them on one. */
 .tour-nav {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
 }
@@ -1232,11 +1240,16 @@ h4 {
         border-radius: var(--radius-large) var(--radius-large) 0 0;
     }
 
+    /* The sheet's own bottom padding is the buttons', so nothing scrolls under them. */
+    .tour:not(.tour-offer) {
+        padding-bottom: 0;
+    }
+
     .tour-nav {
         position: sticky;
         bottom: 0;
         margin-top: auto;
-        padding-top: var(--space-2);
+        padding-block: var(--space-2) var(--space-4);
         background: var(--raised);
     }
 

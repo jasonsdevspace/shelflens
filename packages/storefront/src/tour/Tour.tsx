@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef } from 'react';
 
+import { REPO_URL } from '../app/Portfolio.jsx';
 import { StateLink } from '../app/StateLink.jsx';
 import type { SearchState } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
@@ -157,8 +158,17 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 {stop.tests.map((test, i) => (
                     <span key={test}>
                         {i > 0 && (i === stop.tests.length - 1 ? ' and ' : ', ')}
-                        {/* Named by its file, with the path from the repository root on hover. */}
-                        <code title={test}>{fileName(test)}</code>
+                        {/*
+                         * Named by its file, and a link to it in the repository, so the
+                         * folder it is in is a press away on a phone and from the keyboard.
+                         */}
+                        <a
+                            className="tour-test-file"
+                            href={`${REPO_URL}/blob/main/${test}`}
+                            title={test}
+                        >
+                            <code>{fileName(test)}</code>
+                        </a>
                     </span>
                 ))}
             </p>

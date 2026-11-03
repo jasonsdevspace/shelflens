@@ -168,11 +168,55 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/');
     await expect(page.getByRole('complementary', { name: 'Tour' })).toBeVisible();
-    const backgrounds = await page.evaluate(() => ({
-        page: getComputedStyle(document.body).backgroundColor,
-        tour: getComputedStyle(document.querySelector('.tour') ?? document.body).backgroundColor,
-    }));
-    expect(backgrounds.tour).not.toBe(backgrounds.page);
+    const backgrounds = await page.evaluate(() => {
+        // The raised token as a color, drawn on an element of its own.
+        const probe = document.body.appendChild(document.createElement('div'));
+        probe.style.background = 'var(--dark-raised)';
+        const raised = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return {
+            raised,
+            page: getComputedStyle(document.body).backgroundColor,
+            tour: getComputedStyle(document.querySelector('.tour') ?? document.body)
+                .backgroundColor,
+            button: getComputedStyle(
+                document.querySelector('.tour-nav .button:not(.button-primary)') ?? document.body
+            ).backgroundColor,
+        };
+    });
+    expect(backgrounds.tour).toBe(backgrounds.raised);
+    // Its buttons sit on the panel, not in wells of the page's color.
+    expect(backgrounds.button).toBe(backgrounds.raised);
+    expect(backgrounds.raised).not.toBe(backgrounds.page);
+});
+
+// A phone's width without a phone's zooming out, so only the sheet's own layout is measured.
+test('fits every stop across a phone-wide sheet with text at twice its size', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto('/');
+    const tour = page.getByRole('complementary', { name: 'Tour' });
+    await tour.getByRole('button', { name: 'Start' }).click();
+    await expect(tour).toContainText('Stop 1 of');
+    // As a visitor's own larger text would set it, through the root every size is drawn from.
+    await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%'));
+    for (let stop = 1; stop <= STOPS.length; stop += 1) {
+        await expect(tour).toContainText(`Stop ${String(stop)} of`);
+        const sideways = await page.evaluate(() => {
+            const sheet = document.querySelector('.tour');
+            return sheet !== null && sheet.scrollWidth > sheet.clientWidth;
+        });
+        expect(sideways, `sideways at stop ${String(stop)}`).toBe(false);
+        if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
+    }
+});
+
+test('keeps Close quiet under the pointer, so Try it stays the strong action', async ({ page }) => {
+    await page.goto('/');
+    const tour = page.getByRole('complementary', { name: 'Tour' });
+    const close = tour.getByRole('button', { name: 'Close' });
+    await close.hover();
+    const edge = await close.evaluate((el) => getComputedStyle(el).borderTopColor);
+    expect(edge).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('keeps focus on Previous when it reaches the first stop', async ({ page }) => {
@@ -222,28 +266,36 @@ test('lands every stop on the page its body describes', async ({ page }) => {
     }
 });
 
+/** The links Tab walks through the cards, and how many presses the walk takes. */
+const CARD_LINKS = '.cards > .card a';
+const TAB_STEPS = 12;
+
 test('the tour never covers a card that focus reaches', async ({ page }) => {
     await page.goto('?category=clothing');
     await expect(page.getByRole('complementary', { name: 'Tour' })).toBeVisible();
     // Some of the cards Tab reaches start out under the tour, so keeping them clear is the test.
-    const under = await page.evaluate(() => {
-        const tour = document.querySelector('.tour')?.getBoundingClientRect();
-        if (!tour) return 0;
-        return [...document.querySelectorAll('.cards > .card a')].slice(0, 13).filter((card) => {
-            const box = card.getBoundingClientRect();
-            return (
-                box.right > tour.left &&
-                box.left < tour.right &&
-                box.bottom > tour.top &&
-                box.top < tour.bottom
-            );
-        }).length;
-    });
+    await expect(page.locator(CARD_LINKS).nth(TAB_STEPS)).toBeVisible();
+    const under = await page.evaluate(
+        ({ cards, steps }) => {
+            const tour = document.querySelector('.tour')?.getBoundingClientRect();
+            if (!tour) return 0;
+            return [...document.querySelectorAll(cards)].slice(0, steps + 1).filter((card) => {
+                const box = card.getBoundingClientRect();
+                return (
+                    box.right > tour.left &&
+                    box.left < tour.right &&
+                    box.bottom > tour.top &&
+                    box.top < tour.bottom
+                );
+            }).length;
+        },
+        { cards: CARD_LINKS, steps: TAB_STEPS }
+    );
     expect(under).toBeGreaterThan(0);
-    await page.locator('.cards > .card a').first().focus();
-    for (let step = 0; step < 12; step += 1) {
+    await page.locator(CARD_LINKS).first().focus();
+    for (let step = 0; step < TAB_STEPS; step += 1) {
         await page.keyboard.press('Tab');
-        const where = await page.evaluate(() => {
+        const where = await page.evaluate((cards) => {
             const focused = document.activeElement?.getBoundingClientRect();
             const tour = document.querySelector('.tour')?.getBoundingClientRect();
             const overlaps =
@@ -254,10 +306,10 @@ test('the tour never covers a card that focus reaches', async ({ page }) => {
                 focused.bottom > tour.top &&
                 focused.top < tour.bottom;
             return {
-                onCard: document.activeElement?.matches('.cards > .card a') ?? false,
+                onCard: document.activeElement?.matches(cards) ?? false,
                 overlaps,
             };
-        });
+        }, CARD_LINKS);
         // Still on the cards, and none of it under the tour.
         expect(where.onCard, `focus after ${String(step + 1)} presses`).toBe(true);
         expect(where.overlaps, `focus after ${String(step + 1)} presses`).toBe(false);
