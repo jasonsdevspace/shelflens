@@ -80,6 +80,12 @@ describe('the tour', () => {
         }
     });
 
+    it('points every stop the page can reach at something for Try it to focus', () => {
+        for (const stop of STOPS) {
+            expect(stop.focus !== undefined, stop.id).toBe(stop.to !== undefined);
+        }
+    });
+
     it('gives each stop a row in the README table naming the same tests, in the same order', () => {
         const rows = tableRows();
         expect(rows.filter((row) => row.gotcha.startsWith(WIDGET))).toHaveLength(1);

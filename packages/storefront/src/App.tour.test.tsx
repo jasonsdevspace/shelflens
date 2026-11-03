@@ -1,6 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { NARROW } from './app/useMediaQuery.js';
 import { open } from './test/store.jsx';
 import { STOPS } from './tour/stops.js';
 
@@ -77,5 +78,100 @@ describe('the tour', () => {
         expect(tour.querySelector('.tour-test')).toHaveTextContent(
             'Tested in packages/engine/src/search.test.ts, packages/engine/src/synonyms.test.ts, packages/engine/src/rules.test.ts and packages/storefront/src/results/ProductCard.test.tsx'
         );
+    });
+
+    it('keeps focus on Previous when it reaches the first stop', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open();
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        const previous = within(tour).getByRole('button', { name: 'Previous' });
+        previous.focus();
+        await user.keyboard('{Enter}');
+        expect(tour).toHaveTextContent('Stop 1 of');
+        expect(previous).toHaveFocus();
+    });
+
+    it('opens on the stop it was on before the page was reloaded', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open();
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        cleanup();
+        await open();
+        expect(screen.getByRole('complementary', { name: 'Tour' })).toHaveTextContent('Stop 3 of');
+    });
+
+    it('names the tour from its button only while the tour is open', async () => {
+        const user = await open();
+        const button = screen.getByRole('button', { name: 'Tour' });
+        expect(button).not.toHaveAttribute('aria-controls');
+        await user.click(button);
+        expect(button).toHaveAttribute('aria-controls', 'tour');
+        expect(document.getElementById('tour')).not.toBeNull();
+    });
+
+    it('puts focus on what the stop points at once its page arrives, and on the search box for typing', async () => {
+        localStorage.removeItem('shelflens.tour');
+        const user = await open('?q=boot');
+        const tour = screen.getByRole('complementary', { name: 'Tour' });
+        await user.click(within(tour).getByRole('link', { name: 'Try it' }));
+        await waitFor(() =>
+            expect(screen.getByRole('combobox', { name: 'Search the store' })).toHaveFocus()
+        );
+
+        const rules = STOPS.findIndex((stop) => stop.id === 'rules');
+        for (let i = 0; i < rules; i += 1) {
+            await user.click(within(tour).getByRole('button', { name: 'Next' }));
+        }
+        await user.click(within(tour).getByRole('link', { name: 'Try it' }));
+        await waitFor(() => expect(document.querySelector('.set-aside')).toHaveFocus());
+    });
+});
+
+describe('the tour on a phone', () => {
+    const asPhone = () => {
+        const matchMedia = (query: string) =>
+            ({
+                matches: query === NARROW,
+                media: query,
+                addEventListener: () => undefined,
+                removeEventListener: () => undefined,
+            }) as unknown as MediaQueryList;
+        Object.defineProperty(window, 'matchMedia', { configurable: true, value: matchMedia });
+        return () => Reflect.deleteProperty(window, 'matchMedia');
+    };
+
+    it('offers the tour in a short bar on a first visit, and opens the sheet on Start', async () => {
+        const restore = asPhone();
+        try {
+            localStorage.removeItem('shelflens.tour');
+            const user = await open();
+            const bar = screen.getByRole('complementary', { name: 'Tour' });
+            expect(bar).toHaveTextContent(`A tour of what to try, ${String(STOPS.length)} stops`);
+            expect(within(bar).queryByRole('button', { name: 'Next' })).toBeNull();
+            await user.click(within(bar).getByRole('button', { name: 'Start' }));
+            const sheet = screen.getByRole('complementary', { name: 'Tour' });
+            expect(sheet).toHaveTextContent('Stop 1 of');
+            expect(within(sheet).getByRole('button', { name: 'Close' })).toHaveFocus();
+        } finally {
+            restore();
+        }
+    });
+
+    it('closes the bar for good on Not now', async () => {
+        const restore = asPhone();
+        try {
+            localStorage.removeItem('shelflens.tour');
+            const user = await open();
+            const bar = screen.getByRole('complementary', { name: 'Tour' });
+            await user.click(within(bar).getByRole('button', { name: 'Not now' }));
+            expect(screen.queryByRole('complementary', { name: 'Tour' })).toBeNull();
+            expect(localStorage.getItem('shelflens.tour')).toBe('seen');
+            expect(screen.getByRole('button', { name: 'Tour' })).toHaveFocus();
+        } finally {
+            restore();
+        }
     });
 });

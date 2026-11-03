@@ -49,11 +49,13 @@
 
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
- * keeps the plain arrow, so no control has to remember its own. The labels
+ * keeps the plain arrow, so no control has to remember its own. One that is
+ * off but keeps focus, as the tour's Previous does at the first stop, says so
+ * with aria-disabled and counts as off. The labels
  * around a checkbox or a radio are named by class, since :has() is newer
  * than some of the browsers the build supports.
  */
-button:not(:disabled),
+button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
 summary,
 .facet-option,
@@ -240,6 +242,14 @@ h4 {
 }
 
 /*
+ * The end of the page can scroll above the tour's box, at its drawn height
+ * and the gap it floats in, so what a stop points at there is never under it.
+ */
+.content.has-tour {
+    padding-bottom: calc(var(--tour-height, 0dvh) + var(--space-6));
+}
+
+/*
  * The pages the script draws, whose answer arrives after the first screen,
  * are at least a screen tall, so the footer starts below the fold and the
  * answer arriving above it never moves it on screen. The pages written in
@@ -387,6 +397,20 @@ h4 {
 /* The stop's own way in, on the left, with the steps through the tour on the right. */
 .tour-try {
     margin-right: auto;
+}
+
+/* A phone's first visit: one line saying what the tour is, with its two answers beside it. */
+.tour-offer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.tour-offer-text {
+    flex: 1 1 10em;
+    margin: 0;
+    font-size: var(--text-small);
 }
 
 .viewer {
@@ -780,7 +804,8 @@ h4 {
     border-color: var(--accent);
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled='true'] {
     color: var(--muted);
     background: var(--bg);
     border-color: var(--line);

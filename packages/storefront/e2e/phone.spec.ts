@@ -1,4 +1,4 @@
-import { audit, expect, test } from './support.js';
+import { audit, expect, type Page, test } from './support.js';
 
 /*
  * The same storefront on a phone: the facets are a drawer, and the popover
@@ -151,13 +151,11 @@ test('on a phone the product name has the width of the page, under its swatch', 
 });
 
 test.describe('on a first visit', () => {
-    // The tour opens on its own, as a sheet over the bottom of the screen.
+    // The tour offers itself in a short bar over the bottom of the screen, and opens as a sheet on Start.
     test.use({ tourSeen: false });
 
-    test('the tour sheet never covers a card that focus reaches', async ({ page }) => {
-        await page.goto('?category=clothing');
-        const sheet = page.getByRole('complementary', { name: 'Tour' });
-        await expect(sheet).toBeVisible();
+    /** Tabs through the cards, checking focus stays on them and above whatever the tour draws. */
+    const tabClearOfTour = async (page: Page) => {
         const cards = page.locator('.cards > .card a');
         await expect(cards.first()).toBeVisible();
         await cards.first().focus();
@@ -166,13 +164,46 @@ test.describe('on a first visit', () => {
             const where = await page.evaluate(() => ({
                 onCard: document.activeElement?.matches('.cards > .card a') ?? false,
                 bottom: document.activeElement?.getBoundingClientRect().bottom ?? Infinity,
-                sheet: document.querySelector('.tour')?.getBoundingClientRect().top ?? 0,
+                tour: document.querySelector('.tour')?.getBoundingClientRect().top ?? 0,
             }));
-            // Still on the cards, and above the sheet.
+            // Still on the cards, and above the tour.
             expect(where.onCard, `focus after ${String(step + 1)} presses`).toBe(true);
             expect(where.bottom, `focus after ${String(step + 1)} presses`).toBeLessThanOrEqual(
-                where.sheet
+                where.tour
             );
         }
+    };
+
+    test('offers the tour in a short bar, and opens the sheet on Start', async ({ page }) => {
+        await page.goto('/');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await expect(tour).toContainText('A tour of what to try');
+        await expect(tour.getByRole('button', { name: 'Next' })).toHaveCount(0);
+        await audit(page);
+        await tour.getByRole('button', { name: 'Start' }).click();
+        await expect(tour).toContainText('Stop 1 of');
+        await expect(tour.getByRole('button', { name: 'Close' })).toBeFocused();
+    });
+
+    test('Not now puts the bar away for good', async ({ page }) => {
+        await page.goto('/');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await tour.getByRole('button', { name: 'Not now' }).click();
+        await expect(tour).toBeHidden();
+        await page.reload();
+        await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
+        await expect(tour).toBeHidden();
+    });
+
+    test('neither the bar nor the sheet ever covers a card that focus reaches', async ({
+        page,
+    }) => {
+        await page.goto('?category=clothing');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await expect(tour).toContainText('A tour of what to try');
+        await tabClearOfTour(page);
+        await tour.getByRole('button', { name: 'Start' }).click();
+        await expect(tour).toContainText('Stop 1 of');
+        await tabClearOfTour(page);
     });
 });
