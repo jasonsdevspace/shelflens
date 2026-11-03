@@ -190,7 +190,7 @@ describe('rows to a catalog', () => {
         const result = toCatalog(table, MINIMAL, NOW);
         expect(result.ok).toBe(false);
         expect(!result.ok && result.error).toBe(
-            'This file has 10,001 rows, and the page reads up to 10,000 products.'
+            'This file has 10,001 rows, and the page takes up to 10,000 products. Delete rows until it has 10,000 or fewer, then choose it again.'
         );
     });
 

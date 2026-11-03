@@ -88,11 +88,25 @@ export const MappingEditor = ({
             </p>
             <div className="try-mapping">
                 {FIELDS.map((field) => (
-                    <div key={field} className="try-field">
-                        <label htmlFor={`${id}-${field}`}>{FIELD_LABELS[field]}</label>
+                    <div
+                        key={field}
+                        className={REQUIRED.has(field) ? 'try-field is-needed' : 'try-field'}
+                    >
+                        <span className="try-field-label">
+                            <label htmlFor={`${id}-${field}`}>{FIELD_LABELS[field]}</label>
+                            {REQUIRED.has(field) && (
+                                <span id={`${id}-${field}-needed`} className="hint">
+                                    Needed
+                                </span>
+                            )}
+                        </span>
                         <select
                             className="select"
                             id={`${id}-${field}`}
+                            aria-required={REQUIRED.has(field) ? true : undefined}
+                            aria-describedby={
+                                REQUIRED.has(field) ? `${id}-${field}-needed` : undefined
+                            }
                             value={mapping[field] ?? ''}
                             onChange={(event) =>
                                 onChange(withField(mapping, field, event.target.value))

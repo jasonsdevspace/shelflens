@@ -8,10 +8,8 @@ import {
     slugify,
 } from '@shelflens/catalog';
 
-import { formatCount } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
 import type { Table } from './csv.js';
-import { CATALOG_ROW_CAP } from './limits.js';
+import { CATALOG_ROW_CAP, tooManyRows } from './limits.js';
 import { type Mapping, SAMPLE_ROWS } from './mapping.js';
 import {
     currencyOf,
@@ -237,9 +235,6 @@ const skuMaker = (used: ReadonlySet<string>) => {
     };
 };
 
-const limitError = (rows: number): string =>
-    `This file has ${formatCount(rows, DEFAULT_LOCALE)} rows, and the page reads up to ${formatCount(CATALOG_ROW_CAP, DEFAULT_LOCALE)} products.`;
-
 /** Rows and a mapping as a catalog, or the reason they cannot be one. */
 export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): LoadResult => {
     if (!mapping.name)
@@ -253,7 +248,7 @@ export const toCatalog = (table: Table, mapping: Mapping, now = new Date()): Loa
             error: 'Choose the column that holds each product’s price. A column named “price” is found on its own.',
         };
     if (table.rows.length > CATALOG_ROW_CAP)
-        return { ok: false, error: limitError(table.rows.length) };
+        return { ok: false, error: tooManyRows(table.rows.length) };
 
     const indexes = new Map(table.headers.map((header, index) => [header, index]));
     const cell = (row: readonly string[], header: string | undefined) =>

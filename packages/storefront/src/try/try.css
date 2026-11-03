@@ -92,6 +92,20 @@
     color: var(--muted);
 }
 
+/* A label and, for the two parts a store cannot do without, the word that says so. */
+.try-field-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+/* Name and Price stand out from the parts that have a default. */
+.try-field.is-needed label {
+    color: var(--fg);
+    font-weight: var(--weight-strong);
+}
+
 /* A long column name in a visitor's file stops at its column's edge rather than widening the page. */
 .try-field .select {
     width: 100%;

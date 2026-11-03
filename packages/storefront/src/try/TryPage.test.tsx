@@ -153,11 +153,107 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.getByText(/your own catalog of 200 products/)).toBeInTheDocument();
     });
 
-    it('removes the products and is back where a file is chosen', async () => {
+    it('removes the products and is back where a file is chosen, saying they were removed', async () => {
         page();
         await loadSample();
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         expect(await chooser()).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Your products were removed from this browser.'
+        );
+        // Nothing is loaded, so there is nothing to go back to.
+        expect(screen.queryByRole('button', { name: /^Back to your/ })).toBeNull();
+    });
+
+    it('says the rules went too when the visitor agreed to remove them with the products', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
+        await chooser();
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Your products and the rules you saved for them were removed from this browser.'
+        );
+    });
+
+    it('goes back to the loaded products, and their search, from the chooser', async () => {
+        page();
+        await loadSample();
+        act(() => window.history.replaceState(null, '', `${BASE}?q=bag`));
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your 200 products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+        expect(window.location.search).toBe('?q=bag');
+    });
+
+    it('goes back to the loaded products from a file looked at instead', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your 200 products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+    });
+
+    it('reads a file dropped anywhere on the chooser, not only on the drop area', async () => {
+        page();
+        await chooser();
+        const file = new File(['name,price\nBench,120\n'], 'dropped.csv');
+        const drop = new Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(drop, 'dataTransfer', { value: { files: [file] } });
+        act(() => {
+            document.body.dispatchEvent(drop);
+        });
+        // The browser is kept from opening the file in the page's place.
+        expect(drop.defaultPrevented).toBe(true);
+        await screen.findByRole('heading', { level: 1, name: 'What is in dropped.csv' });
+    });
+
+    it('refuses a file past the row cap as it is read, before any mapping is shown', async () => {
+        page();
+        await chooser();
+        const rows = Array.from({ length: 10_001 }, (_, index) => `Item ${index},1`).join('\n');
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File([`name,price\n${rows}\n`], 'too-many.csv')
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'This file has 10,001 rows, and the page takes up to 10,000 products. Delete rows until it has 10,000 or fewer, then choose it again.'
+        );
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Search your own products'
+        );
+        expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('shows the preview and the way on before the mapping, and marks the parts a store needs', async () => {
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        const search = await screen.findByRole('button', { name: 'Search 200 products' });
+        const preview = screen.getByRole('list', { name: 'Preview' });
+        const mapping = screen.getByRole('heading', {
+            name: 'Where each part of a product comes from',
+        });
+        const before = (a: Element, b: Element) =>
+            Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(before(preview, search)).toBe(true);
+        expect(before(search, mapping)).toBe(true);
+        for (const name of ['Name', 'Price']) {
+            const field = screen.getByRole('combobox', { name });
+            expect(field).toBeRequired();
+            expect(field).toHaveAccessibleDescription('Needed');
+        }
+        expect(screen.getByRole('combobox', { name: 'Brand' })).not.toBeRequired();
     });
 
     it('leaves the last search behind when another file is chosen', async () => {
