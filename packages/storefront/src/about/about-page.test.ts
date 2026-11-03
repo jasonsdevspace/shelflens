@@ -12,6 +12,7 @@ import {
 } from '../app/Portfolio.jsx';
 import { STOPS } from '../tour/stops.js';
 import { CATALOG_ROW_CAP } from '../try/limits.js';
+import { SAMPLE_PRODUCTS } from '../try/sample.js';
 
 /*
  * The explainer, the README's two minutes and the tour tell one story.
@@ -82,11 +83,10 @@ describe('the explainer', () => {
     });
 
     it('names the sample’s button and the cap on a file as the page for your own products does', () => {
-        const tryPage = read('packages/storefront/src/try/TryPage.tsx');
-        const label = /Try it with a sample of \d+ products/.exec(tryPage)?.[0];
-        expect(label).toBeDefined();
+        // The page's button is written from the sample's own count, so the two cannot drift.
+        const label = `Try it with a sample of ${String(SAMPLE_PRODUCTS)} products`;
         const flat = (text: string) => text.replace(/\s+/g, ' ');
-        expect(flat(page)).toContain(`Press "${label ?? ''}"`);
+        expect(flat(page)).toContain(`Press "${label}"`);
         // Only a cap in whole thousands is written in words, and this one is.
         expect(CATALOG_ROW_CAP % 1000).toBe(0);
         const cap = `${NUMBER_WORDS[CATALOG_ROW_CAP / 1000] ?? ''} thousand products`;

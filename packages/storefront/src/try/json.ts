@@ -44,7 +44,9 @@ export const parseJsonTable = (text: string): Table => {
     try {
         data = JSON.parse(text);
     } catch {
-        throw new Error('This file is not valid JSON.');
+        throw new Error(
+            'This file could not be read as JSON. Check that it was saved as JSON, or export it as CSV instead.'
+        );
     }
     const listed = recordsOf(data) ?? [];
     const records = listed
@@ -54,7 +56,7 @@ export const parseJsonTable = (text: string): Table => {
         );
     if (records.length === 0) {
         throw new Error(
-            'This JSON file has no list of products. It should be a list, or hold one under "products" or "items".'
+            'This JSON file has no list of products. It should be a list, or hold one under \u201cproducts\u201d or \u201citems\u201d.'
         );
     }
     const keys: string[] = [];

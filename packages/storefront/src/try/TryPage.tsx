@@ -17,7 +17,7 @@ import { CATALOG_ROW_CAP } from './limits.js';
 import { guessMapping, type Mapping } from './mapping.js';
 import { MappingEditor, Preview } from './MappingEditor.jsx';
 import { type FileLike, readFile } from './read-file.js';
-import { SAMPLE_FILE } from './sample.js';
+import { SAMPLE_FILE, SAMPLE_PRODUCTS } from './sample.js';
 import { type LoadResult, type RowNote, toCatalog } from './to-catalog.js';
 
 /**
@@ -82,7 +82,7 @@ type Stage =
 
 /** Why a load failed, in the worker's words when it gave some, with the way to try again. */
 const errorOf = async (response: Response, retry: string): Promise<string> => {
-    const again = `Press "${retry}" to try again.`;
+    const again = `Press \u201c${retry}\u201d to try again.`;
     const reason = await reasonOf(response);
     return reason
         ? `The store could not use these products, since ${reason}. ${again}`
@@ -165,8 +165,8 @@ const Chooser = ({
             </h1>
             <p>
                 Load a CSV or JSON file of products, such as an export from your shop, and search it
-                here with suggestions, filters, sorting and a reason for every result. Up to{' '}
-                {count(CATALOG_ROW_CAP, 'product', 'products', DEFAULT_LOCALE)}.
+                here with suggestions, filters, sorting and a reason for every result. It takes up
+                to {count(CATALOG_ROW_CAP, 'product', 'products', DEFAULT_LOCALE)}.
             </p>
             <p className="try-private">
                 Your file is read in this page and kept in this browser. Nothing is uploaded, and
@@ -448,9 +448,9 @@ const CatalogBar = ({
     return (
         <div className="callout try-bar">
             <span>
-                You are searching your own catalog of{' '}
-                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, kept in this
-                browser.
+                You are searching the{' '}
+                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept in
+                this browser.
             </span>{' '}
             {confirm === true ? (
                 <Ask
@@ -569,7 +569,7 @@ const BeforeStore = ({
 };
 
 /** The button that loads the sample, named again by a message that offers it and by the explainer. */
-const SAMPLE_BUTTON = 'Try it with a sample of 200 products';
+const SAMPLE_BUTTON = `Try it with a sample of ${count(SAMPLE_PRODUCTS, 'product', 'products', DEFAULT_LOCALE)}`;
 
 /**
  * The button back to the products already loaded. It names no count, since
@@ -689,7 +689,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         } catch (error) {
             setStage({
                 kind: 'choose',
-                problem: `The sample could not be loaded (${messageOf(error)}). Press "${SAMPLE_BUTTON}" again, or download the sample and choose it as a file.`,
+                problem: `The sample could not be loaded (${messageOf(error)}). Press \u201c${SAMPLE_BUTTON}\u201d again, or download the sample and choose it as a file.`,
             });
         }
     }, [base, onFile]);
@@ -739,13 +739,13 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                         ? { kind: 'searching', loaded, arrival: performance.now() }
                         : {
                               ...review,
-                              problem: `The store did not keep your products. Press "${retry}" to try again.`,
+                              problem: `The store did not keep your products. Press \u201c${retry}\u201d to try again.`,
                           }
                 );
             } catch (error) {
                 setStage({
                     ...review,
-                    problem: `The store could not be reached (${messageOf(error)}). Press "${retry}" to try again.`,
+                    problem: `The store could not be reached (${messageOf(error)}). Press \u201c${retry}\u201d to try again.`,
                 });
             } finally {
                 pending.current = false;
@@ -781,7 +781,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 setStage({
                     ...from,
                     problem:
-                        'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.',
+                        'Your products are no longer in this browser, so there is nothing to keep. Press \u201cYes, search this file\u201d to search it.',
                 });
             } else setStage({ ...from, problem: GONE });
         } catch (error) {
@@ -827,7 +827,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                     kind: 'searching',
                     loaded,
                     focusRemove: true,
-                    problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Try again.`,
+                    problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
                 });
             } finally {
                 pending.current = false;

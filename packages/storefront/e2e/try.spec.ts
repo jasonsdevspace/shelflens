@@ -33,7 +33,7 @@ const loadSample = async (page: Page) => {
         page.getByRole('heading', { level: 1, name: 'What is in sample-products.csv' })
     ).toBeVisible();
     await page.getByRole('button', { name: 'Search 200 products' }).click();
-    await expect(page.getByText('your own catalog of 200 products')).toBeVisible();
+    await expect(page.getByText('the 200 products you loaded')).toBeVisible();
 };
 
 test('searches a visitor’s file with everything the demo has, without it leaving the browser', async ({
@@ -51,7 +51,7 @@ test('searches a visitor’s file with everything the demo has, without it leavi
     await expect(page.getByText('200 rows and 13 columns.')).toBeVisible();
     await audit(page);
     await page.getByRole('button', { name: 'Search 200 products' }).click();
-    await expect(page.getByText('your own catalog of 200 products')).toBeVisible();
+    await expect(page.getByText('the 200 products you loaded')).toBeVisible();
     // Focus follows the press to the results, rather than dropping to the top of the page.
     await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 
@@ -193,7 +193,7 @@ const loadBenches = async (page: Page) => {
     await page.goto('try/');
     await page.getByLabel('Choose a file').setInputFiles(BENCHES);
     await page.getByRole('button', { name: 'Search 4 products' }).click();
-    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+    await expect(page.getByText('the 4 products you loaded')).toBeVisible();
 };
 
 test('a visitor pins their own product, sees why it ranked, keeps it across a visit, and is asked before a new file takes it', async ({
@@ -246,7 +246,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await expect(page.getByText(/Searching this file replaces your products/)).toBeVisible();
     await audit(page);
     await page.getByRole('button', { name: 'Keep my products' }).click();
-    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+    await expect(page.getByText('the 4 products you loaded')).toBeVisible();
     await expect(page).toHaveURL(/try\/\?q=bench$/);
     await expect.poll(async () => (await order())[0]).toBe(last);
 
@@ -254,7 +254,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await page.getByLabel('Choose a file').setInputFiles(MORE_BENCHES);
     await page.getByRole('button', { name: 'Search 5 products' }).click();
     await page.getByRole('button', { name: 'Yes, search this file' }).click();
-    await expect(page.getByText('your own catalog of 5 products')).toBeVisible();
+    await expect(page.getByText('the 5 products you loaded')).toBeVisible();
     await page.goto('try/?q=bench');
     await expect.poll(order).toHaveLength(5);
     expect((await order())[0]).not.toBe(last);

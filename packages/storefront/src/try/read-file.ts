@@ -11,6 +11,10 @@ import { CATALOG_FILE_BYTES_CAP, CATALOG_ROW_CAP, tooManyRows } from './limits.j
  * cap as soon as its rows are counted.
  */
 
+/** What a file not saved as UTF-8 is told, with how to save it so it reads. */
+export const NOT_UTF8 =
+    'This file is not saved as UTF-8, so some of its letters cannot be read. Save it as UTF-8, which Excel calls \u201cCSV UTF-8\u201d, then choose it again.';
+
 export interface FileLike {
     readonly name: string;
     readonly size: number;
@@ -34,12 +38,19 @@ const isJson = (name: string, text: string): boolean => {
 export const readFile = async (file: FileLike): Promise<Table> => {
     if (file.size > CATALOG_FILE_BYTES_CAP) {
         throw new Error(
-            `This file is ${megabytes(file.size, Math.ceil)}, and the largest this page reads is ${megabytes(CATALOG_FILE_BYTES_CAP)}.`
+            `This file is ${megabytes(file.size, Math.ceil)}, and the largest this page reads is ${String(CATALOG_FILE_BYTES_CAP / 1024 / 1024)} MB. Choose a smaller file, or delete rows from this one.`
         );
     }
     const text = await file.text();
+    // A file saved in another encoding reads as UTF-8 with letters it cannot make out, and a
+    // UTF-16 file, as Excel saves "Unicode Text", with a nothing between every letter.
+    if (text.includes('\uFFFD') || text.includes('\u0000')) throw new Error(NOT_UTF8);
     const table = isJson(file.name, text) ? parseJsonTable(text) : parseCsv(text);
-    if (table.rows.length === 0) throw new Error('This file has no rows of products.');
+    if (table.rows.length === 0) {
+        throw new Error(
+            'This file has no products in it. It needs a header row with at least one product under it.'
+        );
+    }
     // Before any mapping is shown, so a file that can never load is not corrected first.
     if (table.rows.length > CATALOG_ROW_CAP) throw new Error(tooManyRows(table.rows.length));
     return table;

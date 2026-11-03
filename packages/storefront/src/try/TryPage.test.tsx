@@ -73,7 +73,7 @@ const loadSample = async () => {
         screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
     );
     await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
-    await screen.findByText(/your own catalog of 200 products/);
+    await screen.findByText(/the 200 products you loaded/);
 };
 
 beforeEach(() => {
@@ -121,11 +121,11 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
         expect(await screen.findByRole('alert')).toHaveTextContent(
-            'The store could not be reached (the worker stopped). Press "Search 200 products" to try again.'
+            'The store could not be reached (the worker stopped). Press “Search 200 products” to try again.'
         );
         failure = undefined;
         await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/the 200 products you loaded/);
     });
 
     it('says when the store refuses the products, in its own words', async () => {
@@ -158,7 +158,7 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'Your products could not be removed (error 500), so they are still here.'
         );
-        expect(screen.getByText(/your own catalog of 200 products/)).toBeInTheDocument();
+        expect(screen.getByText(/the 200 products you loaded/)).toBeInTheDocument();
     });
 
     it('removes the products and is back where a file is chosen, saying they were removed', async () => {
@@ -190,7 +190,7 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
         await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/the 200 products you loaded/);
         expect(window.location.search).toBe('?q=bag');
     });
 
@@ -205,7 +205,7 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
         await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/the 200 products you loaded/);
     });
 
     it('lets go of a file still being read when the way back finds the products gone', async () => {
@@ -388,7 +388,7 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await screen.findByRole('button', { name: 'Keep my products' })).toHaveFocus();
         expect(screen.getByText(/Searching this file replaces your products/)).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Keep my products' }));
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/the 200 products you loaded/);
         expect(await rules.current()).toEqual(SAVED);
     });
 
@@ -409,11 +409,11 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Keep my products' }));
         expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Your products are no longer in this browser, so there is nothing to keep. Press "Yes, search this file" to search it.'
+            'Your products are no longer in this browser, so there is nothing to keep. Press “Yes, search this file” to search it.'
         );
         await userEvent.click(screen.getByRole('button', { name: 'Yes, search this file' }));
         failure = undefined;
-        await screen.findByText(/your own catalog of 150 products/);
+        await screen.findByText(/the 150 products you loaded/);
     });
 
     it('replaces the products and forgets their rules once the visitor says yes', async () => {
@@ -429,7 +429,7 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Yes, search this file' }));
-        await screen.findByText(/your own catalog of 150 products/);
+        await screen.findByText(/the 150 products you loaded/);
         expect(await rules.current()).toBeUndefined();
     });
 
@@ -509,7 +509,7 @@ describe('the page for a visitor’s own catalog', () => {
         Object.defineProperty(big, 'size', { value: CATALOG_FILE_BYTES_CAP + 4096 });
         await userEvent.upload(screen.getByLabelText('Choose a file'), big);
         expect(await screen.findByRole('alert')).toHaveTextContent(
-            'This file is 40.1 MB, and the largest this page reads is 40.0 MB.'
+            'This file is 40.1 MB, and the largest this page reads is 40 MB. Choose a smaller file, or delete rows from this one.'
         );
         await waitFor(() => expect(screen.getByLabelText('Choose a file')).toBeInTheDocument());
     });
@@ -582,7 +582,7 @@ describe('while the store is built', () => {
         });
         await waitFor(() => expect(building).toHaveFocus());
         release();
-        await screen.findByText(/your own catalog of 200 products/);
+        await screen.findByText(/the 200 products you loaded/);
         await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
     });
 });

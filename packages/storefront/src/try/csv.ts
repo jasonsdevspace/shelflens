@@ -64,6 +64,8 @@ interface ReadState {
     record: string[];
     field: string;
     quoted: boolean;
+    /** The row the open quote is on, counted as the page names rows, to name it if it never closes. */
+    openedOn: number;
 }
 
 const endField = (state: ReadState) => {
@@ -90,15 +92,23 @@ const readQuoted = (state: ReadState, char: string, next: string | undefined): n
 
 /** One character outside quotes. */
 const readPlain = (state: ReadState, char: string, separator: string) => {
-    if (char === '"' && state.field === '') state.quoted = true;
-    else if (char === separator) endField(state);
+    if (char === '"' && state.field === '') {
+        state.quoted = true;
+        state.openedOn = state.records.length + 1;
+    } else if (char === separator) endField(state);
     else if (char === '\n') endRecord(state);
     else if (char !== '\r') state.field += char;
 };
 
 /** Every record in the text, each as its fields, with quotes undone. */
 const readRecords = (text: string, separator: string): string[][] => {
-    const state: ReadState = { records: [], record: [], field: '', quoted: false };
+    const state: ReadState = {
+        records: [],
+        record: [],
+        field: '',
+        quoted: false,
+        openedOn: 1,
+    };
     let i = 0;
     while (i < text.length) {
         const char = text[i] ?? '';
@@ -108,6 +118,12 @@ const readRecords = (text: string, separator: string): string[][] => {
             readPlain(state, char, separator);
             i += 1;
         }
+    }
+    // A quote that never closes would read the rest of the file as one field, so it is named.
+    if (state.quoted) {
+        throw new Error(
+            `A quote that opens a field on row ${String(state.openedOn)} is never closed, so the rest of the file would read as one field. Close the quote or take it out, then choose the file again.`
+        );
     }
     if (state.field !== '' || state.record.length > 0) endRecord(state);
     return state.records;

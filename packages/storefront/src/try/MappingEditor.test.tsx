@@ -101,6 +101,18 @@ describe('what each choice says', () => {
     });
 });
 
+describe('what the mapping tells the visitor', () => {
+    it('says what a part left Not used becomes, and what ticking a column to search does', () => {
+        render(<Harness />);
+        expect(screen.getByText(/A part left “Not used” gets a default/)).toHaveTextContent(
+            'Only “Name” and “Price” need a column. A part left “Not used” gets a default: the brand “Unbranded”, the category “All products”, in stock, and members pay the guest price.'
+        );
+        expect(
+            screen.getByText('Words in a ticked column find a product but are not shown on it.')
+        ).toBeInTheDocument();
+    });
+});
+
 describe('the preview', () => {
     it('shows the parts a guess can get wrong: the description, the rating and the ID', () => {
         const table = parseCsv(
@@ -181,7 +193,7 @@ describe('changing the mapping', () => {
         render(<Harness />);
         await userEvent.selectOptions(screen.getByLabelText('Name'), 'Choose a column');
         expect(screen.getByRole('alert')).toHaveTextContent(
-            'Choose the column that holds each product’s name.'
+            'Choose a column for “Name”. A column headed “name” or “title” is picked for you.'
         );
         await userEvent.selectOptions(screen.getByLabelText('Name'), 'Product');
         expect(preview().getByText('Trail Boot')).toBeInTheDocument();

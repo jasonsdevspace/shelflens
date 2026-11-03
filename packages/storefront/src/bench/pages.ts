@@ -24,7 +24,7 @@ const loadSample = async (page: Page, origin: string) => {
         buffer: Buffer.from(sampleCsv()),
     });
     await page.getByRole('button', { name: `Search ${SAMPLE_PRODUCTS} products` }).click();
-    await page.getByText(`your own catalog of ${SAMPLE_PRODUCTS} products`).waitFor();
+    await page.getByText(`the ${SAMPLE_PRODUCTS} products you loaded`).waitFor();
 };
 
 /** A search has answered once its results heading appears. */

@@ -22,7 +22,7 @@ const loadBenches = async (page: Page) => {
     await page.goto('try/');
     await page.getByLabel('Choose a file').setInputFiles(BENCHES);
     await page.getByRole('button', { name: 'Search 4 products' }).click();
-    await expect(page.getByText('your own catalog of 4 products')).toBeVisible();
+    await expect(page.getByText('the 4 products you loaded')).toBeVisible();
 };
 
 test('says to load a file first, with the way to do it, when nothing is loaded', async ({
@@ -46,7 +46,7 @@ test('searches the visitor’s own products from a store’s page, over its bann
     const requests: Request[] = [];
     page.on('request', (request) => requests.push(request));
     await page.getByRole('link', { name: 'See your products on a store’s page' }).click();
-    await expect(page).toHaveTitle("ShelfLens on a store's page, with your products");
+    await expect(page).toHaveTitle('ShelfLens on a store’s page, with your products');
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await expect(search).toBeVisible();
     await page.getByRole('button', { name: 'Count' }).click();
