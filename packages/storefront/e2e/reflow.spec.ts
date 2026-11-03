@@ -5,8 +5,9 @@ import { audit, expect, type Page, setTextSize, settle, test } from './support.j
  * sizes up to twice the usual, set as a visitor's own larger text sets it,
  * so the layouts that larger text brings on are the ones measured. 400%
  * zoom on a 1280 window is 320 wide at the usual size, so it is among them.
- * The one thing that may scroll sideways is the table of sizes and colors,
- * inside its own frame.
+ * The things that may scroll sideways are the table of sizes and colors,
+ * inside its own frame, and a block of code, whose lines would change if
+ * they broke. Each can be reached from the keyboard to be scrolled.
  */
 
 const WIDTHS = [320, 360, 375, 390, 412, 768, 1280];
@@ -21,6 +22,8 @@ const PAGES = [
     ['a search that found nothing', '/?q=zzqx%20jacket'],
     ['the about page', '/about/'],
     ["the page for a visitor's own catalog", '/try/'],
+    ["the search box on another site's page", '/widget/'],
+    ["the search box on another site's page, over a visitor's own catalog", '/try/widget/'],
 ] as const;
 
 /** The pages served as a document of their own, which are what a visit before the script sees. */
@@ -71,11 +74,11 @@ const pastTheEdge = (page: Page, onPurpose: readonly string[]) =>
             !element.matches('input, select, textarea, button, svg, svg *') &&
             overflowing(element) &&
             element.getBoundingClientRect().left + element.scrollWidth > width + 1;
-        /** A box that scrolls sideways is a fault of its own, but for the table's frame. */
+        /** A box that scrolls sideways is a fault of its own, but for the table's frame and code. */
         const scrollsSideways = (element: Element, overflowX: string) =>
             (overflowX === 'auto' || overflowX === 'scroll') &&
             overflowing(element) &&
-            !element.classList.contains('variants-frame');
+            !element.matches('.variants-frame, pre');
         // A text field scrolls its own text, as a visitor types past its end.
         const cutsOff = (element: Element, overflowX: string, opacity: string) =>
             (overflowX === 'hidden' || overflowX === 'clip') &&
