@@ -204,7 +204,7 @@ test('keeps the try page to the screen when a column name is long', async ({ pag
         buffer: Buffer.from(`name,price,"${long}"\nBench,120,Oak\n`),
     });
     await page.getByRole('heading', { name: 'Where each part of a product comes from' }).waitFor();
-    await page.getByLabel('Colors', { exact: true }).selectOption({ label: long });
+    await page.getByLabel('Colors', { exact: true }).selectOption(long);
     // Neither the page nor any select may reach past the screen, whether or not something clips it.
     const widths = await page.evaluate(() => ({
         page: document.documentElement.scrollWidth,

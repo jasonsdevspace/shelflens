@@ -1,6 +1,7 @@
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { count } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
+import { ratingText } from '../format/rating.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
 
@@ -111,8 +112,7 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                     {product.price.memberPrice && <span className="card-member">Member price</span>}
                     {product.rating && (
                         <span className="card-rating">
-                            {product.rating.average.toFixed(1)} out of 5, from{' '}
-                            {count(product.rating.count, 'rating', 'ratings', locale)}
+                            {ratingText(product.rating.average, product.rating.count, locale)}
                         </span>
                     )}
                     {!product.inStock && <span className="card-stock">Out of stock</span>}
