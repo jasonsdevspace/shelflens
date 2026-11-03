@@ -45,7 +45,7 @@ describe('the explanation on a card', () => {
         );
         expect(screen.getByText('Boosted 1.5× by rule summer-promo')).toBeInTheDocument();
         expect(screen.getByText('Did not match the search')).toBeInTheDocument();
-        expect(document.querySelector('.card-rating')).toHaveTextContent(
+        expect(document.querySelector('.card-rating .visually-hidden')).toHaveTextContent(
             '5.0 out of 5, from 544 ratings'
         );
     });
@@ -140,5 +140,47 @@ describe('the price on a card', () => {
             </ul>
         );
         expect(screen.getByText('Member price')).toBeInTheDocument();
+    });
+});
+
+describe('the rating on a card', () => {
+    const plain = (rating: CardFragment['rating']) =>
+        render(
+            <ul>
+                <ProductCard
+                    product={{ ...product, rating }}
+                    href="/?product=SL-00001"
+                    onOpen={() => undefined}
+                />
+            </ul>
+        );
+
+    it('shows stars, the average and the count, and says it once in words', () => {
+        plain({ average: 3.7, count: 1993 });
+        const line = document.querySelector('.card-rating');
+        // Seen: the stars, 3.7 and the count, all hidden from a screen reader in one place.
+        const seen = line?.querySelector('.card-rating-seen');
+        expect(seen).toHaveAttribute('aria-hidden', 'true');
+        expect(seen?.querySelector('.stars')).not.toBeNull();
+        expect(seen?.querySelector('.card-rating-average')).toHaveTextContent('3.7');
+        expect(seen).toHaveTextContent('(1,993)');
+        // Heard: the sentence, once.
+        expect(line?.querySelector('.visually-hidden')).toHaveTextContent(
+            '3.7 out of 5, from 1,993 ratings'
+        );
+        expect(screen.getByRole('link')).toHaveAccessibleName(/3\.7 out of 5, from 1,993 ratings/);
+        expect(screen.getByRole('link')).not.toHaveAccessibleName(/\(1,993\)/);
+    });
+
+    it('says a product with no ratings has none, rather than leaving the line out', () => {
+        plain({ average: 0, count: 0 });
+        expect(document.querySelector('.card-rating')).toHaveTextContent('No ratings yet');
+        expect(document.querySelector('.stars')).toBeNull();
+    });
+
+    it('says the same of a product the API sends with no rating at all', () => {
+        plain(null);
+        expect(document.querySelector('.card-rating')).toHaveTextContent('No ratings yet');
+        expect(document.querySelector('.stars')).toBeNull();
     });
 });

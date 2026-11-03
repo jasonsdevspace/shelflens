@@ -1,9 +1,10 @@
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import { count } from '../format/count.js';
+import { count, formatCount } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
-import { ratingText } from '../format/rating.js';
+import { formatAverage, ratingText } from '../format/rating.js';
 import type { CardFragment, SearchQuery } from '../generated/operations.js';
 import { Swatch } from '../search/Swatch.jsx';
+import { Stars } from './Stars.jsx';
 
 export type Hit = SearchQuery['search']['items'][number];
 
@@ -110,10 +111,24 @@ export const ProductCard = ({ product, href, onOpen, explain }: ProductCardProps
                         {formatPriceRange(product.price.min, product.price.max, locale)}
                     </span>
                     {product.price.memberPrice && <span className="card-member">Member price</span>}
-                    {product.rating && (
+                    {/* Every card has a rating line, so one with none reads as none rather than as missing. */}
+                    {product.rating && product.rating.count > 0 ? (
                         <span className="card-rating">
-                            {ratingText(product.rating.average, product.rating.count, locale)}
+                            {/* What is seen, hidden from a screen reader in one place. */}
+                            <span className="card-rating-seen" aria-hidden="true">
+                                <Stars average={product.rating.average} />
+                                <span className="card-rating-average">
+                                    {formatAverage(product.rating.average, locale)}
+                                </span>
+                                <span>({formatCount(product.rating.count, locale)})</span>
+                            </span>
+                            {/* The rating in words, said once in place of the stars and the figures. */}
+                            <span className="visually-hidden">
+                                {ratingText(product.rating.average, product.rating.count, locale)}
+                            </span>
                         </span>
+                    ) : (
+                        <span className="card-rating">No ratings yet</span>
                     )}
                     {!product.inStock && <span className="card-stock">Out of stock</span>}
                 </span>

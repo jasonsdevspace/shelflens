@@ -11,6 +11,7 @@
     --on-accent: var(--light-on-accent);
     --highlight: var(--light-highlight);
     --control: var(--light-control);
+    --rating: var(--light-rating);
     --warn: var(--light-warn);
     --swatch-edge: var(--light-swatch-edge);
     color-scheme: light;
@@ -36,6 +37,7 @@
     --on-accent: var(--dark-on-accent);
     --highlight: var(--dark-highlight);
     --control: var(--dark-control);
+    --rating: var(--dark-rating);
     --warn: var(--dark-warn);
     --swatch-edge: var(--dark-swatch-edge);
     color-scheme: dark;
@@ -713,10 +715,68 @@ h4 {
     font-weight: var(--weight-medium);
 }
 
-.card-meta,
-.card-rating {
+.card-meta {
     font-size: var(--text-caption);
     color: var(--muted);
+}
+
+/* One line where it fits, wrapping on a narrow card rather than spilling past it. */
+.card-rating {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-small);
+    color: var(--muted);
+}
+
+.card-rating-seen {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.card-rating-average {
+    margin-left: var(--space-1);
+    color: var(--fg);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Five outlined stars, with the solid ones over them cut at the average. */
+.stars {
+    position: relative;
+    display: inline-flex;
+    line-height: var(--leading-tight);
+}
+
+.stars-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: inline-flex;
+    overflow: hidden;
+}
+
+.stars-row {
+    flex: none;
+    width: 5em;
+    height: 1em;
+}
+
+.stars-outline,
+.stars-solid {
+    stroke: var(--rating);
+    stroke-width: 1.25;
+    stroke-linejoin: round;
+}
+
+.stars-outline {
+    fill: none;
+}
+
+.stars-solid {
+    fill: var(--rating);
 }
 
 .card-stock,

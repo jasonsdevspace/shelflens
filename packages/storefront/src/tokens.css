@@ -50,6 +50,9 @@
     /* The edges of the fields and buttons a visitor uses, darker than the lines between things. */
     --light-control: #8a8a8a;
     --dark-control: #6e6e6e;
+    /* The stars of a rating, solid and outlined alike, 3 to 1 against a card and its hover in both themes. */
+    --light-rating: #b45309;
+    --dark-rating: #f2b544;
     --light-warn: #b7472a;
     --dark-warn: #e8795a;
     /* The edge of a product's swatch, faint on white and lighter on dark, so a dark color keeps its shape. */
