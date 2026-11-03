@@ -214,6 +214,8 @@ const EDGE_PX = 12;
 
 /** How little room under the box is too little, so the list opens above it instead. */
 const ROOM_PX = 160;
+/** The narrowest a list of suggestions reads well, with a product's name, price and swatch. */
+const LIST_MIN_PX = 320;
 
 /**
  * Places the list under the box, from the box's rectangle, within the viewport.
@@ -227,7 +229,12 @@ const placeUnder = (box: HTMLElement, field: HTMLElement) => {
     const flipped = below < ROOM_PX && above > below;
     // The viewport's width without a scrollbar, so the list never sits under one.
     const viewport = document.documentElement.clientWidth;
-    const width = Math.min(rect.width, viewport - 2 * EDGE_PX);
+    // As wide as the field, or the screen's width when the field is too narrow for a product's
+    // line, as beside the brand on a phone.
+    const width =
+        rect.width >= LIST_MIN_PX
+            ? Math.min(rect.width, viewport - 2 * EDGE_PX)
+            : viewport - 2 * EDGE_PX;
     const left = Math.min(Math.max(EDGE_PX, rect.left), viewport - EDGE_PX - width);
     box.style.setProperty('left', `${left}px`);
     box.style.setProperty('width', `${width}px`);

@@ -256,11 +256,30 @@ describe('a store that does not start', () => {
             })
         );
         const masthead = () => document.querySelector('.masthead');
+        const strip = () => document.querySelector('.topbar');
         expect(masthead()).toHaveClass('is-waiting');
+        expect(strip()).toHaveClass('is-waiting');
+        // The room is kept, but nothing is there yet, so no landmark is offered for it.
+        expect(screen.queryByRole('region', { name: 'Demo' })).toBeNull();
         fail(new StoreDidNotStart('the store took too long'));
         await screen.findByRole('alert');
-        // The search box will never come, so the room for it goes.
+        // The search box and the switches will never come, so the room for them goes.
         expect(masthead()).not.toHaveClass('is-waiting');
+        expect(strip()).not.toHaveClass('is-waiting');
+    });
+
+    it('puts the demo’s switches beside the strip, in a landmark of their own, and keeps the masthead for the shopper', async () => {
+        await open();
+        const demo = await screen.findByRole('region', { name: 'Demo' });
+        expect(within(demo).getByRole('combobox', { name: 'Shopping as' })).toBeInTheDocument();
+        expect(within(demo).getByRole('button', { name: 'Tour' })).toBeInTheDocument();
+        const masthead = screen.getByRole('banner');
+        expect(
+            within(masthead).getByRole('combobox', { name: 'Search the store' })
+        ).toBeInTheDocument();
+        expect(within(masthead).queryByRole('button', { name: 'Tour' })).toBeNull();
+        expect(within(masthead).queryByRole('combobox', { name: 'Shopping as' })).toBeNull();
+        expect(document.querySelector('.topbar')).not.toHaveClass('is-waiting');
     });
 
     it('keeps no room on a page whose masthead is not the store\u2019s own', () => {

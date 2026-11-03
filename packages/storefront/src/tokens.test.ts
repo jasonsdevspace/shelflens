@@ -165,7 +165,7 @@ const PIXEL_ALLOWED = [
 ];
 
 /** The breakpoints the tokens name, as a media query writes them. */
-const BREAKPOINTS = ['(max-width: 48rem)', '(max-width: 24rem)'];
+const BREAKPOINTS = ['(max-width: 48rem)'];
 
 describe('the units', () => {
     it('keep pixels to what must not scale', () => {

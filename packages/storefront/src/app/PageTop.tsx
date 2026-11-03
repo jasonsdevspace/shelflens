@@ -34,8 +34,9 @@ export const PageTop = ({
     <>
         <div className={waiting ? 'topbar is-waiting' : 'topbar'}>
             <PortfolioStrip />
-            {/* A landmark of its own, named for what it holds, so a screen reader finds the switches. */}
-            <section className="topbar-tools" aria-label="Demo">
+            {/* A landmark of its own once it holds the switches, named for them, so a screen reader
+            finds them, and no landmark while it only keeps their room. */}
+            <section className="topbar-tools" aria-label={tools ? 'Demo' : undefined}>
                 {tools}
             </section>
         </div>

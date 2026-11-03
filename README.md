@@ -36,9 +36,9 @@ same store host over HTTP.
 
 ## Two minutes with the demo
 
-Each step is a link into the live storefront. The "Tour" button at the top right of the store,
-beside "Shopping as", walks all nineteen stops with the test behind each. For the same story
-without the code, the demo carries [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
+Each step is a link into the live storefront. The "Tour" button at the top of the store, beside
+"Shopping as", walks all nineteen stops with the test behind each. For the same story without the
+code, the demo carries [a page on how it works](https://jasonsdevspace.com/shelflens/about/).
 
 1. [Type "trail runner" quickly.](https://jasonsdevspace.com/shelflens/) The answer to "tra" can
    arrive after the answer to "trail", and a client that shows whatever came last shows the wrong

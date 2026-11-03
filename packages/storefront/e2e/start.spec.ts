@@ -183,3 +183,39 @@ test('the store links to the explainer from its strip and its footer', async ({ 
     await page.getByRole('contentinfo').getByRole('link', { name: 'How it works' }).click();
     await expect(page).toHaveURL(/\/about\/$/);
 });
+
+test('the strip and the masthead keep the room what arrives takes, at every width', async ({
+    browser,
+    baseURL,
+}) => {
+    // A phone, the breakpoint either side, a laptop and a wide screen.
+    for (const width of [320, 412, 768, 769, 1024, 1440]) {
+        const heights = async (javaScriptEnabled: boolean) => {
+            const context = await browser.newContext({
+                javaScriptEnabled,
+                viewport: { width, height: 900 },
+            });
+            const page = await context.newPage();
+            await page.goto(`${baseURL ?? ''}?q=jacket`);
+            if (javaScriptEnabled) await page.locator('.cards > .card').first().waitFor();
+            const measured = await page.evaluate(() =>
+                ['.topbar', '.masthead'].map(
+                    (selector) =>
+                        document.querySelector(selector)?.getBoundingClientRect().height ?? 0
+                )
+            );
+            await context.close();
+            return measured;
+        };
+        // Before the script runs, the room is kept. Once the store is ready, what fills it is the same height.
+        const [waitingStrip = 0, waitingMasthead = 0] = await heights(false);
+        const [readyStrip = 0, readyMasthead = 0] = await heights(true);
+        expect(Math.abs(readyStrip - waitingStrip), `the strip at ${String(width)}`).toBeLessThan(
+            1
+        );
+        expect(
+            Math.abs(readyMasthead - waitingMasthead),
+            `the masthead at ${String(width)}`
+        ).toBeLessThan(1);
+    }
+});

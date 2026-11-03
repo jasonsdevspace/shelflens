@@ -67,9 +67,10 @@ export interface AppProps {
 type Readiness = 'waiting' | 'ready' | 'unsupported' | 'unavailable';
 
 /**
- * Whether the masthead keeps the room its search box and links will take:
- * only on the store's own page, whose masthead is the one the room fits,
- * and only while the store is on its way, not once it will never come.
+ * Whether the masthead keeps the room its search box and links will take,
+ * and the strip the room of the demo's switches: only on the store's own
+ * page, whose masthead is the one the room fits, and only while the store
+ * is on its way, not once it will never come.
  */
 const keepsRoom = (tour: boolean, readiness: Readiness): boolean => tour && readiness === 'waiting';
 
@@ -177,7 +178,7 @@ const ViewerSwitch = ({
  */
 const switchesViewer = (info: StoreInfo): boolean => info.memberPricing || info.membersOnlyProducts;
 
-/** The masthead once the store is ready: the search box, the viewer switch and the tour. */
+/** The masthead once the store is ready: the search box and the categories. */
 interface MastheadProps {
     readonly client: GraphQLClient;
     readonly state: SearchState;

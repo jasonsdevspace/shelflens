@@ -200,9 +200,14 @@ h4 {
     min-height: 4.35rem;
 }
 
-/* A field's height and the padding around it, as the switches take once they arrive. */
+/*
+ * A field's height and the padding around it, and the width of the two
+ * switches, as they take once they arrive, so they wrap, or not, as they
+ * will.
+ */
 .topbar.is-waiting .topbar-tools:empty {
     display: flex;
+    min-width: 15.65rem;
     min-height: calc(var(--field-height) + var(--space-2));
 }
 
@@ -307,9 +312,14 @@ h4 {
 
 .masthead-row {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-5);
+    gap: var(--space-2) var(--space-5);
+}
+
+/* The search box gives way before anything wraps, so the row holds from a phone's width up. */
+.masthead .searchbox {
+    flex-basis: 12em;
 }
 
 .category-nav {
@@ -382,7 +392,7 @@ h4 {
 /* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
 .category-list {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0 var(--space-5);
     margin: 0;
     padding: 0;
@@ -1073,7 +1083,7 @@ h4 {
         gap: var(--space-2) var(--space-3);
     }
 
-    .searchbox {
+    .masthead .searchbox {
         flex: 1 1 10em;
         max-width: none;
     }
