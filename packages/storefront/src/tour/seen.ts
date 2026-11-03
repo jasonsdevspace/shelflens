@@ -22,22 +22,25 @@ export const markTourSeen = (): void => {
     }
 };
 
-/** The stop the tour was last on, so a reload takes the visitor back to it. */
+/**
+ * The stop the tour was last on, so a reload takes the visitor back to it.
+ * Kept by its id, so a tour with stops added or moved since still resumes
+ * on the same one.
+ */
 const STOP_KEY = 'shelflens.tour.stop';
 
-/** The stop to open on: the one last shown, or the first when none was kept or it is no stop. */
-export const keptTourStop = (stops: number): number => {
+/** Where among `ids` to open: the stop last shown, or the first when none was kept or it is gone. */
+export const keptTourStop = (ids: readonly string[]): number => {
     try {
-        const kept = Number(localStorage.getItem(STOP_KEY));
-        return Number.isInteger(kept) && kept >= 0 && kept < stops ? kept : 0;
+        return Math.max(0, ids.indexOf(localStorage.getItem(STOP_KEY) ?? ''));
     } catch {
         return 0;
     }
 };
 
-export const keepTourStop = (index: number): void => {
+export const keepTourStop = (id: string): void => {
     try {
-        localStorage.setItem(STOP_KEY, String(index));
+        localStorage.setItem(STOP_KEY, id);
     } catch {
         // Nothing to do: a reload starts the tour at its first stop.
     }

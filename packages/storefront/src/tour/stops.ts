@@ -76,7 +76,7 @@ export const STOPS: readonly Stop[] = [
         title: 'The cache that forgets who is asking',
         body: 'A guest is told this product does not exist. Choose "Member" under "Shopping as" at the top of the page and it appears, marked "Members only". A store that remembered answers by the search alone would hand a member\u2019s answer to the next guest, and a test shows the naive version doing exactly that.',
         to: { ...EMPTY_STATE, product: MEMBERS_ONLY_SKU },
-        focus: 'h1',
+        focus: '.product',
         tests: ['packages/api/src/cache.test.ts'],
     },
     {

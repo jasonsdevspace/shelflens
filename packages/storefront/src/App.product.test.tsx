@@ -1,13 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ProductDocument } from './generated/operations.js';
+import { ProductDocument, RecommendationsDocument } from './generated/operations.js';
 import { cards, catalog, open, settled } from './test/store.jsx';
 
 /* A product over its results: what it says while it loads, where focus goes and returns, and what stands beside it. */
 
 describe('a product over its results', () => {
-    it('says a product is on its way, with the way back beside it, while it loads', async () => {
+    it('says a product is on its way, and busy, with the way back beside it, while it loads', async () => {
         const op = `op=${String(ProductDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
         let release = () => undefined as void;
@@ -27,8 +27,32 @@ describe('a product over its results', () => {
         expect(screen.queryByRole('status', { name: 'Loading the product.' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Back to results' })).toBeVisible();
         await waitFor(() => expect(loading).toHaveFocus());
+        expect(loading).toHaveAttribute('aria-busy', 'true');
         release();
         await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+    });
+
+    it('stays busy until the rail beside the product is in', async () => {
+        const op = `op=${String(RecommendationsDocument.__meta__?.['hash'])}`;
+        const served = globalThis.fetch;
+        let release = () => undefined as void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            if (new Request(input, init).url.includes(op)) await held;
+            return served(input, init);
+        });
+        const user = await open();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        await user.click(first);
+        const product = await screen.findByRole('article');
+        expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+        expect(product).toHaveAttribute('aria-busy', 'true');
+        release();
+        await waitFor(() => expect(product).toHaveAttribute('aria-busy', 'false'));
+        expect(document.getElementById('rail-heading')).not.toBeNull();
     });
 
     it('names the way out for the results beneath a product, a sort included', async () => {

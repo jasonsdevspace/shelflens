@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { NARROW } from './app/useMediaQuery.js';
@@ -131,17 +131,52 @@ describe('the tour', () => {
 });
 
 describe('the tour on a phone', () => {
+    /** A screen as wide as a phone's, which `turn` widens past one, as rotating a tablet can. */
     const asPhone = () => {
+        let narrow = true;
+        const listeners = new Set<() => void>();
         const matchMedia = (query: string) =>
             ({
-                matches: query === NARROW,
+                get matches() {
+                    return query === NARROW && narrow;
+                },
                 media: query,
-                addEventListener: () => undefined,
-                removeEventListener: () => undefined,
+                addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+                removeEventListener: (_: string, listener: () => void) =>
+                    listeners.delete(listener),
             }) as unknown as MediaQueryList;
         Object.defineProperty(window, 'matchMedia', { configurable: true, value: matchMedia });
-        return () => Reflect.deleteProperty(window, 'matchMedia');
+        const restore = () => Reflect.deleteProperty(window, 'matchMedia');
+        const turn = () => {
+            narrow = false;
+            act(() => {
+                for (const listener of listeners) listener();
+            });
+        };
+        return Object.assign(restore, { turn });
     };
+
+    it('keeps the bar when the screen turns wide, and the Tour button opens the sheet from it', async () => {
+        const restore = asPhone();
+        try {
+            localStorage.removeItem('shelflens.tour');
+            const user = await open();
+            const button = screen.getByRole('button', { name: 'Tour' });
+            // The bar only offers the tour, so the sheet the button opens is not open yet.
+            expect(button).toHaveAttribute('aria-expanded', 'false');
+            restore.turn();
+            expect(screen.getByRole('complementary', { name: 'Tour' })).toHaveTextContent(
+                'A tour of what to try'
+            );
+            await user.click(button);
+            expect(screen.getByRole('complementary', { name: 'Tour' })).toHaveTextContent(
+                'Stop 1 of'
+            );
+            expect(button).toHaveAttribute('aria-expanded', 'true');
+        } finally {
+            restore();
+        }
+    });
 
     it('offers the tour in a short bar on a first visit, and opens the sheet on Start', async () => {
         const restore = asPhone();

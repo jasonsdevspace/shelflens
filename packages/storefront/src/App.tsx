@@ -277,16 +277,20 @@ const TourPlace = ({
 const useTour = (offered: boolean) => {
     const [touring, setTouring] = useState(() => offered && !hasSeenTour());
     // The stop last shown, kept in the browser so a reload resumes it.
-    const [tourStop, setStop] = useState(() => keptTourStop(STOPS.length));
+    const [tourStop, setStop] = useState(() => keptTourStop(STOPS.map((stop) => stop.id)));
     const setTourStop = (index: number) => {
-        keepTourStop(index);
+        keepTourStop(STOPS[index]?.id ?? '');
         setStop(index);
     };
     // Whether the panel was asked for, as opposed to opening itself on a first visit.
     const [tourAsked, setTourAsked] = useState(false);
     // A phone's first visit offers the tour in a short bar, and opens the sheet only on Start.
+    // Whether it is a phone is settled as the page opens, so turning it never swaps the two.
     const narrow = useMediaQuery(NARROW);
-    const offering = touring && !tourAsked && narrow;
+    const [onPhone] = useState(narrow);
+    const offering = touring && !tourAsked && onPhone;
+    // The Tour button opens and closes the sheet. While the bar only offers it, the sheet is closed.
+    const sheetOpen = touring && !offering;
     const tourButton = useRef<HTMLButtonElement>(null);
     const openTour = () => {
         setTourAsked(true);
@@ -300,6 +304,7 @@ const useTour = (offered: boolean) => {
     return {
         touring,
         offering,
+        sheetOpen,
         tourStop,
         setTourStop,
         tourAsked,
@@ -411,8 +416,17 @@ export const App = ({
         setSwitchedOn(searchKey(state));
         setSwitchHeard(false);
     };
-    const { touring, offering, tourStop, setTourStop, tourAsked, tourButton, openTour, closeTour } =
-        useTour(tour);
+    const {
+        touring,
+        offering,
+        sheetOpen,
+        tourStop,
+        setTourStop,
+        tourAsked,
+        tourButton,
+        openTour,
+        closeTour,
+    } = useTour(tour);
     const { client, storeChanged, revision } = useStoreClient(apiUrl, group);
     // Counts the searches submitted, so one run again is remembered again though the page is the same.
     const [searched, setSearched] = useState(0);
@@ -450,8 +464,8 @@ export const App = ({
                                 group={group}
                                 onGroup={switchGroup}
                                 tour={tour}
-                                touring={touring}
-                                onTour={touring ? closeTour : openTour}
+                                touring={sheetOpen}
+                                onTour={sheetOpen ? closeTour : openTour}
                                 tourButton={tourButton}
                             />
                         )
