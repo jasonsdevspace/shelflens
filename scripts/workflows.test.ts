@@ -70,10 +70,23 @@ describe('the workflows', () => {
 
     it('name each release on GitHub for the part of the project it is, and the engine for its npm name too', () => {
         const jobs = jobsOf(read('release.yml'));
-        expect(jobs.get('engine-release')).toContain('"ShelfLens engine $VERSION"');
-        expect(jobs.get('storefront')).toContain('"ShelfLens storefront $VERSION"');
-        expect(jobs.get('engine-release')).toMatch(
-            /NOTES_LEAD: .*`npm install @jasonsdevspace\/shelflens@\$\{\{ needs\.agree\.outputs\.version \}\}`/
+        /** The step of a job that runs the release script, from its name to the next step. */
+        const releaseStep = (job: string) =>
+            (jobs.get(job) ?? '')
+                .split(/\n(?= {12}- name: )/)
+                .find((step) => step.includes('scripts/github-release.sh')) ?? '';
+        const engine = releaseStep('engine-release');
+        expect(engine).toMatch(
+            /scripts\/github-release\.sh [^\n]*\\\n\s+"ShelfLens engine \$VERSION"/
+        );
+        // The lead is set in the same step, before the script runs, from the package's own name.
+        expect(engine).toContain('package="$(jq -r .name packages/engine/package.json)"');
+        expect(engine).toMatch(/export NOTES_LEAD=.*npm install \$package@\$VERSION/);
+        expect(engine.indexOf('export NOTES_LEAD=')).toBeLessThan(
+            engine.indexOf('scripts/github-release.sh')
+        );
+        expect(releaseStep('storefront')).toMatch(
+            /scripts\/github-release\.sh [^\n]*\\\n\s+"ShelfLens storefront \$VERSION"/
         );
     });
 });

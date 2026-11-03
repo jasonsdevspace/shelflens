@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -25,14 +25,15 @@ const CHANGELOG = `# Changelog
 `;
 
 /** Runs the script in a folder of its own, and reads back what the stand-in gh was asked for. */
-const release = (env: Record<string, string> = {}) => {
+const release = (lead?: string) => {
     const at = mkdtempSync(join(tmpdir(), 'github-release-'));
-    writeFileSync(join(at, 'CHANGELOG.md'), CHANGELOG);
-    // "release view" finds nothing, and "release create" keeps its arguments and its notes.
-    const gh = join(at, 'gh');
-    writeFileSync(
-        gh,
-        `#!/usr/bin/env bash
+    try {
+        writeFileSync(join(at, 'CHANGELOG.md'), CHANGELOG);
+        // "release view" finds nothing, and "release create" keeps its arguments and its notes.
+        const gh = join(at, 'gh');
+        writeFileSync(
+            gh,
+            `#!/usr/bin/env bash
 if [ "$2" = "view" ]; then exit 1; fi
 printf '%s\\n' "$@" > "${at}/args"
 while [ $# -gt 0 ]; do
@@ -40,20 +41,29 @@ while [ $# -gt 0 ]; do
     shift
 done
 `
-    );
-    chmodSync(gh, 0o755);
-    execFileSync(
-        'bash',
-        [SCRIPT, 'engine-v0.6.0', '0.6.0', 'CHANGELOG.md', 'ShelfLens engine 0.6.0'],
-        {
-            cwd: at,
-            env: { ...process.env, PATH: `${at}:${process.env['PATH'] ?? ''}`, ...env },
-        }
-    );
-    return {
-        args: readFileSync(join(at, 'args'), 'utf8').split('\n'),
-        notes: readFileSync(join(at, 'notes'), 'utf8'),
-    };
+        );
+        chmodSync(gh, 0o755);
+        // The lead is only the one this call gives, never one the shell running the tests has set.
+        const { NOTES_LEAD: _outside, ...env } = process.env;
+        execFileSync(
+            'bash',
+            [SCRIPT, 'engine-v0.6.0', '0.6.0', 'CHANGELOG.md', 'ShelfLens engine 0.6.0'],
+            {
+                cwd: at,
+                env: {
+                    ...env,
+                    PATH: `${at}:${env['PATH'] ?? ''}`,
+                    ...(lead === undefined ? {} : { NOTES_LEAD: lead }),
+                },
+            }
+        );
+        return {
+            args: readFileSync(join(at, 'args'), 'utf8').split('\n'),
+            notes: readFileSync(join(at, 'notes'), 'utf8'),
+        };
+    } finally {
+        rmSync(at, { recursive: true, force: true });
+    }
 };
 
 describe('the release on GitHub', () => {
@@ -71,7 +81,7 @@ describe('the release on GitHub', () => {
     });
 
     it('puts a lead paragraph above the entry when it is given one', () => {
-        const { notes } = release({ NOTES_LEAD: 'Install with `npm install x@0.6.0`.' });
+        const { notes } = release('Install with `npm install x@0.6.0`.');
         expect(notes).toBe(
             'Install with `npm install x@0.6.0`.\n\n- **Faster.** It is faster.\n\n'
         );
