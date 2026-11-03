@@ -125,3 +125,33 @@ export const rulesPanel = async (page: Page, isMobile: boolean) => {
         ? page.getByRole('dialog', { name: 'Rules' })
         : page.getByRole('complementary', { name: 'Rules' });
 };
+
+/** The browser's own default text size, at 16px, as a visitor sets it in their settings. */
+const DEFAULT_TEXT = { standard: 16, fixed: 13 };
+
+/**
+ * Sets the browser's default text size to `scale` times the usual, as a
+ * visitor's own larger text sets it. Every size here is drawn from it, and a
+ * media query in rem reads it too, so the layout that larger text brings is
+ * the one measured. Chromium only, through its protocol.
+ */
+export const setTextSize = async (page: Page, scale: number): Promise<void> => {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Page.setFontSizes', {
+        fontSizes: {
+            // The protocol takes whole pixels.
+            standard: Math.round(DEFAULT_TEXT.standard * scale),
+            fixed: Math.round(DEFAULT_TEXT.fixed * scale),
+        },
+    });
+    await session.detach();
+};
+
+/** Waits two frames, for what the page does on a resize or a new text size to be drawn. */
+export const settle = (page: Page): Promise<void> =>
+    page.evaluate(
+        () =>
+            new Promise<void>((done) => {
+                requestAnimationFrame(() => requestAnimationFrame(() => done()));
+            })
+    );

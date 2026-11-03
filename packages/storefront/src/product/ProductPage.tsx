@@ -195,6 +195,42 @@ const useOwnScroll = () => {
 type Product = NonNullable<ProductQuery['product']>;
 type Recommended = NonNullable<RecommendationsQuery['recommendations']>;
 
+/**
+ * Where the screen is too narrow for the table of sizes and colors, it
+ * scrolls inside this frame rather than the page. Only while it scrolls is
+ * the frame a region of its own, named by the table's heading and reachable
+ * from the keyboard so it can be scrolled without a pointer. Where the table
+ * fits, the frame is nothing to a keyboard or a screen reader.
+ */
+const VariantsFrame = ({
+    labelledBy,
+    children,
+}: {
+    readonly labelledBy: string;
+    readonly children: ReactNode;
+}) => {
+    const frame = useRef<HTMLDivElement>(null);
+    const [scrolls, setScrolls] = useState(false);
+    useEffect(() => {
+        const at = frame.current;
+        if (!at || typeof ResizeObserver !== 'function') return;
+        // Told once as it starts watching, then each time the frame or the table changes size.
+        const watch = new ResizeObserver(() => setScrolls(at.scrollWidth > at.clientWidth));
+        watch.observe(at);
+        if (at.firstElementChild) watch.observe(at.firstElementChild);
+        return () => watch.disconnect();
+    }, []);
+    return (
+        <div
+            ref={frame}
+            className="variants-frame"
+            {...(scrolls && { role: 'region', 'aria-labelledby': labelledBy, tabIndex: 0 })}
+        >
+            {children}
+        </div>
+    );
+};
+
 /** The product itself: its heading and lines, its sizes and colors, and the rail beneath. */
 const Details = ({
     product,
@@ -218,7 +254,7 @@ const Details = ({
             {back}
             <div className="product-head">
                 <Swatch color={product.colors[0]} brand={product.brand.name} size={96} />
-                <div>
+                <div className="product-summary">
                     <p className="product-crumbs">
                         {product.categoryPath.map((category) => category.name).join(' / ')}
                     </p>
@@ -240,26 +276,28 @@ const Details = ({
             <h2 id="product-variants" className="product-subheading">
                 Sizes and colors
             </h2>
-            <table className="variants" aria-labelledby="product-variants">
-                <thead>
-                    <tr>
-                        <th scope="col">Color</th>
-                        <th scope="col">Sizes</th>
-                        <th scope="col">Price</th>
-                        <th scope="col">Stock</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {variantRows(product.variants).map((row) => (
-                        <tr key={row.key}>
-                            <td>{row.color}</td>
-                            <td>{row.sizes}</td>
-                            <td>{formatMoney(row.price, locale)}</td>
-                            <td>{row.stock}</td>
+            <VariantsFrame labelledBy="product-variants">
+                <table className="variants" aria-labelledby="product-variants">
+                    <thead>
+                        <tr>
+                            <th scope="col">Color</th>
+                            <th scope="col">Sizes</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Stock</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {variantRows(product.variants).map((row) => (
+                            <tr key={row.key}>
+                                <td>{row.color}</td>
+                                <td>{row.sizes}</td>
+                                <td>{formatMoney(row.price, locale)}</td>
+                                <td>{row.stock}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </VariantsFrame>
             {rail && <Rail rail={rail} state={state} navigate={navigate} />}
         </article>
     );

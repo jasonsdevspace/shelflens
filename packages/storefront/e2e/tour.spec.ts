@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { STOPS } from '../src/tour/stops.js';
-import { audit, expect, test } from './support.js';
+import { audit, expect, setTextSize, test } from './support.js';
 
 // The tour's own tests are the first visit the others are not.
 test.use({ tourSeen: false });
@@ -198,8 +198,8 @@ test('fits the bar and every stop across a phone-wide sheet with text at twice i
     await page.goto('/');
     const tour = page.getByRole('complementary', { name: 'Tour' });
     await expect(tour).toContainText('A tour of what to try');
-    // As a visitor's own larger text would set it, through the root every size is drawn from.
-    await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%'));
+    // As a visitor's own larger text sets it.
+    await setTextSize(page, 2);
     const barSideways = await page.evaluate(() => {
         const bar = document.querySelector('.tour-offer');
         const answers = document.querySelector('.tour-offer-actions')?.getBoundingClientRect();
