@@ -82,10 +82,16 @@ input[type='radio'] {
     accent-color: var(--accent);
 }
 
+/*
+ * A word too long for its line breaks rather than running out past it, as a
+ * long product name can at larger text on a narrow screen. Only such a word
+ * breaks, and only where it cannot fit whole.
+ */
 body {
     margin: 0;
     background: var(--bg);
     color: var(--fg);
+    overflow-wrap: break-word;
 }
 
 /* Every heading takes one weight, whatever its size. */
@@ -1196,6 +1202,12 @@ h4 {
     gap: var(--space-5);
     align-items: flex-start;
     margin: var(--space-4) 0;
+}
+
+/* The name and lines beside the swatch, never wider than the head, so a long name breaks. */
+.product-summary {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .product-crumbs,

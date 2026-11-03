@@ -254,7 +254,7 @@ const Details = ({
             {back}
             <div className="product-head">
                 <Swatch color={product.colors[0]} brand={product.brand.name} size={96} />
-                <div>
+                <div className="product-summary">
                     <p className="product-crumbs">
                         {product.categoryPath.map((category) => category.name).join(' / ')}
                     </p>

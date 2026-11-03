@@ -61,14 +61,26 @@ const pastTheEdge = (page: Page, onPurpose: readonly string[]) =>
             return box.width > 0 && box.right > width + 1 && !held(element);
         };
         const overflowing = (element: Element) => element.scrollWidth > element.clientWidth + 1;
+        /**
+         * A box whose own text runs out past it, as a word too long for its line does. The box
+         * ends inside the screen, but what it holds does not. A control draws its own content.
+         */
+        const spills = (element: Element, overflowX: string) =>
+            overflowX === 'visible' &&
+            element.clientWidth > 0 &&
+            !element.matches('input, select, textarea, button, svg, svg *') &&
+            overflowing(element) &&
+            element.getBoundingClientRect().left + element.scrollWidth > width + 1;
         /** A box that scrolls sideways is a fault of its own, but for the table's frame. */
         const scrollsSideways = (element: Element, overflowX: string) =>
             (overflowX === 'auto' || overflowX === 'scroll') &&
             overflowing(element) &&
             !element.classList.contains('variants-frame');
+        // A text field scrolls its own text, as a visitor types past its end.
         const cutsOff = (element: Element, overflowX: string, opacity: string) =>
             (overflowX === 'hidden' || overflowX === 'clip') &&
             opacity !== '0' &&
+            !element.matches('input, textarea') &&
             element.clientWidth > 1 &&
             overflowing(element) &&
             !allowed.some((name) => element.classList.contains(name));
@@ -87,6 +99,7 @@ const pastTheEdge = (page: Page, onPurpose: readonly string[]) =>
                 found.push(`${named(element)} scrolls sideways`);
             if (cutsOff(element, overflowX, opacity))
                 found.push(`${named(element)} cuts off its content`);
+            if (spills(element, overflowX)) found.push(`${named(element)} spills past the screen`);
         }
         return found;
     }, onPurpose);
