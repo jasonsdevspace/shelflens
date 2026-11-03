@@ -8,8 +8,7 @@ import {
 } from '@shelflens/api';
 import { describe, expect, it } from 'vitest';
 
-import { parseCsv, type Table } from './csv.js';
-import { CATALOG_ROW_CAP } from './limits.js';
+import { parseCsv } from './csv.js';
 import { guessMapping, type Mapping } from './mapping.js';
 import { SAMPLE_PRODUCTS, sampleCsv } from './sample.js';
 import { DEFAULT_BRAND, DEFAULT_CATEGORY, type LoadResult, toCatalog } from './to-catalog.js';
@@ -175,23 +174,6 @@ describe('rows to a catalog', () => {
             ok: false,
             error: 'The ID "A" is on row 2 and row 4, and each product needs its own.',
         });
-    });
-
-    it('refuses a file past the row cap, saying how many rows it has', () => {
-        const rows = Array.from({ length: CATALOG_ROW_CAP + 1 }, (_, index) => [
-            `Item ${index}`,
-            '1',
-        ]);
-        const table: Table = {
-            headers: ['name', 'price'],
-            rows,
-            labels: rows.map((_, index) => `row ${index + 2}`),
-        };
-        const result = toCatalog(table, MINIMAL, NOW);
-        expect(result.ok).toBe(false);
-        expect(!result.ok && result.error).toBe(
-            'This file has 10,001 rows, and the page reads up to 10,000 products.'
-        );
     });
 
     it('needs a name and a price column, and at least one readable row', () => {

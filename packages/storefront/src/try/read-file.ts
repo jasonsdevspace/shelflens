@@ -1,13 +1,14 @@
 import { parseCsv, type Table } from './csv.js';
 import { parseJsonTable } from './json.js';
-import { CATALOG_FILE_BYTES_CAP } from './limits.js';
+import { CATALOG_FILE_BYTES_CAP, CATALOG_ROW_CAP, tooManyRows } from './limits.js';
 
 /**
  * A visitor's file as a table, read in the page and sent nowhere.
  *
  * The name says which reader to use, and when it does not, the first
  * character does: a JSON file starts with a bracket or a brace. A file past
- * the byte cap is refused before a byte of it is read.
+ * the byte cap is refused before a byte of it is read, and one past the row
+ * cap as soon as its rows are counted.
  */
 
 export interface FileLike {
@@ -39,5 +40,7 @@ export const readFile = async (file: FileLike): Promise<Table> => {
     const text = await file.text();
     const table = isJson(file.name, text) ? parseJsonTable(text) : parseCsv(text);
     if (table.rows.length === 0) throw new Error('This file has no rows of products.');
+    // Before any mapping is shown, so a file that can never load is not corrected first.
+    if (table.rows.length > CATALOG_ROW_CAP) throw new Error(tooManyRows(table.rows.length));
     return table;
 };

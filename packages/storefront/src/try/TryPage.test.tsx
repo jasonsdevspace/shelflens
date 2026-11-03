@@ -59,6 +59,14 @@ const failWhen =
 
 const chooser = () => screen.findByRole('heading', { level: 1, name: 'Search your own products' });
 
+/** A line shown on the page and said in a status region that was empty when it mounted. */
+const heard = async (line: string) => {
+    expect(screen.getByText(line, { selector: 'p.notice' })).toBeInTheDocument();
+    await waitFor(() =>
+        expect(screen.getAllByRole('status').map((status) => status.textContent)).toContain(line)
+    );
+};
+
 const loadSample = async () => {
     await chooser();
     await userEvent.click(
@@ -153,11 +161,207 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.getByText(/your own catalog of 200 products/)).toBeInTheDocument();
     });
 
-    it('removes the products and is back where a file is chosen', async () => {
+    it('removes the products and is back where a file is chosen, saying they were removed', async () => {
         page();
         await loadSample();
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         expect(await chooser()).toBeInTheDocument();
+        await heard('Your products were removed from this browser.');
+        // Nothing is loaded, so there is nothing to go back to.
+        expect(screen.queryByRole('button', { name: /^Back to your/ })).toBeNull();
+    });
+
+    it('says the rules went too when the visitor agreed to remove them with the products', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Yes, remove them' }));
+        await chooser();
+        await heard(
+            'Your products and the rules you saved for them were removed from this browser.'
+        );
+    });
+
+    it('goes back to the loaded products, and their search, from the chooser', async () => {
+        page();
+        await loadSample();
+        act(() => window.history.replaceState(null, '', `${BASE}?q=bag`));
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+        expect(window.location.search).toBe('?q=bag');
+    });
+
+    it('goes back to the loaded products from a file looked at instead', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        await screen.findByText(/your own catalog of 200 products/);
+    });
+
+    it('lets go of a file still being read when the way back finds the products gone', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        let finish = (_text: string) => undefined as void;
+        const slow = {
+            name: 'slow.csv',
+            size: 10,
+            text: () =>
+                new Promise<string>((resolve) => {
+                    finish = resolve;
+                }),
+        };
+        const input = screen.getByLabelText('Choose a file');
+        Object.defineProperty(input, 'files', { value: [slow], configurable: true });
+        act(() => {
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await screen.findByText('Reading slow.csv.');
+        // Removed in another tab, as far as this one can tell.
+        await fetch(`${BASE}catalog`, { method: 'DELETE' });
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        const gone =
+            'Your products are no longer in this browser, so there is nothing to go back to.';
+        expect(await screen.findByRole('alert')).toHaveTextContent(gone);
+        await act(async () => {
+            finish('name,price\nBench,120\n');
+            await Promise.resolve();
+        });
+        // The read the visitor turned away from does not replace why the way back did nothing.
+        expect(screen.queryByRole('heading', { name: 'What is in slow.csv' })).toBeNull();
+        expect(screen.getByRole('alert')).toHaveTextContent(gone);
+    });
+
+    it('keeps a file chosen while the way back is still reading the products', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        let release = () => undefined as void;
+        failure = failWhen(
+            'GET',
+            `${BASE}catalog`,
+            () =>
+                new Promise<Response>((_resolve, reject) => {
+                    release = () => reject(new Error('late'));
+                })
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        await act(async () => {
+            release();
+            await Promise.resolve();
+        });
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('What is in bench.csv');
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('offers no way back once the products are replaced, even when reading them again fails', async () => {
+        page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'bench.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in bench.csv' });
+        failure = failWhen('GET', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Search 1 product' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The store could not be reached'
+        );
+        expect(screen.queryByRole('button', { name: 'Back to your products' })).toBeNull();
+    });
+
+    it('reads a file dropped on the review, rather than losing the review to the browser', async () => {
+        page();
+        await chooser();
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File(['name,price\nBench,120\n'], 'first.csv')
+        );
+        await screen.findByRole('heading', { level: 1, name: 'What is in first.csv' });
+        const drop = new Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(drop, 'dataTransfer', {
+            value: { files: [new File(['name,price\nStool,40\n'], 'second.csv')] },
+        });
+        act(() => {
+            document.body.dispatchEvent(drop);
+        });
+        expect(drop.defaultPrevented).toBe(true);
+        await screen.findByRole('heading', { level: 1, name: 'What is in second.csv' });
+    });
+
+    it('reads a file dropped anywhere on the chooser, not only on the drop area', async () => {
+        page();
+        await chooser();
+        const file = new File(['name,price\nBench,120\n'], 'dropped.csv');
+        const drop = new Event('drop', { bubbles: true, cancelable: true });
+        Object.defineProperty(drop, 'dataTransfer', { value: { files: [file] } });
+        act(() => {
+            document.body.dispatchEvent(drop);
+        });
+        // The browser is kept from opening the file in the page's place.
+        expect(drop.defaultPrevented).toBe(true);
+        await screen.findByRole('heading', { level: 1, name: 'What is in dropped.csv' });
+    });
+
+    it('refuses a file past the row cap as it is read, before any mapping is shown', async () => {
+        page();
+        await chooser();
+        const rows = Array.from({ length: 10_001 }, (_, index) => `Item ${index},1`).join('\n');
+        await userEvent.upload(
+            screen.getByLabelText('Choose a file'),
+            new File([`name,price\n${rows}\n`], 'too-many.csv')
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'This file has 10,001 rows, and the page takes up to 10,000 products. Delete rows until it has 10,000 or fewer, then choose it again.'
+        );
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Search your own products'
+        );
+        expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('shows the preview and the way on before the mapping, and marks the parts a store needs', async () => {
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        const search = await screen.findByRole('button', { name: 'Search 200 products' });
+        const preview = screen.getByRole('list', { name: 'Preview' });
+        const mapping = screen.getByRole('heading', {
+            name: 'Where each part of a product comes from',
+        });
+        const before = (a: Element, b: Element) =>
+            Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(before(preview, search)).toBe(true);
+        expect(before(search, mapping)).toBe(true);
+        for (const name of ['Name', 'Price']) {
+            const field = screen.getByRole('combobox', { name });
+            expect(field).toBeRequired();
+            expect(field).toHaveAccessibleDescription('Needed');
+        }
+        expect(screen.getByRole('combobox', { name: 'Brand' })).not.toBeRequired();
     });
 
     it('leaves the last search behind when another file is chosen', async () => {

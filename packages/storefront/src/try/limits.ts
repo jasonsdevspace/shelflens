@@ -10,5 +10,16 @@
  * printed or has longer text than the generator writes still fits, and a
  * file far past the row cap is refused without reading it.
  */
-export { CATALOG_ROW_CAP } from '@shelflens/api';
+import { CATALOG_ROW_CAP } from '@shelflens/api';
+
+import { formatCount } from '../format/count.js';
+import { DEFAULT_LOCALE } from '../format/money.js';
+
+export { CATALOG_ROW_CAP };
 export const CATALOG_FILE_BYTES_CAP = 40 * 1024 * 1024;
+
+/** What a file past the row cap is told, with what to do about it. */
+export const tooManyRows = (rows: number): string => {
+    const cap = formatCount(CATALOG_ROW_CAP, DEFAULT_LOCALE);
+    return `This file has ${formatCount(rows, DEFAULT_LOCALE)} rows, and the page takes up to ${cap} products. Delete rows until it has ${cap} or fewer, then choose it again.`;
+};
