@@ -58,11 +58,11 @@ const RECENT_BESIDE_SUGGESTIONS = 3;
 /** The options in order: recent phrases, suggested queries not already among them, products. */
 const optionsOf = (
     recent: readonly string[],
-    asked: boolean,
+    askable: boolean,
     suggestions: Suggestions | undefined
 ): readonly Option[] => {
     // Capped from the moment the store is asked, so the list holds still through the wait.
-    const shown = asked ? recent.slice(0, RECENT_BESIDE_SUGGESTIONS) : recent;
+    const shown = askable ? recent.slice(0, RECENT_BESIDE_SUGGESTIONS) : recent;
     const seen = new Set(shown.map(fold));
     return [
         ...shown.map((phrase): Option => ({ kind: 'recent', phrase })),
@@ -93,11 +93,11 @@ const usePopover = (
     const current = answered?.phrase === phrase.trim() ? answered.suggestions : undefined;
     const suggestions =
         current && current.queries.length + current.products.length > 0 ? current : undefined;
-    const asked = isAskable(phrase);
+    const askable = isAskable(phrase);
     const matching = useMemo(() => matchingRecent(recent, phrase), [recent, phrase]);
     const options = useMemo(
-        () => optionsOf(matching, asked, suggestions),
-        [matching, asked, suggestions]
+        () => optionsOf(matching, askable, suggestions),
+        [matching, askable, suggestions]
     );
     const recentCount = options.filter((option) => option.kind === 'recent').length;
     return { options, recentCount, storeHas: suggestions !== undefined };

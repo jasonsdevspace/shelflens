@@ -1,4 +1,5 @@
 import { type SortKey, SORTS } from '../app/url.js';
+import { listOf } from '../format/list.js';
 import type { ResultsFragment } from '../generated/operations.js';
 
 /**
@@ -11,12 +12,6 @@ export const onlyUnderRelevance = (action: 'boost' | 'bury'): string =>
 
 /** A rule a sort set aside, and how many of its pins, boosts and buries gave way, as the API sends it. */
 export type SetAsideRule = ResultsFragment['merchandising']['setAside'][number];
-
-/** Words as a list is read aloud: "a", "a and b", "a, b and c". */
-const listOf = (words: readonly string[]): string =>
-    words.length <= 1
-        ? words.join('')
-        : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1] ?? ''}`;
 
 /** One kind of effect, by how many of it gave way, or nothing when none did. */
 const kind = (count: number, one: string, many: string): string[] =>

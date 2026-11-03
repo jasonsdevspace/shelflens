@@ -1,3 +1,4 @@
+export { categoryNames } from './categories.js';
 export { generateCatalog, slugify } from './generate.js';
 export {
     type Brand,

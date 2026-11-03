@@ -373,9 +373,10 @@ const useStore = (client: GraphQLClient, ready: Promise<void> | 'started') => {
             (error: unknown) => setStarted(startFailure(error))
         );
     }, [ready]);
-    const asked = started === 'ready' ? {} : undefined;
-    const categories = useQuery(client, CategoriesDocument, asked);
-    const store = useQuery(client, StoreDocument, asked);
+    // Neither query takes variables, so an empty set asks and nothing waits.
+    const whenStarted = started === 'ready' ? {} : undefined;
+    const categories = useQuery(client, CategoriesDocument, whenStarted);
+    const store = useQuery(client, StoreDocument, whenStarted);
     const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
     // The categories and the store's own facts, which decide the viewer switch, so the
     // masthead arrives whole rather than with the switch a beat behind it.

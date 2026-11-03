@@ -71,7 +71,7 @@ export const useSuggestions = (client: GraphQLClient, phrase: string): Suggestio
         client,
         SuggestDocument,
         asked === undefined ? undefined : { phrase: asked, limit: SUGGESTION_LIMIT },
-        { asked: pauses }
+        { again: pauses }
     );
     const answered =
         askable && data && answers

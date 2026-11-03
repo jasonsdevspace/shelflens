@@ -31,7 +31,10 @@ const isRulesBody = (body: unknown): body is RulesBody => {
     return Array.isArray(rules) && rules.every(isRule) && typeof edited === 'boolean';
 };
 
-/** The rules path, asked once. Nothing comes back when the request itself could not be made. */
+/**
+ * The rules path, asked once. Nothing comes back when the request itself
+ * could not be made, or was abandoned.
+ */
 const ask = async (url: string, init?: RequestInit): Promise<Response | undefined> => {
     try {
         return await fetch(url, init);
@@ -46,8 +49,11 @@ const sent = async (response: Response | undefined): Promise<Sent> => {
 };
 
 /** The set the host holds, or nothing when it could not be read. */
-export const readRules = async (rulesUrl: string): Promise<RulesBody | undefined> => {
-    const response = await ask(rulesUrl);
+export const readRules = async (
+    rulesUrl: string,
+    signal?: AbortSignal
+): Promise<RulesBody | undefined> => {
+    const response = await ask(rulesUrl, { signal });
     if (!response?.ok) return undefined;
     try {
         const body: unknown = await response.json();

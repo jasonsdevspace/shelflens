@@ -11,7 +11,6 @@ import {
     hasFilters,
     searchKey,
     type SearchState,
-    serializeSearchState,
     SORT_KEYS,
     type SortKey,
     sortKeyOf,
@@ -34,13 +33,13 @@ import {
     type TypedDocumentString,
 } from '../generated/operations.js';
 import { fold, recentSearches, rememberSearch } from '../search/recent.js';
+import { CardList } from './CardList.jsx';
 import { Drawer } from './Drawer.jsx';
 import { FacetDrawer } from './FacetDrawer.jsx';
 import { Facets } from './Facets.jsx';
 import { FilterChips } from './FilterChips.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
-import { ProductCard } from './ProductCard.jsx';
 import { toRuleInput } from './rule-input.js';
 import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
 import { setAsideBySort, type SetAsideRule } from './setAside.js';
@@ -240,7 +239,7 @@ const Crumbs = ({
 }: Pick<ResultsPageProps, 'state' | 'navigate' | 'categories'>) => {
     const crumbs = ancestry(categories, state.category);
     if (crumbs.length === 0) return null;
-    const { category: _current, ...allProducts } = { ...state, page: 1 };
+    const { category: _category, ...allProducts } = { ...state, page: 1 };
     return (
         <nav className="crumbs" aria-label="Category">
             <ol className="crumb-list">
@@ -326,30 +325,23 @@ const Cards = ({
 }: Pick<ResultsPageProps, 'state' | 'navigate'> & { readonly result: Result }) => {
     const record = useRecord();
     const rankOf = (index: number) => (result.page - 1) * result.pageSize + index + 1;
+    const explainOf = (index: number) => {
+        const hit = result.items[index];
+        return state.explain && hit
+            ? { rank: rankOf(index), hit, phrase: state.phrase !== undefined }
+            : undefined;
+    };
     return (
-        <ul className="cards" aria-label="Products">
-            {result.items.map((hit, index) => (
-                <ProductCard
-                    key={hit.product.sku}
-                    product={hit.product}
-                    href={serializeSearchState({ ...state, product: hit.product.sku })}
-                    onOpen={() => {
-                        record({
-                            kind: 'click',
-                            phrase: state.phrase,
-                            sku: hit.product.sku,
-                            position: rankOf(index),
-                        });
-                        navigate({ ...state, product: hit.product.sku });
-                    }}
-                    explain={
-                        state.explain
-                            ? { rank: rankOf(index), hit, phrase: state.phrase !== undefined }
-                            : undefined
-                    }
-                />
-            ))}
-        </ul>
+        <CardList
+            label="Products"
+            products={result.items.map((hit) => hit.product)}
+            state={state}
+            navigate={navigate}
+            onOpened={(sku, index) => {
+                record({ kind: 'click', phrase: state.phrase, sku, position: rankOf(index) });
+            }}
+            explainOf={explainOf}
+        />
     );
 };
 

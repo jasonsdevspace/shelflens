@@ -1,7 +1,7 @@
-import { useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { type CategoryTree, childrenOf } from '../app/categories.js';
-import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
+import { useStoreInfo } from '../app/StoreContext.jsx';
 import {
     hasFilters,
     type PriceBand,
@@ -11,7 +11,8 @@ import {
     withoutRating,
 } from '../app/url.js';
 import { count, formatCount } from '../format/count.js';
-import { formatMoney } from '../format/money.js';
+import { priceBandText } from '../format/money.js';
+import { ratingBandText } from '../format/rating.js';
 import type { SearchQuery } from '../generated/operations.js';
 import { Stars } from './Stars.jsx';
 
@@ -57,15 +58,6 @@ const bandOf = (bucket: { from: number | null; to: number | null }): PriceBand =
     ...(bucket.to !== null && { to: bucket.to }),
 });
 
-export const priceLabel = (band: PriceBand, { currency, locale }: StoreInfo): string => {
-    const money = (amount: number) => formatMoney({ amount, currency }, locale);
-    if (band.from === undefined && band.to !== undefined) return `Under ${money(band.to)}`;
-    if (band.from !== undefined && band.to === undefined) return `${money(band.from)} and up`;
-    if (band.from !== undefined && band.to !== undefined)
-        return `${money(band.from)} to ${money(band.to)}`;
-    return 'Any price';
-};
-
 /** How many results a choice gives: a number to see, and what it counts to hear. */
 const FacetCount = ({ n }: { readonly n: number }) => {
     const { locale } = useStoreInfo();
@@ -87,7 +79,7 @@ const Group = ({
     readonly id?: string | undefined;
     /** The facet's own name, so the tour can point at it. */
     readonly name: string;
-    readonly children: React.ReactNode;
+    readonly children: ReactNode;
 }) => (
     <fieldset className="facet" id={id} data-facet={name}>
         <legend className="facet-title">{title}</legend>
@@ -114,7 +106,7 @@ const CategoryFacet = ({
     if (next.length === 0 && !current) return null;
     const up = () => {
         // Above every category, a category's own order means nothing, so it goes too.
-        const { category: _left, sort, ...rest } = state;
+        const { category: _category, sort, ...rest } = state;
         onChange(
             parent
                 ? { ...state, category: parent.id, page: 1 }
@@ -243,14 +235,19 @@ const PriceFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: 
             {bands.map((bucket) => {
                 const band = bandOf(bucket);
                 return (
-                    <label key={priceLabel(band, store)} className="facet-option">
+                    <label
+                        key={priceBandText(band, store.currency, store.locale)}
+                        className="facet-option"
+                    >
                         <input
                             type="radio"
                             name="price"
                             checked={sameBand(state.price, band)}
                             onChange={() => choose(band)}
                         />
-                        <span className="facet-label">{priceLabel(band, store)}</span>
+                        <span className="facet-label">
+                            {priceBandText(band, store.currency, store.locale)}
+                        </span>
                         <FacetCount n={bucket.count} />
                     </label>
                 );
@@ -272,10 +269,6 @@ export const distinctBands = <T extends { readonly from: number; readonly count:
         (band, index) =>
             index === 0 || band.count !== bands[index - 1]?.count || chosen === band.from
     );
-
-/** A rating band in words, as in "4 stars and up". */
-export const ratingLabel = (from: number, locale: string): string =>
-    `${count(from, 'star', 'stars', locale)} and up`;
 
 const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet: Facet }) => {
     const { locale } = useStoreInfo();
@@ -319,7 +312,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                     {/* The stars a card shows at that rating, seen, and the words, heard. */}
                     <span className="facet-label facet-rating">
                         <Stars average={bucket.from} />
-                        <span>{ratingLabel(bucket.from, locale)}</span>
+                        <span>{ratingBandText(bucket.from, locale)}</span>
                     </span>
                     {bucket.count !== undefined && <FacetCount n={bucket.count} />}
                 </label>

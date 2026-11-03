@@ -178,13 +178,13 @@ export const withoutValue = (
 
 /** The price band dropped, back on the first page. */
 export const withoutPrice = (state: SearchState): SearchState => {
-    const { price: _dropped, ...rest } = state;
+    const { price: _price, ...rest } = state;
     return { ...rest, page: 1 };
 };
 
 /** The rating dropped, back on the first page. */
 export const withoutRating = (state: SearchState): SearchState => {
-    const { rating: _dropped, ...rest } = state;
+    const { rating: _rating, ...rest } = state;
     return { ...rest, page: 1 };
 };
 

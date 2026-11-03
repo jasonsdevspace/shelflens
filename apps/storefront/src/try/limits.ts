@@ -1,7 +1,7 @@
 import { CATALOG_ROW_CAP } from '@shelflens/api';
 
 import { formatCount } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
+import { DEFAULT_LOCALE } from '../format/locale.js';
 
 /*
  * How large a catalog a visitor can load.

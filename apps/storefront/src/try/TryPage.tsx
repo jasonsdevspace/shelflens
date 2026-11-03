@@ -10,7 +10,7 @@ import {
 
 import { App } from '../App.jsx';
 import { useHeadingFocus } from '../app/focus.js';
-import { LiveStatus } from '../app/LiveStatus.jsx';
+import { LiveStatus, useSaidLater } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
@@ -19,7 +19,7 @@ import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
 import { reasonOf } from '../client/reason.js';
 import { readRules } from '../client/rules.js';
 import { count } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
+import { DEFAULT_LOCALE } from '../format/locale.js';
 import { startFailure } from '../worker/register.js';
 import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
@@ -120,11 +120,7 @@ const errorOf = async (response: Response, retry: string): Promise<string> => {
  * created with its words already in it is not reliably read.
  */
 const ProblemAlert = ({ problem }: { readonly problem: string | undefined }) => {
-    const [shown, setShown] = useState('');
-    useEffect(() => {
-        const timer = setTimeout(() => setShown(problem ?? ''), 0);
-        return () => clearTimeout(timer);
-    }, [problem]);
+    const shown = useSaidLater(problem ?? '');
     return (
         <p className={shown === '' ? 'try-alert' : 'try-alert try-problem'} role="alert">
             {shown}
@@ -676,7 +672,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     // Set once the visitor does something, so stages after that take focus.
     const [acted, setActed] = useState(false);
     // Counts the files asked for, so one read slowly never replaces one picked after it.
-    const asked = useRef(0);
+    const choice = useRef(0);
     // Set while a load or a removal is with the worker, so a second press waits.
     const pending = useRef(false);
     // The search the visitor left when they chose another file.
@@ -710,18 +706,18 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
 
     const onFile = useCallback(async (file: FileLike) => {
         setActed(true);
-        asked.current += 1;
-        const mine = asked.current;
+        choice.current += 1;
+        const mine = choice.current;
         setStage({ kind: 'reading', name: file.name });
         try {
             const table = await readFile(file);
             const mapping = guessMapping(table);
             const result = toCatalog(table, mapping);
-            if (mine === asked.current) {
+            if (mine === choice.current) {
                 setStage({ kind: 'review', name: file.name, table, mapping, result });
             }
         } catch (error) {
-            if (mine === asked.current) setStage({ kind: 'choose', problem: messageOf(error) });
+            if (mine === choice.current) setStage({ kind: 'choose', problem: messageOf(error) });
         }
     }, []);
 
@@ -836,7 +832,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     const load = useCallback(
         async (discardRules: boolean) => {
             if (stage.kind !== 'review' || pending.current) return;
-            const { replacing: _asked, ...current } = stage;
+            const { replacing: _replacing, ...current } = stage;
             const whole = current.partial
                 ? toCatalog(current.table, current.mapping)
                 : current.result;
@@ -848,14 +844,14 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { catalog } = whole;
             const retry = searchLabel(catalog.products.length);
             pending.current = true;
-            asked.current += 1;
-            const mine = asked.current;
+            choice.current += 1;
+            const mine = choice.current;
             // Asked before the store is built, so the page never says it is building and then
             // asks. The worker still refuses on its own, in case the rules changed meanwhile.
             const ask =
                 !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
             // A file chosen or dropped while the rules were read is the visitor's latest choice.
-            if (mine !== asked.current) {
+            if (mine !== choice.current) {
                 pending.current = false;
                 return;
             }
@@ -914,12 +910,12 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         if (stage.kind !== 'choose' && stage.kind !== 'reading' && stage.kind !== 'review') return;
         if (pending.current) return;
         const from = stage;
-        asked.current += 1;
-        const mine = asked.current;
+        choice.current += 1;
+        const mine = choice.current;
         pending.current = true;
         try {
             const loaded = await readLoaded(catalogUrl);
-            if (mine !== asked.current) return;
+            if (mine !== choice.current) return;
             if (loaded) {
                 setBack(false);
                 window.history.replaceState(null, '', `${base}${lastSearch.current}`);
@@ -938,10 +934,10 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 });
             } else setStage({ ...from, problem: GONE });
         } catch (error) {
-            if (mine !== asked.current) return;
+            if (mine !== choice.current) return;
             const problem = `Your products could not be read (${messageOf(error)}). Reload the page to get back to them.`;
             if (from.kind === 'review') {
-                const { replacing: _asked, ...rest } = from;
+                const { replacing: _replacing, ...rest } = from;
                 setStage({ ...rest, problem });
             } else setStage({ kind: 'choose', problem });
         } finally {

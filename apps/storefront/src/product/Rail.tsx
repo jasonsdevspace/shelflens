@@ -1,7 +1,7 @@
-import { type SearchState, serializeSearchState } from '../app/url.js';
+import type { SearchState } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { RecommendationsQuery } from '../generated/operations.js';
-import { ProductCard } from '../results/ProductCard.jsx';
+import { CardList } from '../results/CardList.jsx';
 
 /**
  * What stands beside a product, under a heading that says which it is:
@@ -45,16 +45,7 @@ export const Rail = ({ rail, state, navigate }: RailProps) => {
                 {heading}
             </h2>
             {/* The section is named by the heading already, so the list is not named again. */}
-            <ul className="cards">
-                {rail.items.map((product) => (
-                    <ProductCard
-                        key={product.sku}
-                        product={product}
-                        href={serializeSearchState({ ...state, product: product.sku })}
-                        onOpen={() => navigate({ ...state, product: product.sku })}
-                    />
-                ))}
-            </ul>
+            <CardList products={rail.items} state={state} navigate={navigate} />
         </section>
     );
 };

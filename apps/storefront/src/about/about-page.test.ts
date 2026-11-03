@@ -11,7 +11,7 @@ import {
     REPO_URL,
 } from '../app/Portfolio.jsx';
 import { count } from '../format/count.js';
-import { DEFAULT_LOCALE } from '../format/money.js';
+import { DEFAULT_LOCALE } from '../format/locale.js';
 import { STOPS } from '../tour/stops.js';
 import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { SAMPLE_PRODUCTS } from '../try/sample.js';

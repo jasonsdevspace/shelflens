@@ -1,5 +1,7 @@
 import { BATCH_LIMIT, type EventKind, type StoreEvent } from '@shelflens/api';
 
+import { randomId } from './session.js';
+
 /**
  * Collects what the shopper does and sends it in batches, without ever
  * getting in the page's way.
@@ -72,13 +74,6 @@ const beacon = (url: string, body: string): boolean => {
     } catch {
         return false;
     }
-};
-
-const randomId = (): string => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID();
-    }
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 };
 
 /** Whether the visitor asked not to be tracked, as the browser reports it. */

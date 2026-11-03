@@ -36,7 +36,7 @@ export const contentVersion = (catalog: Omit<Catalog, 'version' | 'seed' | 'loca
             catalog.currency,
             catalog.brands,
             catalog.categories,
-            catalog.products.map(({ createdAt: _loaded, ...product }) => product),
+            catalog.products.map(({ createdAt: _createdAt, ...product }) => product),
         ])
     )}`;
 

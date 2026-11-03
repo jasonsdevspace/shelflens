@@ -72,7 +72,7 @@ export interface ProductPageProps {
  * go back to, so the button offers the store instead.
  */
 const backLabel = (state: SearchState, direct: boolean): string => {
-    const { product: _shown, ...behind } = state;
+    const { product: _product, ...behind } = state;
     return direct && serializeSearchState(behind) === ''
         ? 'Browse all products'
         : 'Back to results';
@@ -358,7 +358,7 @@ export const ProductPage = ({
     useOwnScroll();
     const { rail, railLoading } = useViewed(client, data?.product?.sku);
     const back = () => {
-        const { product: _dropped, ...rest } = state;
+        const { product: _product, ...rest } = state;
         navigate(rest);
     };
     const backButton = (

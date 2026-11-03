@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { GraphQLClient } from '../client/graphql.js';
 import { createLatest } from '../client/latest.js';
@@ -32,7 +32,7 @@ export const useQuery = <Result, Variables>(
     /** The variables, or nothing to ask nothing. */
     variables: Variables | undefined,
     /** A count the caller raises to ask again, the same variables included. */
-    { asked = 0 }: { readonly asked?: number } = {}
+    { again = 0 }: { readonly again?: number } = {}
 ): QueryState<Result, Variables> => {
     const key = variables === undefined ? undefined : JSON.stringify(variables);
     const [answered, setAnswered] = useState<{
@@ -42,26 +42,26 @@ export const useQuery = <Result, Variables>(
         data: Result;
     }>();
     const [failed, setFailed] = useState<{ client: GraphQLClient; key: string; message: string }>();
-    const latest = useRef(createLatest());
+    const [latest] = useState(createLatest);
     // Counts the times asked again, so the same question is sent once more.
     const [attempt, setAttempt] = useState(0);
     const retry = useCallback(() => {
         setFailed(undefined);
         setAttempt((n) => n + 1);
     }, []);
-    const current = (asked: { client: GraphQLClient; key: string } | undefined) =>
-        asked?.client === client && asked.key === key;
+    const current = (state: { client: GraphQLClient; key: string } | undefined) =>
+        state?.client === client && state.key === key;
 
     useEffect(() => {
         if (key === undefined) {
-            latest.current.cancel();
+            latest.cancel();
             return;
         }
-        void latest.current
-            .run((signal) => client.query(document, JSON.parse(key) as Variables, { signal }))
+        const variables = JSON.parse(key) as Variables;
+        void latest
+            .run((signal) => client.query(document, variables, { signal }))
             .then((outcome) => {
                 if (outcome.stale) return;
-                const variables = JSON.parse(key) as Variables;
                 setAnswered({ client, key, variables, data: outcome.value });
                 // An answer for the question ends a failure of it, however it was asked again.
                 setFailed((before) =>
@@ -75,7 +75,11 @@ export const useQuery = <Result, Variables>(
                     message: error instanceof Error ? error.message : 'the request failed',
                 });
             });
-    }, [client, document, key, attempt, asked]);
+        // A component that goes takes its question with it.
+        return () => {
+            latest.cancel();
+        };
+    }, [client, document, key, attempt, again, latest]);
 
     return {
         data: key === undefined ? undefined : answered?.data,
