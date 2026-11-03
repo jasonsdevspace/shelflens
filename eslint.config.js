@@ -1,4 +1,3 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import js from '@eslint/js';
@@ -9,6 +8,8 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+
+import { workspacePackages } from './scripts/repository.mjs';
 
 /*
  * Three kinds of rule live here.
@@ -49,19 +50,8 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
-/**
- * The workspace's packages, as paths from the root, each with a manifest of its own: the
- * libraries in packages/ and what runs in apps/, from the folders the root's manifest names.
- */
-const WORKSPACES = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8'))
-    .workspaces.map((glob) => glob.replace(/\/\*$/, ''))
-    .flatMap((folder) =>
-        readdirSync(new URL(`${folder}/`, import.meta.url), { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => `${folder}/${entry.name}`)
-    )
-    // A folder left behind by another branch, with no manifest, is not a package.
-    .filter((path) => existsSync(new URL(`${path}/package.json`, import.meta.url)));
+/** The workspace's packages, as paths from the root: the libraries in packages/ and what runs in apps/. */
+const WORKSPACES = workspacePackages(fileURLToPath(new URL('./', import.meta.url)));
 
 /** Code that runs in the browser loads no Node module. */
 const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot load Node.' };

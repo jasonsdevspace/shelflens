@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { SOURCE_CONDITION } from '../source-condition.js';
+import { workspacePackages } from './repository.mjs';
 
 /*
  * Every workspace package names its source under the one condition, first,
@@ -15,16 +16,7 @@ import { SOURCE_CONDITION } from '../source-condition.js';
 
 const root = join(__dirname, '..');
 /** Every workspace package, in the folders the root's manifest names: packages/ and apps/. */
-const packages = (
-    JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { workspaces: string[] }
-).workspaces
-    .map((glob) => join(root, glob.replace(/\/\*$/, '')))
-    .flatMap((folder) =>
-        readdirSync(folder, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => join(folder, entry.name))
-    )
-    .filter((dir) => existsSync(join(dir, 'package.json')));
+const packages = workspacePackages(root).map((path) => join(root, path));
 
 /** A tsconfig's compiler options. They are JSON with comments, which are left out before parsing. */
 const optionsOf = (path: string): { customConditions?: string[]; noEmit?: boolean } => {

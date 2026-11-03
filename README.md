@@ -273,8 +273,9 @@ packages/
 │                search
 ├── catalog/     the generator, its vocabulary and its types
 ├── search/      documents, the store config, customer groups, golden queries, the benchmark
-├── api/         the schema, its generated types, the resolvers, the store host, the routes, the
-│                cache key, the shape over HTTP, and the events and rules receivers
+└── api/         the schema, its generated types, the resolvers, the store host, the routes, the
+                 cache key, the shape over HTTP, and the events and rules receivers
+apps/
 ├── server/      the API behind HTTP, with a rate limit and a request id
 └── storefront/  the demo page, and theme.js, the script both pages run before their first paint
     ├── about/   the page on how it works, built beside the demo

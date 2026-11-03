@@ -19,9 +19,11 @@ export default defineConfig({
                     include: [
                         'packages/*/src/**/*.test.ts',
                         'packages/engine/smoke/*.test.ts',
-                        'apps/server/src/**/*.test.ts',
+                        'apps/*/src/**/*.test.ts',
                         'scripts/*.test.ts',
                     ],
+                    // The storefront's tests are its own project, in a document.
+                    exclude: ['apps/storefront/**'],
                 },
             },
             {
