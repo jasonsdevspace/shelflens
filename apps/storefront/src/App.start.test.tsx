@@ -249,6 +249,26 @@ describe('a store that does not start', () => {
         expect(screen.queryByText('Preparing the store.')).not.toBeInTheDocument();
     });
 
+    it('keeps to the start it was last given, whatever an earlier one says later', async () => {
+        let fail = (_error: Error) => undefined as void;
+        const props = {
+            apiUrl: 'http://store.test/graphql',
+            eventsUrl: 'http://store.test/events',
+            rulesUrl: 'http://store.test/rules',
+        };
+        const { rerender } = render(
+            <App {...props} ready={new Promise<void>((_resolve, reject) => (fail = reject))} />
+        );
+        rerender(<App {...props} ready="started" />);
+        await screen.findByRole('combobox', { name: 'Search the store' });
+        await act(async () => {
+            fail(new StoreDidNotStart('the store took too long'));
+            await Promise.resolve();
+        });
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Search the store' })).toBeInTheDocument();
+    });
+
     it('keeps the masthead\u2019s room only while the store is on its way', async () => {
         let fail = (_error: Error) => undefined as void;
         startWith(

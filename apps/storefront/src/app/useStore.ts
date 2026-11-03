@@ -50,8 +50,9 @@ export const REVEAL_WITHIN_MS = 1000;
 /** Already answered, for what waits on the store's start without a promise of its own. */
 const STARTED = Promise.resolve();
 
-export /** The store's start, as a promise either way. */
-const startOf = (ready: Promise<void> | 'started') => (ready === 'started' ? STARTED : ready);
+/** The store's start, as a promise either way. */
+export const startOf = (ready: Promise<void> | 'started') =>
+    ready === 'started' ? STARTED : ready;
 
 /**
  * Whether the store answers, and what the page knows about it once it does:
@@ -65,10 +66,19 @@ export const useStore = (client: GraphQLClient, ready: Promise<void> | 'started'
     const [started, setStarted] = useState<Readiness>(ready === 'started' ? 'ready' : 'waiting');
     const [shown, setShown] = useState(ready === 'started');
     useEffect(() => {
+        // A start the page has moved on from says nothing, however it ends.
+        let live = true;
         startOf(ready).then(
-            () => setStarted('ready'),
-            (error: unknown) => setStarted(startFailure(error))
+            () => {
+                if (live) setStarted('ready');
+            },
+            (error: unknown) => {
+                if (live) setStarted(startFailure(error));
+            }
         );
+        return () => {
+            live = false;
+        };
     }, [ready]);
     // Neither query takes variables, so an empty set asks and nothing waits.
     const whenStarted = started === 'ready' ? {} : undefined;

@@ -5,8 +5,9 @@ import { hasSeenTour, keepTourStop, keptTourStop, markTourSeen } from './seen.js
 import { STOPS } from './stops.js';
 
 /**
- * Whether the tour is open, which stop it is on, and the way to open and
- * close it. A first visit opens it, or on a phone offers it.
+ * Whether the tour is open, which stop it is on, and the ways to open and
+ * close it. A first visit opens it where the page offers it, or on a phone
+ * offers it in a short bar.
  */
 export const useTour = (offered: boolean) => {
     const [touring, setTouring] = useState(() => offered && !hasSeenTour());

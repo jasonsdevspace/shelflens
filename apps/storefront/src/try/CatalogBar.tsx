@@ -4,7 +4,7 @@ import { LiveStatus } from '../app/LiveStatus.jsx';
 import type { Loaded } from '../client/catalog.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
-import { Ask, ProblemAlert } from './stages.jsx';
+import { Ask, ProblemAlert } from './notices.jsx';
 
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 export const CatalogBar = ({

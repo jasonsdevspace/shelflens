@@ -146,24 +146,21 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     }, []);
 
     const searching = stage.kind === 'searching' ? stage.loaded.version : undefined;
-    const otherTab = useCallback(
-        (loaded: Loaded | undefined) => {
-            clearSearch(base);
-            setStage(
-                loaded
-                    ? {
-                          kind: 'searching',
-                          loaded,
-                          notice: `Another tab loaded ${count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, so these are what you are searching now.`,
-                      }
-                    : {
-                          kind: 'choose',
-                          notice: 'Your products were removed from this browser in another tab.',
-                      }
-            );
-        },
-        [base]
-    );
+    const otherTab = (loaded: Loaded | undefined) => {
+        clearSearch(base);
+        setStage(
+            loaded
+                ? {
+                      kind: 'searching',
+                      loaded,
+                      notice: `Another tab loaded ${count(loaded.products, 'product', 'products', DEFAULT_LOCALE)}, so these are what you are searching now.`,
+                  }
+                : {
+                      kind: 'choose',
+                      notice: 'Your products were removed from this browser in another tab.',
+                  }
+        );
+    };
     useOtherTab({ searching, catalogUrl, pending, onChange: otherTab });
 
     // A file dropped anywhere on the page is read wherever a file can be taken, and is never

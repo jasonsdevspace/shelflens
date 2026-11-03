@@ -1,12 +1,12 @@
-import { type RefObject, useEffect } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 
 import { type Loaded, readLoaded } from '../client/catalog.js';
 
 /**
  * Another tab of this site shares the worker, so it can remove the products
  * this tab is searching, or load others. Coming back to this tab reads what
- * is loaded, and a store that is gone or replaced is handed to `onChange`:
- * the products now loaded, or nothing once they are gone.
+ * is loaded, and when that is no longer the version being searched, hands
+ * `onChange` the products now loaded, or nothing once they are gone.
  */
 export const useOtherTab = ({
     searching,
@@ -21,6 +21,11 @@ export const useOtherTab = ({
     readonly pending: RefObject<boolean>;
     readonly onChange: (loaded: Loaded | undefined) => void;
 }) => {
+    // The newest callback, so a draw that passes another keeps the listeners and a read in flight.
+    const changed = useRef(onChange);
+    useEffect(() => {
+        changed.current = onChange;
+    });
     useEffect(() => {
         if (searching === undefined) return undefined;
         let live = true;
@@ -43,7 +48,7 @@ export const useOtherTab = ({
                         // A change this tab began meanwhile is its own to say.
                         if (!live || pending.current || loaded?.version === searching) return;
                         again = false;
-                        onChange(loaded);
+                        changed.current(loaded);
                     },
                     () => undefined
                 )
@@ -70,5 +75,5 @@ export const useOtherTab = ({
             document.removeEventListener('visibilitychange', check);
             window.removeEventListener('focus', check);
         };
-    }, [searching, catalogUrl, pending, onChange]);
+    }, [searching, catalogUrl, pending]);
 };

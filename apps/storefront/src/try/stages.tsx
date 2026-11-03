@@ -1,7 +1,7 @@
-import { type ChangeEvent, useId, useLayoutEffect, useRef, useState } from 'react';
+import { type ChangeEvent, useState } from 'react';
 
 import { useHeadingFocus } from '../app/focus.js';
-import { LiveStatus, useSaidLater } from '../app/LiveStatus.jsx';
+import { LiveStatus } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
 import { DemoFooter } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
@@ -14,6 +14,7 @@ import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import type { Mapping } from './mapping.js';
 import { MappingEditor, Preview } from './MappingEditor.jsx';
+import { Ask, ProblemAlert } from './notices.jsx';
 import type { FileLike } from './read-file.js';
 import { SAMPLE_FILE } from './sample.js';
 import type { LoadResult, RowNote } from './to-catalog.js';
@@ -65,20 +66,6 @@ export type Stage =
           /** Said once another tab replaced the products, so the change is not silent. */
           readonly notice?: string;
       };
-
-/**
- * A problem, said in an alert that is in the page before it is filled, so it
- * is heard though the stage it belongs to has just been shown. An alert
- * created with its words already in it is not reliably read.
- */
-export const ProblemAlert = ({ problem }: { readonly problem: string | undefined }) => {
-    const shown = useSaidLater(problem ?? '');
-    return (
-        <p className={shown === '' ? 'try-alert' : 'try-alert try-problem'} role="alert">
-            {shown}
-        </p>
-    );
-};
 
 /**
  * While the store is built from the visitor's file. Its heading takes the
@@ -348,41 +335,6 @@ const OtherWays = ({
         )}
     </>
 );
-
-/**
- * A question with its two answers. The answer that keeps things as they are
- * takes focus, so a repeated key press never confirms a discard unread.
- */
-export const Ask = ({
-    question,
-    yes,
-    no,
-    onYes,
-    onNo,
-}: {
-    readonly question: string;
-    readonly yes: string;
-    readonly no: string;
-    readonly onYes: () => void;
-    readonly onNo: () => void;
-}) => {
-    const id = useId();
-    const safe = useRef<HTMLButtonElement>(null);
-    useLayoutEffect(() => safe.current?.focus(), []);
-    // A group named by the question, so the answer that takes focus is read with the question
-    // it answers, once.
-    return (
-        <div className="try-ask" role="group" aria-labelledby={id}>
-            <span id={id}>{question}</span>{' '}
-            <button type="button" className="text-button" onClick={onYes}>
-                {yes}
-            </button>{' '}
-            <button ref={safe} type="button" className="text-button" onClick={onNo}>
-                {no}
-            </button>
-        </div>
-    );
-};
 
 /** Everything before a store is built: starting, choosing, reviewing and loading. */
 export const BeforeStore = ({
