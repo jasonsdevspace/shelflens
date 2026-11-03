@@ -4,7 +4,7 @@ import {
     createMemoryRuleStore,
     PERSISTED_OPERATIONS,
 } from '@shelflens/api';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +17,10 @@ import { guessMapping } from './mapping.js';
 import { SAMPLE_FILE, sampleCsv } from './sample.js';
 import { toCatalog } from './to-catalog.js';
 import { TryPage } from './TryPage.jsx';
+
+// Each wait here goes through the store's own handler and a stand-in for IndexedDB, which
+// a loaded run can keep past the usual second, so every wait in this file allows five.
+configure({ asyncUtilTimeout: 5000 });
 
 /*
  * The page for a visitor's own catalog, over the real worker for try/ in
@@ -247,7 +251,7 @@ describe('the page for a visitor’s own catalog', () => {
         });
         // The store is built again over the other tab's products, which takes more than a moment
         // when the machine is busy.
-        await screen.findByText(/the 2 products you loaded/, undefined, { timeout: 5000 });
+        await screen.findByText(/the 2 products you loaded/);
         await heard('Another tab loaded 2 products, so these are what you are searching now.');
     });
 
@@ -274,8 +278,7 @@ describe('the page for a visitor’s own catalog', () => {
         act(() => {
             window.dispatchEvent(new Event('focus'));
         });
-        // As long as the last wait allows, since a loaded run starts the read late.
-        await waitFor(() => expect(held).toBe(true), { timeout: 5000 });
+        await waitFor(() => expect(held).toBe(true));
         // Another tab loads other products, and the visitor comes back while the first read is out.
         const table = parseCsv('name,price\nBench,120\nStool,40\n');
         const other = toCatalog(table, guessMapping(table));
@@ -288,7 +291,7 @@ describe('the page for a visitor’s own catalog', () => {
             answer();
             await Promise.resolve();
         });
-        await screen.findByText(/the 2 products you loaded/, undefined, { timeout: 5000 });
+        await screen.findByText(/the 2 products you loaded/);
     });
 
     it('reads once when a return fires both a visibility change and a focus', async () => {
