@@ -1044,7 +1044,7 @@ h4 {
  * wordmark's left edge, with the demo's own steps for type and space.
  */
 .about {
-    max-width: 42rem;
+    max-width: var(--measure);
     line-height: var(--leading-body);
 }
 

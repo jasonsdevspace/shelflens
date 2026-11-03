@@ -103,4 +103,7 @@
     /* The height of anything a thumb presses on a phone, and of the actions that end a step. */
     --target: 2.75rem;
     --field-inline: var(--space-2);
+
+    /* The width a page of reading holds to, the explainer and the page for a visitor's products alike. */
+    --measure: 42rem;
 }

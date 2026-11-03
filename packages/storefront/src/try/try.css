@@ -1,12 +1,20 @@
 /* The page for a visitor's own catalog, before its store is built. */
 
 .try-stage {
-    max-width: 44rem;
+    max-width: var(--measure);
 }
 
+/* An entry page, so it opens at the explainer's size, and at a heading's on a phone. */
 .try-stage h1 {
-    font-size: var(--text-heading);
+    font-size: var(--text-display);
+    line-height: var(--leading-tight);
     margin-block: var(--space-2) var(--space-4);
+}
+
+@media (max-width: 48rem) {
+    .try-stage h1 {
+        font-size: var(--text-heading);
+    }
 }
 
 .try-stage h1:focus {
@@ -47,16 +55,12 @@
     margin: 0;
 }
 
-/* The file input stays in the page for its label, keyboard and screen reader, out of sight. */
+/*
+ * The large primary button, as "Search" is, over a file input that stays in
+ * the page for its label, keyboard and screen reader, out of sight.
+ */
 .try-pick {
     position: relative;
-    display: inline-block;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-small);
-    background: var(--accent);
-    color: var(--on-accent);
-    font-weight: var(--weight-strong);
     cursor: pointer;
 }
 
@@ -161,7 +165,22 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-1) var(--space-4);
+    gap: var(--space-2) var(--space-4);
+}
+
+/* A thumb's height when the bar stacks on a phone, as the filters' text buttons are. */
+.try-bar .text-button {
+    min-height: 1.5rem;
+}
+
+/* A question that asks for an answer is in the text's own color, never muted. */
+.try-ask {
+    color: var(--fg);
+    margin-block: var(--space-5);
+}
+
+.try-bar .try-ask {
+    margin: 0;
 }
 
 .try-stage a {

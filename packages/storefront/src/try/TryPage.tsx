@@ -1,4 +1,12 @@
-import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+    type ChangeEvent,
+    useCallback,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 
 import { App } from '../App.jsx';
 import { useHeadingFocus } from '../app/focus.js';
@@ -102,6 +110,24 @@ const errorOf = async (response: Response, retry: string): Promise<string> => {
 };
 
 /**
+ * A problem, said in an alert that is in the page before it is filled, so it
+ * is heard though the stage it belongs to has just been shown. An alert
+ * created with its words already in it is not reliably read.
+ */
+const ProblemAlert = ({ problem }: { readonly problem: string | undefined }) => {
+    const [shown, setShown] = useState('');
+    useEffect(() => {
+        const timer = setTimeout(() => setShown(problem ?? ''), 0);
+        return () => clearTimeout(timer);
+    }, [problem]);
+    return (
+        <p className={shown === '' ? undefined : 'try-problem'} role="alert">
+            {shown}
+        </p>
+    );
+};
+
+/**
  * While the store is built from the visitor's file. Its heading takes the
  * focus the pressed button had, so a keyboard or screen reader user is told
  * what is happening rather than being left at the top of the page.
@@ -184,11 +210,7 @@ const Chooser = ({
                 Your file is read in this page and kept in this browser. Nothing is uploaded, and
                 clearing this site&rsquo;s data removes it.
             </p>
-            {problem && (
-                <p className="try-problem" role="alert">
-                    {problem}
-                </p>
-            )}
+            <ProblemAlert problem={problem} />
             <p className="notice" role="status">
                 {reading ? `Reading ${reading}.` : ''}
             </p>
@@ -214,7 +236,7 @@ const Chooser = ({
                 onDrop={() => setOver(false)}
             >
                 <p>Drop a file here, or</p>
-                <label className="try-pick">
+                <label className="button button-primary button-large try-pick">
                     Choose a file
                     <input
                         type="file"
@@ -305,24 +327,27 @@ const Review = ({
                 {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)} and{' '}
                 {count(table.headers.length, 'column', 'columns', DEFAULT_LOCALE)}.
             </p>
-            {/* One alert, so a problem and a mapping that cannot make a catalog are heard together. */}
-            {(problem !== undefined || !result.ok) && (
-                <p className="try-problem" role="alert">
-                    {[problem, result.ok ? undefined : result.error]
+            {/* One alert, so a problem and a mapping that cannot make a catalog are heard together,
+            directly under the heading that takes focus. */}
+            <ProblemAlert
+                problem={
+                    [problem, result.ok ? undefined : result.error]
                         .filter((line) => line !== undefined)
-                        .join(' ')}
-                </p>
-            )}
+                        .join(' ') || undefined
+                }
+            />
             {/* The answer first, then the way on, then the guess, so a right guess needs no scrolling
             and a wrong one is put right just below. */}
             {result.ok ? (
                 <>
                     <Preview catalog={result.catalog} note={note} />
-                    {partial ? (
-                        <p className="notice" role="status">
-                            Checking all {count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.
-                        </p>
-                    ) : (
+                    {/* In the page throughout, so each check of the whole file is heard. */}
+                    <p className="notice" role="status">
+                        {partial
+                            ? `Checking all ${count(table.rows.length, 'row', 'rows', DEFAULT_LOCALE)}.`
+                            : ''}
+                    </p>
+                    {partial ? null : (
                         <>
                             <RowNotes
                                 notes={result.skipped}
@@ -346,7 +371,7 @@ const Review = ({
                         <div className="try-actions">
                             <button
                                 type="button"
-                                className="button button-primary"
+                                className="button button-primary button-large"
                                 onClick={onSearch}
                             >
                                 {partial
@@ -408,18 +433,27 @@ const Ask = ({
     readonly onYes: () => void;
     readonly onNo: () => void;
 }) => {
+    const id = useId();
     const safe = useRef<HTMLButtonElement>(null);
     useLayoutEffect(() => safe.current?.focus(), []);
+    // A group named by the question, and each answer described by it, so the answer that
+    // takes focus is read with the question it answers.
     return (
-        <p className="notice">
-            {question}{' '}
-            <button type="button" className="text-button" onClick={onYes}>
+        <div className="try-ask" role="group" aria-labelledby={id}>
+            <span id={id}>{question}</span>{' '}
+            <button type="button" className="text-button" aria-describedby={id} onClick={onYes}>
                 {yes}
             </button>{' '}
-            <button ref={safe} type="button" className="text-button" onClick={onNo}>
+            <button
+                ref={safe}
+                type="button"
+                className="text-button"
+                aria-describedby={id}
+                onClick={onNo}
+            >
                 {no}
             </button>
-        </p>
+        </div>
     );
 };
 
@@ -485,11 +519,7 @@ const CatalogBar = ({
                     </a>
                 </>
             )}
-            {problem && (
-                <p className="try-problem" role="alert">
-                    {problem}
-                </p>
-            )}
+            <ProblemAlert problem={problem} />
         </div>
     );
 };
@@ -534,21 +564,14 @@ const BeforeStore = ({
                         {import.meta.env.DEV && <p className="notice">{stage.message}</p>}
                     </>
                 )}
-                {stage.kind === 'reading' && (
+                {/* One chooser for choosing and reading, so its status stays in the page and
+                "Reading" is heard. */}
+                {(stage.kind === 'choose' || stage.kind === 'reading') && (
                     <Chooser
                         announce={announce}
-                        reading={stage.name}
-                        back={back}
-                        onFile={onFile}
-                        onSample={onSample}
-                        onBack={onKeepProducts}
-                    />
-                )}
-                {stage.kind === 'choose' && (
-                    <Chooser
-                        announce={announce}
-                        problem={stage.problem}
-                        notice={stage.notice}
+                        reading={stage.kind === 'reading' ? stage.name : undefined}
+                        problem={stage.kind === 'choose' ? stage.problem : undefined}
+                        notice={stage.kind === 'choose' ? stage.notice : undefined}
                         back={back}
                         onFile={onFile}
                         onSample={onSample}
@@ -601,6 +624,31 @@ const searchLabel = (products: number) =>
 const QUICK_ROWS = 1000;
 /** How long a pause in the changes before a larger file is made again whole. */
 const CATCH_UP_MS = 300;
+
+/**
+ * Whether loading a catalog of this version would discard rules the visitor
+ * saved: there are saved rules, and other products are loaded. The same file
+ * again keeps its rules. Read before the store is built, so the page can ask
+ * first, and an answer that cannot be read asks nothing, since the worker
+ * refuses on its own.
+ */
+const wouldDiscardRules = async (
+    base: string,
+    catalogUrl: string,
+    version: string
+): Promise<boolean> => {
+    try {
+        const [answer, loaded] = await Promise.all([fetch(`${base}rules`), readLoaded(catalogUrl)]);
+        if (!answer.ok || !loaded || loaded.version === version) return false;
+        const { rules, edited } = (await answer.json()) as {
+            readonly rules: readonly unknown[];
+            readonly edited: boolean;
+        };
+        return edited && rules.length > 0;
+    } catch {
+        return false;
+    }
+};
 
 /** The first rows of a table, enough to show the preview while the whole is made again. */
 const firstRows = (table: Table): Table => ({
@@ -724,6 +772,14 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
             const { catalog } = whole;
             const retry = searchLabel(catalog.products.length);
             pending.current = true;
+            // Asked before the store is built, so the page never says it is building and then
+            // asks. The worker still refuses on its own, in case the rules changed meanwhile.
+            if (!discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version))) {
+                pending.current = false;
+                const { problem: _last, ...asking } = review;
+                setStage({ ...asking, replacing: true });
+                return;
+            }
             setStage({ kind: 'loading', products: catalog.products.length });
             try {
                 // Preparing a large file for the worker holds the page, so the stage shows first.

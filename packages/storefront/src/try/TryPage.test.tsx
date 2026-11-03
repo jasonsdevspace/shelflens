@@ -59,6 +59,10 @@ const failWhen =
 
 const chooser = () => screen.findByRole('heading', { level: 1, name: 'Search your own products' });
 
+/** The page's alert, once it says this. It is in the page empty first, so it is heard when it fills. */
+const alerted = (text: string | RegExp) =>
+    waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(text));
+
 /** A line shown on the page and said in a status region that was empty when it mounted. */
 const heard = async (line: string) => {
     expect(screen.getByText(line, { selector: 'p.notice' })).toBeInTheDocument();
@@ -105,9 +109,7 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'The sample could not be loaded (error 404)'
-        );
+        await alerted('The sample could not be loaded (error 404)');
     });
 
     it('goes back to the review with a way to try again when the store cannot be reached', async () => {
@@ -120,7 +122,7 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        await alerted(
             'The store could not be reached (the worker stopped). Press “Search 200 products” to try again.'
         );
         failure = undefined;
@@ -143,9 +145,7 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'The store could not use these products, since the catalog has no products.'
-        );
+        await alerted('The store could not use these products, since the catalog has no products.');
     });
 
     it('reads a browser’s own reason after “since” as the end of the sentence', async () => {
@@ -164,7 +164,7 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Search 200 products' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        await alerted(
             'The store could not use these products, since the quota has been exceeded. Press “Search 200 products” to try again.'
         );
     });
@@ -176,9 +176,7 @@ describe('the page for a visitor’s own catalog', () => {
             Promise.resolve(new Response(null, { status: 500 }))
         );
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'Your products could not be removed (error 500), so they are still here.'
-        );
+        await alerted('Your products could not be removed (error 500), so they are still here.');
         expect(screen.getByText(/the 200 products you loaded/)).toBeInTheDocument();
     });
 
@@ -254,14 +252,14 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Back to your products' }));
         const gone =
             'Your products are no longer in this browser, so there is nothing to go back to.';
-        expect(await screen.findByRole('alert')).toHaveTextContent(gone);
+        await alerted(gone);
         await act(async () => {
             finish('name,price\nBench,120\n');
             await Promise.resolve();
         });
         // The read the visitor turned away from does not replace why the way back did nothing.
         expect(screen.queryByRole('heading', { name: 'What is in slow.csv' })).toBeNull();
-        expect(screen.getByRole('alert')).toHaveTextContent(gone);
+        await alerted(gone);
     });
 
     it('keeps a file chosen while the way back is still reading the products', async () => {
@@ -289,7 +287,7 @@ describe('the page for a visitor’s own catalog', () => {
             await Promise.resolve();
         });
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('What is in bench.csv');
-        expect(screen.queryByRole('alert')).toBeNull();
+        expect(screen.getByRole('alert')).toBeEmptyDOMElement();
     });
 
     it('offers no way back once the products are replaced, even when reading them again fails', async () => {
@@ -306,9 +304,7 @@ describe('the page for a visitor’s own catalog', () => {
             Promise.reject(new Error('the worker stopped'))
         );
         await userEvent.click(screen.getByRole('button', { name: 'Search 1 product' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'The store could not be reached'
-        );
+        await alerted('The store could not be reached');
         expect(screen.queryByRole('button', { name: 'Back to your products' })).toBeNull();
     });
 
@@ -353,7 +349,7 @@ describe('the page for a visitor’s own catalog', () => {
             screen.getByLabelText('Choose a file'),
             new File([`name,price\n${rows}\n`], 'too-many.csv')
         );
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        await alerted(
             'This file has 10,001 rows, and the page takes up to 10,000 products. Delete rows until it has 10,000 or fewer, then choose it again.'
         );
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
@@ -413,6 +409,84 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await rules.current()).toEqual(SAVED);
     });
 
+    it('asks before saying the store is being built, and reads each answer with the question', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        const headings: string[] = [];
+        const watch = new MutationObserver(() => {
+            for (const heading of document.querySelectorAll('h1')) {
+                headings.push(heading.textContent);
+            }
+        });
+        watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+        await userEvent.click(await screen.findByRole('button', { name: 'Search 150 products' }));
+        const keep = await screen.findByRole('button', { name: 'Keep my products' });
+        watch.disconnect();
+        // The page never said it was building before it asked.
+        expect(headings.some((heading) => heading.startsWith('Building the store'))).toBe(false);
+        const question =
+            'Searching this file replaces your products and discards the rules you saved for them. Search it anyway?';
+        expect(screen.getByRole('group', { name: question })).toContainElement(keep);
+        expect(keep).toHaveAccessibleDescription(question);
+        expect(
+            screen.getByRole('button', { name: 'Yes, search this file' })
+        ).toHaveAccessibleDescription(question);
+    });
+
+    it('keeps its alert in the page before a problem, so the problem is heard as it arrives', async () => {
+        failure = failWhen('PUT', `${BASE}catalog`, () =>
+            Promise.reject(new Error('the worker stopped'))
+        );
+        page();
+        await chooser();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        await screen.findByRole('button', { name: 'Search 200 products' });
+        await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement());
+        await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));
+        await alerted(/The store could not be reached/);
+    });
+
+    it('keeps the chooser’s status in the page while a file is read, so “Reading” is heard', async () => {
+        page();
+        await chooser();
+        const status = screen.getByRole('status');
+        expect(status).toBeEmptyDOMElement();
+        const slowFile = new File(['x'], 'slow.csv', { type: 'text/csv' });
+        Object.defineProperty(slowFile, 'arrayBuffer', {
+            value: () => new Promise(() => undefined),
+        });
+        await userEvent.upload(screen.getByLabelText('Choose a file'), slowFile);
+        await waitFor(() => expect(status).toHaveTextContent('Reading slow.csv.'));
+        expect(status).toBeInTheDocument();
+    });
+
+    it('draws choosing a file and searching it as the same large button', async () => {
+        page();
+        await chooser();
+        expect(screen.getByText('Choose a file').closest('label')).toHaveClass(
+            'button',
+            'button-primary',
+            'button-large'
+        );
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        expect(await screen.findByRole('button', { name: 'Search 200 products' })).toHaveClass(
+            'button',
+            'button-primary',
+            'button-large'
+        );
+    });
+
     it('says the products are gone, and how to search the new file, when there is nothing to keep', async () => {
         const { rules } = page();
         await loadSample();
@@ -429,7 +503,7 @@ describe('the page for a visitor’s own catalog', () => {
             Promise.resolve(new Response('not found', { status: 404 }))
         );
         await userEvent.click(await screen.findByRole('button', { name: 'Keep my products' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        await alerted(
             'Your products are no longer in this browser, so there is nothing to keep. Press “Yes, search this file” to search it.'
         );
         await userEvent.click(screen.getByRole('button', { name: 'Yes, search this file' }));
@@ -532,7 +606,7 @@ describe('the page for a visitor’s own catalog', () => {
         const big = new File(['x'], 'big.csv');
         Object.defineProperty(big, 'size', { value: CATALOG_FILE_BYTES_CAP + 4096 });
         await userEvent.upload(screen.getByLabelText('Choose a file'), big);
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        await alerted(
             'This file is 40.1 MB, and the largest this page reads is 40 MB. Choose a smaller file, or delete rows from this one.'
         );
         await waitFor(() => expect(screen.getByLabelText('Choose a file')).toBeInTheDocument());
