@@ -26,11 +26,20 @@ export interface TourProps {
     readonly takeFocus: boolean;
 }
 
+/** The class on the page's root while the tour is open. */
+const TOURING = 'is-touring';
+
 export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps) => {
     const closer = useRef<HTMLButtonElement>(null);
     useEffect(() => {
         if (takeFocus) closer.current?.focus();
     }, [takeFocus]);
+    // Marked on the page while the tour is open, so on a phone, where it is a sheet over the
+    // bottom of the screen, whatever takes focus is scrolled into view above it.
+    useEffect(() => {
+        document.documentElement.classList.add(TOURING);
+        return () => document.documentElement.classList.remove(TOURING);
+    }, []);
 
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;

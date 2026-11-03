@@ -1158,6 +1158,11 @@ h4 {
         padding-bottom: calc(50dvh + var(--space-4));
     }
 
+    /* Whatever takes focus is scrolled into view above the sheet, never left behind it. */
+    :root.is-touring {
+        scroll-padding-bottom: calc(50dvh + var(--space-4));
+    }
+
     .results-layout {
         grid-template-columns: 1fr;
         gap: var(--space-4);
