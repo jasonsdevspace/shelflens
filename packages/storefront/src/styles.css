@@ -444,6 +444,19 @@ h4 {
     gap: var(--space-2);
 }
 
+.tour-step-label {
+    display: inline-grid;
+}
+
+.tour-step-label > * {
+    grid-area: 1 / 1;
+}
+
+/* Drawn for its width alone, so it is neither seen nor heard. */
+.tour-step-unused {
+    visibility: hidden;
+}
+
 .tour-steps {
     display: flex;
     flex-wrap: wrap;
@@ -460,9 +473,11 @@ h4 {
     gap: var(--space-2);
 }
 
-/* The two answers keep together, wrapping as one where larger text leaves no room. */
+/* The two answers keep together, wrapping as one where larger text leaves no room, then apart. */
 .tour-offer-actions {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--space-2);
     margin-left: auto;
 }
@@ -1307,6 +1322,18 @@ h4 {
     }
 }
 
+/*
+ * Where the screen is tall enough, the tour's buttons stay in view while a
+ * long stop scrolls under them. On a short screen, or at a large text size,
+ * they would leave the stop no room, so they scroll with it.
+ */
+@media (max-width: 48rem) and (min-height: 34rem) {
+    .tour-nav {
+        position: sticky;
+        bottom: 0;
+    }
+}
+
 /* The facets as a drawer, on a phone. */
 .drawer-badge {
     font-weight: var(--weight-strong);
@@ -1578,16 +1605,4 @@ h4 {
 
 .rules-notice {
     margin: 0 0 var(--space-4);
-}
-
-/*
- * Where the screen is tall enough, the tour's buttons stay in view while a
- * long stop scrolls under them. On a short screen, or at a large text size,
- * they would leave the stop no room, so they scroll with it.
- */
-@media (max-width: 48rem) and (min-height: 34rem) {
-    .tour-nav {
-        position: sticky;
-        bottom: 0;
-    }
 }

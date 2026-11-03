@@ -192,7 +192,10 @@ test.describe('on a first visit', () => {
             const scroller = document.querySelector('.tour');
             const nav = document.querySelector('.tour-nav');
             const step = document.querySelector('.tour-steps .button:last-child');
-            if (!scroller || !nav || !step) throw new Error('expected the sheet and its buttons');
+            const previous = document.querySelector('.tour-steps .button:first-child');
+            if (!scroller || !nav || !step || !previous) {
+                throw new Error('expected the sheet and its buttons');
+            }
             const sheet = scroller.getBoundingClientRect();
             const buttons = nav.getBoundingClientRect();
             return {
@@ -204,6 +207,7 @@ test.describe('on a first visit', () => {
                 ),
                 buttonsFromFoot: Math.round(innerHeight - buttons.top),
                 nextRight: Math.round(step.getBoundingClientRect().right),
+                previousLeft: Math.round(previous.getBoundingClientRect().left),
                 sideways: scroller.scrollWidth > scroller.clientWidth,
                 gapUnderButtons: Math.round(sheet.bottom - buttons.bottom),
                 scrolled: scroller.scrollTop,
@@ -232,16 +236,39 @@ test.describe('on a first visit', () => {
         const heights = new Set<number>();
         const feet = new Set<number>();
         const rights = new Set<number>();
+        const lefts = new Set<number>();
         await walk(page, (at, stop) => {
             heights.add(at.height);
             feet.add(at.buttonsFromFoot);
             rights.add(at.nextRight);
+            lefts.add(at.previousLeft);
             expect(at.height, `the sheet at stop ${String(stop)}`).toBeLessThanOrEqual(at.cap + 1);
             expect(at.pinned, `the buttons at stop ${String(stop)}`).toBe(true);
         });
         expect(heights.size, 'the heights the sheet was drawn at').toBeGreaterThan(1);
         expect([...feet], 'where the buttons stand above the foot of the screen').toHaveLength(1);
         expect([...rights], 'where Next, then Finish, ends').toHaveLength(1);
+        expect([...lefts], 'where Previous starts').toHaveLength(1);
+    });
+
+    test('never shifts a page scrolled to its end as the sheet changes height', async ({
+        page,
+    }) => {
+        await page.goto('/?q=jacket');
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await tour.getByRole('button', { name: 'Start' }).click();
+        for (let stop = 1; stop < STOPS.length; stop += 1) {
+            await expect(tour).toContainText(`Stop ${String(stop)} of`);
+            const end = await page.evaluate(() => {
+                window.scrollTo(0, document.documentElement.scrollHeight);
+                return window.scrollY;
+            });
+            await tour.getByRole('button', { name: 'Next' }).click();
+            await expect(tour).toContainText(`Stop ${String(stop + 1)} of`);
+            expect(await page.evaluate(() => window.scrollY), `after stop ${String(stop)}`).toBe(
+                end
+            );
+        }
     });
 
     test('on the narrowest phone nothing scrolls sideways or shows under the buttons, and each stop opens at its top', async ({
@@ -266,18 +293,20 @@ test.describe('on a first visit', () => {
         const bar = page.getByRole('complementary', { name: 'Tour' });
         await expect(bar).toContainText('A tour of what to try');
         const row = await page.evaluate(() => {
-            const box = (selector: string) =>
-                document.querySelector(selector)?.getBoundingClientRect();
-            const text = box('.tour-offer-text');
-            const [start, decline] = [
-                ...document.querySelectorAll('.tour-offer-actions .button'),
-            ].map((b) => b.getBoundingClientRect());
+            const text = document.querySelector('.tour-offer-text');
+            const answers = [...document.querySelectorAll('.tour-offer-actions .button')];
+            if (!text || answers.length !== 2) throw new Error('expected the text and two answers');
+            const [start, decline] = answers.map((answer) => answer.getBoundingClientRect());
             return {
-                together: start?.top === decline?.top,
-                besideText: text !== undefined && start !== undefined && text.right <= start.left,
+                startTop: start?.top,
+                declineTop: decline?.top,
+                textRight: text.getBoundingClientRect().right,
+                startLeft: start?.left ?? 0,
             };
         });
-        expect(row).toEqual({ together: true, besideText: true });
+        // Start and Not now on one line, beside the text rather than under it.
+        expect(row.startTop).toBe(row.declineTop);
+        expect(row.textRight).toBeLessThanOrEqual(row.startLeft);
     });
 
     test('Not now puts the bar away for good', async ({ page }) => {

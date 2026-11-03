@@ -191,14 +191,27 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
 });
 
 // A phone's width without a phone's zooming out, so only the sheet's own layout is measured.
-test('fits every stop across a phone-wide sheet with text at twice its size', async ({ page }) => {
+test('fits the bar and every stop across a phone-wide sheet with text at twice its size', async ({
+    page,
+}) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/');
     const tour = page.getByRole('complementary', { name: 'Tour' });
-    await tour.getByRole('button', { name: 'Start' }).click();
-    await expect(tour).toContainText('Stop 1 of');
+    await expect(tour).toContainText('A tour of what to try');
     // As a visitor's own larger text would set it, through the root every size is drawn from.
     await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%'));
+    const barSideways = await page.evaluate(() => {
+        const bar = document.querySelector('.tour-offer');
+        const answers = document.querySelector('.tour-offer-actions')?.getBoundingClientRect();
+        return (
+            bar === null ||
+            answers === undefined ||
+            answers.right > bar.getBoundingClientRect().right
+        );
+    });
+    expect(barSideways, 'the bar').toBe(false);
+    await tour.getByRole('button', { name: 'Start' }).click();
+    await expect(tour).toContainText('Stop 1 of');
     for (let stop = 1; stop <= STOPS.length; stop += 1) {
         await expect(tour).toContainText(`Stop ${String(stop)} of`);
         const sideways = await page.evaluate(() => {
@@ -210,23 +223,62 @@ test('fits every stop across a phone-wide sheet with text at twice its size', as
     }
 });
 
-// A 320 by 640 phone at 150% zoom, without a phone's zooming out, where buttons held at the
-// foot of the sheet would cover the stop.
-test("on a short screen the tour's buttons scroll with the stop, so it has room to be read", async ({
-    page,
-}) => {
-    await page.setViewportSize({ width: 213, height: 427 });
-    await page.goto('/');
-    const tour = page.getByRole('complementary', { name: 'Tour' });
-    await tour.getByRole('button', { name: 'Start' }).click();
-    for (let stop = 1; stop <= STOPS.length; stop += 1) {
-        await expect(tour).toContainText(`Stop ${String(stop)} of`);
-        const pinned = await page.evaluate(
-            () => getComputedStyle(document.querySelector('.tour-nav') ?? document.body).position
+/** Whether the element `selector` names is wholly inside the part of the tour's sheet in view. */
+const inSheet = (page: Page, selector: string) =>
+    page.evaluate((target) => {
+        const sheet = document.querySelector('.tour')?.getBoundingClientRect();
+        const box = document.querySelector(target)?.getBoundingClientRect();
+        return (
+            sheet !== undefined &&
+            box !== undefined &&
+            box.top >= sheet.top - 1 &&
+            box.bottom <= sheet.bottom + 1
         );
-        expect(pinned, `the buttons at stop ${String(stop)}`).toBe('static');
-        if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
-    }
+    }, selector);
+
+// A 320 by 640 phone at 150% zoom, without a phone's zooming out, where buttons held at the
+// foot of the sheet would cover the stop. A tap opens each stop at its title, and a keyboard
+// visitor's focus on Next stays in view.
+test.describe('on a short screen', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.setViewportSize({ width: 213, height: 427 });
+        await page.goto('/');
+        await page
+            .getByRole('complementary', { name: 'Tour' })
+            .getByRole('button', { name: 'Start' })
+            .click();
+    });
+
+    test('a tap on Next opens each stop at its title, with the buttons scrolling with it', async ({
+        page,
+    }) => {
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        for (let stop = 1; stop <= STOPS.length; stop += 1) {
+            await expect(tour).toContainText(`Stop ${String(stop)} of`);
+            expect(await inSheet(page, '.tour-title'), `the title at stop ${String(stop)}`).toBe(
+                true
+            );
+            const pinned = await page.evaluate(
+                () =>
+                    getComputedStyle(document.querySelector('.tour-nav') ?? document.body).position
+            );
+            expect(pinned, `the buttons at stop ${String(stop)}`).toBe('static');
+            if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
+        }
+    });
+
+    test('Next pressed from the keyboard stays in view on every stop', async ({ page }) => {
+        const tour = page.getByRole('complementary', { name: 'Tour' });
+        await tour.getByRole('button', { name: 'Next' }).focus();
+        for (let stop = 2; stop <= STOPS.length; stop += 1) {
+            await page.keyboard.press('Enter');
+            await expect(tour).toContainText(`Stop ${String(stop)} of`);
+            expect(
+                await inSheet(page, '.tour-steps .button:last-child'),
+                `Next at stop ${String(stop)}`
+            ).toBe(true);
+        }
+    });
 });
 
 test('keeps Close quiet under the pointer, so Try it stays the strong action', async ({ page }) => {

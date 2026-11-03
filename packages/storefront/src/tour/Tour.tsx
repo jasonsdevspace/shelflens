@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { REPO_URL } from '../app/Portfolio.jsx';
 import { StateLink } from '../app/StateLink.jsx';
@@ -30,17 +30,19 @@ const TOUR_HEIGHT = '--tour-height';
  * Marks the page while the tour is open, with its height as it is drawn, so
  * whatever takes focus is scrolled into view above it, on a phone where it
  * is a sheet across the bottom and on a wide screen where it is a box in
- * the corner.
+ * the corner. The height kept is the tallest the tour has been since it
+ * opened, so a shorter stop never takes room from under the page, which
+ * would shift a page scrolled to its end each time the stop changed.
  */
 const useRoomForTour = (sheet: RefObject<HTMLElement | null>) => {
     useEffect(() => {
         const root = document.documentElement;
         root.classList.add(TOURING);
-        const measure = () =>
-            root.style.setProperty(
-                TOUR_HEIGHT,
-                `${String(sheet.current?.getBoundingClientRect().height ?? 0)}px`
-            );
+        let tallest = 0;
+        const measure = () => {
+            tallest = Math.max(tallest, sheet.current?.getBoundingClientRect().height ?? 0);
+            root.style.setProperty(TOUR_HEIGHT, `${String(tallest)}px`);
+        };
         measure();
         const watch =
             typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : undefined;
@@ -113,13 +115,25 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
     }, [takeFocus]);
     const sheet = useRef<HTMLElement>(null);
     useRoomForTour(sheet);
-    // Each stop opens at its top, with its count and Close in view, wherever the last was scrolled.
-    useEffect(() => {
-        if (sheet.current) sheet.current.scrollTop = 0;
-    }, [index]);
-    // The landing "Try it" started, given up when the stop changes or the tour closes.
+    // On each change of stop: the landing "Try it" started is given up, and the
+    // new stop opens at its top, with its count and Close in view, before it is
+    // drawn. A keyboard visitor's focus stays in view, where the buttons scroll
+    // with the stop on a short screen.
     const landing = useRef<() => void>(undefined);
     useEffect(() => () => landing.current?.(), [index]);
+    useLayoutEffect(() => {
+        const at = sheet.current;
+        if (!at) return;
+        at.scrollTop = 0;
+        const focused = document.activeElement;
+        if (
+            focused instanceof HTMLElement &&
+            at.contains(focused) &&
+            focused.matches(':focus-visible')
+        ) {
+            focused.scrollIntoView({ block: 'nearest' });
+        }
+    }, [index]);
 
     const stop = STOPS[index] ?? STOPS[0];
     if (!stop) return null;
@@ -209,7 +223,21 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                             onClose();
                         }}
                     >
-                        {last ? 'Finish' : 'Next'}
+                        {/* Both words in one place, the other hidden, so the button is as wide on every stop. */}
+                        <span className="tour-step-label">
+                            <span
+                                className={last ? 'tour-step-unused' : undefined}
+                                aria-hidden={last}
+                            >
+                                Next
+                            </span>
+                            <span
+                                className={last ? undefined : 'tour-step-unused'}
+                                aria-hidden={!last}
+                            >
+                                Finish
+                            </span>
+                        </span>
                     </button>
                 </div>
             </div>
