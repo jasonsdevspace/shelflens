@@ -62,7 +62,6 @@ const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot
 export default defineConfig(
     {
         ignores: [
-            '**/coverage',
             '**/node_modules',
             '**/dist',
             '**/generated',

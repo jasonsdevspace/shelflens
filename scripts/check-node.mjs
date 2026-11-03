@@ -15,7 +15,7 @@
  * - A Dockerfile's Node images, by any of its usual names.
  * - The root README, which tells a contributor which Node to install.
  *
- * Run with `npm run node-check`.
+ * Run with `node scripts/check-node.mjs`, as `npm run verify` does.
  */
 import { basename } from 'node:path';
 

@@ -1,5 +1,6 @@
 {
-    // Nothing is exported that nothing uses. Run in verify and in CI as `npm run exports`.
+    // Nothing is exported, or depended on, that nothing uses. Run in verify and in CI
+    // as `knip --tsConfig tsconfig.build.json`.
     //
     // Each workspace names the files something runs directly. The private
     // packages' entries count, so an export no other package imports is
@@ -9,6 +10,19 @@
     // storefront and the root build nothing another package imports, so their
     // files are read as they are.
     "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
+    // What it reports: exports and types nothing imports, a thing exported twice, and
+    // dependencies nothing uses, that something uses unlisted, or that do not resolve.
+    "include": [
+        "exports",
+        "types",
+        "nsExports",
+        "nsTypes",
+        "duplicates",
+        "dependencies",
+        "unlisted",
+        "binaries",
+        "unresolved",
+    ],
     // Written by codegen in full, whatever the operations use.
     "ignore": ["**/src/generated/**"],
     "ignoreIssues": {

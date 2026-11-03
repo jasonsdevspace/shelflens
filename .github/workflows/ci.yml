@@ -48,25 +48,25 @@ jobs:
               run: npm ci
 
             - name: Type-check
-              run: npm run type-check
+              run: npm run type-check --workspaces && npx tsc -p scripts
 
             - name: Lint
-              run: npm run lint
+              run: npx eslint .
 
             - name: Format check
-              run: npm run format:check
+              run: npx prettier --check .
 
             - name: Prose check
-              run: npm run prose
+              run: node scripts/check-prose.mjs
 
             - name: Node version check
-              run: npm run node-check
+              run: node scripts/check-node.mjs
 
-            - name: Check for unused exports
-              run: npm run exports
+            - name: Check for unused exports and dependencies
+              run: npx knip --tsConfig tsconfig.build.json
 
             - name: Unit tests
-              run: npm run test:run
+              run: npx vitest run
 
             # The server's types are generated from the schema and committed.
             # A schema change without regenerating them fails here.
@@ -153,9 +153,7 @@ jobs:
             - name: Install Chromium
               run: npx playwright install --with-deps chromium
 
-            - name: Build the storefront
-              run: npm run storefront
-
+            # The script builds the store before it audits it.
             - name: Lighthouse audits
               run: npm run lighthouse
 

@@ -3,16 +3,16 @@
     "version": "2.1.0",
     "private": true,
     "description": "The demo storefront: the search popover and results over the store's API, served from a service worker.",
+    "license": "MIT",
     "type": "module",
     "scripts": {
         "type-check": "tsc -p tsconfig.json",
         "dev": "vite",
         "bundle": "vite build && vite build --config vite.sw.config.ts && vite build --config vite.widget.config.ts",
-        "preview": "vite preview",
         "sample": "tsx src/try/cli.ts"
     },
     "dependencies": {
-        "@jasonsdevspace/shelflens": "0.5.0",
+        "@jasonsdevspace/shelflens": "*",
         "@shelflens/api": "0.1.0",
         "@shelflens/catalog": "0.1.0",
         "react": "19.3.1",
@@ -23,6 +23,5 @@
         "@shelflens/search": "0.1.0",
         "@shelflens/server": "0.1.0",
         "graphql": "17.0.2"
-    },
-    "license": "MIT"
+    }
 }
