@@ -186,41 +186,98 @@ test.describe('on a first visit', () => {
         await expect(tour.getByRole('button', { name: 'Close' })).toBeFocused();
     });
 
-    test('the sheet keeps one height from stop to stop, with its buttons in view', async ({
-        page,
-    }) => {
-        // The narrowest phone the page is built for, where a long file name has the least room.
-        await page.setViewportSize({ width: 320, height: 640 });
+    /** Where the sheet and its buttons are drawn, at the stop the tour is on. */
+    const drawn = (page: Page) =>
+        page.evaluate(() => {
+            const scroller = document.querySelector('.tour');
+            const nav = document.querySelector('.tour-nav');
+            const step = document.querySelector('.tour-steps .button:last-child');
+            if (!scroller || !nav || !step) throw new Error('expected the sheet and its buttons');
+            const sheet = scroller.getBoundingClientRect();
+            const buttons = nav.getBoundingClientRect();
+            return {
+                height: Math.round(sheet.height),
+                // Half the screen, or 28rem where that is less.
+                cap: Math.min(
+                    28 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+                    innerHeight / 2
+                ),
+                buttonsFromFoot: Math.round(innerHeight - buttons.top),
+                nextRight: Math.round(step.getBoundingClientRect().right),
+                sideways: scroller.scrollWidth > scroller.clientWidth,
+                gapUnderButtons: Math.round(sheet.bottom - buttons.bottom),
+                scrolled: scroller.scrollTop,
+                pinned: getComputedStyle(nav).position === 'sticky',
+            };
+        });
+
+    /** Starts the tour from the bar, and steps through every stop, measuring each. */
+    const walk = async (
+        page: Page,
+        each: (at: Awaited<ReturnType<typeof drawn>>, stop: number) => void | Promise<void>
+    ) => {
         await page.goto('/');
         const tour = page.getByRole('complementary', { name: 'Tour' });
         await tour.getByRole('button', { name: 'Start' }).click();
-        const heights = new Set<number>();
         for (let stop = 1; stop <= STOPS.length; stop += 1) {
             await expect(tour).toContainText(`Stop ${String(stop)} of`);
-            const drawn = await page.evaluate(() => {
-                const scroller = document.querySelector('.tour');
-                const nav = document.querySelector('.tour-nav');
-                if (!scroller || !nav) throw new Error('expected the sheet and its buttons');
-                const sheet = scroller.getBoundingClientRect();
-                const buttons = nav.getBoundingClientRect();
-                return {
-                    height: Math.round(sheet.height),
-                    // Nothing scrolls sideways, and no strip of the sheet shows under its buttons.
-                    sideways: scroller.scrollWidth > scroller.clientWidth,
-                    gapUnderButtons: Math.round(sheet.bottom - buttons.bottom),
-                    navInSheet:
-                        buttons.top >= sheet.top &&
-                        buttons.bottom <= sheet.bottom + 1 &&
-                        buttons.bottom <= window.innerHeight + 1,
-                };
-            });
-            heights.add(drawn.height);
-            expect(drawn.navInSheet, `the buttons at stop ${String(stop)}`).toBe(true);
-            expect(drawn.sideways, `sideways at stop ${String(stop)}`).toBe(false);
-            expect(drawn.gapUnderButtons, `under the buttons at stop ${String(stop)}`).toBe(0);
+            await each(await drawn(page), stop);
             if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
         }
-        expect([...heights], 'the heights the sheet was drawn at').toHaveLength(1);
+    };
+
+    test('the sheet is as tall as its stop, and its buttons hold their place from stop to stop', async ({
+        page,
+    }) => {
+        const heights = new Set<number>();
+        const feet = new Set<number>();
+        const rights = new Set<number>();
+        await walk(page, (at, stop) => {
+            heights.add(at.height);
+            feet.add(at.buttonsFromFoot);
+            rights.add(at.nextRight);
+            expect(at.height, `the sheet at stop ${String(stop)}`).toBeLessThanOrEqual(at.cap + 1);
+            expect(at.pinned, `the buttons at stop ${String(stop)}`).toBe(true);
+        });
+        expect(heights.size, 'the heights the sheet was drawn at').toBeGreaterThan(1);
+        expect([...feet], 'where the buttons stand above the foot of the screen').toHaveLength(1);
+        expect([...rights], 'where Next, then Finish, ends').toHaveLength(1);
+    });
+
+    test('on the narrowest phone nothing scrolls sideways or shows under the buttons, and each stop opens at its top', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 320, height: 640 });
+        await walk(page, async (at, stop) => {
+            expect(at.sideways, `sideways at stop ${String(stop)}`).toBe(false);
+            expect(at.gapUnderButtons, `under the buttons at stop ${String(stop)}`).toBe(0);
+            expect(at.scrolled, `scrolled at stop ${String(stop)}`).toBe(0);
+            // Scrolled to its end, so the next stop has a place to be carried to.
+            await page.evaluate(() => {
+                const sheet = document.querySelector('.tour');
+                if (sheet) sheet.scrollTop = sheet.scrollHeight;
+            });
+        });
+    });
+
+    test('offers the tour on one row on the narrowest phone', async ({ page }) => {
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.goto('/');
+        const bar = page.getByRole('complementary', { name: 'Tour' });
+        await expect(bar).toContainText('A tour of what to try');
+        const row = await page.evaluate(() => {
+            const box = (selector: string) =>
+                document.querySelector(selector)?.getBoundingClientRect();
+            const text = box('.tour-offer-text');
+            const [start, decline] = [
+                ...document.querySelectorAll('.tour-offer-actions .button'),
+            ].map((b) => b.getBoundingClientRect());
+            return {
+                together: start?.top === decline?.top,
+                besideText: text !== undefined && start !== undefined && text.right <= start.left,
+            };
+        });
+        expect(row).toEqual({ together: true, besideText: true });
     });
 
     test('Not now puts the bar away for good', async ({ page }) => {

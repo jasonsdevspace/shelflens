@@ -165,7 +165,7 @@ const PIXEL_ALLOWED = [
 ];
 
 /** The breakpoints the tokens name, as a media query writes them. */
-const BREAKPOINTS = ['(max-width: 48rem)'];
+const BREAKPOINTS = ['(max-width: 48rem)', '(max-width: 48rem) and (min-height: 34rem)'];
 
 describe('the units', () => {
     it('keep pixels to what must not scale', () => {
@@ -191,9 +191,16 @@ describe('the units', () => {
         ).toEqual([]);
         const named = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
         for (const breakpoint of BREAKPOINTS) {
-            expect(named, breakpoint).toContain(
-                breakpoint.replace(/^\(max-width: (.*)\)$/, 'up to $1')
-            );
+            // Each part of the query, as the list says it: "up to 48rem", "at least 34rem tall".
+            const said = breakpoint
+                .split(' and ')
+                .map((part) =>
+                    part
+                        .replace(/^\(max-width: (.*)\)$/, 'up to $1')
+                        .replace(/^\(min-height: (.*)\)$/, 'at least $1 tall')
+                )
+                .join(' and ');
+            expect(named.replace(/\s+\*\s+/g, ' '), breakpoint).toContain(said);
         }
     });
 });

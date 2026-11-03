@@ -28,6 +28,9 @@
  * query to it:
  *
  * - a phone, up to 48rem, where the page lays out for a thumb.
+ * - a phone up to 48rem and at least 34rem tall, where the tour's sheet keeps
+ *   its buttons in view while a long stop scrolls under them. A shorter screen,
+ *   or larger text, leaves the stop the room instead.
  */
 :root,
 .shelflens {

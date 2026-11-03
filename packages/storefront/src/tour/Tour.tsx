@@ -85,12 +85,14 @@ export const TourOffer = ({
             onKeyDown={closeOnEscape(onDecline)}
         >
             <p className="tour-offer-text">A tour of what to try, {STOPS.length} stops</p>
-            <button type="button" className="button" onClick={onStart}>
-                Start
-            </button>
-            <button type="button" className="button" onClick={onDecline}>
-                Not now
-            </button>
+            <div className="tour-offer-actions">
+                <button type="button" className="button" onClick={onStart}>
+                    Start
+                </button>
+                <button type="button" className="button" onClick={onDecline}>
+                    Not now
+                </button>
+            </div>
         </aside>
     );
 };
@@ -111,6 +113,10 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
     }, [takeFocus]);
     const sheet = useRef<HTMLElement>(null);
     useRoomForTour(sheet);
+    // Each stop opens at its top, with its count and Close in view, wherever the last was scrolled.
+    useEffect(() => {
+        if (sheet.current) sheet.current.scrollTop = 0;
+    }, [index]);
     // The landing "Try it" started, given up when the stop changes or the tour closes.
     const landing = useRef<() => void>(undefined);
     useEffect(() => () => landing.current?.(), [index]);
@@ -174,40 +180,38 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             </p>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink
-                        className="button button-primary tour-try"
-                        to={stop.to}
-                        navigate={tryIt}
-                    >
+                    <StateLink className="button button-primary" to={stop.to} navigate={tryIt}>
                         Try it
                     </StateLink>
                 )}
-                {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
-                <button
-                    type="button"
-                    className="button"
-                    aria-disabled={first}
-                    onClick={() => {
-                        if (!first) onIndex(index - 1);
-                    }}
-                >
-                    Previous
-                </button>
-                <button
-                    type="button"
-                    className="button"
-                    onClick={() => {
-                        if (!last) {
-                            onIndex(index + 1);
-                            return;
-                        }
-                        // A finished tour opens on its first stop next time.
-                        onIndex(0);
-                        onClose();
-                    }}
-                >
-                    {last ? 'Finish' : 'Next'}
-                </button>
+                <div className="tour-steps">
+                    {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
+                    <button
+                        type="button"
+                        className="button"
+                        aria-disabled={first}
+                        onClick={() => {
+                            if (!first) onIndex(index - 1);
+                        }}
+                    >
+                        Previous
+                    </button>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => {
+                            if (!last) {
+                                onIndex(index + 1);
+                                return;
+                            }
+                            // A finished tour opens on its first stop next time.
+                            onIndex(0);
+                            onClose();
+                        }}
+                    >
+                        {last ? 'Finish' : 'Next'}
+                    </button>
+                </div>
             </div>
         </aside>
     );

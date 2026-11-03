@@ -210,6 +210,25 @@ test('fits every stop across a phone-wide sheet with text at twice its size', as
     }
 });
 
+// A 320 by 640 phone at 150% zoom, without a phone's zooming out, where buttons held at the
+// foot of the sheet would cover the stop.
+test("on a short screen the tour's buttons scroll with the stop, so it has room to be read", async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 213, height: 427 });
+    await page.goto('/');
+    const tour = page.getByRole('complementary', { name: 'Tour' });
+    await tour.getByRole('button', { name: 'Start' }).click();
+    for (let stop = 1; stop <= STOPS.length; stop += 1) {
+        await expect(tour).toContainText(`Stop ${String(stop)} of`);
+        const pinned = await page.evaluate(
+            () => getComputedStyle(document.querySelector('.tour-nav') ?? document.body).position
+        );
+        expect(pinned, `the buttons at stop ${String(stop)}`).toBe('static');
+        if (stop < STOPS.length) await tour.getByRole('button', { name: 'Next' }).click();
+    }
+});
+
 test('keeps Close quiet under the pointer, so Try it stays the strong action', async ({ page }) => {
     await page.goto('/');
     const tour = page.getByRole('complementary', { name: 'Tour' });
