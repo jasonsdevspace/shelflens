@@ -46,6 +46,12 @@ interface Corpus {
 const idf = (index: Index, documentFrequency: number): number =>
     Math.log(1 + (index.documents.length - documentFrequency + 0.5) / (documentFrequency + 0.5));
 
+/** One index term a reading needs, and its posting list. */
+interface Part {
+    readonly term: string;
+    readonly list: PostingList;
+}
+
 /**
  * One way of reading a query unit, as typed, by synonym, by prefix or by a
  * correction, with the posting list of each index term it needs.
@@ -55,10 +61,9 @@ interface Reading {
     /** The typed words this reading stands in for, for the explanation. */
     readonly label: string;
     /** The index terms a document must have, each with its posting list. */
-    readonly terms: readonly string[];
-    readonly lists: readonly PostingList[];
-    /** Which of the lists is shortest, the one a reading is walked by. */
-    readonly shortest: number;
+    readonly parts: readonly Part[];
+    /** The part whose list is shortest, which `expand` walks and the unit's size counts. */
+    readonly walked: Part;
     /** The kind of match's weight, scaled for a synonym as `strict` explains. */
     readonly weight: number;
 }
@@ -127,12 +132,16 @@ const scoreUnder = (
     doc: number,
     { known = -1, matches }: { readonly known?: number; readonly matches?: TermMatch[] } = {}
 ): number | undefined => {
+    const { parts } = reading;
     let score = 0;
-    for (let t = 0; t < reading.lists.length; t += 1) {
-        const list = reading.lists[t] as PostingList;
-        const position = t === reading.shortest && known !== -1 ? known : positionOf(list, doc);
+    // Counted rather than for-of, which measured slower here and in `bestReading`.
+    for (let t = 0; t < parts.length; t += 1) {
+        const part = parts[t];
+        if (part === undefined) throw new Error(`no part at ${String(t)}`);
+        const { term, list } = part;
+        const walking = part === reading.walked && known !== -1;
+        const position = walking ? known : positionOf(list, doc);
         if (position === -1) return undefined;
-        const term = reading.terms[t] ?? '';
         score += scoreRow(corpus, { term, list, position }, reading, matches);
     }
     return score;
@@ -151,8 +160,11 @@ const bestReading = (
 ): { readonly at: number; readonly score: number } | undefined => {
     let at = -1;
     let best = 0;
+    // Counted, as the loop in `scoreUnder` is.
     for (let r = 0; r < readings.length; r += 1) {
-        const score = scoreUnder(corpus, readings[r] as Reading, doc);
+        const reading = readings[r];
+        if (reading === undefined) throw new Error(`no reading at ${String(r)}`);
+        const score = scoreUnder(corpus, reading, doc);
         if (score !== undefined && (at === -1 || score > best)) {
             at = r;
             best = score;
@@ -204,26 +216,23 @@ export const createMatcher = (
         terms: readonly string[],
         { kind, label, scale }: { kind: MatchKind; label: string; scale: number }
     ): Reading | undefined => {
-        const lists: PostingList[] = [];
+        const parts: Part[] = [];
+        let walked: Part | undefined;
         for (const term of terms) {
             const list = index.postings.get(term);
             if (!list) return undefined;
-            lists.push(list);
+            const part = { term, list };
+            // Of two lists the same length, the first is walked.
+            if (!walked || list.docs.length < walked.list.docs.length) walked = part;
+            parts.push(part);
         }
-        if (lists.length === 0) return undefined;
-        let shortest = 0;
-        lists.forEach((list, t) => {
-            if (list.docs.length < (lists[shortest]?.docs.length ?? 0)) shortest = t;
-        });
-        return { kind, label, terms, lists, shortest, weight: KIND_WEIGHT[kind] * scale };
+        if (!walked) return undefined;
+        return { kind, label, parts, walked, weight: KIND_WEIGHT[kind] * scale };
     };
 
     const collect = (readings: (Reading | undefined)[]): Readings => {
         const kept = readings.filter((reading): reading is Reading => reading !== undefined);
-        const size = kept.reduce(
-            (sum, reading) => sum + (reading.lists[reading.shortest]?.docs.length ?? 0),
-            0
-        );
+        const size = kept.reduce((sum, reading) => sum + reading.walked.list.docs.length, 0);
         return { readings: kept, size };
     };
 
@@ -265,7 +274,7 @@ export const createMatcher = (
     const expand = ({ readings }: Readings, from?: Expanded): Map<number, number> => {
         const scores = new Map(from?.scores);
         for (const reading of readings.slice(from?.readings ?? 0)) {
-            const walked = reading.lists[reading.shortest] as PostingList;
+            const walked = reading.walked.list;
             for (let i = 0; i < walked.docs.length; i += 1) {
                 const doc = walked.docs[i] ?? 0;
                 const score = scoreUnder(corpus, reading, doc, { known: i });

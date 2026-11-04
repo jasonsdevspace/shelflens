@@ -136,7 +136,7 @@ export const runBench = ({ products, seed, iterations }: BenchOptions): BenchRes
     // figure is the index and not the garbage left by generating the catalog.
     // Typed arrays live outside the JavaScript heap, in array buffers, so
     // the index's memory is the sum of both.
-    const collect = (globalThis as { gc?: () => void }).gc;
+    const collect = globalThis.gc;
     const inUse = () => {
         const usage = process.memoryUsage();
         return usage.heapUsed + usage.arrayBuffers;
