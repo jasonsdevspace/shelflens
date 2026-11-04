@@ -165,6 +165,61 @@ describe('search as you type', () => {
     });
 });
 
+describe('explaining a hit', () => {
+    const sum = (hit: { matches: readonly { score: number }[] }) =>
+        hit.matches.reduce((total, match) => total + match.score, 0);
+
+    it('gives matches that add up to the score, word by word in the order typed', () => {
+        // "cap" reads both as typed and as the synonym "baseball cap", so the
+        // cap's matches must come from the reading it was scored by.
+        for (const query of ['trail runner', 'finch cotton', 'ostara sneak', 'jumper', 'cap']) {
+            const { hits } = engine.search({ query, prefixLastTerm: true });
+            expect(hits.length, query).toBeGreaterThan(0);
+            for (const hit of hits)
+                expect(sum(hit), `${query} ${hit.id}`).toBeCloseTo(hit.score, 10);
+        }
+        const [hit] = engine.search({ query: 'runner trail' }).hits;
+        expect(hit?.matches.map((match) => match.queryTerm)).toEqual(['runner', 'trail']);
+    });
+
+    it('finds the same documents with the same scores whatever order the words come in', () => {
+        const forward = engine.search({ query: 'finch cotton tee' });
+        const backward = engine.search({ query: 'tee cotton finch' });
+        expect(backward.hits.map((hit) => [hit.id, hit.score])).toEqual(
+            forward.hits.map((hit) => [hit.id, expect.closeTo(hit.score, 10)])
+        );
+        expect(forward.hits.length).toBeGreaterThan(0);
+    });
+
+    it('explains a typo beside a word typed right, each by what matched it', () => {
+        const result = engine.search({ query: 'ostara sneakr' });
+        expect(result.mode).toBe('fuzzy');
+        const [hit] = result.hits;
+        expect(hit?.id).toBe('p2');
+        expect(hit?.matches.map((match) => [match.queryTerm, match.kind])).toEqual(
+            expect.arrayContaining([
+                ['ostara', 'exact'],
+                ['sneakr', 'fuzzy'],
+            ])
+        );
+        expect(sum(hit ?? { matches: [] })).toBeCloseTo(hit?.score ?? 0, 10);
+    });
+
+    it('keeps the matches of a pinned document the query matched, and gives none to one it did not', () => {
+        // The sneaker has "ostara" but not "jacket", so it is there only by its pin.
+        const pinned = engine.reconfigure({
+            rules: [{ id: 'pin', when: { queries: ['ostara jacket'] }, pin: ['p2', 'p3'] }],
+        });
+        const [sneaker, jacket] = pinned.search({ query: 'ostara jacket' }).hits;
+        expect(sneaker).toMatchObject({ id: 'p2', matches: [] });
+        expect(jacket?.id).toBe('p3');
+        expect(jacket?.matches.map((match) => match.queryTerm)).toEqual(
+            expect.arrayContaining(['ostara', 'jacket'])
+        );
+        expect(sum(jacket ?? { matches: [] })).toBeCloseTo(jacket?.score ?? 0, 10);
+    });
+});
+
 describe('typo tolerance', () => {
     it('corrects one typo per word when nothing matches exactly', () => {
         const result = engine.search({ query: 'sneakr' });

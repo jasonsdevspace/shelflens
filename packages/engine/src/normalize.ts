@@ -32,6 +32,14 @@ export const stem = (term: string): string => {
 };
 
 /**
+ * Apostrophes, dropped rather than split on: the typewriter one, the curly
+ * ones a word processor puts in, and the letter apostrophe some keyboards
+ * type. A catalog written in any of them reads the same as one typed with
+ * the plain key.
+ */
+const APOSTROPHES = /['\u2018\u2019\u02bc]/g;
+
+/**
  * The ways a phrase can be written as terms.
  *
  * A hyphenated word is indexed as both its joined form and its parts, so a
@@ -42,7 +50,7 @@ export const stem = (term: string): string => {
 export const phraseVariants = (text: string): string[][] => {
     let variants: string[][] = [[]];
     for (const chunk of normalize(text)
-        .replace(/'/g, '')
+        .replace(APOSTROPHES, '')
         .split(/[^a-z0-9-]+/)) {
         const parts = chunk.split('-').filter((part) => part.length > 0);
         if (parts.length === 0) continue;
@@ -53,46 +61,39 @@ export const phraseVariants = (text: string): string[][] => {
     return variants.filter((variant) => variant.length > 0);
 };
 
-/** Words in normalized text, counted as `wordCount` describes. */
-const wordsIn = (normalized: string): number =>
-    normalized.split(/[^a-z0-9-]+/).filter((chunk) => chunk.replace(/-/g, '').length > 0).length;
-
-/** Terms in normalized text, as `tokenize` describes. */
-const termsIn = (normalized: string): string[] => {
+/**
+ * Terms in normalized text, as `tokenize` describes, and how many words they
+ * came from, for length normalization.
+ *
+ * Counted as words rather than as terms, because a hyphenated word emits
+ * three terms for one word, and a product named "Everyday T-Shirt" is not
+ * twice as long as one named "Coastal Tee". A word is what gives terms, so
+ * "Men's" is one word, as it is one term.
+ */
+const termsIn = (normalized: string): { readonly terms: string[]; readonly words: number } => {
     const terms: string[] = [];
-    for (const chunk of normalized.replace(/'/g, '').split(/[^a-z0-9-]+/)) {
+    let words = 0;
+    for (const chunk of normalized.replace(APOSTROPHES, '').split(/[^a-z0-9-]+/)) {
         const parts = chunk.split('-').filter((part) => part.length > 0);
         if (parts.length === 0) continue;
+        words += 1;
         if (parts.length > 1) terms.push(parts.join(''));
         terms.push(...parts);
     }
-    return terms.map(stem);
+    return { terms: terms.map(stem), words };
 };
-
-/**
- * How many words a text has, for length normalization.
- *
- * Counted as words rather than as the terms `tokenize` emits, because a
- * hyphenated word emits three terms for one word, and a product named
- * "Everyday T-Shirt" is not twice as long as one named "Coastal Tee".
- */
-export const wordCount = (text: string): number => wordsIn(normalize(text));
 
 /**
  * Splits text into terms.
  *
  * Hyphenated words produce both their parts and the joined form, so
- * "T-Shirt" is found by "t shirt", "t-shirt" and "tshirt" alike. Apostrophes
- * are dropped rather than split on, so "men's" becomes "mens" and then
- * "men". Everything else that is not a letter or digit separates words.
+ * "T-Shirt" is found by "t shirt", "t-shirt" and "tshirt" alike. Apostrophes,
+ * straight or curly, are dropped rather than split on, so "men's" becomes
+ * "mens" and then "men". Everything else that is not a letter or digit
+ * separates words.
  */
-export const tokenize = (text: string): string[] => termsIn(normalize(text));
+export const tokenize = (text: string): string[] => termsIn(normalize(text)).terms;
 
-/**
- * A field's terms and its word count, from one pass of `normalize`, which
- * is most of what indexing a text costs.
- */
-export const analyze = (text: string): { readonly terms: string[]; readonly words: number } => {
-    const normalized = normalize(text);
-    return { terms: termsIn(normalized), words: wordsIn(normalized) };
-};
+/** A field's terms and its word count, from one split of the text. */
+export const analyze = (text: string): { readonly terms: string[]; readonly words: number } =>
+    termsIn(normalize(text));

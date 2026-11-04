@@ -7,8 +7,26 @@ names the package on npm and how to install that version once it is promoted.
 
 ## 0.6.0
 
-A filter its attribute cannot take is refused, and the error codes have a type of their own.
+Searches do only the work their page needs, a filter its attribute cannot take is refused, and
+the error codes have a type of their own.
 
+- **Less work per search.** A query's words are matched narrowest first, so a common word beside a
+  rare one costs what the rare one finds, and each candidate carries only a score. Why a hit
+  matched, and the rule effects and signal it lists, are worked out only for the page returned. The
+  typo pass adds each word's one-typo neighbors to the readings the exact pass made, and where the
+  narrowest word is the same in both, keeps what the exact pass scored of it. A hide builds no set
+  of candidates unless there is a pin, and a reconfigure keeps the parts of the engine its changes
+  leave alone. [The
+  benchmark](https://github.com/jasonsdevspace/shelflens/blob/main/docs/benchmarks/results.md) has
+  the numbers.
+- **A word is counted once.** Indexing splits each field's text once, for its terms and its word
+  count together, and a word with an apostrophe, such as "Men's", now counts as the one word it is,
+  where it counted as two. Length normalization reads that count and the field's average, so the
+  scores in a field where any text has an apostrophe move a little.
+- **A curly apostrophe reads as a straight one.** The curly apostrophes a word processor puts in,
+  and the letter apostrophe some keyboards type, are dropped as the straight one is, so "Men’s" is
+  found by "mens" and "men's" and counts as one word. They used to split the word in two, in the
+  catalog, the query and the synonyms alike.
 - **A word for a number or a boolean is refused.** A filter whose `eq` is a word, or any `in`
   filter, on a number or boolean attribute throws an `EngineError` with the code
   `wrong_attribute_kind`, as a range on anything but a number and true or false on anything but a
@@ -19,7 +37,8 @@ A filter its attribute cannot take is refused, and the error codes have a type o
 - **Every export says what it is.** Each published function and type has a doc comment, which an
   editor shows beside it.
 
-Every search the engine still accepts returns the same results as in 0.5.0.
+Every search the engine still accepts returns the same results as in 0.5.0, unless the catalog
+has a word with an apostrophe.
 
 ## 0.5.0
 

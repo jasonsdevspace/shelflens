@@ -124,7 +124,8 @@ const checkWindow = (rule: Rule): void => {
  */
 export const checkRules = (
     rules: readonly Rule[],
-    documentIds: ReadonlySet<string>,
+    /** The ids the documents have, such as the map from each to its number. */
+    documentIds: { has(id: string): boolean },
     attributes: Readonly<Record<string, AttributeKind>>
 ): void => {
     const seen = new Set<string>();
@@ -310,14 +311,19 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
     return { pins, pinnedBy, hidden, adjustments, applied, setAside: setAsideOf(draft) };
 };
 
-/** The multiplier a document's score gets, and the effects to record for it. */
+/**
+ * The multiplier a document's score gets from the boosts and buries, and
+ * whether a bury reached it. Each effect is added to `effects` when it is
+ * given.
+ */
 export const adjustmentsFor = (
     plan: RulePlan,
     id: string,
-    attribute: (name: string) => AttributeValue | undefined
-): { readonly weight: number; readonly effects: RuleEffect[] } => {
+    attribute: (name: string) => AttributeValue | undefined,
+    effects?: RuleEffect[]
+): { readonly weight: number; readonly buried: boolean } => {
     let weight = 1;
-    const effects: RuleEffect[] = [];
+    let buried = false;
     for (const { ruleId, action, adjustment } of plan.adjustments) {
         const byId = adjustment.ids?.includes(id) ?? false;
         const value = adjustment.attribute ? attribute(adjustment.attribute.name) : undefined;
@@ -325,7 +331,8 @@ export const adjustmentsFor = (
             adjustment.attribute !== undefined && holds(value, adjustment.attribute.value);
         if (!byId && !byAttribute) continue;
         weight *= adjustment.weight;
-        effects.push({ ruleId, action, weight: adjustment.weight });
+        if (action === 'bury') buried = true;
+        effects?.push({ ruleId, action, weight: adjustment.weight });
     }
-    return { weight, effects };
+    return { weight, buried };
 };

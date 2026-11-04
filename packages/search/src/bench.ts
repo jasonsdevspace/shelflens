@@ -1,8 +1,8 @@
 import { performance } from 'node:perf_hooks';
 import { gzipSync } from 'node:zlib';
 
-import { createEngine, type Engine, type SearchResult } from '@jasonsdevspace/shelflens';
-import { generateCatalog } from '@shelflens/catalog';
+import { createEngine, type Engine, type Rule, type SearchResult } from '@jasonsdevspace/shelflens';
+import { type Catalog, generateCatalog } from '@shelflens/catalog';
 
 import { storeConfig, toDocuments } from './documents.js';
 import { searchStore, type StoreSearchRequest } from './store.js';
@@ -12,7 +12,7 @@ import { searchStore, type StoreSearchRequest } from './store.js';
  *
  * The demo indexes two thousand products, which hides every cost. This
  * indexes far more, so the price of building the index, of a facet count
- * over a wide query, and of a fuzzy pass that checks every term is known
+ * over a wide query, and of a fuzzy pass that checks every term of a similar length is known
  * rather than guessed. Absolute numbers depend on the machine, so each run
  * records what it ran on.
  */
@@ -49,14 +49,16 @@ export interface BenchResult {
     readonly queries: readonly QueryTiming[];
 }
 
-/** The shapes of request a storefront sends, from cheapest to most demanding. */
+/** The shapes of request a storefront sends. */
 const BENCH_QUERIES: readonly {
     name: string;
     request: Omit<StoreSearchRequest, 'group'>;
+    /** Run under the rules `benchRules` writes, rather than none. */
+    underRules?: true;
 }[] = [
     { name: 'search as you type, two letters', request: { query: 'sh', prefixLastTerm: true } },
     { name: 'one common word', request: { query: 'jacket' } },
-    { name: 'two words', request: { query: 'navy blue hoodie' } },
+    { name: 'three words', request: { query: 'navy blue hoodie' } },
     { name: 'a synonym', request: { query: 'trainers' } },
     { name: 'a typo, so the fuzzy pass runs', request: { query: 'sneakr' } },
     {
@@ -77,7 +79,28 @@ const BENCH_QUERIES: readonly {
         },
     },
     { name: 'everything, page fifty', request: { page: 50 } },
+    { name: 'a word under rules', request: { query: 'jacket' }, underRules: true },
 ];
+
+/**
+ * Rules of every kind on one word, written from the catalog itself so they
+ * name products and brands it has: a pin, a hide, a boost and a bury.
+ */
+const benchRules = (catalog: Catalog): Rule[] => {
+    const [first, second, third] = catalog.products;
+    const [boosted, buried] = catalog.brands;
+    const brand = (name: string | undefined) => ({ name: 'brand', value: name ?? '' });
+    return [
+        {
+            id: 'bench-merchandising',
+            when: { queries: ['jacket'] },
+            pin: [first?.sku ?? '', second?.sku ?? ''],
+            hide: [third?.sku ?? ''],
+            boost: [{ attribute: brand(boosted?.name), weight: 1.5 }],
+            bury: [{ attribute: brand(buried?.name), weight: 0.5 }],
+        },
+    ];
+};
 
 const percentile = (sorted: readonly number[], fraction: number): number => {
     const index = Math.min(sorted.length - 1, Math.ceil(fraction * sorted.length) - 1);
@@ -125,6 +148,7 @@ export const runBench = ({ products, seed, iterations }: BenchOptions): BenchRes
     const buildMs = performance.now() - started;
     collect?.();
     const heapMb = (inUse() - heapBefore) / 1024 / 1024;
+    const merchandised = engine.reconfigure({ rules: benchRules(catalog) });
 
     return {
         catalog: {
@@ -139,10 +163,10 @@ export const runBench = ({ products, seed, iterations }: BenchOptions): BenchRes
             documentsPerSecond: Math.round(products / (buildMs / 1000)),
             heapMb: Math.round(heapMb),
         },
-        queries: BENCH_QUERIES.map(({ name, request }) => ({
+        queries: BENCH_QUERIES.map(({ name, request, underRules }) => ({
             name,
             request,
-            ...time(engine, request, iterations),
+            ...time(underRules ? merchandised : engine, request, iterations),
         })),
     };
 };
