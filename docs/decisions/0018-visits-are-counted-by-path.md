@@ -59,7 +59,8 @@ widget's own file never starts the tracker. The demo's pages that host it are th
 - The results and a product's page are the store's page with another query, and the query is
   never sent, so a visit counts the page it opened once. How far a shopper went within the store
   is the store's own events' business, as record 9 says.
-- A counter that cannot start, in a browser without what it needs, leaves the page as it was.
+- A counter that cannot start, in a browser without what it needs, leaves the page as it was, and
+  an address it cannot read is not sent.
 - Plausible leaves out pages on localhost and under an automated browser, so the dev server, the
   end to end tests and the Lighthouse audits count nothing.
 - An ad blocker hides some visits, and GitHub Pages serves no proxy to route them through. The
@@ -70,7 +71,8 @@ widget's own file never starts the tracker. The demo's pages that host it are th
 
 - A unit test starts the tracker under the domain with links out counted, starts nothing when the
   browser sends Global Privacy Control, and leaves the page alone when the tracker throws.
-- A unit test holds every address sent to its path: the page's, the one before it and a link out's.
+- A unit test holds every address sent to its path: the page's, the one before it and a link out's,
+  and sends nothing for a page whose address cannot be read.
 - The end to end policy test reads `connect-src` as the page's own origin and Plausible, and follows
   a link from a search to find the next page handed the origin alone.
 - The bundle test finds the tracker in every page the app serves, read from each page's own entry,

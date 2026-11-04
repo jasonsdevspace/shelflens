@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { readdir, readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
@@ -109,13 +110,15 @@ describe('the widget in a host page', () => {
 
 describe('the demo\u2019s own pages', () => {
     it('each count visits, a page added later included', async () => {
-        // Every page the build serves is an index.html in the app, and each names its entry.
+        // Every page the build serves is an index.html the app keeps in git, and each names its
+        // entry. Asked of git, so a report or a build that writes one of its own is left out.
         const app = new URL('..', import.meta.url);
-        const pages = (await readdir(app, { recursive: true })).filter(
-            (path) =>
-                path.endsWith('index.html') &&
-                !/^(dist|node_modules|playwright-report)\//.test(path)
-        );
+        const pages = execFileSync('git', ['ls-files', '*index.html'], {
+            cwd: app,
+            encoding: 'utf8',
+        })
+            .split('\n')
+            .filter((path) => path.length > 0);
         expect(pages.length).toBeGreaterThan(1);
         for (const page of pages) {
             const html = await readFile(new URL(page, app), 'utf8');
