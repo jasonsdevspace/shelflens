@@ -67,8 +67,11 @@ is tried, not while the rule is half typed.
 - The rules path is a plain `POST` outside the schema, like events, and for the same reason: the
   every host refuses full queries unless told otherwise, and a mutation would have to go where they
   are refused.
-- A saved set is a whole set, not a patch. The host checks the whole thing with the engine before
-  it replaces anything, so the store is never built from a set that fails to load.
+- A saved set is a whole set, not a patch. The host reads the file into rules field by field, so
+  each list is a list and each name is text, and then checks the whole set with the engine before
+  it replaces anything, so the store is never built from a set that fails to load. The engine
+  checks what a rule names and trusts the shape it is given, so the field by field read is what
+  stops a list written as a word, which would otherwise be saved and then fail every search.
 - A rule can name a product that is not on the current page only by typing its SKU, and the panel
   refuses it until it is. That is a limit chosen over a product search inside the panel, which
   would be a second search box on a page about search.
@@ -78,7 +81,7 @@ is tried, not while the rule is half typed.
 - The API: a preview equals a search over a store built with the same rules, is volatile, and
   refuses a rule naming a product that does not exist with a user error that says the SKU.
 - The rules path: a `GET` says the shipped set and that it is not edited, a `POST` with a set the
-  engine refuses changes nothing and says why, a good `POST` is the new set, and a `DELETE` gives
+  engine refuses, or with a rule of the wrong shape, changes nothing and says why, a good `POST` is the new set, and a `DELETE` gives
   the shipped set back.
 - The worker: a save is a new store version, the search after it equals the preview before it,
   and every answer kept under the old version is gone.

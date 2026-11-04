@@ -122,10 +122,11 @@ const asHttp = async (request: Request) => ({
 
 const noCatalog = () => refuse(404, 'no catalog is loaded, so there is nothing to search yet');
 
-const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
+/** A file's JSON, unchecked, for its reader to check. */
+const fetchJson = async (fetchImpl: typeof fetch, url: string, what: string): Promise<unknown> => {
     const response = await fetchImpl(url);
     if (!response.ok) throw new Error(`the ${what} came back with status ${response.status}`);
-    return response.json() as Promise<T>;
+    return response.json() as Promise<unknown>;
 };
 
 /**
@@ -186,7 +187,10 @@ export const createWorkerApi = ({
             return inHand;
         }
         if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
-        return fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog');
+        // The site's own catalog, written by its build from the generator, so
+        // it is trusted rather than checked on every first visit. A test
+        // holds the generator's catalog to the check a visitor's file passes.
+        return (await fetchJson(fetchImpl, catalogUrl, 'catalog')) as Catalog;
     };
 
     /**
@@ -212,7 +216,7 @@ export const createWorkerApi = ({
                 catalogNow(),
                 rulesUrl === undefined
                     ? Promise.resolve([])
-                    : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
+                    : fetchJson(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
             ]);
             return { catalog, rules: shipped };
         },

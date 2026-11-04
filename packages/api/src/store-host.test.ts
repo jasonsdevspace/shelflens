@@ -68,6 +68,23 @@ describe('a store host', () => {
         expect(await host.current()).toBe(first);
     });
 
+    it('refuses a set of the wrong shape, and keeps the store it has', async () => {
+        const { host } = hostWith();
+        const first = await host.current();
+        // Queries given as a word saved once, and every search for it failed after.
+        for (const rule of [
+            { id: 'word', when: { queries: 'jacket' }, hide: [jacket.sku] },
+            { id: 'one', pin: jacket.sku },
+        ]) {
+            const answer = await host.receiveRules({
+                method: 'POST',
+                body: JSON.stringify({ rules: [rule] }),
+            });
+            expect(answer.status, rule.id).toBe(400);
+        }
+        expect(await host.current()).toBe(first);
+    });
+
     it('folds new clicks in when a visit begins, and does nothing when there are none', async () => {
         const { host, events } = hostWith();
         const first = await host.current();
