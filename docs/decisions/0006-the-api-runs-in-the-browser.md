@@ -50,8 +50,8 @@ Option B, with option A available at any time.
 
 - The demo's index is built in the worker from the shipped catalog on first load, which is why the
   catalog has a size budget and the index has a benchmark. The cold first visit is measured in
-  `docs/benchmarks/cold-visit.md`: on the demo catalog the worker spends about 38 ms downloading
-  the catalog and the rules and 50 ms building the store, served locally.
+  `docs/benchmarks/cold-visit.md`: on the demo catalog the worker spends about 39 ms downloading
+  the catalog and the rules and 43 ms building the store, served locally.
 - A worker is one JavaScript thread. The engine's wide queries cost about a thirtieth of a second at
   the median on a hundred thousand products and well under a millisecond's worth on the demo's two
   thousand, so the page stays responsive, but a far larger catalog would need the index built off
