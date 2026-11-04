@@ -68,6 +68,9 @@ export interface ClientOptions {
     readonly now?: () => number;
 }
 
+/** A query's variables, named values as every generated document's are. */
+export type QueryVariables = Readonly<Record<string, unknown>>;
+
 interface QueryOptions {
     readonly signal?: AbortSignal;
 }
@@ -94,7 +97,7 @@ export interface GraphQLClient {
     readonly version: string | undefined;
     /** How many answers are remembered. */
     readonly remembered: number;
-    query<Result, Variables>(
+    query<Result, Variables extends QueryVariables>(
         document: TypedDocumentString<Result, Variables>,
         variables: Variables,
         options?: QueryOptions
@@ -124,13 +127,8 @@ export const createClient = ({
 }: ClientOptions): GraphQLClient => {
     const viewer = { group };
 
-    const keyOf = (operation: string, variables: unknown) =>
-        cacheKeyOf({
-            version: memory.version ?? '',
-            viewer,
-            operation,
-            variables: variables as Readonly<Record<string, unknown>> | undefined,
-        });
+    const keyOf = (operation: string, variables: QueryVariables) =>
+        cacheKeyOf({ version: memory.version ?? '', viewer, operation, variables });
 
     const recall = (key: string): unknown => {
         const held = memory.answers.get(key);
@@ -186,7 +184,11 @@ export const createClient = ({
         get remembered() {
             return memory.answers.size;
         },
-        query: async (document, variables, { signal } = {}) => {
+        query: async <Result, Variables extends QueryVariables>(
+            document: TypedDocumentString<Result, Variables>,
+            variables: Variables,
+            { signal }: QueryOptions = {}
+        ): Promise<Result> => {
             const name = nameOf(document);
             const operation = name ?? document.toString();
             // A generated document carries only its name. One with neither has
@@ -195,11 +197,16 @@ export const createClient = ({
                 throw new Error('the document has neither a persisted name nor any text to send');
             }
             const known = recall(keyOf(operation, variables));
-            if (known !== undefined) return known as never;
+            // An answer is kept under its document and variables, and the API answers by the
+            // schema this document was generated from, so the data is this document's result.
+            if (known !== undefined) return known as Result;
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
             if (answered !== null) memory.version = answered;
-            const envelope = (await response.json().catch(() => ({}))) as Envelope<unknown>;
+            // Read as the envelope of the API at this address, which answers by the schema this
+            // document was generated from. A body that is not JSON reads as an empty envelope,
+            // which fails below. What else a stray answer holds is not checked.
+            const envelope = (await response.json().catch(() => ({}))) as Envelope<Result>;
             if (envelope.errors && envelope.errors.length > 0) {
                 throw new GraphQLClientError(envelope.errors, response.status);
             }
@@ -210,7 +217,7 @@ export const createClient = ({
             // depends on more than the version says so, and is asked for every time.
             if (!envelope.extensions?.volatile)
                 remember(keyOf(operation, variables), envelope.data);
-            return envelope.data as never;
+            return envelope.data;
         },
     };
 };

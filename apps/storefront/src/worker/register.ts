@@ -23,8 +23,40 @@
  * stalls with nothing failing is given up on after a time.
  */
 
+/**
+ * A worker as the page talks to it: where its script came from, and a message to it, with a
+ * port when the page wants an answer.
+ */
+export interface PageWorker {
+    readonly scriptURL: string;
+    postMessage(message: unknown, transfer?: Transferable[]): void;
+}
+
+/** A worker installing or waiting, which the page watches in case it is discarded. */
+interface IncomingWorker {
+    readonly state: ServiceWorkerState;
+    addEventListener(type: 'statechange', listener: () => void): void;
+}
+
+/** A registration as the page reads it: the worker active, and one installing or waiting. */
+interface WorkerRegistration {
+    readonly active: Pick<PageWorker, 'postMessage'> | null;
+    readonly installing: IncomingWorker | null;
+    readonly waiting: IncomingWorker | null;
+}
+
+/**
+ * The browser's service worker container, as much of it as the page uses, so
+ * the browser's own and a test's fake are both one.
+ */
+export interface WorkerContainer {
+    readonly controller: PageWorker | null;
+    register(scriptUrl: string, options: RegistrationOptions): Promise<WorkerRegistration>;
+    addEventListener(type: 'controllerchange', listener: () => void): void;
+}
+
 export interface WorkerHost {
-    readonly serviceWorker: ServiceWorkerContainer | undefined;
+    readonly serviceWorker: WorkerContainer | undefined;
     reload(): void;
 }
 
@@ -80,7 +112,7 @@ export const startFailure = (error: unknown): StartFailureKind =>
  * is what a failed install comes to, or at once when it already has been.
  * Never settles for one that installs.
  */
-const discarded = (registration: ServiceWorkerRegistration): Promise<never> =>
+const discarded = (registration: WorkerRegistration): Promise<never> =>
     new Promise((_, reject) => {
         const failed = () => reject(new StoreDidNotStart('the store could not be prepared'));
         const incoming = registration.installing ?? registration.waiting;
@@ -101,10 +133,10 @@ const discarded = (registration: ServiceWorkerRegistration): Promise<never> =>
  * script not arriving, may not happen again.
  */
 const registerWorker = async (
-    serviceWorker: ServiceWorkerContainer,
+    serviceWorker: WorkerContainer,
     scriptUrl: string,
     scope: string
-): Promise<ServiceWorkerRegistration> => {
+): Promise<WorkerRegistration> => {
     try {
         return await serviceWorker.register(scriptUrl, { type: 'module', scope });
     } catch (error) {
@@ -123,7 +155,7 @@ const registerWorker = async (
  * be worse than one visit answered by two versions.
  */
 export const announceVisit = (
-    worker: Pick<ServiceWorker, 'postMessage'>,
+    worker: Pick<PageWorker, 'postMessage'>,
     timeoutMs = VISIT_TIMEOUT_MS
 ): Promise<void> =>
     new Promise((resolve) => {
@@ -148,7 +180,7 @@ const browserHost = (): WorkerHost => ({
  * script's address is read against the page's, as registering it is.
  */
 export const isOwnController = (
-    controller: ServiceWorker | null,
+    controller: Pick<PageWorker, 'scriptURL'> | null,
     scriptUrl: string,
     pageUrl: string = globalThis.location.href
 ): boolean => controller !== null && new URL(scriptUrl, pageUrl).href === controller.scriptURL;

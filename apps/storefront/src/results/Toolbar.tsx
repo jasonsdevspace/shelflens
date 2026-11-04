@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import { type SearchState, SORT_KEYS, type SortKey, SORTS } from '../app/url.js';
+import { isSortKey, type SearchState, SORT_KEYS, type SortKey, SORTS } from '../app/url.js';
 import type { Navigate } from '../app/useUrlState.js';
 import { count } from '../format/count.js';
 import type { Result } from './useResults.js';
@@ -63,9 +63,12 @@ const SortField = ({
             id={id}
             className="select"
             value={sortKey}
-            onChange={(event) =>
-                navigate({ ...state, sort: event.target.value as SortKey, page: 1 })
-            }
+            onChange={(event) => {
+                // The options are the sort keys, so any value they give is one.
+                const { value } = event.target;
+                if (!isSortKey(value)) return;
+                navigate({ ...state, sort: value, page: 1 });
+            }}
         >
             {SORT_KEYS.map((key) => (
                 <option key={key} value={key}>

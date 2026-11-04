@@ -13,7 +13,13 @@ import { count } from '../format/count.js';
  */
 
 export type Action = 'pin' | 'boost' | 'bury' | 'hide';
-export type Target = 'product' | 'brand';
+/** What a boost or a bury applies to, in the order the form offers them. */
+export const TARGETS = ['product', 'brand'] as const;
+export type Target = (typeof TARGETS)[number];
+
+/** Whether a select's value is one of the targets. */
+export const isTarget = (value: string): value is Target =>
+    TARGETS.some((target) => target === value);
 
 export interface Form {
     readonly id: string;

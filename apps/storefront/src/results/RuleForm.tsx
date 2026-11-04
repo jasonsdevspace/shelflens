@@ -3,14 +3,19 @@ import { type FormEvent, type ReactNode, type RefObject, useId } from 'react';
 import {
     ACTIONS,
     type Form,
+    isTarget,
     keptLine,
     type Named,
     namesProducts,
     type Problems,
     STEPS,
     type Target,
+    TARGETS,
 } from './rule-form.js';
 import { onlyUnderRelevance } from './setAside.js';
+
+/** How the form names each target, so a target added to the list needs a name to compile. */
+const TARGET_LABELS: Readonly<Record<Target, string>> = { product: 'A product', brand: 'A brand' };
 
 /**
  * One rule, as a form. Every change goes up at once, so the results beside
@@ -246,12 +251,17 @@ export const RuleForm = (props: RuleFormProps) => {
                         id={`${id}-target`}
                         className="select"
                         value={form.target}
-                        onChange={(event) =>
-                            onChange({ ...form, target: event.target.value as Target })
-                        }
+                        onChange={(event) => {
+                            const { value } = event.target;
+                            if (!isTarget(value)) return;
+                            onChange({ ...form, target: value });
+                        }}
                     >
-                        <option value="product">A product</option>
-                        <option value="brand">A brand</option>
+                        {TARGETS.map((target) => (
+                            <option key={target} value={target}>
+                                {TARGET_LABELS[target]}
+                            </option>
+                        ))}
                     </select>
                 </Field>
             )}

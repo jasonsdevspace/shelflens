@@ -20,6 +20,7 @@ export {
 export { createStoreApi, INTERNAL_MESSAGE, type StoreApi } from './execute.js';
 export { fingerprint } from './fingerprint.js';
 export { PERSISTED_OPERATIONS } from './generated/persisted.js';
+export { isList, isRecord } from './guards.js';
 export {
     answerOf,
     GROUP_HEADER,

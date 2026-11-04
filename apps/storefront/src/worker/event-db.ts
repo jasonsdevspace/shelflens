@@ -112,6 +112,7 @@ export const createIndexedDbEventStore = ({
         },
         all: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
+            // IndexedDB gives back what was put, typed as any, and only this module writes here.
             return request(store.index(BY_TIME).getAll()) as Promise<StoreEvent[]>;
         },
     };
