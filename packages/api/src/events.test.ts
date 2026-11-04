@@ -16,16 +16,26 @@ import {
  * nothing kept when the browser says not to track.
  */
 
-const event = (over: { [Key in keyof StoreEvent]?: StoreEvent[Key] | undefined } = {}) =>
+/** An event as a page would send it, with any field changed or left out, for the store to judge. */
+const sent = (
+    over: { readonly [Key in keyof StoreEvent]?: unknown } = {}
+): Record<string, unknown> =>
     Object.fromEntries(
-        Object.entries({
+        Object.entries<unknown>({
             id: 'e1',
             kind: 'search',
             at: 1_700_000_000_000,
             phrase: 'jacket',
             ...over,
         }).filter(([, value]) => value !== undefined)
-    ) as unknown as StoreEvent;
+    );
+
+/** An event as the store's parser gives it back, which is all an event store takes. */
+const event = (over: { readonly [Key in keyof StoreEvent]?: unknown } = {}): StoreEvent => {
+    const [read] = parseEventBatch([sent(over)]) ?? [];
+    if (!read) throw new Error(`expected the store to accept ${JSON.stringify(sent(over))}`);
+    return read;
+};
 
 const post = (body: unknown, headers: Record<string, string> = {}) => ({
     method: 'POST',
@@ -37,9 +47,9 @@ describe('an event batch', () => {
     it('accepts the three kinds with their closed set of fields', () => {
         expect(
             parseEventBatch([
-                event(),
-                event({ id: 'e2', kind: 'click', sku: 'SL-00001', position: 3 }),
-                event({
+                sent(),
+                sent({ id: 'e2', kind: 'click', sku: 'SL-00001', position: 3 }),
+                sent({
                     id: 'e3',
                     kind: 'view',
                     phrase: undefined,
@@ -62,34 +72,32 @@ describe('an event batch', () => {
     });
 
     it('refuses the whole batch when any event carries a field it does not know', () => {
-        expect(parseEventBatch([event(), { ...event({ id: 'e2' }), email: 'x@y.z' }])).toBe(
+        expect(parseEventBatch([sent(), { ...sent({ id: 'e2' }), email: 'x@y.z' }])).toBe(
             undefined
         );
-        expect(parseEventBatch([{ ...event(), userAgent: 'browser' }])).toBe(undefined);
+        expect(parseEventBatch([{ ...sent(), userAgent: 'browser' }])).toBe(undefined);
     });
 
     it('refuses what is not a list of events', () => {
         expect(parseEventBatch({ id: 'e1' })).toBe(undefined);
-        expect(parseEventBatch([event({ kind: 'purchase' as StoreEvent['kind'] })])).toBe(
-            undefined
-        );
-        expect(parseEventBatch([event({ at: Number.NaN })])).toBe(undefined);
-        expect(parseEventBatch([event({ id: '' })])).toBe(undefined);
-        expect(parseEventBatch([event({ position: 0 })])).toBe(undefined);
-        expect(parseEventBatch([event({ sku: 'x'.repeat(33) })])).toBe(undefined);
-        expect(parseEventBatch([event({ session: 'x'.repeat(65) })])).toBe(undefined);
-        expect(parseEventBatch([event({ session: '' })])).toBe(undefined);
-        expect(parseEventBatch(Array.from({ length: BATCH_LIMIT + 1 }, () => event()))).toBe(
+        expect(parseEventBatch([sent({ kind: 'purchase' })])).toBe(undefined);
+        expect(parseEventBatch([sent({ at: Number.NaN })])).toBe(undefined);
+        expect(parseEventBatch([sent({ id: '' })])).toBe(undefined);
+        expect(parseEventBatch([sent({ position: 0 })])).toBe(undefined);
+        expect(parseEventBatch([sent({ sku: 'x'.repeat(33) })])).toBe(undefined);
+        expect(parseEventBatch([sent({ session: 'x'.repeat(65) })])).toBe(undefined);
+        expect(parseEventBatch([sent({ session: '' })])).toBe(undefined);
+        expect(parseEventBatch(Array.from({ length: BATCH_LIMIT + 1 }, () => sent()))).toBe(
             undefined
         );
     });
 
     it('folds a phrase to a few lower case words and caps it', () => {
-        const [folded] = parseEventBatch([event({ phrase: '  Trail   RUNNER\n' })]) ?? [];
+        const [folded] = parseEventBatch([sent({ phrase: '  Trail   RUNNER\n' })]) ?? [];
         expect(folded?.phrase).toBe('trail runner');
-        const [long] = parseEventBatch([event({ phrase: 'a'.repeat(200) })]) ?? [];
+        const [long] = parseEventBatch([sent({ phrase: 'a'.repeat(200) })]) ?? [];
         expect(long?.phrase).toHaveLength(80);
-        const [blank] = parseEventBatch([event({ phrase: '   ' })]) ?? [];
+        const [blank] = parseEventBatch([sent({ phrase: '   ' })]) ?? [];
         expect(blank).toEqual({ id: 'e1', kind: 'search', at: 1_700_000_000_000 });
     });
 });
@@ -113,21 +121,21 @@ describe('the receiver', () => {
 
     it('keeps a posted batch and answers with nothing to say', async () => {
         const store = createMemoryEventStore();
-        expect(await receiveEvents(post([event()]), store, new Date())).toEqual({ status: 204 });
+        expect(await receiveEvents(post([sent()]), store, new Date())).toEqual({ status: 204 });
         expect(await kept(store)).toEqual(['e1']);
     });
 
     it('keeps a batch delivered twice once', async () => {
         const store = createMemoryEventStore();
-        await receiveEvents(post([event(), event({ id: 'e2' })]), store, new Date());
-        await receiveEvents(post([event(), event({ id: 'e2' })]), store, new Date());
+        await receiveEvents(post([sent(), sent({ id: 'e2' })]), store, new Date());
+        await receiveEvents(post([sent(), sent({ id: 'e2' })]), store, new Date());
         expect(await kept(store)).toEqual(['e1', 'e2']);
     });
 
     it('brings a time ahead of its own back to when the batch arrived', async () => {
         const store = createMemoryEventStore();
         await receiveEvents(
-            post([event({ at: 5_000 }), event({ id: 'e2', at: 500 })]),
+            post([sent({ at: 5_000 }), sent({ id: 'e2', at: 500 })]),
             store,
             new Date(1_000)
         );
@@ -140,7 +148,7 @@ describe('the receiver', () => {
     it('keeps nothing when the browser sends Global Privacy Control', async () => {
         const store = createMemoryEventStore();
         expect(
-            await receiveEvents(post([event()], { [GPC_HEADER]: '1' }), store, new Date())
+            await receiveEvents(post([sent()], { [GPC_HEADER]: '1' }), store, new Date())
         ).toEqual({
             status: 204,
         });
@@ -152,7 +160,7 @@ describe('the receiver', () => {
         expect((await receiveEvents(post('{'), store, new Date())).status).toBe(400);
         expect((await receiveEvents(post([{ id: 'x' }]), store, new Date())).status).toBe(400);
         expect(
-            (await receiveEvents({ ...post([event()]), method: 'GET' }, store, new Date())).status
+            (await receiveEvents({ ...post([sent()]), method: 'GET' }, store, new Date())).status
         ).toBe(405);
         expect(await kept(store)).toEqual([]);
     });

@@ -4,6 +4,7 @@ import axe from 'axe-core';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { nth } from '../test/dom.js';
 import { parseCsv } from './csv.js';
 import { guessMapping, type Mapping } from './mapping.js';
 import { MappingEditor, Preview, samplesOf, withField, withSearchOnly } from './MappingEditor.jsx';
@@ -67,9 +68,9 @@ describe('what each choice says', () => {
         render(
             <MappingEditor table={table} mapping={guessMapping(table)} onChange={() => undefined} />
         );
-        const [, second] = screen.getAllByLabelText('Price');
+        const second = nth(screen.getAllByLabelText('Price'), 1, 'a second Price label');
         expect(
-            within(second as HTMLElement)
+            within(second)
                 .getAllByRole('option')
                 .map((option) => option.textContent)
         ).toContain('Brand, already used, like Oak & Co');
@@ -218,7 +219,7 @@ describe('changing the mapping', () => {
         const all = within(
             screen.getByRole('group', { name: 'Also search these columns' })
         ).getAllByRole('checkbox');
-        expect(all.every((box) => !(box as HTMLInputElement).checked)).toBe(true);
+        for (const box of all) expect(box).not.toBeChecked();
         const words = screen.getByRole('group', { name: 'Also search these columns' });
         expect(within(words).getByLabelText('Notes')).not.toBeChecked();
         expect(within(words).queryByLabelText('Product')).not.toBeInTheDocument();

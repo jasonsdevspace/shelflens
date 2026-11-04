@@ -183,9 +183,10 @@ describe('the client', () => {
         const failure = await client
             .query(SuggestDocument, variables)
             .catch((error: unknown) => error);
-        expect(failure).toBeInstanceOf(GraphQLClientError);
-        expect((failure as GraphQLClientError).errors[0]?.extensions?.code).toBe('QUERY_TOO_DEEP');
-        expect((failure as GraphQLClientError).message).toBe('too deep');
+        if (!(failure instanceof GraphQLClientError))
+            throw new Error("expected the client's error");
+        expect(failure.errors[0]?.extensions?.code).toBe('QUERY_TOO_DEEP');
+        expect(failure.message).toBe('too deep');
         expect(client.remembered).toBe(0);
     });
 

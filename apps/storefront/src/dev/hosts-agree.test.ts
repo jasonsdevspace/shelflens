@@ -1,5 +1,4 @@
 // @vitest-environment node
-import type { AddressInfo } from 'node:net';
 
 import { createMemoryEventStore, createStoreHost } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
@@ -58,7 +57,9 @@ let nodeBase = '';
 
 beforeAll(async () => {
     await new Promise<void>((resolve) => node.listen(0, resolve));
-    nodeBase = `http://127.0.0.1:${(node.address() as AddressInfo).port}`;
+    const address = node.address();
+    if (address === null || typeof address === 'string') throw new Error('expected a port');
+    nodeBase = `http://127.0.0.1:${String(address.port)}`;
 });
 afterAll(async () => {
     await new Promise<void>((resolve) => node.close(() => resolve()));

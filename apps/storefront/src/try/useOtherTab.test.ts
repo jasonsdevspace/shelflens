@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Loaded } from '../client/catalog.js';
 import { useOtherTab } from './useOtherTab.js';
 
-let answer = (_loaded: Loaded | undefined) => undefined as void;
+let answer: (loaded: Loaded | undefined) => void = (_loaded) => undefined;
 const readLoaded = vi.fn(
     () =>
         new Promise<Loaded | undefined>((resolve) => {

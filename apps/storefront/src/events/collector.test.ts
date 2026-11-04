@@ -1,6 +1,7 @@
 import { parseEventBatch } from '@shelflens/api';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
+import { nth } from '../test/dom.js';
 import { createCollector, PAUSE_MS } from './collector.js';
 
 /*
@@ -33,8 +34,20 @@ const collector = (over: Partial<Parameters<typeof createCollector>[0]> = {}) =>
     return { ...made, send };
 };
 
-const sentBodies = (send: ReturnType<typeof vi.fn>) =>
-    send.mock.calls.map(([, body]) => JSON.parse(body as string) as unknown);
+type Send = Mock<(url: string, body: string) => boolean>;
+
+/** What each send carried, parsed but not checked, for a test that reads a body exactly. */
+const sentBodies = (send: Send): unknown[] =>
+    send.mock.calls.map(([, body]): unknown => JSON.parse(body));
+
+/** Each batch sent, read through the store's own parser, so one it would refuse fails here. */
+const batches = (send: Send) =>
+    sentBodies(send).map((body) => {
+        const batch = parseEventBatch(body);
+        if (!batch)
+            throw new Error(`expected a batch the store accepts, not ${JSON.stringify(body)}`);
+        return batch;
+    });
 
 describe('the collector', () => {
     it('sends what was recorded after a pause, as one batch the store accepts', async () => {
@@ -66,8 +79,9 @@ describe('the collector', () => {
         const { record, send } = collector({ session: () => undefined });
         record({ kind: 'search', phrase: 'jacket' });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
-        const [body] = sentBodies(send) as [Record<string, unknown>[]];
-        expect(Object.keys(body[0] ?? {}).sort()).toEqual(['at', 'id', 'kind', 'phrase']);
+        expect(sentBodies(send)).toEqual([
+            [{ id: 'e1', kind: 'search', at: 1_700_000_000_000, phrase: 'jacket' }],
+        ]);
     });
 
     it('sends a view at once, with whatever was queued before it', async () => {
@@ -76,16 +90,13 @@ describe('the collector', () => {
         record({ kind: 'search', phrase: 'jacket' });
         record({ kind: 'view', sku: 'SL-00001' });
         expect(send).toHaveBeenCalledTimes(1);
-        expect((sentBodies(send)[0] as { kind: string }[]).map((e) => e.kind)).toEqual([
-            'search',
-            'view',
-        ]);
+        expect(nth(batches(send), 0, 'a batch').map((e) => e.kind)).toEqual(['search', 'view']);
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).toHaveBeenCalledTimes(1);
     });
 
     it('sends nothing until the host is ready, then everything queued', async () => {
-        let armed = () => undefined as void;
+        let armed: () => void = () => undefined;
         const ready = new Promise<void>((resolve) => {
             armed = resolve;
         });
@@ -107,7 +118,7 @@ describe('the collector', () => {
         expect(send).toHaveBeenCalledTimes(1);
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).toHaveBeenCalledTimes(2);
-        expect((sentBodies(send)[1] as unknown[]).length).toBe(1);
+        expect(nth(batches(send), 1, 'a second batch')).toHaveLength(1);
     });
 
     it('keeps a batch the browser refused and sends it with the next', async () => {
@@ -119,7 +130,7 @@ describe('the collector', () => {
         record({ kind: 'search', phrase: 'boot' });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).toHaveBeenCalledTimes(2);
-        expect((sentBodies(send)[1] as unknown[]).length).toBe(2);
+        expect(nth(batches(send), 1, 'a second batch')).toHaveLength(2);
     });
 
     it('sends when the page is hidden or left, without waiting for the pause', async () => {
@@ -147,8 +158,8 @@ describe('the collector', () => {
         for (let i = 0; i < 250; i += 1) record({ kind: 'click', sku: `SL-${i}` });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).toHaveBeenCalledTimes(2);
-        expect((sentBodies(send)[0] as unknown[]).length).toBe(100);
-        expect((sentBodies(send)[1] as unknown[]).length).toBe(100);
+        expect(nth(batches(send), 0, 'a first batch')).toHaveLength(100);
+        expect(nth(batches(send), 1, 'a second batch')).toHaveLength(100);
     });
 
     it('queues nothing, and so sends nothing, when the visitor is not to be tracked', async () => {
@@ -176,7 +187,7 @@ describe('the collector', () => {
         send.mockReturnValue(true);
         record({ kind: 'click', sku: 'SL-00009' });
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
-        const last = sentBodies(send).at(-1) as { sku: string }[];
+        const last = nth(batches(send), -1, 'a last batch');
         expect(last.map((e) => e.sku)).toEqual(['SL-00003', 'SL-00004', 'SL-00009']);
     });
 });

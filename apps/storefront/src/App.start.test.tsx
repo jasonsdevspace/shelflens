@@ -37,7 +37,7 @@ describe('a store that starts', () => {
     it('waits for the store to say what it holds, so the viewer switch arrives with the masthead', async () => {
         const STORE_OP = String(StoreDocument.__meta__?.['hash']);
         const answer = globalThis.fetch;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });
@@ -148,7 +148,7 @@ describe('what did not load', () => {
         const op = `op=${String(ProductDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
         let asked = 0;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });
@@ -248,7 +248,7 @@ describe('a store that does not start', () => {
     });
 
     it('keeps to the start it was last given, whatever an earlier one says later', async () => {
-        let fail = (_error: Error) => undefined as void;
+        let fail: (error: Error) => void = (_error) => undefined;
         const props = {
             apiUrl: 'http://store.test/graphql',
             eventsUrl: 'http://store.test/events',
@@ -268,7 +268,7 @@ describe('a store that does not start', () => {
     });
 
     it('keeps the masthead\u2019s room only while the store is on its way', async () => {
-        let fail = (_error: Error) => undefined as void;
+        let fail: (error: Error) => void = (_error) => undefined;
         startWith(
             new Promise<void>((_resolve, reject) => {
                 fail = reject;

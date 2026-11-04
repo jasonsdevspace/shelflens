@@ -21,7 +21,10 @@ const markTourSeen = (): void => {
 const FOLLOWED = ['click', 'auxclick', 'contextmenu'] as const;
 
 /** The path the store is served under: the explainer's, one step up. */
-const storeBase = (here: Location): string => new URL('../', here.href).pathname;
+/** What the page's own address is read for. */
+type Here = Pick<Location, 'href' | 'origin'>;
+
+const storeBase = (here: Here): string => new URL('../', here.href).pathname;
 
 /**
  * Whether a link leads into the store's own page, where the tour opens, as
@@ -30,10 +33,10 @@ const storeBase = (here: Location): string => new URL('../', here.href).pathname
  * visitor's own products or a host page for the widget. Following one of those
  * leaves the store's tour for the reader's first visit to the store.
  */
-const intoStore = (link: HTMLAnchorElement, here: Location): boolean =>
+const intoStore = (link: HTMLAnchorElement, here: Here): boolean =>
     link.origin === here.origin && link.pathname === storeBase(here);
 
-export const quietTourOnStoreLinks = (root: ParentNode, here: Location): void => {
+export const quietTourOnStoreLinks = (root: ParentNode, here: Here): void => {
     for (const link of root.querySelectorAll<HTMLAnchorElement>('a[href]')) {
         if (!intoStore(link, here)) continue;
         for (const event of FOLLOWED) link.addEventListener(event, markTourSeen);

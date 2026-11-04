@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Rule } from '@jasonsdevspace/shelflens';
-import { buildSchema, type GraphQLInputType, validateInputValue } from 'graphql';
+import { parseRulesFile } from '@shelflens/api';
+import { buildSchema, isInputType, validateInputValue } from 'graphql';
 import { describe, expect, it } from 'vitest';
 
 import { ACTIONS, fresh, ruleOf } from './rule-form.js';
@@ -20,7 +21,8 @@ const schema = buildSchema(
         'utf8'
     )
 );
-const RULE_INPUT = schema.getType('RuleInput') as GraphQLInputType;
+const RULE_INPUT = schema.getType('RuleInput');
+if (!isInputType(RULE_INPUT)) throw new Error('expected the schema to have a RuleInput');
 
 /** What the API would say is wrong with a value given as a RuleInput, nothing when it is one. */
 const problemsOf = (value: unknown): string[] => {
@@ -29,16 +31,17 @@ const problemsOf = (value: unknown): string[] => {
     return problems;
 };
 
-const shipped = (
-    JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'rules.json'), 'utf8')) as {
-        rules: Rule[];
-    }
-).rules;
+// Read as the store reads a rules file, inside the test, so a rule it would refuse fails that test.
+const shipped = () =>
+    parseRulesFile(
+        JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'rules.json'), 'utf8'))
+    );
 
 describe('a rule sent to a preview', () => {
     it('is a RuleInput, for every rule the store ships', () => {
-        expect(shipped.length).toBeGreaterThan(0);
-        for (const rule of shipped) {
+        const rules = shipped();
+        expect(rules.length).toBeGreaterThan(0);
+        for (const rule of rules) {
             expect(problemsOf(toRuleInput(rule)), rule.id).toEqual([]);
         }
     });
@@ -56,7 +59,10 @@ describe('a rule sent to a preview', () => {
     });
 
     it('leaves behind a field the schema does not name, which the API would refuse', () => {
-        const carried = { id: 'r', pin: ['SL-00001'], note: 'kept by the engine only' } as Rule;
+        const carried: Rule = Object.assign(
+            { id: 'r', pin: ['SL-00001'] },
+            { note: 'kept by the engine only' }
+        );
         expect(problemsOf(carried)).not.toEqual([]);
         expect(toRuleInput(carried)).toEqual({ id: 'r', pin: ['SL-00001'] });
     });

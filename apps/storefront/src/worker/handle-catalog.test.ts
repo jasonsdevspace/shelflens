@@ -341,7 +341,7 @@ describe('the worker for a visitor’s own catalog', () => {
     });
 
     it('holds a removal until a load that is building lands, then removes it, so both paths agree', async () => {
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         let building = false;
         const catalogs = createMemoryCatalogStore();
         const replace = catalogs.replace.bind(catalogs);

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createLatest } from './latest.js';
 
 const deferred = <T>() => {
-    let resolve!: (value: T) => void;
-    let reject!: (error: unknown) => void;
+    let resolve: (value: T) => void = (_value) => undefined;
+    let reject: (error: unknown) => void = (_error) => undefined;
     const promise = new Promise<T>((yes, no) => {
         resolve = yes;
         reject = no;

@@ -217,8 +217,8 @@ describe('the page for a visitor’s own catalog', () => {
         page();
         await loadSample();
         // What is loaded, read first, then given back to the tab's own read once it is held.
-        const loaded = (await (await fetch(`${BASE}catalog`)).json()) as unknown;
-        let answer = () => undefined as void;
+        const loaded: unknown = await (await fetch(`${BASE}catalog`)).json();
+        let answer: () => void = () => undefined;
         let asked = false;
         failure = failWhen('GET', `${BASE}catalog`, () => {
             asked = true;
@@ -258,9 +258,9 @@ describe('the page for a visitor’s own catalog', () => {
     it('reads again on a return that came while an older read was out, so a change made meanwhile shows', async () => {
         page();
         await loadSample();
-        const before = (await (await fetch(`${BASE}catalog`)).json()) as unknown;
+        const before: unknown = await (await fetch(`${BASE}catalog`)).json();
         // The first check's read is held, and answered with what was loaded before the change.
-        let answer = () => undefined as void;
+        let answer: () => void = () => undefined;
         let held = false;
         failure = (request) => {
             if (
@@ -365,7 +365,7 @@ describe('the page for a visitor’s own catalog', () => {
         await loadSample();
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
-        let finish = (_text: string) => undefined as void;
+        let finish: (text: string) => void = (_text) => undefined;
         const slow = {
             name: 'slow.csv',
             size: 10,
@@ -400,7 +400,7 @@ describe('the page for a visitor’s own catalog', () => {
         await loadSample();
         await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
         await chooser();
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         failure = failWhen(
             'GET',
             `${BASE}catalog`,
@@ -583,7 +583,7 @@ describe('the page for a visitor’s own catalog', () => {
             new File(['name,price\nBench,120\n'], 'first.csv')
         );
         await screen.findByRole('heading', { level: 1, name: 'What is in first.csv' });
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         failure = failWhen(
             'GET',
             `${BASE}rules`,
@@ -746,7 +746,7 @@ describe('the page for a visitor’s own catalog', () => {
     it('shows the file it read last, whichever finishes first', async () => {
         page();
         await chooser();
-        let finishSlow!: (text: string) => void;
+        let finishSlow: (text: string) => void = (_text) => undefined;
         const slow = new Promise<string>((resolve) => {
             finishSlow = resolve;
         });

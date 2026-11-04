@@ -1,6 +1,7 @@
 import { fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { nth } from '../test/dom.js';
 import { hasSeenTour } from '../tour/seen.js';
 import { quietTourOnStoreLinks } from './quiet-tour.js';
 
@@ -12,9 +13,8 @@ import { quietTourOnStoreLinks } from './quiet-tour.js';
 
 const here = {
     origin: 'https://example.test',
-    pathname: '/shelflens/about/',
     href: 'https://example.test/shelflens/about/',
-} as Location;
+};
 
 const page = (hrefs: readonly string[]) => {
     document.body.innerHTML = hrefs.map((href) => `<a href="${href}">link</a>`).join('');
@@ -30,24 +30,30 @@ beforeEach(() => {
 
 describe('the explainer and the tour', () => {
     it('quiets the tour for a link into the store', () => {
-        const [root, product] = page([
+        const links = page([
             'https://example.test/shelflens/',
             'https://example.test/shelflens/?product=SL-00001',
         ]);
+        const root = nth(links, 0, 'the link to the store');
+        const product = nth(links, 1, 'the link to a product');
         expect(hasSeenTour()).toBe(false);
-        fireEvent.click(product as HTMLAnchorElement);
+        fireEvent.click(product);
         expect(hasSeenTour()).toBe(true);
         localStorage.clear();
-        fireEvent.click(root as HTMLAnchorElement);
+        fireEvent.click(root);
         expect(hasSeenTour()).toBe(true);
     });
 
     it('counts a middle click and a context menu as following the link too', () => {
-        const [product] = page(['https://example.test/shelflens/?product=SL-00001']);
-        fireEvent(product as HTMLAnchorElement, new MouseEvent('auxclick', { button: 1 }));
+        const product = nth(
+            page(['https://example.test/shelflens/?product=SL-00001']),
+            0,
+            'the link to a product'
+        );
+        fireEvent(product, new MouseEvent('auxclick', { button: 1 }));
         expect(hasSeenTour()).toBe(true);
         localStorage.clear();
-        fireEvent.contextMenu(product as HTMLAnchorElement);
+        fireEvent.contextMenu(product);
         expect(hasSeenTour()).toBe(true);
     });
 

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { setAsideBySort } from './results/setAside.js';
+import { enclosing, nth } from './test/dom.js';
 import { cards, featured, open, settled } from './test/store.jsx';
 
 /* Why each result ranked where it did, and the rules a merchandiser previews and saves. */
@@ -14,13 +15,14 @@ describe('explain mode', () => {
             'aria-pressed',
             'true'
         );
-        const [first, second] = cards().map((card) => card.closest('li'));
-        expect(first).toHaveTextContent(featured.name);
+        const item = (index: number) =>
+            enclosing(nth(cards(), index, `result ${String(index + 1)}`), 'li', 'its list item');
+        expect(item(0)).toHaveTextContent(featured.name);
         expect(
-            within(first as HTMLElement).getByRole('list', { name: 'Why this is result 1' })
+            within(item(0)).getByRole('list', { name: 'Why this is result 1' })
         ).toHaveTextContent('Pinned to the top by rule featured-jacket');
         expect(
-            within(second as HTMLElement).getByRole('list', { name: 'Why this is result 2' })
+            within(item(1)).getByRole('list', { name: 'Why this is result 2' })
         ).toHaveTextContent(/"jacket" matched "jacket" in the name/);
 
         await user.click(screen.getByRole('button', { name: 'Explain ranking' }));
@@ -82,7 +84,7 @@ describe('the rules a sort set aside', () => {
 describe('as a merchandiser', () => {
     const sku = (card: HTMLElement) => card.getAttribute('data-sku') ?? '';
     const explanation = (card: HTMLElement, rank: number) =>
-        within(card.closest('li') as HTMLElement).getByRole('list', {
+        within(enclosing(card, 'li', "the result's list item")).getByRole('list', {
             name: `Why this is result ${rank}`,
         });
 
@@ -107,7 +109,7 @@ describe('as a merchandiser', () => {
         // Pinned in rule order: the store's pin first, then the draft's.
         const previewed = cards();
         expect(previewed.slice(0, 2).map(sku)).toEqual([featured.sku, last]);
-        expect(explanation(previewed[1] as HTMLElement, 2)).toHaveTextContent(
+        expect(explanation(nth(previewed, 1, 'a second result'), 2)).toHaveTextContent(
             /Pinned to the top by rule jacket-/
         );
         // The store itself has not moved.
@@ -140,19 +142,19 @@ describe('as a merchandiser', () => {
     it('tells the open panel when the banner gives the store its own rules back', async () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
-        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const last = sku(nth(cards(), -1, 'a last result'));
         const panel = await screen.findByRole('complementary', { name: 'Rules' });
         await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
         await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
         await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
         await within(panel).findByRole('status');
-        const banner = screen.getByText(/Your edited rules are in effect/).closest('div');
-        await user.click(
-            within(banner as HTMLElement).getByRole('button', { name: 'Discard your rules' })
+        const banner = enclosing(
+            screen.getByText(/Your edited rules are in effect/),
+            'div',
+            'the banner'
         );
-        await user.click(
-            within(banner as HTMLElement).getByRole('button', { name: 'Yes, discard' })
-        );
+        await user.click(within(banner).getByRole('button', { name: 'Discard your rules' }));
+        await user.click(within(banner).getByRole('button', { name: 'Yes, discard' }));
         await waitFor(() =>
             expect(screen.queryByText(/Your edited rules are in effect/)).toBeNull()
         );
@@ -169,7 +171,7 @@ describe('as a merchandiser', () => {
     it('keeps the draft off the page once the panel closes', async () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
-        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const last = sku(nth(cards(), -1, 'a last result'));
         const panel = await screen.findByRole('complementary', { name: 'Rules' });
         await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
         await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));
@@ -189,7 +191,7 @@ describe('as a merchandiser', () => {
     it('saves a hide rule, though the product it names has left the preview', async () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
-        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const last = sku(nth(cards(), -1, 'a last result'));
         const panel = await screen.findByRole('complementary', { name: 'Rules' });
         await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
         await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));
@@ -205,7 +207,7 @@ describe('as a merchandiser', () => {
     it('drops the draft with the panel when a new search closes it', async () => {
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
-        const last = sku(cards()[cards().length - 1] as HTMLElement);
+        const last = sku(nth(cards(), -1, 'a last result'));
         const panel = await screen.findByRole('complementary', { name: 'Rules' });
         await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
         await user.click(within(panel).getByRole('radio', { name: /^Hide/ }));

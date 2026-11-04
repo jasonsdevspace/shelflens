@@ -22,12 +22,19 @@ export interface RailProps {
 
 const RAIL_HEADING_ID = 'rail-heading';
 
+/** The parts of a rail the heading reads, so a rail built from these alone can be headed. */
+type RailSummary = Pick<RailData, 'source' | 'viewedTogether'> & {
+    readonly category: Pick<RailData['category'], 'name'>;
+    readonly items: readonly unknown[];
+};
+
 /**
  * The source says whether anything was viewed with the product, and the
  * count says how much of the rail that is, so the two never disagree on
  * the first and an answer without a count is still headed truly.
  */
-export const railHeading = (rail: RailData): string => {
+
+export const railHeading = (rail: RailSummary): string => {
     const mostRated = `most rated in ${rail.category.name}`;
     if (rail.source !== 'VIEWED_TOGETHER') return `Most rated in ${rail.category.name}`;
     const viewed = rail.viewedTogether > 0 ? rail.viewedTogether : rail.items.length;
