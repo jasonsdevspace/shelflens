@@ -55,6 +55,8 @@ interface Reading {
     /** The index terms a document must have, each with its posting list. */
     readonly terms: readonly string[];
     readonly lists: readonly PostingList[];
+    /** Which of the lists is shortest, the one a reading is walked by. */
+    readonly shortest: number;
     /**
      * Scales the score by the kind of match, and so a many-word alternative
      * for few typed words does not count extra.
@@ -112,19 +114,20 @@ const scoreRow = (
 
 /**
  * A document's score under one reading, or `undefined` when it lacks one of
- * the reading's terms. The first term's row may be known already, as it is
- * when walking that term's own list.
+ * the reading's terms. The row in its shortest list may be known already, as
+ * it is when walking that list. The terms are added in their own order
+ * whichever list was walked, so the score is the same either way.
  */
 const scoreUnder = (
     corpus: Corpus,
     reading: Reading,
     doc: number,
-    { first = -1, matches }: { readonly first?: number; readonly matches?: TermMatch[] } = {}
+    { known = -1, matches }: { readonly known?: number; readonly matches?: TermMatch[] } = {}
 ): number | undefined => {
     let score = 0;
     for (let t = 0; t < reading.lists.length; t += 1) {
         const list = reading.lists[t] as PostingList;
-        const position = t === 0 && first !== -1 ? first : positionOf(list, doc);
+        const position = t === reading.shortest && known !== -1 ? known : positionOf(list, doc);
         if (position === -1) return undefined;
         const term = reading.terms[t] ?? '';
         score += scoreRow(corpus, { term, list, position }, reading, matches);
@@ -133,22 +136,26 @@ const scoreUnder = (
 };
 
 /**
- * Which reading a document is credited with, and its score under it. A
- * document keeps only its best reading of each unit, so a word matched both
- * exactly and by prefix is not counted twice, and of two that score the same
- * the earlier counts.
+ * Which reading a document is credited with, by its place in the list, and its
+ * score under it. A document keeps only its best reading of each unit, so a
+ * word matched both exactly and by prefix is not counted twice, and of two
+ * that score the same the earlier counts.
  */
 const bestReading = (
     corpus: Corpus,
     { readings }: Readings,
     doc: number
-): { readonly reading: Reading; readonly score: number } | undefined => {
-    let best: { reading: Reading; score: number } | undefined;
-    for (const reading of readings) {
-        const score = scoreUnder(corpus, reading, doc);
-        if (score !== undefined && (!best || score > best.score)) best = { reading, score };
+): { readonly at: number; readonly score: number } | undefined => {
+    let at = -1;
+    let best = 0;
+    for (let r = 0; r < readings.length; r += 1) {
+        const score = scoreUnder(corpus, readings[r] as Reading, doc);
+        if (score !== undefined && (at === -1 || score > best)) {
+            at = r;
+            best = score;
+        }
     }
-    return best;
+    return at === -1 ? undefined : { at, score: best };
 };
 
 /** The best scores some first readings of a unit gave, and how many readings that was. */
@@ -198,13 +205,17 @@ export const createMatcher = (
             lists.push(list);
         }
         if (lists.length === 0) return undefined;
-        return { kind, label, terms, lists, weight: KIND_WEIGHT[kind] * scale };
+        let shortest = 0;
+        lists.forEach((list, t) => {
+            if (list.docs.length < (lists[shortest]?.docs.length ?? 0)) shortest = t;
+        });
+        return { kind, label, terms, lists, shortest, weight: KIND_WEIGHT[kind] * scale };
     };
 
     const collect = (readings: (Reading | undefined)[]): Readings => {
         const kept = readings.filter((reading): reading is Reading => reading !== undefined);
         const size = kept.reduce(
-            (sum, reading) => sum + Math.min(...reading.lists.map((list) => list.docs.length)),
+            (sum, reading) => sum + (reading.lists[reading.shortest]?.docs.length ?? 0),
             0
         );
         return { readings: kept, size };
@@ -248,10 +259,10 @@ export const createMatcher = (
     const expand = ({ readings }: Readings, from?: Expanded): Map<number, number> => {
         const scores = new Map(from?.scores);
         for (const reading of readings.slice(from?.readings ?? 0)) {
-            const first = reading.lists[0] as PostingList;
-            for (let i = 0; i < first.docs.length; i += 1) {
-                const doc = first.docs[i] ?? 0;
-                const score = scoreUnder(corpus, reading, doc, { first: i });
+            const walked = reading.lists[reading.shortest] as PostingList;
+            for (let i = 0; i < walked.docs.length; i += 1) {
+                const doc = walked.docs[i] ?? 0;
+                const score = scoreUnder(corpus, reading, doc, { known: i });
                 if (score === undefined) continue;
                 const existing = scores.get(doc);
                 if (existing === undefined || score > existing) scores.set(doc, score);
@@ -263,7 +274,8 @@ export const createMatcher = (
     const explain = (readings: Readings, doc: number): TermMatch[] => {
         const best = bestReading(corpus, readings, doc);
         const matches: TermMatch[] = [];
-        if (best) scoreUnder(corpus, best.reading, doc, { matches });
+        const reading = best && readings.readings[best.at];
+        if (reading) scoreUnder(corpus, reading, doc, { matches });
         return matches;
     };
 

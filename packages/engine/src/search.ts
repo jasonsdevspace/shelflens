@@ -119,8 +119,15 @@ const matchUnits = (
         if (alive.length === 0) break;
         const scored = byUnit[unit] as Float64Array;
         const next: number[] = [];
+        // A unit read many ways, such as a prefix of a short word, costs a
+        // lookup per reading for each document standing. Read in full, it
+        // costs its postings, so it is read whichever way is less.
+        const these = readings[unit] as Readings;
+        const whole =
+            these.size <= alive.length * these.readings.length ? matcher.expand(these) : undefined;
         for (const k of alive) {
-            const score = matcher.scoreOf(readings[unit] as Readings, docs[k] ?? 0);
+            const doc = docs[k] ?? 0;
+            const score = whole ? whole.get(doc) : matcher.scoreOf(these, doc);
             if (score === undefined) continue;
             scored[k] = score;
             next.push(k);
@@ -300,10 +307,21 @@ const adjustScores = (
 ): void => {
     const { plan, signals } = adjusting;
     if (plan.adjustments.length === 0 && plan.pinnedBy.size === 0 && signals === undefined) return;
+    const { index } = adjusting;
+    const ruling = plan.adjustments.length > 0;
     candidates.docs.forEach((doc, i) => {
-        const { rules, signal } = adjustmentOf(adjusting, doc);
-        if (rules !== undefined) candidates.scores[i] = (candidates.scores[i] ?? 0) * rules;
-        if (signal) candidates.scores[i] = (candidates.scores[i] ?? 0) * signal.weight;
+        // The same steps as `adjustmentOf`, keeping only the numbers.
+        const id = ruling || plan.pinnedBy.size > 0 ? (index.documents[doc]?.id ?? '') : '';
+        const pinned = Boolean(plan.pinnedBy.get(id));
+        let buried = false;
+        if (ruling) {
+            const adjusted = adjustmentsFor(plan, id, (name) => attributeOf(index, doc, name));
+            candidates.scores[i] = (candidates.scores[i] ?? 0) * adjusted.weight;
+            buried = adjusted.buried;
+        }
+        const count = signals?.[doc] ?? 0;
+        if (count === 0 || pinned || buried) return;
+        candidates.scores[i] = (candidates.scores[i] ?? 0) * signalWeight(count);
     });
 };
 
@@ -450,12 +468,14 @@ const createFromIndex = (built: Built, config: EngineConfig): Engine => {
  * the engine does not have.
  */
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
-    checkRules(config.rules ?? [], new Set(documents.map((d) => d.id)), config.attributes);
+    // Documents are numbered in the order they come, by the index as here.
+    const byId = new Map(documents.map((d, doc) => [d.id, doc]));
+    checkRules(config.rules ?? [], byId, config.attributes);
     const index = buildIndex(documents, config);
     return createFromIndex(
         {
             index,
-            byId: new Map(index.documents.map((d, doc) => [d.id, doc])),
+            byId,
             synonyms: buildSynonyms(config.synonyms ?? []),
             signals: signalsByDoc(config.signals ?? {}, index.documents),
         },
