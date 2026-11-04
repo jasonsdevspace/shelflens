@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { App } from '../App.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
@@ -164,10 +164,12 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     useOtherTab({ searching, catalogUrl, pending, onChange: otherTab });
 
     // A file dropped anywhere on the page is read wherever a file can be taken, and is never
-    // opened by the browser in the page's place, which would lose whatever the visitor had.
+    // opened by the browser in the page's place, which would lose whatever the visitor had. The
+    // listeners start in the same commit as the chooser, so a file dropped the moment it appears
+    // is read rather than opened.
     const takesFile =
         stage.kind === 'choose' || stage.kind === 'reading' || stage.kind === 'review';
-    useEffect(() => {
+    useLayoutEffect(() => {
         const hold = (event: DragEvent) => event.preventDefault();
         const dropped = (event: DragEvent) => {
             event.preventDefault();

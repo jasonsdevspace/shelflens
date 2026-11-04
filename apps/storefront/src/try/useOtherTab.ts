@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useLayoutEffect, useRef } from 'react';
 
 import { type Loaded, readLoaded } from '../client/catalog.js';
 
@@ -23,10 +23,12 @@ export const useOtherTab = ({
 }) => {
     // The newest callback, so a draw that passes another keeps the listeners and a read in flight.
     const changed = useRef(onChange);
-    useEffect(() => {
+    useLayoutEffect(() => {
         changed.current = onChange;
     });
-    useEffect(() => {
+    // Listening starts in the same commit that shows the products, so a return from the moment they
+    // appear is heard, rather than only once an effect that runs after the draw has had its turn.
+    useLayoutEffect(() => {
         if (searching === undefined) return undefined;
         let live = true;
         // A return fires both a visibility change and a focus, so the two make one check. A
