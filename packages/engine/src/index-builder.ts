@@ -165,14 +165,14 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
     const byField = fieldNames.map((field) => ({
         field,
         lengths: new Uint16Array(documents.length),
+        total: 0,
     }));
-    const totals = fieldNames.map(() => 0);
 
     documents.forEach((document, doc) => {
-        byField.forEach(({ field, lengths }, f) => {
-            const { terms, words } = analyze(document.text[field] ?? '');
-            lengths[doc] = words;
-            totals[f] = (totals[f] ?? 0) + words;
+        byField.forEach((column, f) => {
+            const { terms, words } = analyze(document.text[column.field] ?? '');
+            column.lengths[doc] = words;
+            column.total += words;
             for (const term of terms) {
                 let draft = drafts.get(term);
                 if (!draft) {
@@ -216,7 +216,7 @@ export const buildIndex = (documents: readonly Document[], config: EngineConfig)
         terms,
         termsByLength,
         lengths: byField.map(({ lengths }) => lengths),
-        averageLength: totals.map((total) =>
+        averageLength: byField.map(({ total }) =>
             documents.length === 0 ? 0 : total / documents.length
         ),
         columns,

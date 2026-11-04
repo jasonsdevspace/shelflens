@@ -62,9 +62,8 @@ interface Reading {
     readonly label: string;
     /** The index terms a document must have, each with its posting list. */
     readonly parts: readonly Part[];
-    /** Which part's list is shortest, and that list, the one a reading is walked by. */
-    readonly shortest: number;
-    readonly walked: PostingList;
+    /** The part whose list is shortest, which `expand` walks and the unit's size counts. */
+    readonly walked: Part;
     /** The kind of match's weight, scaled for a synonym as `strict` explains. */
     readonly weight: number;
 }
@@ -135,12 +134,13 @@ const scoreUnder = (
 ): number | undefined => {
     const { parts } = reading;
     let score = 0;
-    // Counted rather than for-of, which measured slower in this loop and the one that calls it.
+    // Counted rather than for-of, which measured slower here and in `bestReading`.
     for (let t = 0; t < parts.length; t += 1) {
         const part = parts[t];
-        if (part === undefined) return undefined;
+        if (part === undefined) throw new Error(`no part at ${String(t)}`);
         const { term, list } = part;
-        const position = t === reading.shortest && known !== -1 ? known : positionOf(list, doc);
+        const walking = part === reading.walked && known !== -1;
+        const position = walking ? known : positionOf(list, doc);
         if (position === -1) return undefined;
         score += scoreRow(corpus, { term, list, position }, reading, matches);
     }
@@ -160,9 +160,11 @@ const bestReading = (
 ): { readonly at: number; readonly score: number } | undefined => {
     let at = -1;
     let best = 0;
+    // Counted, as the loop in `scoreUnder` is.
     for (let r = 0; r < readings.length; r += 1) {
         const reading = readings[r];
-        const score = reading && scoreUnder(corpus, reading, doc);
+        if (reading === undefined) throw new Error(`no reading at ${String(r)}`);
+        const score = scoreUnder(corpus, reading, doc);
         if (score !== undefined && (at === -1 || score > best)) {
             at = r;
             best = score;
@@ -215,25 +217,22 @@ export const createMatcher = (
         { kind, label, scale }: { kind: MatchKind; label: string; scale: number }
     ): Reading | undefined => {
         const parts: Part[] = [];
-        let shortest = 0;
-        let walked: PostingList | undefined;
+        let walked: Part | undefined;
         for (const term of terms) {
             const list = index.postings.get(term);
             if (!list) return undefined;
+            const part = { term, list };
             // Of two lists the same length, the first is walked.
-            if (!walked || list.docs.length < walked.docs.length) {
-                shortest = parts.length;
-                walked = list;
-            }
-            parts.push({ term, list });
+            if (!walked || list.docs.length < walked.list.docs.length) walked = part;
+            parts.push(part);
         }
         if (!walked) return undefined;
-        return { kind, label, parts, shortest, walked, weight: KIND_WEIGHT[kind] * scale };
+        return { kind, label, parts, walked, weight: KIND_WEIGHT[kind] * scale };
     };
 
     const collect = (readings: (Reading | undefined)[]): Readings => {
         const kept = readings.filter((reading): reading is Reading => reading !== undefined);
-        const size = kept.reduce((sum, reading) => sum + reading.walked.docs.length, 0);
+        const size = kept.reduce((sum, reading) => sum + reading.walked.list.docs.length, 0);
         return { readings: kept, size };
     };
 
@@ -275,7 +274,7 @@ export const createMatcher = (
     const expand = ({ readings }: Readings, from?: Expanded): Map<number, number> => {
         const scores = new Map(from?.scores);
         for (const reading of readings.slice(from?.readings ?? 0)) {
-            const { walked } = reading;
+            const walked = reading.walked.list;
             for (let i = 0; i < walked.docs.length; i += 1) {
                 const doc = walked.docs[i] ?? 0;
                 const score = scoreUnder(corpus, reading, doc, { known: i });

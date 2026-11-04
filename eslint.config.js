@@ -178,9 +178,10 @@ export default defineConfig(
         },
     },
     {
-        // The engine and the packages that build its documents hold no type
-        // assertion, each value narrowed by a check instead, and this keeps it
-        // so. A const assertion claims nothing and is still allowed.
+        // The engine and the packages that make its catalog and documents hold no type
+        // assertions, each value typed by how it is built or narrowed by a check, and this keeps
+        // them out, a non-null assertion among them. A const assertion claims nothing and is
+        // still allowed.
         files: [
             'packages/engine/src/**/*.ts',
             'packages/search/src/**/*.ts',
@@ -189,6 +190,7 @@ export default defineConfig(
         ignores: ['**/*.test.ts'],
         rules: {
             '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+            '@typescript-eslint/no-non-null-assertion': 'error',
         },
     },
     {

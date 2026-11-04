@@ -113,7 +113,7 @@ const matchUnits = (
     const expanded = matcher.expand(firstReadings, from?.unit === first ? from : undefined);
     const docs = [...expanded.keys()];
     // Each other unit's score for each document the narrowest admitted, by its place in `docs`.
-    const others = rest.map((unit) => ({ ...unit, scores: new Float64Array(docs.length) }));
+    const others = rest.map((entry) => ({ ...entry, scores: new Float64Array(docs.length) }));
     let alive = docs.map((_, k) => k);
     for (const { these, scores: unitScores } of others) {
         if (alive.length === 0) break;
@@ -132,7 +132,8 @@ const matchUnits = (
         }
         alive = next;
     }
-    // Summed in the query's own order, so the order the units were read in changes nothing.
+    // The narrowest unit's scores come from `expanded` in the order `docs` did, so they line up.
+    // Spread first, since filling the array from the map's iterator measured slower.
     const byUnit = [{ unit: first, scores: new Float64Array([...expanded.values()]) }, ...others]
         .sort((a, b) => a.unit - b.unit)
         .map(({ scores }) => scores);
