@@ -38,6 +38,7 @@ export const useResults = (
     const input = { input: toSearchInput(state), explain: state.explain ?? false };
     // The two documents answer the same shape under different names, which is
     // all the hook needs, and more than the generated types say in one breath.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the two documents answer the same shape under different names
     const document = (previewing ? PreviewDocument : SearchDocument) as Asked;
     // The draft is the engine's own rules, sent as the schema's RuleInput.
     const variables: SearchQueryVariables | PreviewQueryVariables = previewing

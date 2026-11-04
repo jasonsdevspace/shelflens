@@ -4,6 +4,10 @@
         "lib": ["ES2023", "DOM", "DOM.Iterable"],
         "jsx": "react-jsx",
         "types": ["vite/client", "node"],
+        // The pages and the service worker are checked in one project, and the DOM's declarations
+        // and the web worker's, which the service worker loads, declare the same globals
+        // differently, so the libraries are left unchecked here.
+        "skipLibCheck": true,
         "noEmit": true,
         "customConditions": ["@shelflens/source"]
     },

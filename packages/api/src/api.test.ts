@@ -49,8 +49,7 @@ const member = viewerFromHeader('member');
 const run = (query: string, variables?: Record<string, unknown>, viewer = guest) =>
     api.run({ query, ...(variables && { variables }) }, viewer, NOW);
 
-/* The shape of each answer is asserted by the test that reads it, so the data is left loose. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- each test asserts the shape of the answer it reads
 type Loose = any;
 
 const data = (response: StoreResponse): Loose => {

@@ -26,6 +26,7 @@ interface Ranked {
 }
 
 const rankedOf = async (response: Response | undefined): Promise<Ranked[]> => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
     const answer = (await response?.json()) as {
         data: {
             search: { items: { product: { sku: string }; explanation: { popularity: unknown } }[] };

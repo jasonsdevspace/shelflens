@@ -13,12 +13,12 @@ import * as operations from '../generated/operations.js';
  * the text.
  */
 
-type Generated = operations.TypedDocumentString<unknown, unknown>;
-
 const generated = (suffix: string) =>
-    Object.entries(operations)
-        .filter(([name]) => name.endsWith(suffix))
-        .map(([name, document]) => [name, document as unknown as Generated] as const);
+    Object.entries(operations).flatMap(([name, document]) =>
+        name.endsWith(suffix) && document instanceof operations.TypedDocumentString
+            ? [[name, document] as const]
+            : []
+    );
 
 const documents = generated('Document');
 
@@ -28,7 +28,7 @@ describe('the persisted operations', () => {
         for (const [name, document] of documents) {
             const hash: unknown = document.__meta__?.['hash'];
             expect(typeof hash, name).toBe('string');
-            const text = PERSISTED_OPERATIONS[hash as string] ?? '';
+            const text = PERSISTED_OPERATIONS[String(hash)] ?? '';
             expect(createHash('sha256').update(text).digest('hex'), name).toBe(hash);
             // The text is the operation the export is named for.
             const [definition] = parse(text).definitions;

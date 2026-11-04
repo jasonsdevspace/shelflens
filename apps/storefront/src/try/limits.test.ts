@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { type SizeResult, supportedCap } from '../bench/sizes.js';
 import { CATALOG_FILE_BYTES_CAP, CATALOG_ROW_CAP } from './limits.js';
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
 const record = JSON.parse(
     readFileSync(new URL('../../../../docs/benchmarks/catalog-size.json', import.meta.url), 'utf8')
 ) as { results: SizeResult[] };

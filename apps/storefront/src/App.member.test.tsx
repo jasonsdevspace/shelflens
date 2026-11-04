@@ -135,6 +135,7 @@ describe('as a member', () => {
             const asked = new Request(input, init).url;
             const response = await served(input, init);
             if (!asked.includes(op)) return response;
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
             const body = (await response.json()) as {
                 data: { store: Record<string, unknown> };
             };

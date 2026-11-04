@@ -199,6 +199,7 @@ export const createClient = ({
             const known = recall(keyOf(operation, variables));
             // An answer is kept under its document and variables, and the API answers by the
             // schema this document was generated from, so the data is this document's result.
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the answer is to this document, by the schema it was generated from
             if (known !== undefined) return known as Result;
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
@@ -206,6 +207,7 @@ export const createClient = ({
             // Read as the envelope of the API at this address, which answers by the schema this
             // document was generated from. A body that is not JSON reads as an empty envelope,
             // which fails below. What else a stray answer holds is not checked.
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the answer is to this document, by the schema it was generated from
             const envelope = (await response.json().catch(() => ({}))) as Envelope<Result>;
             if (envelope.errors && envelope.errors.length > 0) {
                 throw new GraphQLClientError(envelope.errors, response.status);

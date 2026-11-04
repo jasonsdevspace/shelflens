@@ -29,6 +29,7 @@ describe('the shipped rules', () => {
             now
         );
         if (response.errors) throw new Error(JSON.stringify(response.errors));
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const { search } = response.data as {
             search: { items: { product: { sku: string } }[]; merchandising: { applied: string[] } };
         };

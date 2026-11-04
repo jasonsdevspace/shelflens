@@ -93,14 +93,16 @@ const UNBUILDABLE: Rule[] = [
 ];
 
 const versionOf = async (response: Response | undefined) =>
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
     ((await response?.json()) as { data: { store: { version: string } } }).data.store.version;
 
-const suggested = async (response: Response | undefined) =>
-    (
-        (await response?.json()) as {
-            data: { suggest: { products: { product: { name: string } }[] } };
-        }
-    ).data.suggest.products.map((hit) => hit.product.name);
+const suggested = async (response: Response | undefined) => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
+    const answer = (await response?.json()) as {
+        data: { suggest: { products: { product: { name: string } }[] } };
+    };
+    return answer.data.suggest.products.map((hit) => hit.product.name);
+};
 
 describe('the worker for a visitor’s own catalog', () => {
     it('has nothing to search until a catalog is loaded, and warms without one', async () => {
@@ -331,6 +333,7 @@ describe('the worker for a visitor’s own catalog', () => {
         const refused = await api.handle(catalogRequest('PUT', MUGS, true));
         expect(refused?.status).toBe(400);
         // The reason alone, which the page says after "since", with nothing wrapped around it.
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const { errors } = (await refused?.json()) as { errors: { message: string }[] };
         expect(errors[0]?.message).toMatch(/^rule odd /);
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
@@ -378,6 +381,7 @@ describe('the worker for a visitor’s own catalog', () => {
         const rows = Array.from({ length: 10_001 }, (_, index) => `Item ${index},$1.00`).join('\n');
         const refused = await api.handle(catalogRequest('PUT', fromCsv(`name,price\n${rows}\n`)));
         expect(refused?.status).toBe(400);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const { errors } = (await refused?.json()) as { errors: { message: string }[] };
         expect(errors[0]?.message).toContain('past the cap of 10000');
         expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({

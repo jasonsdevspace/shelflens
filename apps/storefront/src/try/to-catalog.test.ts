@@ -51,11 +51,10 @@ describe('rows to a catalog', () => {
             NOW
         );
         expect(response.errors).toBeUndefined();
-        const search = (
-            response.data as {
-                search: { total: number; facets: { attribute: string; buckets?: unknown[] }[] };
-            }
-        ).search;
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
+        const { search } = response.data as {
+            search: { total: number; facets: { attribute: string; buckets?: unknown[] }[] };
+        };
         expect(search.total).toBeGreaterThan(0);
         expect(
             search.facets.find((facet) => facet.attribute === 'BRAND')?.buckets?.length

@@ -70,6 +70,7 @@ const attach = (schema: GraphQLSchema, map: Resolvers): GraphQLSchema => {
         const type = schema.getType(typeName);
         if (!type) continue;
         if (isAbstractType(type) && '__resolveType' in fields) {
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the generated resolver types are not graphql-js's own
             type.resolveType = fields.__resolveType as typeof type.resolveType;
             continue;
         }
@@ -78,6 +79,7 @@ const attach = (schema: GraphQLSchema, map: Resolvers): GraphQLSchema => {
         for (const [fieldName, resolver] of Object.entries(fields)) {
             const field = own[fieldName];
             if (field && typeof resolver === 'function') {
+                // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the generated resolver types are not graphql-js's own
                 field.resolve = resolver as typeof field.resolve;
             }
         }

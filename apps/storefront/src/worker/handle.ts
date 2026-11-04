@@ -190,6 +190,7 @@ export const createWorkerApi = ({
         // The site's own catalog, written by its build from the generator, so
         // it is trusted rather than checked on every first visit. A test
         // holds the generator's catalog to the check a visitor's file passes.
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the site's own catalog, which a test holds to the check
         return (await fetchJson(fetchImpl, catalogUrl, 'catalog')) as Catalog;
     };
 

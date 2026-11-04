@@ -233,6 +233,7 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
     const demoRules = await page.evaluate(async () => {
         const response = await fetch('rules');
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         return ((await response.json()) as { edited: boolean }).edited;
     });
     expect(demoRules).toBe(false);

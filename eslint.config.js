@@ -58,8 +58,13 @@ const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot
 
 export default defineConfig(
     {
+        linterOptions: { reportUnusedDisableDirectives: 'error' },
+    },
+    {
+        // What the tools write is checked where it is written from: the builds in dist from the
+        // sources, and the generated operations from the schema and the documents. ESLint leaves
+        // node_modules out on its own.
         ignores: [
-            '**/node_modules',
             '**/dist',
             '**/generated',
             // Compiled in the floor job's empty project, against the installed
@@ -102,6 +107,7 @@ export default defineConfig(
         languageOptions: {
             parserOptions: {
                 projectService: {
+                    // The two files at the root that no package's tsconfig includes.
                     allowDefaultProject: ['vitest.config.ts', 'source-condition.ts'],
                 },
                 tsconfigRootDir: import.meta.dirname,
@@ -131,21 +137,26 @@ export default defineConfig(
         files: ['apps/storefront/**/*.{ts,tsx}'],
         languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
         plugins: { 'react-hooks': reactHooks },
-        rules: {
-            ...reactHooks.configs.flat.recommended.rules,
-        },
+        rules: Object.fromEntries(
+            Object.keys(reactHooks.configs.flat.recommended.rules).map((rule) => [rule, 'error'])
+        ),
     },
     {
-        // Tests read whatever a result happens to contain.
-        files: ['**/*.test.{ts,tsx}', 'apps/storefront/vitest.setup.ts'],
+        // A fixture builder takes a record's fields in order, so a table of fixtures reads as one
+        // row per line, which an object of named fields would spread over several.
+        files: ['**/*.test.{ts,tsx}'],
+        rules: { 'max-params': 'off' },
+    },
+    {
+        // These two read GraphQL answers whole and assert their shape test by test, so the answer
+        // is loose until each test reads it.
+        files: ['packages/api/src/api.test.ts', 'apps/storefront/src/worker/handle.test.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
-            'max-params': 'off',
-            'sonarjs/cognitive-complexity': 'off',
         },
     },
     {
@@ -159,12 +170,13 @@ export default defineConfig(
             'packages/api/src/**/*.ts',
             'apps/storefront/src/**/*.{ts,tsx}',
         ],
+        // What runs only in Node: the tests, the command lines, the benchmarks, and the storefront's
+        // dev server and benchmark harness.
         ignores: [
             '**/*.test.{ts,tsx}',
             '**/cli.ts',
             '**/bench.ts',
             '**/bench-cli.ts',
-            '**/bundle.test.ts',
             'apps/storefront/src/dev/**',
             'apps/storefront/src/bench/**',
         ],
@@ -178,16 +190,12 @@ export default defineConfig(
         },
     },
     {
-        // The engine and the packages that make its catalog and documents hold no type
-        // assertions, each value typed by how it is built or narrowed by a check, and this keeps
-        // them out, a non-null assertion among them. A const assertion claims nothing and is
-        // still allowed.
-        files: [
-            'packages/engine/src/**/*.ts',
-            'packages/search/src/**/*.ts',
-            'packages/catalog/src/**/*.ts',
-        ],
-        ignores: ['**/*.test.ts'],
+        // A type assertion claims a shape nothing checked, so none is written without a reason.
+        // Each value is typed by how it is built or narrowed by a check, and the few casts left
+        // are allowed one at a time by a disable comment that says why, a non-null assertion
+        // among them. The engine, search and catalog need none. A const assertion claims nothing
+        // and is still allowed.
+        files: ['**/*.{ts,tsx}'],
         rules: {
             '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
             '@typescript-eslint/no-non-null-assertion': 'error',
@@ -198,6 +206,7 @@ export default defineConfig(
         // offer and never a page's own folder, which would make a page its dependency.
         // Its own block replaces the one above for these files, so it names Node too.
         files: ['apps/storefront/src/worker/**/*.ts'],
+        // A test of the worker may reach the pages' fixtures, which the worker itself never does.
         ignores: ['**/*.test.ts'],
         rules: {
             '@typescript-eslint/no-restricted-imports': [

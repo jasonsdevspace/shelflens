@@ -21,6 +21,7 @@ const packages = workspacePackages(root).map((path) => join(root, path));
 /** A tsconfig's compiler options. They are JSON with comments, which are left out before parsing. */
 const optionsOf = (path: string): { customConditions?: string[]; noEmit?: boolean } => {
     const text = readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
     return (JSON.parse(text) as { compilerOptions?: object }).compilerOptions ?? {};
 };
 
@@ -28,6 +29,7 @@ describe('the source condition', () => {
     it('comes first in every workspace package, naming its source', () => {
         expect(packages.length).toBeGreaterThan(0);
         for (const dir of packages) {
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
             const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
                 exports?: { '.'?: Record<string, string> };
             };

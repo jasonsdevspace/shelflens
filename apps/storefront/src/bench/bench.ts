@@ -117,6 +117,7 @@ export const runPopoverBench = async ({
     const parseStarted = performance.now();
     // The text was just written from a generated catalog, so it parses back as one, and the
     // parse is all that is timed.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the text was just written from a generated catalog
     const catalog = JSON.parse(json) as Catalog;
     const parseMs = performance.now() - parseStarted;
 

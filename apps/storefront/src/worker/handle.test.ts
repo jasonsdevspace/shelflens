@@ -129,6 +129,7 @@ describe('the API inside the worker', () => {
                 query: '{ search(input: { phrase: "jacket" }) { items { product { sku } } merchandising { applied } } }',
             })
         );
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const { data } = (await answer?.json()) as {
             data: {
                 search: {
@@ -256,6 +257,7 @@ describe('the answers the worker keeps', () => {
         const { store, size, matches } = createAnswerStore();
         const api = withStore(store);
         const groupOf = async (response: Response | undefined) =>
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
             ((await response?.json()) as { data: { store: { viewer: { group: string } } } }).data
                 .store.viewer.group;
         const first = await api.handle(persisted({ op: STORE, v: version }));
@@ -345,6 +347,7 @@ describe('events inside the worker', () => {
         try {
             const answer = await api.handle(batch());
             expect(answer?.status).toBe(500);
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
             const body = (await answer?.json()) as {
                 errors: { message: string; extensions: { requestId: string } }[];
             };
@@ -393,6 +396,7 @@ describe('events inside the worker', () => {
             })
         );
         expect(response?.headers.get('cache-control')).toBe('no-store');
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const answer = (await response?.json()) as {
             data: { recommendations: { source: string; items: { sku: string }[] } };
             extensions: unknown;
@@ -422,6 +426,7 @@ describe('clicks in the worker', () => {
                 items { product { sku } explanation { popularity { clicks } } } } }`,
         });
     const skus = async (response: Response | undefined) => {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
         const answer = (await response?.json()) as {
             data: { search: { items: { product: { sku: string } }[] } };
         };

@@ -36,6 +36,7 @@ const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
 const REQUIRED = new Set<MappedField>(['name', 'price']);
 
 // Object.keys types every key as text, and this literal has exactly these keys.
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Object.keys types each key as text, and these are the literal's own
 const FIELDS = Object.keys(FIELD_LABELS) as MappedField[];
 
 /**

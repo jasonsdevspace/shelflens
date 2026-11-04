@@ -186,6 +186,7 @@ describe('explaining a hit', () => {
         const forward = engine.search({ query: 'finch cotton tee' });
         const backward = engine.search({ query: 'tee cotton finch' });
         expect(backward.hits.map((hit) => [hit.id, hit.score])).toEqual(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Vitest types its asymmetric matchers as any
             forward.hits.map((hit) => [hit.id, expect.closeTo(hit.score, 10)])
         );
         expect(forward.hits.length).toBeGreaterThan(0);
@@ -328,6 +329,7 @@ describe('filters', () => {
             expect(() => engine.search({ filters: [filter] }), filter.attribute).toThrow(
                 expect.objectContaining({
                     code: 'wrong_attribute_kind',
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest types its asymmetric matchers as any
                     message: expect.stringMatching(/only a keyword attribute/),
                 })
             );

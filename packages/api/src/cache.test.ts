@@ -38,6 +38,7 @@ interface ProductAnswer {
 
 const product = (response: StoreResponse): ProductAnswer | null => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
     return (response.data as { product: ProductAnswer | null }).product;
 };
 

@@ -234,11 +234,11 @@ describe('rules over HTTP', () => {
                 query: '{ search(input: { phrase: "jacket" }) { merchandising { applied } } }',
             }),
         });
-        return (
-            (await response.json()) as {
-                data: { search: { merchandising: { applied: string[] } } };
-            }
-        ).data.search.merchandising.applied;
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
+        const answer = (await response.json()) as {
+            data: { search: { merchandising: { applied: string[] } } };
+        };
+        return answer.data.search.merchandising.applied;
     };
 
     it('serves the shipped set, replaces it under a new version, and rates the path', async () => {

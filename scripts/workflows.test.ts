@@ -41,11 +41,11 @@ describe('the workflows', () => {
     });
 
     it('take the screenshots in the image of the Playwright the tests pin', () => {
-        const pinned = (
-            JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
-                devDependencies: Record<string, string>;
-            }
-        ).devDependencies['@playwright/test'];
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
+        const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+            devDependencies: Record<string, string>;
+        };
+        const pinned = manifest.devDependencies['@playwright/test'];
         const image = /mcr\.microsoft\.com\/playwright:v([\d.]+)-/.exec(read('ci.yml'))?.[1];
         expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
         expect(image).toBe(pinned);
@@ -94,11 +94,11 @@ describe('the workflows', () => {
         /** A command as written in either place, without the npx a CI step runs it through. */
         const commands = (line: string) =>
             line.split(' && ').map((command) => command.trim().replace(/^npx /, ''));
-        const verify = (
-            JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
-                scripts: Record<string, string>;
-            }
-        ).scripts['verify'];
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
+        const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+            scripts: Record<string, string>;
+        };
+        const verify = manifest.scripts['verify'];
         const job = jobsOf(read('ci.yml')).get('verify') ?? '';
         // The checks, by the names a failed run shows, each with the command its step runs.
         const steps = [
@@ -128,6 +128,7 @@ describe('the workflows', () => {
             )?.[1];
             expect(dir, prefix).toBeDefined();
             // The folder holds the package the tag names, with the changelog its notes come from.
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
             const manifest = JSON.parse(
                 readFileSync(join(ROOT, dir ?? '', 'package.json'), 'utf8')
             ) as {

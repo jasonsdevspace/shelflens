@@ -2,6 +2,10 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "types": [],
+        // The engine sees no environment's globals, so it runs in a browser and in Node alike.
+        // The declarations of the tools its tests and benchmarks run with name the browser's
+        // AbortSignal and EventTarget, which it does not have, so they are left unchecked here.
+        "skipLibCheck": true,
         "noEmit": true,
         "customConditions": ["@shelflens/source"]
     },

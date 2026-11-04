@@ -21,6 +21,7 @@ export const signalsOf = (events: readonly StoreEvent[]): Signals => {
         visits.set(event.sku, seen);
     }
     // No prototype, so a sku spelled like a method of Object is a sku and nothing else.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Object.create types what it makes as any
     const counts: Record<string, number> = Object.create(null) as Record<string, number>;
     for (const [sku, seen] of visits) counts[sku] = seen.size;
     return counts;

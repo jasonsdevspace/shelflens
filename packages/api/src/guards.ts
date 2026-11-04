@@ -27,7 +27,8 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
 /** The value a text holds as JSON, or undefined when it holds none. */
 export const parseJson = (text: string): unknown => {
     try {
-        return JSON.parse(text) as unknown;
+        const parsed: unknown = JSON.parse(text);
+        return parsed;
     } catch {
         return undefined;
     }

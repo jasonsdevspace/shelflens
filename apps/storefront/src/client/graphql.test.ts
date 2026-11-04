@@ -26,7 +26,7 @@ const SUGGEST = { data: { suggest: { queries: [], products: [] } } };
 const STORE = { data: { store: {} } };
 const variables = { phrase: 'tr', limit: 5 };
 const nameOf = (document: { __meta__?: Record<string, unknown> | undefined }) =>
-    document.__meta__?.['hash'] as string;
+    String(document.__meta__?.['hash']);
 
 /** The URL a fetch was given, as text. */
 const urlOf = (input: RequestInfo | URL | undefined): string => {
@@ -150,7 +150,7 @@ describe('the client', () => {
         const [url, init] = fetchImpl.mock.calls[0] ?? [];
         expect(url).toBe('/graphql');
         expect(init?.method).toBe('POST');
-        expect(JSON.parse(init?.body as string)).toEqual({
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toEqual({
             query: '{ suggest(phrase: "tr") { queries } }',
             variables,
         });

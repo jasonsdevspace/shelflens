@@ -113,7 +113,8 @@ describe('as a merchandiser', () => {
             /Pinned to the top by rule jacket-/
         );
         // The store itself has not moved.
-        expect((await fetch('http://store.test/rules').then((r) => r.json())).edited).toBe(false);
+        const stored: unknown = await (await fetch('http://store.test/rules')).json();
+        expect(stored).toMatchObject({ edited: false });
 
         await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
         expect(await within(panel).findByRole('status')).toHaveTextContent(

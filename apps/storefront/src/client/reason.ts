@@ -11,6 +11,7 @@
 export const reasonOf = async (response: Response): Promise<string | undefined> => {
     if (response.status >= 500) return undefined;
     try {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- every field is optional, and the message is checked before it is used
         const body = (await response.json()) as { errors?: { message?: unknown }[] } | null;
         const message = body?.errors?.[0]?.message;
         return typeof message === 'string' && message !== '' ? message : undefined;
