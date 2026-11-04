@@ -1,3 +1,5 @@
+import { isRecord } from '@shelflens/api';
+
 /**
  * The worker's catalog path, on the page for a visitor's own catalog: what
  * is loaded, a catalog to load in its place, and a request to remove it.
@@ -10,12 +12,7 @@ export interface Loaded {
 }
 
 const isLoaded = (body: unknown): body is Loaded =>
-    typeof body === 'object' &&
-    body !== null &&
-    'version' in body &&
-    typeof body.version === 'string' &&
-    'products' in body &&
-    typeof body.products === 'number';
+    isRecord(body) && typeof body['version'] === 'string' && typeof body['products'] === 'number';
 
 /** What the worker says is loaded, or nothing when nothing is. */
 export const readLoaded = async (url: string): Promise<Loaded | undefined> => {

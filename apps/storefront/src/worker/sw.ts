@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { type Route, routeOf, STORE_ROUTES } from '@shelflens/api';
+import { isRecord, type Route, routeOf, STORE_ROUTES } from '@shelflens/api';
 
 import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
@@ -72,8 +72,7 @@ const refreshed = () => api.refresh().catch(() => false);
 
 self.addEventListener('message', (event) => {
     const data: unknown = event.data;
-    const type =
-        typeof data === 'object' && data !== null && 'type' in data ? data.type : undefined;
+    const type = isRecord(data) ? data['type'] : undefined;
     if (type === CLAIM_MESSAGE.type) {
         // A claim is a visit too: fold the clicks first, then take the page.
         event.waitUntil(refreshed().then(() => self.clients.claim().then(announce)));

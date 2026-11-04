@@ -214,7 +214,8 @@ describe('registering the worker', () => {
 describe('announcing a visit', () => {
     it('resolves when the worker answers, and on its own when the worker does not', async () => {
         const answering = fakeContainer({ controlled: true, active: true }).worker;
-        await expect(announceVisit(answering, 50)).resolves.toBeUndefined();
+        // A wait longer than the test may take, so only an answer can end it.
+        await expect(announceVisit(answering, 60_000)).resolves.toBeUndefined();
         const silent = { postMessage: vi.fn() };
         vi.useFakeTimers();
         try {

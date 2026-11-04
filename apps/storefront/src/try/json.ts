@@ -1,3 +1,5 @@
+import { isList, isRecord } from '@shelflens/api';
+
 import { distinctHeaders, type Table } from './csv.js';
 
 /**
@@ -24,14 +26,9 @@ const asText = (value: unknown): string => {
     return '';
 };
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === 'object' && !Array.isArray(value);
-
-const isList = (value: unknown): value is readonly unknown[] => Array.isArray(value);
-
 const recordsOf = (data: unknown): readonly unknown[] | undefined => {
     if (isList(data)) return data;
-    if (isObject(data)) {
+    if (isRecord(data)) {
         for (const key of ['products', 'items']) {
             const held = data[key];
             if (isList(held)) return held;
@@ -54,7 +51,7 @@ export const parseJsonTable = (text: string): Table => {
     const records = listed
         .map((record, index) => ({ record, label: `item ${index + 1}` }))
         .filter((entry): entry is { record: Record<string, unknown>; label: string } =>
-            isObject(entry.record)
+            isRecord(entry.record)
         );
     if (records.length === 0) {
         throw new Error(

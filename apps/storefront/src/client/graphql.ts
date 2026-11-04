@@ -203,7 +203,9 @@ export const createClient = ({
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
             if (answered !== null) memory.version = answered;
-            // The API's own answer, in the shape the schema gives, as the comment above says.
+            // Read as the envelope of the API at this address, which answers by the schema this
+            // document was generated from. A body that is not JSON reads as an empty envelope,
+            // which fails below. What else a stray answer holds is not checked.
             const envelope = (await response.json().catch(() => ({}))) as Envelope<Result>;
             if (envelope.errors && envelope.errors.length > 0) {
                 throw new GraphQLClientError(envelope.errors, response.status);

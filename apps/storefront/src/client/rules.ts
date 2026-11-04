@@ -1,4 +1,5 @@
 import type { Rule } from '@jasonsdevspace/shelflens';
+import { isList, isRecord } from '@shelflens/api';
 
 import { reasonOf } from './reason.js';
 
@@ -21,18 +22,18 @@ export type Sent =
     | { readonly ok: true; readonly response: Response }
     | { readonly ok: false; readonly reason: string | undefined };
 
-const isRule = (rule: unknown): boolean =>
-    typeof rule === 'object' && rule !== null && 'id' in rule && typeof rule.id === 'string';
+/**
+ * A rule is taken on its id, since the host read each rule through its own check when it was
+ * saved.
+ */
+const isRule = (rule: unknown): boolean => isRecord(rule) && typeof rule['id'] === 'string';
 
 /** Whether a body is what the rules path answers, so a stray page with a 200 is not taken for one. */
 const isRulesBody = (body: unknown): body is RulesBody =>
-    typeof body === 'object' &&
-    body !== null &&
-    'rules' in body &&
-    'edited' in body &&
-    Array.isArray(body.rules) &&
-    body.rules.every(isRule) &&
-    typeof body.edited === 'boolean';
+    isRecord(body) &&
+    isList(body['rules']) &&
+    body['rules'].every(isRule) &&
+    typeof body['edited'] === 'boolean';
 
 /**
  * The rules path, asked once. Nothing comes back when the request itself

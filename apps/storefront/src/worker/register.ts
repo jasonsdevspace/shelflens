@@ -23,13 +23,16 @@
  * stalls with nothing failing is given up on after a time.
  */
 
-/** A worker as the page talks to it: where its script is, and a message to it with a port. */
+/**
+ * A worker as the page talks to it: where its script came from, and a message to it, with a
+ * port when the page wants an answer.
+ */
 export interface PageWorker {
     readonly scriptURL: string;
     postMessage(message: unknown, transfer?: Transferable[]): void;
 }
 
-/** A worker being installed, which the page watches until it is discarded. */
+/** A worker installing or waiting, which the page watches in case it is discarded. */
 interface IncomingWorker {
     readonly state: ServiceWorkerState;
     addEventListener(type: 'statechange', listener: () => void): void;

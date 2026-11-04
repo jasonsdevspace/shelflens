@@ -2,7 +2,8 @@
  * Checks the API's boundaries share, written once so they agree on what an
  * object is. A request's body and its variables, an event batch, a rules file,
  * a visitor's catalog and the canonical form each check objects here, and a
- * request, its variables and an event batch are each read as JSON here.
+ * request, its variables and an event batch are each read as JSON here. The storefront
+ * checks what its pages read with the same two.
  */
 
 /** Whether a value is text. */

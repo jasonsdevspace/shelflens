@@ -61,9 +61,9 @@ const visit = async (origin: string): Promise<Run> => {
         const marks: Marks = {};
         const shared: Marked = window;
         shared.marks = marks;
-        // Checked here rather than by a helper, since the script runs in the page, where it can
-        // import nothing and a named function would need the runner's own helper. A message with
-        // no data, or data of another shape, is not the one waited for.
+        // Checked inline because the script runs in the page, where it can import nothing, and
+        // tsx wraps any function named here in a helper of its own that the page lacks. A
+        // message with no data, or data of another shape, is not the one waited for.
         navigator.serviceWorker.addEventListener('message', (event: MessageEvent<unknown>) => {
             const { data } = event;
             if (
@@ -91,13 +91,15 @@ const visit = async (origin: string): Promise<Run> => {
 
     const typedAt = await page.evaluate(() => performance.now());
     await search.fill('trail');
-    // The listbox can appear before it has anything in it. A suggestion is the answer, read
-    // from the list, since the page's own selects hold options too.
-    await page.getByRole('listbox').getByRole('option').first().waitFor();
+    // The listbox can appear before it has anything in it, so the wait is for an option inside
+    // the one named Suggestions. The page's own selects hold options too, and those are never
+    // shown, and a list of recent searches is named by its heading instead.
+    await page.getByRole('listbox', { name: 'Suggestions' }).getByRole('option').first().waitFor();
     const shownAt = await page.evaluate(() => performance.now());
     const { started } = await page.evaluate(() => {
         const shared: Marked = window;
-        return shared.marks ?? {};
+        if (!shared.marks) throw new Error('the page script never ran, so nothing was marked');
+        return shared.marks;
     });
     await browser.close();
     if (!started) throw new Error('the worker never said how the store started');
@@ -203,10 +205,16 @@ const capVisit = async (origin: string, file: string, slowdown: number): Promise
         const box = page.getByRole('combobox', { name: 'Search the store' });
         await box.waitFor({ timeout: 120_000 });
         await box.fill('bag');
-        await page.getByRole('listbox').getByRole('option').first().waitFor({ timeout: 60_000 });
+        await page
+            .getByRole('listbox', { name: 'Suggestions' })
+            .getByRole('option')
+            .first()
+            .waitFor({ timeout: 60_000 });
         const marks = await page.evaluate(() => {
             const shared: Marked = window;
-            return shared.capMarks ?? {};
+            if (!shared.capMarks)
+                throw new Error('the page script never ran, so nothing was marked');
+            return shared.capMarks;
         });
         const { picked, reviewed, pressed, ready, suggested } = marks;
         if ([picked, reviewed, pressed, ready, suggested].some((mark) => mark === undefined)) {

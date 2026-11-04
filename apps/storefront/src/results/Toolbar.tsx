@@ -63,10 +63,12 @@ const SortField = ({
             id={id}
             className="select"
             value={sortKey}
-            onChange={(event) =>
-                isSortKey(event.target.value) &&
-                navigate({ ...state, sort: event.target.value, page: 1 })
-            }
+            onChange={(event) => {
+                // The options are the sort keys, so any value they give is one.
+                const { value } = event.target;
+                if (!isSortKey(value)) return;
+                navigate({ ...state, sort: value, page: 1 });
+            }}
         >
             {SORT_KEYS.map((key) => (
                 <option key={key} value={key}>

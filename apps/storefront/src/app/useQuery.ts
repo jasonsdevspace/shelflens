@@ -57,7 +57,8 @@ export const useQuery = <Result, Variables extends QueryVariables>(
             latest.cancel();
             return;
         }
-        // The key is these variables written as JSON, so it reads back as them.
+        // The key is these variables written as JSON, and a query's variables are plain JSON
+        // values, so it reads back as them.
         const variables = JSON.parse(key) as Variables;
         void latest
             .run((signal) => client.query(document, variables, { signal }))

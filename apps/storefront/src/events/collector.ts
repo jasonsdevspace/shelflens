@@ -76,7 +76,7 @@ const beacon = (url: string, body: string): boolean => {
     }
 };
 
-/** Whether the visitor asked not to be tracked, as the browser reports it. */
+/** Whether collection is allowed, which it is unless the browser sends Global Privacy Control. */
 export const trackingAllowed = (): boolean =>
     typeof navigator === 'undefined' ||
     !('globalPrivacyControl' in navigator && navigator.globalPrivacyControl === true);
