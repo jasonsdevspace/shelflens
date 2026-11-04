@@ -79,5 +79,10 @@
         "*.{json,md,yml,yaml,css,html,graphql}": [
             "prettier --write"
         ]
+    },
+    "allowScripts": {
+        "esbuild": false,
+        "unrs-resolver": false,
+        "fsevents": false
     }
 }
