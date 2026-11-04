@@ -1,4 +1,12 @@
-import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    type RefObject,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 
 import { focusIsFree } from '../app/focus.js';
 import { LoadFailure } from '../app/LoadFailure.jsx';
@@ -132,7 +140,10 @@ const Bare = ({
  * or notice once it lands, so a keyboard or screen reader user starts
  * where the page starts rather than on the body. The same product asked
  * again, as a switch of viewer does, leaves focus where the visitor put
- * it, unless what held it has gone, as Try again goes once pressed.
+ * it, unless what held it has gone, as Try again goes once pressed. Focus
+ * moves in the same commit as what it lands on, as app/focus.ts says, so
+ * it never rests on the body between the two, and a visitor who moves it
+ * first is never pulled back.
  */
 const useProductFocus = ({
     sku,
@@ -149,7 +160,7 @@ const useProductFocus = ({
     readonly view: RefObject<HTMLElement | null>;
 }) => {
     const landed = useRef<string>(undefined);
-    useEffect(() => {
+    useLayoutEffect(() => {
         const target = heading.current ?? view.current;
         if (landed.current !== sku) {
             target?.focus();

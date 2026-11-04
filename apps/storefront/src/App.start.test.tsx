@@ -163,11 +163,9 @@ describe('what did not load', () => {
         await openProduct();
         await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }));
         // Try again has gone, so focus is on the loading view rather than the body.
-        await waitFor(() =>
-            expect(screen.getByRole('region', { name: 'Loading the product.' })).toHaveFocus()
-        );
+        expect(screen.getByRole('region', { name: 'Loading the product.' })).toHaveFocus();
         release();
-        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
     });
 
     it('says the products could not be loaded, and loads them on Try again', async () => {
@@ -208,9 +206,7 @@ describe('what did not load', () => {
         const message = await openProduct();
         // Focus moves to the message, which reads it, so it is not announced as well.
         expect(message).not.toHaveAttribute('role', 'alert');
-        // Focus moves in an effect after the message is drawn, so on a loaded machine the message
-        // can be found a moment before focus reaches it.
-        await waitFor(() => expect(message.closest('section')).toHaveFocus());
+        expect(message.closest('section')).toHaveFocus();
         await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
         expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(featured.name);
         expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
