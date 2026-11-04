@@ -39,8 +39,8 @@ The engine knows nothing about products. Whoever owns the catalog decides what b
 `createEngine(documents, config)` builds an engine, and its `search`, `recover` and
 `reconfigure` are the whole interface. Beside it, the package exports:
 
-- `EngineError`, the error the engine throws for a config or a request it refuses, with a `code`
-  of the type `EngineErrorCode`.
+- `EngineError`, the error the engine throws for a document, a config or a request it refuses,
+  with a `code` of the type `EngineErrorCode`.
 - `signalWeight`, `SIGNAL_CAP` and `SIGNAL_SATURATION`, so a host can show what a count of
   choices does to a score.
 - `normalize`, `foldAccents`, `tokenize` and `stem`, the rules the engine applies to the catalog
@@ -82,13 +82,13 @@ which route, and for how much. That is what an explain mode shows.
   numeric range whose upper bound is exclusive. A filter on an attribute the config does not
   declare, or one its attribute's kind cannot take, such as a word for a number, is an
   `EngineError`, since that is the caller's mistake and not an empty result.
-- Sorts take any declared attribute, `relevance`, or `id` for the order the documents were
-  indexed in, each clause breaking the ties of the one before it, and every sort ends on the id. Documents that tie on everything asked for still come
-  back in one fixed order, so paging never shows a document twice or skips one. A sort declared as
-  scoped to a filter, such as a position within a category, falls back to relevance when the
-  filter is absent, and the result reports the sort actually applied. When no sort is asked for,
-  a query sorts by relevance, browsing one value of a scope sorts by its scoped sort, and anything
-  else comes in index order.
+- Sorts take any declared attribute, `relevance`, or `id` for the order the documents were indexed
+  in, each clause breaking the ties of the one before it, and every sort ends on the id. Documents
+  that tie on everything asked for still come back in one fixed order, so paging never shows a
+  document twice or skips one. A sort declared as scoped to a filter, such as a position within a
+  category, falls back to relevance when the filter is absent, and the result reports the sort
+  actually applied. When no sort is asked for, a query sorts by relevance, browsing one value of a
+  scope sorts by its scoped sort, and anything else comes in index order.
 - Pages are one-based. A page past the end is empty rather than an error. The page size is clamped
   to a limit, and a query can be paged only so far, while the total still reports every match.
 
@@ -115,8 +115,8 @@ collected. A chosen document's relevance score is multiplied by a bounded weight
 log of the count to a cap of 1.25, so the first few choices count most and a thousand more change
 nothing. The cap sits below the smallest boost a merchandiser would write, and a document a rule
 pinned or buried takes no signal at all, so the crowd never moves what a merchandiser placed. A
-hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })` applies
-new counts over the same index.
+hit that was raised says so, with the count and the weight. `engine.reconfigure({ signals })`
+applies new counts over the same index.
 
 Boosts and buries change the relevance score, so they mean nothing under any other sort. Pins still
 apply under a sort scoped to the rule's own filter, which is how a category's merchandising

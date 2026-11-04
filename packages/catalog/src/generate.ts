@@ -25,7 +25,7 @@ import {
  */
 const GENERATOR_VERSION = 2;
 
-/** Which catalog to generate. The same seed and size always give the same one. */
+/** Which catalog to generate, by seed and number of products. */
 export interface GenerateOptions {
     readonly seed?: number;
     readonly products?: number;

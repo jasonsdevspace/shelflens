@@ -29,7 +29,7 @@ export interface TextField {
     readonly weight: number;
 }
 
-/** What an attribute holds, which decides the filters, sorts and facets it takes. */
+/** What an attribute holds, which decides the filters it takes and how it sorts. */
 export type AttributeKind = 'keyword' | 'number' | 'boolean';
 
 /**
@@ -98,7 +98,7 @@ export type Facet =
           readonly max?: number;
       };
 
-/** When a rule applies: to these queries, or inside this filter. Both widen it. */
+/** When a rule applies: to these queries, or inside this filter. Given both, either is enough. */
 export interface RuleTrigger {
     readonly queries?: readonly string[];
     readonly filter?: { readonly attribute: string; readonly value: string };
@@ -343,13 +343,10 @@ export type EngineErrorCode =
     'unknown_attribute' | 'wrong_attribute_kind' | 'unknown_facet' | 'invalid_rule';
 
 /**
- * A request the engine cannot carry out.
- *
- * Thrown for a request that names what the config does not, or asks an
- * attribute for what its kind cannot take, and for a document or a rule the
- * engine cannot index. Each is a mistake in the caller rather than a search
- * with no results. A caller fronting an API turns this into a validation
- * error for the client.
+ * A document, rule or request the engine refuses, with a `code` that says
+ * which kind of mistake it is. Each is the caller's mistake rather than a
+ * search with no results, so a caller fronting an API turns this into a
+ * validation error for the client.
  */
 export class EngineError extends Error {
     constructor(

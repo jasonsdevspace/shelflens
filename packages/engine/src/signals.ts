@@ -2,7 +2,7 @@ import type { Document } from './types.js';
 
 /**
  * Signals: how often shoppers chose each document, as a bounded nudge to its
- * score that never passes a pin or undoes a bury.
+ * score.
  */
 
 /**

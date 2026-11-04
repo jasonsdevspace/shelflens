@@ -19,8 +19,8 @@ import {
 } from './budgets.js';
 
 /*
- * The pages' download budgets, as esbuild bundles each entry on its own, and
- * the catalog's, as the generator writes it. `npm run budget` holds the files
+ * Each download's budget, as esbuild bundles each entry on its own, and the
+ * catalog's, as the generator writes it. `npm run budget` holds the files
  * the build ships to the same budgets.
  */
 

@@ -1,4 +1,4 @@
-import { holds } from './filters.js';
+import { holds, matchesFilter } from './filters.js';
 import { tokenize } from './normalize.js';
 import {
     type AttributeKind,
@@ -172,12 +172,7 @@ const isActive = (rule: Rule, now: Date | undefined): boolean => {
 };
 
 const filterHasValue = (filters: readonly Filter[], attribute: string, value: string): boolean =>
-    filters.some(
-        (filter) =>
-            filter.attribute === attribute &&
-            (('eq' in filter && filter.eq === value) ||
-                ('in' in filter && filter.in.includes(value)))
-    );
+    filters.some((filter) => filter.attribute === attribute && matchesFilter(value, filter));
 
 const isTriggered = (rule: Rule, terms: readonly string[], filters: readonly Filter[]): boolean => {
     if (!rule.when) return true;

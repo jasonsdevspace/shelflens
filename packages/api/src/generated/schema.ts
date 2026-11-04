@@ -76,12 +76,12 @@ export type FilterInput = {
 };
 
 export type MatchInput =
-    /** Equal to this value. For IN_STOCK, "true" or "false". */
+    /** Equal to this value. For IN_STOCK, "true" or "false". PRICE and RATING take a range instead. */
     | {
           readonly eq: Scalars['String']['input'];
           readonly in?: never;
           readonly range?: never;
-      } /** Equal to any of these values. */
+      } /** Equal to any of these values. PRICE and RATING take a range instead. */
     | {
           readonly eq?: never;
           readonly in: ReadonlyArray<Scalars['String']['input']>;

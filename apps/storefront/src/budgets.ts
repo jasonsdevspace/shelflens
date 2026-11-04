@@ -1,4 +1,4 @@
-/*
+/**
  * The page's download budget.
  *
  * The popover is the first thing a shopper waits for, so the page that

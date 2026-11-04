@@ -9,12 +9,15 @@ names the package on npm and how to install that version once it is promoted.
 
 A filter its attribute cannot take is refused, and the error codes have a type of their own.
 
-- **A word for a number is refused.** A filter whose `eq` is a word, or any `in` filter, on a
-  number or boolean attribute throws an `EngineError` with the code `wrong_attribute_kind`, as a
-  range on a word or true or false on a word already did. It used to match nothing.
+- **A word for a number or a boolean is refused.** A filter whose `eq` is a word, or any `in`
+  filter, on a number or boolean attribute throws an `EngineError` with the code
+  `wrong_attribute_kind`, as a range on anything but a number and true or false on anything but a
+  boolean already did. It used to match nothing, so a caller that sent one now gets the error
+  instead of an empty page.
 - **The error codes are a type.** `EngineErrorCode` is exported, and the code `unknown_field`,
-  which nothing threw, is gone from it.
-- **Every export says what it is.** Each published function and type has a doc comment on it.
+  which nothing threw, is gone from it, so code that compares against it no longer type checks.
+- **Every export says what it is.** Each published function and type has a doc comment, which an
+  editor shows beside it.
 
 Every search the engine still accepts returns the same results as in 0.5.0.
 

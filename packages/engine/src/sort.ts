@@ -7,13 +7,7 @@ import {
     type SortClause,
 } from './types.js';
 
-/**
- * Which sort applies to a request, and the order it puts candidates in.
- *
- * Every order is total. Pins come first, then the clauses, and the id breaks
- * whatever tie is left, so a page taken from the top of the matches is the
- * page a full sort would give.
- */
+/** Which sort applies to a request, and the order it puts candidates in. */
 
 const RELEVANCE: SortClause = { by: 'relevance', direction: 'desc' };
 
@@ -63,9 +57,6 @@ interface Ordering {
 /**
  * Orders two candidates by one clause, or reports a tie with `undefined`
  * so the next clause can break it.
- *
- * A missing value sorts last whichever way the clause runs, so a product
- * nobody has rated never leads a list sorted by rating in either direction.
  */
 const compareByClause = (
     clause: SortClause,
@@ -88,7 +79,11 @@ const compareByClause = (
     );
 };
 
-/** Two values of an attribute in the clause's direction, a missing one last either way. */
+/**
+ * Two values of an attribute in the clause's direction. A missing value sorts
+ * last either way, so a product nobody has rated never leads a list sorted by
+ * rating in either direction.
+ */
 const byAttribute = (
     left: AttributeValue | undefined,
     right: AttributeValue | undefined,

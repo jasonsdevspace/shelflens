@@ -54,9 +54,9 @@ export interface Engine {
      * What to offer instead of nothing: a corrected phrase or a shorter one,
      * each only if it finds something, and how many the phrase finds without
      * the request's own filters. Costs several searches, so a caller asks only
-     * after a search found nothing, and throws as `search` does.
-     * `fixedFilters` are kept through every attempt, such as who may see what,
-     * while the request's own filters may be dropped.
+     * after a search found nothing. `fixedFilters`, such as who may see what,
+     * are kept through every attempt, while the request's own filters may be
+     * dropped.
      */
     recover(request: SearchRequest, fixedFilters?: readonly Filter[]): Recovery;
     /**
@@ -214,8 +214,8 @@ interface Adjusted {
 
 /**
  * Applies the rules' boosts and buries to the scores, then the signal for
- * a document the rules left alone, and remembers each effect. A search no
- * rule adjusts and no signal reaches leaves every score as it is, without
+ * a document no rule pinned or buried, and remembers each effect. A search
+ * no rule adjusts and no signal reaches leaves every score as it is, without
  * looking at a candidate.
  */
 const adjustScores = (

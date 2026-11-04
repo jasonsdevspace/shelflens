@@ -20,10 +20,10 @@ import {
 /** A price attribute, one per customer group, since members pay differently. */
 export const priceAttribute = (group: CustomerGroup): string => `price.${group}`;
 
-/** The price range facet for one customer group, named as the attribute it counts. */
+/** The name of the price range facet for one customer group, the attribute it counts. */
 export const priceFacet = (group: CustomerGroup): string => priceAttribute(group);
 
-/** The lowest and highest price for one customer group, as a slider needs them. */
+/** The name of the price stats facet for one customer group, which gives a slider its ends. */
 export const priceStatsFacet = (group: CustomerGroup): string => `priceStats.${group}`;
 
 const categoryNames = (product: Product, categories: ReadonlyMap<string, Category>): string =>
