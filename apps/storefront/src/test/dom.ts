@@ -1,7 +1,7 @@
 /*
- * Reaching into what a test drew. Each helper hands back the element with
- * its type, or throws naming what was expected, so a test that fails says
- * what was missing rather than reading a property of nothing.
+ * Reaching into what a test found. Each helper hands back the item with the
+ * type the test expects, or throws naming what was expected, so a test that
+ * fails says what was missing rather than reading a property of nothing.
  */
 
 /** The item at an index, counted from the end when negative. */
@@ -11,7 +11,7 @@ export const nth = <T>(items: readonly T[], index: number, what: string): T => {
     return item;
 };
 
-/** The node as the element it should be. */
+/** The value as an element of the given type, such as an event's target. */
 export const elementAs = <T extends Element>(
     node: unknown,
     type: abstract new () => T,

@@ -3,7 +3,7 @@ import { createMemoryRuleStore, receiveRules, VERSION_HEADER } from '@shelflens/
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { nth } from '../test/dom.js';
 import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
@@ -126,6 +126,13 @@ const Host = ({
     );
 };
 
+/** The draft the panel last handed on, which a test of a draft needs to have arrived. */
+const lastDraft = (onDraft: Mock<(draft: readonly Rule[] | undefined) => void>) => {
+    const draft = onDraft.mock.lastCall?.[0];
+    if (!draft) throw new Error('expected the panel to hand on a draft');
+    return draft;
+};
+
 const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn<(draft: readonly Rule[] | undefined) => void>();
     const onStoreChanged = vi.fn();
@@ -198,7 +205,7 @@ describe('the rules panel', () => {
         expect(onDraft).toHaveBeenLastCalledWith(undefined);
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Trail first');
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft.map((rule) => rule.id)).toEqual([
             'featured-jackets',
             'all-boots',
@@ -218,7 +225,7 @@ describe('the rules panel', () => {
         await user.selectOptions(screen.getByRole('combobox', { name: 'On' }), 'brand');
         await user.selectOptions(screen.getByRole('combobox', { name: 'Brand' }), 'Northline');
         await user.selectOptions(screen.getByRole('combobox', { name: 'How much' }), '2');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft[2]?.boost).toEqual([
             { attribute: { name: 'brand', value: 'Northline' }, weight: 2 },
         ]);
@@ -284,7 +291,7 @@ describe('the rules panel', () => {
         expect(screen.getByRole('combobox', { name: 'Product' })).toHaveValue('SL-1');
         await user.click(screen.getByRole('button', { name: 'Add another product' }));
         await user.type(screen.getByRole('combobox', { name: 'Another product' }), 'SL-3');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft.map((rule) => rule.id)).toEqual(['all-boots', 'featured-jackets']);
         expect(draft[1]?.pin).toEqual(['SL-1', 'SL-3']);
 
@@ -310,7 +317,7 @@ describe('the rules panel', () => {
             )
         ).toBeInTheDocument();
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'No boots');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft.find((rule) => rule.id === 'all-boots')).toEqual({
             id: 'all-boots',
             name: 'No boots',
@@ -377,7 +384,7 @@ describe('the rules panel', () => {
         const { user, onDraft } = open({ phrase: 'boots', applied: ['all-boots'], products: [] });
         await user.click(await screen.findByRole('button', { name: /all-boots/ }));
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Still hidden');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft.find((rule) => rule.id === 'all-boots')?.hide).toEqual(['SL-7']);
     });
 
@@ -528,7 +535,7 @@ describe('the rules panel', () => {
         // The rule is still one the store has, and the draft still carries the whole set.
         expect(screen.getByRole('button', { name: 'Remove rule' })).toBeInTheDocument();
         await user.type(screen.getByRole('textbox', { name: 'Name' }), '!');
-        const draft = onDraft.mock.lastCall?.[0] ?? [];
+        const draft = lastDraft(onDraft);
         expect(draft.map((rule) => rule.id)).toEqual(['all-boots', 'featured-jackets']);
     });
 

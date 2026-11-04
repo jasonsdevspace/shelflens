@@ -13,9 +13,8 @@ import { quietTourOnStoreLinks } from './quiet-tour.js';
 
 const here = {
     origin: 'https://example.test',
-    pathname: '/shelflens/about/',
     href: 'https://example.test/shelflens/about/',
-} as Location;
+};
 
 const page = (hrefs: readonly string[]) => {
     document.body.innerHTML = hrefs.map((href) => `<a href="${href}">link</a>`).join('');

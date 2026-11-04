@@ -36,7 +36,7 @@ const collector = (over: Partial<Parameters<typeof createCollector>[0]> = {}) =>
 
 type Send = Mock<(url: string, body: string) => boolean>;
 
-/** What each send carried, as it went. */
+/** What each send carried, parsed but not checked, for a test that reads a body exactly. */
 const sentBodies = (send: Send): unknown[] =>
     send.mock.calls.map(([, body]): unknown => JSON.parse(body));
 

@@ -31,15 +31,17 @@ const problemsOf = (value: unknown): string[] => {
     return problems;
 };
 
-// Read as the store reads a rules file, so a rule it would refuse fails here first.
-const shipped = parseRulesFile(
-    JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'rules.json'), 'utf8'))
-);
+// Read as the store reads a rules file, inside the test, so a rule it would refuse fails that test.
+const shipped = () =>
+    parseRulesFile(
+        JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'rules.json'), 'utf8'))
+    );
 
 describe('a rule sent to a preview', () => {
     it('is a RuleInput, for every rule the store ships', () => {
-        expect(shipped.length).toBeGreaterThan(0);
-        for (const rule of shipped) {
+        const rules = shipped();
+        expect(rules.length).toBeGreaterThan(0);
+        for (const rule of rules) {
             expect(problemsOf(toRuleInput(rule)), rule.id).toEqual([]);
         }
     });

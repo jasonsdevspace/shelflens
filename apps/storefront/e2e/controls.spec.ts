@@ -118,7 +118,7 @@ const inspect = () => {
                 element.matches(
                     'button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"])'
                 ) &&
-                !element.matches(':disabled') &&
+                !('disabled' in element && element.disabled === true) &&
                 shown(element)
         )
         .flatMap((control) => [...edgeOf(control), ...selectOf(control)]);
@@ -140,7 +140,8 @@ const rings = async (page: Page): Promise<string[]> => {
             let active = document.activeElement;
             while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
             if (!active || active === document.body) return undefined;
-            // The page's window, with the controls this walk has reached left on it between presses.
+            // The controls reached so far are kept on the page's window, since each press reads
+            // focus in a fresh evaluate.
             const walked: Window & { reached?: WeakSet<Element> } = window;
             const reached = (walked.reached ??= new WeakSet());
             if (reached.has(active)) return 'around';

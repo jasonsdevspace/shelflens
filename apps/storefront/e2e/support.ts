@@ -97,9 +97,11 @@ export const keptEvents = async (page: Page): Promise<StoreEvent[]> => {
     });
 };
 
-/** The catalog the demo ships, read from the built site as a page reads it. */
+/**
+ * The catalog the demo ships, read from the built site as a page reads it, and checked as the
+ * store checks a catalog file, so one it would refuse fails here.
+ */
 export const shippedCatalog = async (request: APIRequestContext): Promise<Catalog> =>
-    // Read as the store reads a catalog file, so one it would refuse fails here.
     parseCatalogFile(await (await request.get('/catalog.json')).json());
 
 /** The rules panel, opened beside the results on a wide screen, or in its drawer on a phone. */

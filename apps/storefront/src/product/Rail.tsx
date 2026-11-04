@@ -22,16 +22,17 @@ export interface RailProps {
 
 const RAIL_HEADING_ID = 'rail-heading';
 
+/** The parts of a rail the heading reads, so a rail built from these alone can be headed. */
+type RailSummary = Pick<RailData, 'source' | 'viewedTogether'> & {
+    readonly category: Pick<RailData['category'], 'name'>;
+    readonly items: readonly unknown[];
+};
+
 /**
  * The source says whether anything was viewed with the product, and the
  * count says how much of the rail that is, so the two never disagree on
  * the first and an answer without a count is still headed truly.
  */
-/** What the heading reads of a rail, so the heading can be worked out from those alone. */
-type RailSummary = Pick<RailData, 'source' | 'viewedTogether'> & {
-    readonly category: Pick<RailData['category'], 'name'>;
-    readonly items: readonly unknown[];
-};
 
 export const railHeading = (rail: RailSummary): string => {
     const mostRated = `most rated in ${rail.category.name}`;

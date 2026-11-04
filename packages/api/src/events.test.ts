@@ -17,7 +17,9 @@ import {
  */
 
 /** An event as a page would send it, with any field changed or left out, for the store to judge. */
-const sent = (over: Readonly<Record<string, unknown>> = {}): Record<string, unknown> =>
+const sent = (
+    over: { readonly [Key in keyof StoreEvent]?: unknown } = {}
+): Record<string, unknown> =>
     Object.fromEntries(
         Object.entries<unknown>({
             id: 'e1',
@@ -28,8 +30,8 @@ const sent = (over: Readonly<Record<string, unknown>> = {}): Record<string, unkn
         }).filter(([, value]) => value !== undefined)
     );
 
-/** An event the store accepts, read through its own parser, for what takes only those. */
-const event = (over: Readonly<Record<string, unknown>> = {}): StoreEvent => {
+/** An event as the store's parser gives it back, which is all an event store takes. */
+const event = (over: { readonly [Key in keyof StoreEvent]?: unknown } = {}): StoreEvent => {
     const [read] = parseEventBatch([sent(over)]) ?? [];
     if (!read) throw new Error(`expected the store to accept ${JSON.stringify(sent(over))}`);
     return read;
