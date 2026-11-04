@@ -1,7 +1,7 @@
 import { type Catalog, CUSTOMER_GROUPS, type Product } from '@shelflens/catalog';
 
 import { hashText } from './fingerprint.js';
-import { isRecord } from './guards.js';
+import { isList, isRecord, isString, isStrings } from './guards.js';
 
 /**
  * A catalog file a host is handed, read and checked before anything is
@@ -10,12 +10,15 @@ import { isRecord } from './guards.js';
  *
  * The page made it, but the worker is the one that keeps it and builds a
  * store from it, so it reads it the way a server reads a request: as data
- * that could be anything. Each product needs the fields every part of the
- * store reads, its brand and categories have to be in the catalog, its
- * ids have to be its own, and there can be no more products than the cap.
- * The first thing wrong is the reason given. The version is the worker's to
- * set, from the content, so a catalog cannot claim another's version and be
- * answered from what that one left in a cache.
+ * that could be anything. Every field a catalog has is checked: its version,
+ * seed, currency code and the en-US locale, each brand's id and name, each
+ * category's id, name, path and parent, and each product's fields, its variants
+ * included. Each category's path runs through the catalog's categories to it, a
+ * product's brand and categories have to be in the catalog and its sku its own,
+ * and there has to be at least one product and no more than the cap. The first
+ * thing wrong is the reason given. The version is the worker's to set, from the
+ * content, so a catalog cannot claim another's version and be answered from
+ * what that one left in a cache.
  */
 
 /**
@@ -53,12 +56,8 @@ export const withContentVersion = (catalog: Catalog): Catalog => ({
     version: contentVersion(catalog),
 });
 
-const isString = (value: unknown): value is string => typeof value === 'string';
 const isWhole = (value: unknown): value is number =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0;
-const isList = (value: unknown): value is readonly unknown[] => Array.isArray(value);
-const isStrings = (value: unknown): value is readonly string[] =>
-    isList(value) && value.every(isString);
 const isRange = (value: unknown): boolean =>
     isRecord(value) && isWhole(value['min']) && isWhole(value['max']);
 
@@ -146,6 +145,29 @@ const categoryOk = (category: unknown): boolean =>
     isStrings(category['path']) &&
     (category['parentId'] === undefined || isString(category['parentId']));
 
+const idsOf = (list: readonly unknown[]): Set<unknown> =>
+    new Set(list.map((item) => (isRecord(item) ? item['id'] : undefined)));
+
+/**
+ * What is wrong with how the categories hang together, or undefined. Each
+ * path runs from the root down to its own category through categories the
+ * catalog has, and a parent is one of them, so browsing reaches every one.
+ */
+const treeProblem = (categories: readonly unknown[]): string | undefined => {
+    const ids = idsOf(categories);
+    for (const category of categories) {
+        if (!isRecord(category)) continue;
+        const { id, path, parentId } = category;
+        if (!isStrings(path) || path.at(-1) !== id || !path.every((step) => ids.has(step))) {
+            return `the category ${String(id)} has a path that does not run through the catalog's categories to it`;
+        }
+        if (parentId !== undefined && !ids.has(parentId)) {
+            return `the category ${String(id)} names a parent the catalog does not have`;
+        }
+    }
+    return undefined;
+};
+
 /** What is wrong with the catalog's own fields, or undefined when nothing is. */
 const headProblem = (catalog: Record<string, unknown>): string | undefined => {
     const { version, seed, currency, locale } = catalog;
@@ -169,15 +191,14 @@ const partsOf = (catalog: Record<string, unknown>): Parts | string => {
     if (!categories.every(categoryOk)) {
         return 'the catalog has a category without its id, name and path, or a parent that is not an id';
     }
+    const tree = treeProblem(categories);
+    if (tree) return tree;
     if (products.length === 0) return 'the catalog has no products';
     if (products.length > CATALOG_ROW_CAP) {
         return `the catalog has ${products.length} products, past the cap of ${CATALOG_ROW_CAP}`;
     }
     return { brands, categories, products };
 };
-
-const idsOf = (list: readonly unknown[]): Set<unknown> =>
-    new Set(list.map((item) => (isRecord(item) ? item['id'] : undefined)));
 
 /** What is wrong with the products together, or undefined when nothing is. */
 const productsProblem = ({ brands, categories, products }: Parts): string | undefined => {
@@ -188,9 +209,7 @@ const productsProblem = ({ brands, categories, products }: Parts): string | unde
         if (!isRecord(entry)) return `product ${index + 1} is not an object`;
         const problem = productProblem(entry);
         if (problem) return `product ${index + 1} ${problem}`;
-        // productProblem checked every field a Product has, its variants
-        // included. Copying each into a new object instead would cost an
-        // object per row at the cap, and drop fields the content version reads.
+        // productProblem checked every field a Product has, its variants included.
         const { sku, brandId, categoryId, categoryPath } = entry as unknown as Product;
         if (skus.has(sku)) return `the sku ${sku} is on more than one product`;
         skus.add(sku);
@@ -214,6 +233,7 @@ export const parseCatalogFile = (value: unknown): Catalog => {
     if (typeof parts === 'string') throw new Error(parts);
     const problem = productsProblem(parts);
     if (problem) throw new Error(problem);
-    // headProblem, partsOf and productsProblem checked every field a Catalog has.
+    // headProblem, partsOf and productsProblem checked every field a Catalog has. The file
+    // is returned as it came, since copying it would cost an object per product at the cap.
     return value as unknown as Catalog;
 };

@@ -71,7 +71,8 @@ describe('a store host', () => {
     it('refuses a set of the wrong shape, and keeps the store it has', async () => {
         const { host } = hostWith();
         const first = await host.current();
-        // Queries given as a word saved once, and every search for it failed after.
+        // Queries given as a word used to be saved and fail every search, and a pin given
+        // as one SKU was read one letter at a time.
         for (const rule of [
             { id: 'word', when: { queries: 'jacket' }, hide: [jacket.sku] },
             { id: 'one', pin: jacket.sku },
@@ -81,6 +82,7 @@ describe('a store host', () => {
                 body: JSON.stringify({ rules: [rule] }),
             });
             expect(answer.status, rule.id).toBe(400);
+            expect(answer.message, rule.id).toContain('is not a list of text');
         }
         expect(await host.current()).toBe(first);
     });

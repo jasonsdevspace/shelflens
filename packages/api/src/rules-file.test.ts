@@ -44,6 +44,18 @@ describe('the rules file', () => {
                 'its bury 1 attribute value is not text',
             ],
         ];
+        refused.push(
+            [
+                { id: 'a', when: { query: ['jacket'] } },
+                'its when has query, which a rule does not take',
+            ],
+            [{ id: 'a', pins: ['x'] }, 'its rule has pins, which a rule does not take'],
+            [{ id: 'a', boost: [{ ids: ['x'], weight: 2, wieght: 3 }] }, 'its boost 1 has wieght'],
+            [
+                { id: 'a', when: { queries: null, filter: null }, hide: ['x'] },
+                'its when names no queries and no filter',
+            ]
+        );
         for (const [rule, reason] of refused) {
             expect(() => parseRulesFile({ rules: [rule] }), reason).toThrow(reason);
         }

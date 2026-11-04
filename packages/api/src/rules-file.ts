@@ -1,6 +1,6 @@
 import type { Rule, RuleAdjustment, RuleTrigger } from '@jasonsdevspace/shelflens';
 
-import { isRecord } from './guards.js';
+import { isRecord, isString, isStrings } from './guards.js';
 
 /**
  * The merchandising rules file, read once and the same way by every host.
@@ -10,10 +10,12 @@ import { isRecord } from './guards.js';
  * shape is refused here, before the engine checks what each rule says, so
  * a misspelled key cannot ship a store with no merchandising and no error.
  *
- * Each rule is read field by field into a rule of the engine's own type.
- * The engine checks what a rule names, the documents and the attributes,
- * and trusts the shape it is given, so a list given as a word would be read
- * one letter at a time, or fail every search the rule applies to.
+ * Each rule is read field by field into a rule of the engine's own type, and a
+ * key a rule does not take is refused. The engine checks what a rule says, the
+ * documents and attributes it names, its weights and its window, and trusts the
+ * shape it is given, so a search's words given as one word would fail every
+ * search while the rule is active, and a pin given as one SKU would be read one
+ * letter at a time and refused over its first letter.
  */
 
 /** A field of the wrong shape, reported with the rule it is in. */
@@ -23,25 +25,40 @@ class Misshapen extends Error {}
 const absent = (value: unknown): value is undefined | null => value === undefined || value === null;
 
 const text = (value: unknown, field: string): string => {
-    if (typeof value !== 'string') throw new Misshapen(`its ${field} is not text`);
+    if (!isString(value)) throw new Misshapen(`its ${field} is not text`);
     return value;
 };
 
 const texts = (value: unknown, field: string): readonly string[] => {
-    if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
-        throw new Misshapen(`its ${field} is not a list of text`);
-    }
+    if (!isStrings(value)) throw new Misshapen(`its ${field} is not a list of text`);
     return value;
 };
 
-const record = (value: unknown, field: string): Record<string, unknown> => {
+/**
+ * An object with only the keys it may have. A key the rules do not take is
+ * refused rather than dropped, since a misspelled one, such as `query` for
+ * `queries`, would otherwise save a rule that never applies.
+ */
+const record = (
+    value: unknown,
+    field: string,
+    keys: readonly string[]
+): Record<string, unknown> => {
     if (!isRecord(value)) throw new Misshapen(`its ${field} is not an object`);
+    const stray = Object.keys(value).find((key) => !keys.includes(key));
+    if (stray !== undefined)
+        throw new Misshapen(`its ${field} has ${stray}, which a rule does not take`);
     return value;
 };
 
 const trigger = (value: unknown): RuleTrigger => {
-    const { queries, filter } = record(value, 'when');
-    const inside = absent(filter) ? undefined : record(filter, 'when filter');
+    const { queries, filter } = record(value, 'when', ['queries', 'filter']);
+    // A trigger that names nothing would match nothing, which no rule means.
+    if (absent(queries) && absent(filter))
+        throw new Misshapen('its when names no queries and no filter');
+    const inside = absent(filter)
+        ? undefined
+        : record(filter, 'when filter', ['attribute', 'value']);
     return {
         ...(!absent(queries) && { queries: texts(queries, 'when queries') }),
         ...(inside && {
@@ -54,9 +71,11 @@ const trigger = (value: unknown): RuleTrigger => {
 };
 
 const adjustment = (value: unknown, where: string): RuleAdjustment => {
-    const { ids, attribute, weight } = record(value, where);
+    const { ids, attribute, weight } = record(value, where, ['ids', 'attribute', 'weight']);
     if (typeof weight !== 'number') throw new Misshapen(`its ${where} has no number weight`);
-    const named = absent(attribute) ? undefined : record(attribute, `${where} attribute`);
+    const named = absent(attribute)
+        ? undefined
+        : record(attribute, `${where} attribute`, ['name', 'value']);
     return {
         ...(!absent(ids) && { ids: texts(ids, `${where} ids`) }),
         ...(named && {
@@ -75,16 +94,18 @@ const adjustments = (value: unknown, field: string): readonly RuleAdjustment[] =
 };
 
 const activeWindow = (value: unknown): NonNullable<Rule['active']> => {
-    const { from, to } = record(value, 'active window');
+    const { from, to } = record(value, 'active window', ['from', 'to']);
     return {
         ...(!absent(from) && { from: text(from, 'active from') }),
         ...(!absent(to) && { to: text(to, 'active to') }),
     };
 };
 
-/** One rule, read field by field, so every list is a list and every name is text. */
+/** One rule, in the engine's own type. */
+const RULE_KEYS = ['id', 'name', 'when', 'active', 'pin', 'boost', 'bury', 'hide'];
+
 const ruleOf = (value: Record<string, unknown>, id: string): Rule => {
-    const { name, when, active, pin, boost, bury, hide } = value;
+    const { name, when, active, pin, boost, bury, hide } = record(value, 'rule', RULE_KEYS);
     return {
         id,
         ...(!absent(name) && { name: text(name, 'name') }),

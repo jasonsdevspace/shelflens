@@ -5,6 +5,16 @@
  * batch are each read as JSON here.
  */
 
+/** Whether a value is text. */
+export const isString = (value: unknown): value is string => typeof value === 'string';
+
+/** Whether a value is a list, of anything. */
+export const isList = (value: unknown): value is readonly unknown[] => Array.isArray(value);
+
+/** Whether a value is a list of text. */
+export const isStrings = (value: unknown): value is readonly string[] =>
+    isList(value) && value.every(isString);
+
 /** Whether a value is a plain object, which an array is not. */
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
