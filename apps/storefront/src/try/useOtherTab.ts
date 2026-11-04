@@ -26,8 +26,8 @@ export const useOtherTab = ({
     useLayoutEffect(() => {
         changed.current = onChange;
     });
-    // Listening starts in the same commit that shows the products, so a return in the moment after
-    // they appear is never missed while an effect that runs after the draw waits its turn.
+    // Listening starts in the same commit that shows the products, so a return from the moment they
+    // appear is heard, rather than only once an effect that runs after the draw has had its turn.
     useLayoutEffect(() => {
         if (searching === undefined) return undefined;
         let live = true;
