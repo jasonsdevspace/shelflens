@@ -45,7 +45,7 @@ Option B, computed on the fly.
 
 - On the benchmark catalog, counting eight facets over a hundred thousand candidates was about half
   of a wide query's time, roughly 45 of 93 milliseconds, while values were counted by string.
-  Counted by code, a browse of everything with every facet takes 18 milliseconds in all. On the
+  Counted by code, a browse of everything with every facet takes 17 milliseconds in all. On the
   demo catalog it is not measurable. Option C would sit behind the same facet interface.
 - The codes cost memory: one integer for each value of each faceted keyword attribute on each
   document, about five megabytes on the benchmark catalog.

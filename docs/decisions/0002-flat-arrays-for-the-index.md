@@ -82,22 +82,27 @@ on every document.
 
 **Amended with engine 0.6.0.** Hit objects existed only for the page, but each candidate still
 carried why it matched, built for every document of every word of the query before the words were
-intersected. A two-word query over a hundred thousand products built nearly seventy thousand of
-those to keep a few hundred. The same grid of searches, now with rules and signals together as well,
-gave byte for byte the same answers before and after.
+intersected. The benchmark's three-word query, "navy blue hoodie", built nearly seventy thousand of
+those to keep a few hundred. The same grid of searches, now with rules and signals together and
+short prefixes beside a word as well, gave byte for byte the same answers before and after.
 
-- **The narrowest word is matched first.** Each word of a query is a list of readings, as typed,
-  by synonym, by prefix and, in the typo pass, by one typo. Only the word with the fewest postings
-  is read in full, and each other word scores only the documents still standing. The scores are
-  added in the query's own order, so the order the words were read in changes no score.
-- **A candidate is a score.** Its matches, rule effects and signal are worked out again for the
-  hits on the page, by the same arithmetic, which costs a few dozen lookups.
-- **The typo pass adds to the exact pass.** It keeps the exact readings and what they scored of
-  the narrowest word, and adds the one-typo neighbors after them.
-- **The filter pass is plain loops.** Written with `forEach` and `every`, it ran a fifth slower
-  after the query rows had run than when browsing ran first, though its code had not changed. As
-  loops it runs the same either way.
-- **Indexing splits each field once**, for its terms and its word count together.
+- **The narrowest word is matched first.** Each word of a query is a list of readings, as typed, by
+  synonym, by prefix and, in the typo pass, by one typo. The word with the fewest postings is read
+  in full, and each other word is looked up only for the documents still standing, or read in full
+  where that takes fewer lookups, as a prefix of a short word can. The scores are added in the
+  query's own order, so the order the words were read in changes no score.
+- **A candidate is a score.** Its matches, and the rule effects and signal its hit lists, are worked
+  out again for the hits on the page, by the same arithmetic.
+- **The typo pass adds to the exact pass.** It keeps the exact readings, adds the one-typo neighbors
+  after them, and when the narrowest word is the same in both passes, keeps what the exact pass
+  scored of it.
+- **The filter pass is plain loops.** Written with `forEach` and `every`, it ran about a quarter
+  slower in the benchmark once the query rows had run, 33 milliseconds against 26 for a browse of a
+  category, though its code had not changed. As loops it runs the same either way.
+- **Indexing splits each field once,** for its terms and its word count together. A word with an
+  apostrophe now counts as one word, so the text it is in is shorter, and so is its field's average
+  length, which moves every score in that field a little. The generated catalog has no apostrophes,
+  so the grid could not show it.
 
 Both columns were measured the same day, on the same machine and the same generated catalog, the
 first with 0.5.0's engine at `dcc6011` and the second at the commit
@@ -106,22 +111,25 @@ first with 0.5.0's engine at `dcc6011` and the second at the commit
 |                                         | 0.5.0 | 0.6.0  |
 | --------------------------------------- | ----- | ------ |
 | Index memory, 100,000 products          | 89 MB | 89 MB  |
-| Two-letter prefix with every facet, p50 | 34 ms | 18 ms  |
-| Two-letter prefix, p99                  | 97 ms | 23 ms  |
-| Two words, p50                          | 16 ms | 0.4 ms |
-| Two words, p99                          | 63 ms | 0.6 ms |
-| Browse a category by position, p50      | 26 ms | 24 ms  |
+| Two-letter prefix with every facet, p50 | 34 ms | 17 ms  |
+| Two-letter prefix, p99                  | 98 ms | 24 ms  |
+| Three words, p50                        | 16 ms | 0.4 ms |
+| Three words, p99                        | 76 ms | 0.5 ms |
+| A word under rules, p99                 | 8 ms  | 3 ms   |
+| Browse a category by position, p50      | 25 ms | 24 ms  |
 | Browse everything with every facet, p50 | 18 ms | 17 ms  |
-| Index build time                        | 1.9 s | 1.5 s  |
+| Index build time                        | 1.8 s | 1.6 s  |
 
-The slowest one percent of a wide query is now within a few milliseconds of its median, where it
-was three or four times it. The garbage the matching made is what the pauses were collecting.
+The slowest one percent of a query that matches words is now within a few milliseconds of its
+median, where it was three to five times it. A browse, which matches no words, had a slowest one
+percent near its median in 0.5.0 too, so the garbage the matching made is what the pauses were
+collecting.
 
 ## Consequences
 
 - Index build was a third slower, from assembling each document's rows before appending them.
   Since 0.4.0 the rows are appended in place, and since 0.6.0 each field is split once, so the
-  build takes 1.5 seconds, against 1.8 for the objects. It is paid once at startup.
+  build takes 1.6 seconds, against 1.8 for the objects. It is paid once at startup.
 - The code is less idiomatic in places: row-major count arrays and a binary search to find a
   document in a posting list. Each is explained where it sits.
 - Typed arrays live in array buffers outside the JavaScript heap, which `heapUsed` does not

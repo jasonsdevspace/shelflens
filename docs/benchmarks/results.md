@@ -6,7 +6,7 @@ what does not.
 
 | Recorded   | Commit    | Machine                | Node     |
 | ---------- | --------- | ---------------------- | -------- |
-| 2026-11-04 | `ee783d2` | Apple M2 Max, 12 cores | v24.22.2 |
+| 2026-11-04 | `eff7ba6` | Apple M2 Max, 12 cores | v24.22.2 |
 
 ## The catalog
 
@@ -16,7 +16,7 @@ what does not.
 
 | Terms | Build time | Documents per second | Heap used |
 | ----- | ---------- | -------------------- | --------- |
-| 305   | 1535 ms    | 65,131               | 89 MB     |
+| 305   | 1613 ms    | 61,986               | 89 MB     |
 
 ## Queries
 
@@ -30,12 +30,12 @@ rather than of words, carry over.
 
 | Query                           | Results | p50   | p95   | p99   |
 | ------------------------------- | ------- | ----- | ----- | ----- |
-| search as you type, two letters | 61,666  | 17.54 | 20.89 | 22.83 |
-| one common word                 | 5,627   | 1.25  | 1.39  | 2.74  |
-| two words                       | 375     | 0.41  | 0.53  | 0.57  |
-| a synonym                       | 10,449  | 2.35  | 2.86  | 3.25  |
-| a typo, so the fuzzy pass runs  | 8,310   | 1.88  | 2.05  | 2.93  |
-| browse a category by position   | 33,566  | 23.59 | 24.67 | 26.21 |
-| a word with two filters         | 304     | 1.7   | 1.83  | 2.92  |
-| everything, page fifty          | 99,999  | 16.82 | 18.07 | 18.51 |
-| a word under rules              | 5,629   | 2.14  | 2.29  | 2.98  |
+| search as you type, two letters | 61,666  | 17.49 | 21.62 | 24.15 |
+| one common word                 | 5,627   | 1.24  | 1.32  | 2.01  |
+| three words                     | 375     | 0.38  | 0.48  | 0.51  |
+| a synonym                       | 10,449  | 2.33  | 2.9   | 3.55  |
+| a typo, so the fuzzy pass runs  | 8,310   | 1.89  | 2     | 2.93  |
+| browse a category by position   | 33,566  | 23.79 | 24.62 | 26.98 |
+| a word with two filters         | 304     | 1.69  | 1.79  | 2.77  |
+| everything, page fifty          | 99,999  | 16.96 | 18.2  | 18.55 |
+| a word under rules              | 5,629   | 2.06  | 2.39  | 2.92  |

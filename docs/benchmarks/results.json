@@ -1,6 +1,6 @@
 {
-    "recordedAt": "2026-11-04T03:46:31.453Z",
-    "commit": "ee783d2",
+    "recordedAt": "2026-11-04T03:58:38.602Z",
+    "commit": "eff7ba6",
     "environment": {
         "node": "v24.22.2",
         "cpu": "Apple M2 Max",
@@ -15,8 +15,8 @@
     },
     "index": {
         "terms": 305,
-        "buildMs": 1535,
-        "documentsPerSecond": 65131,
+        "buildMs": 1613,
+        "documentsPerSecond": 61986,
         "heapMb": 89
     },
     "queries": [
@@ -27,9 +27,9 @@
                 "prefixLastTerm": true
             },
             "total": 61666,
-            "p50": 17.54,
-            "p95": 20.89,
-            "p99": 22.83
+            "p50": 17.49,
+            "p95": 21.62,
+            "p99": 24.15
         },
         {
             "name": "one common word",
@@ -37,19 +37,19 @@
                 "query": "jacket"
             },
             "total": 5627,
-            "p50": 1.25,
-            "p95": 1.39,
-            "p99": 2.74
+            "p50": 1.24,
+            "p95": 1.32,
+            "p99": 2.01
         },
         {
-            "name": "two words",
+            "name": "three words",
             "request": {
                 "query": "navy blue hoodie"
             },
             "total": 375,
-            "p50": 0.41,
-            "p95": 0.53,
-            "p99": 0.57
+            "p50": 0.38,
+            "p95": 0.48,
+            "p99": 0.51
         },
         {
             "name": "a synonym",
@@ -57,9 +57,9 @@
                 "query": "trainers"
             },
             "total": 10449,
-            "p50": 2.35,
-            "p95": 2.86,
-            "p99": 3.25
+            "p50": 2.33,
+            "p95": 2.9,
+            "p99": 3.55
         },
         {
             "name": "a typo, so the fuzzy pass runs",
@@ -67,8 +67,8 @@
                 "query": "sneakr"
             },
             "total": 8310,
-            "p50": 1.88,
-            "p95": 2.05,
+            "p50": 1.89,
+            "p95": 2,
             "p99": 2.93
         },
         {
@@ -88,9 +88,9 @@
                 ]
             },
             "total": 33566,
-            "p50": 23.59,
-            "p95": 24.67,
-            "p99": 26.21
+            "p50": 23.79,
+            "p95": 24.62,
+            "p99": 26.98
         },
         {
             "name": "a word with two filters",
@@ -111,9 +111,9 @@
                 ]
             },
             "total": 304,
-            "p50": 1.7,
-            "p95": 1.83,
-            "p99": 2.92
+            "p50": 1.69,
+            "p95": 1.79,
+            "p99": 2.77
         },
         {
             "name": "everything, page fifty",
@@ -121,9 +121,9 @@
                 "page": 50
             },
             "total": 99999,
-            "p50": 16.82,
-            "p95": 18.07,
-            "p99": 18.51
+            "p50": 16.96,
+            "p95": 18.2,
+            "p99": 18.55
         },
         {
             "name": "a word under rules",
@@ -131,9 +131,9 @@
                 "query": "jacket"
             },
             "total": 5629,
-            "p50": 2.14,
-            "p95": 2.29,
-            "p99": 2.98
+            "p50": 2.06,
+            "p95": 2.39,
+            "p99": 2.92
         }
     ]
 }
