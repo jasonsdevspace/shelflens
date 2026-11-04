@@ -1,3 +1,5 @@
+import { isRecord } from './guards.js';
+
 /**
  * One text for one value, and a short name for it.
  *
@@ -25,19 +27,18 @@
  * which made the whole form about a third slower.
  */
 const inKeyOrder = (_key: string, value: unknown): unknown => {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
-    const record = value as Record<string, unknown>;
+    if (!isRecord(value)) return value;
     const ordered: Record<string, unknown> = {};
-    for (const key of Object.keys(record).sort()) {
+    for (const key of Object.keys(value).sort()) {
         if (key === '__proto__') {
             Object.defineProperty(ordered, key, {
-                value: record[key],
+                value: value[key],
                 enumerable: true,
                 writable: true,
                 configurable: true,
             });
         } else {
-            ordered[key] = record[key];
+            ordered[key] = value[key];
         }
     }
     return ordered;

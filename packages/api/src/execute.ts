@@ -55,7 +55,15 @@ interface Limits {
 
 const DEFAULT_LIMITS: Limits = { maxDepth: 8, maxFields: 200 };
 
-/** Attaches the resolvers to the schema the SDL built, field by field. */
+/**
+ * Attaches the resolvers to the schema the SDL built, field by field.
+ *
+ * The generated resolver types are not graphql-js's own, so each resolver is
+ * cast as it is attached. The facet type's resolver is typed to allow null,
+ * which graphql-js does not, and Object.entries gives each field's resolver as
+ * any. The API tests reach the resolvers through queries, each kind of facet
+ * among them, so a resolver that does not fit fails there.
+ */
 const attach = (schema: GraphQLSchema, map: Resolvers): GraphQLSchema => {
     for (const [typeName, fields] of Object.entries(map)) {
         const type = schema.getType(typeName);
@@ -131,8 +139,7 @@ export const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 /** Keeps a user's mistakes as they are, and replaces everything else. */
 const shaped = (error: GraphQLError): StoreError => {
     const code = error.extensions['code'];
-    const isUserError =
-        typeof code === 'string' && (USER_CODES as readonly string[]).includes(code);
+    const isUserError = USER_CODES.some((known) => known === code);
     // Only a resolver's failure has a path. Anything without one was found
     // before any field ran: validation, or a variable that did not fit.
     const fromRequest = error.path === undefined;

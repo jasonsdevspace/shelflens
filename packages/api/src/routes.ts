@@ -18,10 +18,10 @@ export const STORE_ROUTES: readonly StoreRoute[] = ['graphql', 'events', 'rules'
  * once, or nothing. The answer is one of the routes the host named, so a
  * host that serves no catalog is never handed one.
  */
-export const routeOf = <Served extends Route = StoreRoute>(
+export const routeOf = <Served extends Route>(
     url: string,
-    base = '/',
-    served: readonly Served[] = STORE_ROUTES as readonly Served[]
+    base: string,
+    served: readonly Served[]
 ): Served | undefined => {
     const { pathname } = new URL(url, 'http://local');
     return served.find((route) => pathname === `${base}${route}`);

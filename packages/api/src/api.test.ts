@@ -55,7 +55,7 @@ type Loose = any;
 
 const data = (response: StoreResponse): Loose => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
-    return response.data as Loose;
+    return response.data;
 };
 
 const RESULTS = `
@@ -282,7 +282,7 @@ describe('a merchandiser\u2019s preview', () => {
             }
         );
         expect(refused.errors?.[0]).toMatchObject({
-            message: expect.stringContaining('SL-99999') as string,
+            message: expect.stringContaining('SL-99999'),
             extensions: { code: 'BAD_USER_INPUT' },
         });
     });
@@ -364,7 +364,7 @@ describe('what shoppers clicked', () => {
         expect(risen).toBeLessThan(plain.items.length - 1);
         expect(nudged.items[risen].explanation.popularity).toEqual({
             clicks: 20,
-            weight: expect.closeTo(signalWeight(20), 10) as number,
+            weight: expect.closeTo(signalWeight(20), 10),
         });
     });
 
@@ -407,9 +407,9 @@ describe('the viewer', () => {
                     NOW
                 )
             ).store;
-        const listed = catalog.products.map((p) => ({
+        const listed = catalog.products.map((p): (typeof catalog.products)[number] => ({
             ...p,
-            visibleTo: ['guest', 'member'] as typeof p.visibleTo,
+            visibleTo: ['guest', 'member'],
             price: { ...p.price, member: p.price.guest },
         }));
         expect(await ask(listed)).toEqual({ memberPricing: false, membersOnlyProducts: false });
@@ -706,10 +706,10 @@ describe('the limits a field takes', () => {
     it('bounds a rail between none and the most it gives, and takes a null as the default', async () => {
         const rail = async (limit: number | null) =>
             (
-                (await ask(
+                await ask(
                     'query ($sku: ID!, $limit: Int) { recommendations(sku: $sku, limit: $limit) { items { sku } } }',
                     { sku, limit }
-                )) as { recommendations: { items: unknown[] } }
+                )
             ).recommendations.items.length;
         expect(largest?.length).toBeGreaterThan(13);
         expect(await rail(100)).toBe(12);
@@ -720,24 +720,24 @@ describe('the limits a field takes', () => {
     it('takes a null limit on suggestions as the default, as a rail does', async () => {
         const suggest = async (limit: number | null) =>
             (
-                (await ask(
+                await ask(
                     'query ($limit: Int) { suggest(phrase: "jacket", limit: $limit) { products { product { sku } } } }',
                     { limit }
-                )) as { suggest: { products: unknown[] } }
+                )
             ).suggest.products.length;
         expect(await suggest(5)).toBe(5);
         expect(await suggest(null)).toBe(5);
     });
 
     it('gives a null limit the same default the schema gives a limit left out', async () => {
-        const omitted = (await ask(
+        const omitted = await ask(
             'query ($sku: ID!) { recommendations(sku: $sku) { items { sku } } suggest(phrase: "jacket") { products { product { sku } } } }',
             { sku }
-        )) as { recommendations: { items: unknown[] }; suggest: { products: unknown[] } };
-        const nulled = (await ask(
+        );
+        const nulled = await ask(
             'query ($sku: ID!) { recommendations(sku: $sku, limit: null) { items { sku } } suggest(phrase: "jacket", limit: null) { products { product { sku } } } }',
             { sku }
-        )) as typeof omitted;
+        );
         expect(nulled.recommendations.items.length).toBe(omitted.recommendations.items.length);
         expect(nulled.suggest.products.length).toBe(omitted.suggest.products.length);
     });
