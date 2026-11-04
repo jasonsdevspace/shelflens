@@ -81,7 +81,8 @@ the page.
 - **Visits are counted by path.** `src/analytics.ts` starts Plausible's tracker, bundled from npm,
   from each of the demo's own pages and never from the widget's own file. It sets no cookie, and
   starts nothing when the browser sends Global Privacy Control, the check the events make in
-  `src/privacy.ts`. Every address it sends is cut back to its path, and each page hands the next
+  `src/privacy.ts`. Every address it sends is cut back to its path, keeping only a shared link's
+  tags such as `utm_source` on the page's, and each page hands the next
   only the site's origin, so no search phrase leaves the browser.
   [Decision record 18](../../docs/decisions/0018-visits-are-counted-by-path.md) has the choices.
 - **A page on how it works.** `about/index.html` is a second page in the build, static, sharing the

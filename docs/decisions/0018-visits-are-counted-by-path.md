@@ -37,7 +37,9 @@ domain shows a visit from the portfolio into a demo as one journey, and a projec
 domain is counted from its first page.
 
 **The path, never the query.** The store keeps a search in the address, so every address sent, the
-page's, the one it came from and a link out's, is cut back to its path. Each page also tells the
+page's, the one it came from and a link out's, is cut back to its path. The page's keeps the tags a
+shared link carries, such as `utm_source`, which say where the link was shared and nothing about the
+visitor, so a campaign still reads as one. Each page also tells the
 browser to hand the next page the site's origin and nothing more, since the portfolio shares the
 store's origin and would otherwise be handed the search for its own counter to send. A search
 phrase never leaves the browser.
@@ -72,10 +74,10 @@ widget's own file never starts the tracker. The demo's pages that host it are th
 - A unit test starts the tracker under the domain with links out counted, starts nothing when the
   browser sends Global Privacy Control, and leaves the page alone when the tracker throws.
 - A unit test holds every address sent to its path: the page's, the one before it and a link out's,
-  and sends nothing for a page whose address cannot be read.
+  keeps a shared link's tags on the page's, and sends nothing for an address that cannot be read.
 - The end to end policy test reads `connect-src` as the page's own origin and Plausible, and follows
   a link from a search to find the next page handed the origin alone.
-- The bundle test finds the tracker in every page the app serves, read from each page's own entry,
-  and nowhere in the widget.
+- The bundle test finds the tracker in every page the app serves, a page not yet in git included,
+  read from each page's own entry, and nowhere in the widget.
 - The bundle budget holds the store's page under 104 KB, and the page for a visitor's catalog under
   its own, each with the tracker in it.

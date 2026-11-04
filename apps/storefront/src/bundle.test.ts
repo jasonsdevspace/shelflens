@@ -111,12 +111,17 @@ describe('the widget in a host page', () => {
 describe('the demo\u2019s own pages', () => {
     it('each count visits, a page added later included', async () => {
         // Every page the build serves is an index.html the app keeps in git, and each names its
-        // entry. Asked of git, so a report or a build that writes one of its own is left out.
+        // entry. Asked of git, so a page not yet added counts, and a report or a build that writes
+        // one of its own is left out.
         const app = new URL('..', import.meta.url);
-        const pages = execFileSync('git', ['ls-files', '*index.html'], {
-            cwd: app,
-            encoding: 'utf8',
-        })
+        const pages = execFileSync(
+            'git',
+            ['ls-files', '--cached', '--others', '--exclude-standard', '*index.html'],
+            {
+                cwd: app,
+                encoding: 'utf8',
+            }
+        )
             .split('\n')
             .filter((path) => path.length > 0);
         expect(pages.length).toBeGreaterThan(1);
