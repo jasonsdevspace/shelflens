@@ -208,7 +208,9 @@ describe('what did not load', () => {
         const message = await openProduct();
         // Focus moves to the message, which reads it, so it is not announced as well.
         expect(message).not.toHaveAttribute('role', 'alert');
-        expect(message.closest('section')).toHaveFocus();
+        // Focus moves in an effect after the message is drawn, so on a loaded machine the message
+        // can be found a moment before focus reaches it.
+        await waitFor(() => expect(message.closest('section')).toHaveFocus());
         await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
         expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(featured.name);
         expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
