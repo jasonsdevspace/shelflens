@@ -4,9 +4,9 @@ Run `npm run bench` to reproduce it. The raw results are in [results.json](resul
 numbers depend on the machine, so what carries over is the shape: what grows with the catalog, and
 what does not.
 
-| Recorded   | Commit    | Machine                | Node    |
-| ---------- | --------- | ---------------------- | ------- |
-| 2026-11-02 | `3e91942` | Apple M2 Max, 12 cores | v24.3.0 |
+| Recorded   | Commit    | Machine                | Node     |
+| ---------- | --------- | ---------------------- | -------- |
+| 2026-11-04 | `ee783d2` | Apple M2 Max, 12 cores | v24.22.2 |
 
 ## The catalog
 
@@ -16,7 +16,7 @@ what does not.
 
 | Terms | Build time | Documents per second | Heap used |
 | ----- | ---------- | -------------------- | --------- |
-| 305   | 1928 ms    | 51,878               | 89 MB     |
+| 305   | 1535 ms    | 65,131               | 89 MB     |
 
 ## Queries
 
@@ -30,11 +30,12 @@ rather than of words, carry over.
 
 | Query                           | Results | p50   | p95   | p99   |
 | ------------------------------- | ------- | ----- | ----- | ----- |
-| search as you type, two letters | 61,666  | 34.25 | 40.69 | 94.25 |
-| one common word                 | 5,627   | 1.49  | 7.08  | 7.9   |
-| two words                       | 375     | 15.78 | 18.14 | 90.33 |
-| a synonym                       | 10,449  | 3.33  | 9     | 9.41  |
-| a typo, so the fuzzy pass runs  | 8,310   | 2.63  | 7.77  | 8.92  |
-| browse a category by position   | 33,566  | 24.64 | 27.26 | 27.81 |
-| a word with two filters         | 304     | 2.18  | 6.82  | 7.06  |
-| everything, page fifty          | 99,999  | 18.12 | 20.14 | 21.73 |
+| search as you type, two letters | 61,666  | 17.54 | 20.89 | 22.83 |
+| one common word                 | 5,627   | 1.25  | 1.39  | 2.74  |
+| two words                       | 375     | 0.41  | 0.53  | 0.57  |
+| a synonym                       | 10,449  | 2.35  | 2.86  | 3.25  |
+| a typo, so the fuzzy pass runs  | 8,310   | 1.88  | 2.05  | 2.93  |
+| browse a category by position   | 33,566  | 23.59 | 24.67 | 26.21 |
+| a word with two filters         | 304     | 1.7   | 1.83  | 2.92  |
+| everything, page fifty          | 99,999  | 16.82 | 18.07 | 18.51 |
+| a word under rules              | 5,629   | 2.14  | 2.29  | 2.98  |

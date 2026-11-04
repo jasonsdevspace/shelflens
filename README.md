@@ -142,9 +142,11 @@ The libraries are in `packages/`, and what runs, the demo and the server, is in 
   requests a storefront sends. Its first run showed about a gigabyte of memory for the index and a
   third of a second for the widest queries. Flat arrays instead of a Map per posting, and result
   objects built only for the page returned, brought that to 84 MB and about a tenth of a second.
-  Then the engine stopped doing work a search does not need, counting facets by a code per value
-  and ordering only the page's share of the matches, which brought the widest to about a
-  thirtieth of a second at the median and a tenth at the slowest one percent.
+  Then the engine stopped doing work a search does not need, counting facets by a code per value,
+  ordering only the page's share of the matches, matching a query's narrowest word first and
+  explaining only the hits on the page. That brought the widest to about a fiftieth of a second at
+  the median and a fortieth at the slowest one percent, and a two-word query to under a
+  millisecond.
   [The record](docs/benchmarks/results.md) is kept with the machine it ran on.
 - **The popover.** Results must be visible within 150 ms of the last keystroke. The search box
   waits 100 ms for the typing to pause, and the slowest suggestion on the demo catalog takes well
