@@ -8,7 +8,8 @@
     // Each package's build config says where its build writes, so a package's
     // dist maps back to its source and this runs before anything is built. The
     // storefront and the root build nothing another package imports, so their
-    // files are read as they are.
+    // files are read as they are. A type a private barrel exports only so a caller
+    // can name what one of its functions takes or holds is tagged `@public` there.
     "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
     // What it reports: exports and types nothing imports, a thing exported twice, and
     // dependencies nothing uses, that something uses unlisted, or that do not resolve.

@@ -144,11 +144,11 @@ the page.
   Playwright against it on a desktop and a phone profile with the service worker answering, with
   an axe audit of each page it reaches. Nothing is mocked.
 - **Budgets.** `src/budgets.ts` holds each download's budget, compressed: the page under 100 KB,
-  the page for a visitor's own catalog under 115 KB, the widget under 85 KB and the service worker
-  under 85 KB. A test bundles each entry and `npm run budget` measures what the build ships, and
-  both fail past a budget, on anything from GraphQL in a page or the widget, and on a test
-  fixture in anything. The search package holds the catalog under 400 KB and the API package its
-  browser bundle under 90 KB. Another test times every suggestion on the demo catalog and fails
+  the page for a visitor's own catalog under 115 KB, the widget under 85 KB, the service worker
+  under 85 KB and the catalog under 400 KB. A test bundles each entry and generates the catalog,
+  and `npm run budget` measures what the build ships, and both fail past a budget, on anything
+  from GraphQL in a page or the widget, and on a test fixture in anything. The API package holds
+  its browser bundle under 90 KB. Another test times every suggestion on the demo catalog and fails
   past the popover's share of its 150 ms budget, and `npm run bench:popover` records the
   measurement in [docs/benchmarks](../../docs/benchmarks/popover.md).
 

@@ -39,7 +39,8 @@ The engine knows nothing about products. Whoever owns the catalog decides what b
 `createEngine(documents, config)` builds an engine, and its `search`, `recover` and
 `reconfigure` are the whole interface. Beside it, the package exports:
 
-- `EngineError`, the error the engine throws for a config or a request it refuses, with a `code`.
+- `EngineError`, the error the engine throws for a config or a request it refuses, with a `code`
+  of the type `EngineErrorCode`.
 - `signalWeight`, `SIGNAL_CAP` and `SIGNAL_SATURATION`, so a host can show what a count of
   choices does to a score.
 - `normalize`, `foldAccents`, `tokenize` and `stem`, the rules the engine applies to the catalog
@@ -79,10 +80,10 @@ which route, and for how much. That is what an explain mode shows.
 
 - Filters narrow the candidates before anything is scored: a single value, any of several, or a
   numeric range whose upper bound is exclusive. A filter on an attribute the config does not
-  declare is an `EngineError`, since that is the caller's mistake and not an empty result.
+  declare, or one its attribute's kind cannot take, such as a word for a number, is an
+  `EngineError`, since that is the caller's mistake and not an empty result.
 - Sorts take any declared attribute, `relevance`, or `id` for the order the documents were
-  indexed in, each clause breaking the ties of the one
-  before it, and every sort ends on the id. Documents that tie on everything asked for still come
+  indexed in, each clause breaking the ties of the one before it, and every sort ends on the id. Documents that tie on everything asked for still come
   back in one fixed order, so paging never shows a document twice or skips one. A sort declared as
   scoped to a filter, such as a position within a category, falls back to relevance when the
   filter is absent, and the result reports the sort actually applied. When no sort is asked for,

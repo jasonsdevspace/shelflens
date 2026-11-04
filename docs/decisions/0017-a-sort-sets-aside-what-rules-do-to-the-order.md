@@ -53,7 +53,7 @@ whose filter is on that attribute. Such a rule keeps its pins and its hides and 
 `applied` when it has any. Its boosts and buries do nothing, since the position sort does not read
 a score, so a rule that has them is listed in `setAside` as well, with no pins counted, and a rule
 that only boosts or buries is listed there alone. Browsing one category with no query chooses its
-scoped sort without being asked (`defaultSort` in `packages/engine/src/search.ts`), so a category
+scoped sort without being asked (`defaultSort` in `packages/engine/src/sort.ts`), so a category
 page shows the merchandiser's order with that category's pins on top.
 
 The API passes all three through as `Merchandising.applied`, `Merchandising.setAsideBySort` and

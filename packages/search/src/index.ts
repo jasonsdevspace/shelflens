@@ -3,6 +3,8 @@ export { GOLDEN_CASES } from './golden.js';
 export {
     createStoreEngine,
     mostRated,
+    /** @public */
+    type MostRatedRequest,
     recoverStore,
     searchStore,
     type StoreSearchRequest,

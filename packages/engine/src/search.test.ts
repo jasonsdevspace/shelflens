@@ -262,6 +262,22 @@ describe('filters', () => {
             engine.search({ filters: [{ attribute: 'brand', range: { from: 1 } }] })
         ).toThrow(/only a number attribute/);
     });
+
+    it('refuses a word for a number or a boolean, rather than matching nothing', () => {
+        for (const filter of [
+            { attribute: 'price', eq: '9900' },
+            { attribute: 'price', in: ['9900'] },
+            { attribute: 'inStock', eq: 'true' },
+            { attribute: 'inStock', in: ['true'] },
+        ]) {
+            expect(() => engine.search({ filters: [filter] }), filter.attribute).toThrow(
+                expect.objectContaining({
+                    code: 'wrong_attribute_kind',
+                    message: expect.stringMatching(/only a keyword attribute/),
+                })
+            );
+        }
+    });
 });
 
 describe('sorting', () => {

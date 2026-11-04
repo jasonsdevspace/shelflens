@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
+import { generateCatalog } from '@shelflens/catalog';
 import { GOLDEN_CASES } from '@shelflens/search';
 import { build, type Plugin } from 'esbuild';
 import { describe, expect, it } from 'vitest';
@@ -10,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { SOURCE_CONDITION } from '../../../source-condition.js';
 import {
     BUDGET_BYTES,
+    CATALOG_BUDGET_BYTES,
     FIXTURE_PROBE,
     TRY_BUDGET_BYTES,
     WIDGET_BUDGET_BYTES,
@@ -17,8 +19,9 @@ import {
 } from './budgets.js';
 
 /*
- * The pages' download budgets, as esbuild bundles each entry on its own.
- * `npm run budget` holds the files the build ships to the same budgets.
+ * The pages' download budgets, as esbuild bundles each entry on its own, and
+ * the catalog's, as the generator writes it. `npm run budget` holds the files
+ * the build ships to the same budgets.
  */
 
 /** A stylesheet imported as text, the way Vite answers a `?inline` import. */
@@ -105,4 +108,11 @@ describe('the service worker', () => {
         expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(WORKER_BUDGET_BYTES);
     }, 60_000);
+});
+
+describe('the catalog the demo ships', () => {
+    it('stays within its download budget', () => {
+        const compressed = gzipSync(JSON.stringify(generateCatalog())).length;
+        expect(compressed).toBeLessThan(CATALOG_BUDGET_BYTES);
+    });
 });

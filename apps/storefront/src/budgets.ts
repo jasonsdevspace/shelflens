@@ -33,6 +33,12 @@ export const TRY_BUDGET_BYTES = 115 * 1024;
 export const WORKER_BUDGET_BYTES = 85 * 1024;
 
 /**
+ * The demo's catalog, which the store's first visit downloads and indexes in
+ * the browser. Measured at 332 KB compressed when the budget was set.
+ */
+export const CATALOG_BUDGET_BYTES = 400 * 1024;
+
+/**
  * A sentence only the golden queries hold, which the tests read and nothing
  * shipped should. The budget check and the bundle test refuse any file with
  * it, and a test holds it to the golden queries' own text, so rewording them

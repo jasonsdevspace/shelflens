@@ -1,3 +1,4 @@
+import { inRange } from './filters.js';
 import type { Index, KeywordCodes } from './index-builder.js';
 import {
     type EngineConfig,
@@ -21,13 +22,16 @@ import {
 /** The most values one facet reports. Past this a facet is a list, not a filter. */
 const DEFAULT_MAX_BUCKETS = 100;
 
-export const checkFacets = (config: EngineConfig, names: readonly string[]): void => {
-    for (const name of names) {
-        if (!config.facets?.[name]) {
-            throw new EngineError('unknown_facet', `no facet named ${name}`);
-        }
-    }
-};
+/** The configs of the facets a request names, refusing a name the config does not have. */
+export const facetsNamed = (
+    config: EngineConfig,
+    names: readonly string[]
+): [string, FacetConfig][] =>
+    names.map((name) => {
+        const facet = config.facets?.[name];
+        if (!facet) throw new EngineError('unknown_facet', `no facet named ${name}`);
+        return [name, facet];
+    });
 
 /** Documents to count: a document array, and which of them pass. */
 export interface Counted {
@@ -105,10 +109,7 @@ const rangeFacet = (
         const value = column?.[counted.docs[i] ?? 0];
         if (typeof value !== 'number') continue;
         for (let r = 0; r < facet.ranges.length; r += 1) {
-            const { from, to } = facet.ranges[r] ?? {};
-            if ((from === undefined || value >= from) && (to === undefined || value < to)) {
-                counts[r] = (counts[r] ?? 0) + 1;
-            }
+            if (inRange(value, facet.ranges[r] ?? {})) counts[r] = (counts[r] ?? 0) + 1;
         }
     }
     return {

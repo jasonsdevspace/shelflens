@@ -7,8 +7,10 @@
  * what keeps this package free of any one store's shape.
  */
 
+/** An attribute's value: a word, a number, true or false, or a list of words. */
 export type AttributeValue = string | number | boolean | readonly string[];
 
+/** One thing the engine can find, such as a product. */
 export interface Document {
     readonly id: string;
     /** Searchable text, by field name. Only fields named in the config are indexed. */
@@ -27,6 +29,7 @@ export interface TextField {
     readonly weight: number;
 }
 
+/** What an attribute holds, which decides the filters, sorts and facets it takes. */
 export type AttributeKind = 'keyword' | 'number' | 'boolean';
 
 /**
@@ -57,12 +60,14 @@ export type FacetConfig =
       }
     | { readonly kind: 'stats'; readonly attribute: string };
 
+/** One value of a keyword facet, and how many documents have it. */
 export interface ValueBucket {
     readonly kind: 'value';
     readonly value: string;
     readonly count: number;
 }
 
+/** One band of a range facet, `from` inclusive and `to` exclusive, and how many fall in it. */
 export interface RangeBucket {
     readonly kind: 'range';
     readonly from?: number;
@@ -70,6 +75,7 @@ export interface RangeBucket {
     readonly count: number;
 }
 
+/** A facet's counts for one search, by the kind of facet the config declared. */
 export type Facet =
     | {
           readonly name: string;
@@ -132,6 +138,7 @@ export interface RuleEffect {
     readonly weight?: number;
 }
 
+/** What the engine indexes and how it searches. */
 export interface EngineConfig {
     /** The text a query searches. Only these are indexed. */
     readonly fields: Readonly<Record<string, TextField>>;
@@ -164,6 +171,11 @@ export interface EngineConfig {
     };
 }
 
+/**
+ * A condition a result must meet: one value, any of several words, or a
+ * number in a range. A word is for a keyword attribute, true or false for a
+ * boolean, and a range for a number.
+ */
 export type Filter =
     | { readonly attribute: string; readonly eq: string | boolean }
     | { readonly attribute: string; readonly in: readonly string[] }
@@ -173,6 +185,7 @@ export type Filter =
           readonly range: { readonly from?: number; readonly to?: number };
       };
 
+/** One step of an order. */
 export interface SortClause {
     /**
      * An attribute name, `relevance` for the match score, or `id` for the order
@@ -182,6 +195,7 @@ export interface SortClause {
     readonly direction: 'asc' | 'desc';
 }
 
+/** What a shopper asked for, and which page of it. */
 export interface SearchRequest {
     readonly query?: string;
     readonly filters?: readonly Filter[];
@@ -204,6 +218,10 @@ export interface SearchRequest {
     readonly now?: Date;
 }
 
+/**
+ * How a query word reached an indexed term: as typed, as a prefix, by one
+ * typo or through a synonym.
+ */
 export type MatchKind = 'exact' | 'prefix' | 'fuzzy' | 'synonym';
 
 /** One reason a document matched, kept so a result can say why it ranked where it did. */
@@ -226,6 +244,7 @@ export interface SignalEffect {
     readonly weight: number;
 }
 
+/** One result, with why it matched and what rules and signals did to it. */
 export interface Hit {
     readonly id: string;
     /** The score after rules and signals. */
@@ -247,6 +266,7 @@ export interface Hit {
  */
 export type MatchMode = 'exact' | 'fuzzy' | 'all' | 'none';
 
+/** One page of results, where it sits among them all, and the facets beside it. */
 export interface SearchResult {
     readonly hits: readonly Hit[];
     /** Matching documents in all, before the per-query limit. */
@@ -315,6 +335,14 @@ export interface Recovery {
 }
 
 /**
+ * What kind of mistake an `EngineError` reports: a name the config does not
+ * have, a filter or document value its attribute's kind cannot take, or a rule
+ * that could never do what it says.
+ */
+export type EngineErrorCode =
+    'unknown_attribute' | 'wrong_attribute_kind' | 'unknown_facet' | 'invalid_rule';
+
+/**
  * A request the engine cannot carry out.
  *
  * Thrown for a request that names what the config does not, or asks an
@@ -325,12 +353,7 @@ export interface Recovery {
  */
 export class EngineError extends Error {
     constructor(
-        readonly code:
-            | 'unknown_attribute'
-            | 'wrong_attribute_kind'
-            | 'unknown_field'
-            | 'unknown_facet'
-            | 'invalid_rule',
+        readonly code: EngineErrorCode,
         message: string
     ) {
         super(message);

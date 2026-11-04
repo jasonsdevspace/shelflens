@@ -10,7 +10,13 @@ import {
 } from '@jasonsdevspace/shelflens';
 import type { Catalog, CustomerGroup } from '@shelflens/catalog';
 
-import { priceAttribute, storeConfig, toDocuments } from './documents.js';
+import {
+    priceAttribute,
+    priceFacet,
+    priceStatsFacet,
+    storeConfig,
+    toDocuments,
+} from './documents.js';
 
 /**
  * Searching as a shopper.
@@ -35,12 +41,12 @@ export interface StoreSearchRequest extends Omit<SearchRequest, 'filters' | 'sor
 export const SHOPPER_FACETS = ['category', 'brand', 'color', 'size', 'price', 'rating'] as const;
 
 const forGroup = (name: string, group: CustomerGroup): string =>
-    name === 'price' ? priceAttribute(group) : name === 'priceStats' ? `priceStats.${group}` : name;
+    name === 'price' ? priceFacet(group) : name === 'priceStats' ? priceStatsFacet(group) : name;
 
 const asShopperFacet = (facet: Facet, group: CustomerGroup): Facet =>
-    facet.name === `price.${group}`
+    facet.name === priceFacet(group)
         ? { ...facet, name: 'price', attribute: 'price' }
-        : facet.name === `priceStats.${group}`
+        : facet.name === priceStatsFacet(group)
           ? { ...facet, name: 'priceStats', attribute: 'price' }
           : facet;
 
