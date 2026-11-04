@@ -105,41 +105,43 @@ const matchUnits = (
     matcher: TermMatcher,
     from?: Matched['narrowest']
 ): Matched => {
-    const order = readings
-        .map((_, unit) => unit)
-        .sort((a, b) => (readings[a]?.size ?? 0) - (readings[b]?.size ?? 0));
-    const [narrowest, ...rest] = order;
+    const [narrowest, ...rest] = readings
+        .map((these, unit) => ({ unit, these }))
+        .sort((a, b) => a.these.size - b.these.size);
     if (narrowest === undefined) return { docs: [], scores: [] };
-    const unitReadings = readings[narrowest] as Readings;
-    const expanded = matcher.expand(unitReadings, from?.unit === narrowest ? from : undefined);
+    const { unit: first, these: firstReadings } = narrowest;
+    const expanded = matcher.expand(firstReadings, from?.unit === first ? from : undefined);
     const docs = [...expanded.keys()];
-    const byUnit = readings.map(() => new Float64Array(docs.length));
-    (byUnit[narrowest] as Float64Array).set([...expanded.values()]);
+    // Each other unit's score for each document the narrowest admitted, by its place in `docs`.
+    const others = rest.map((entry) => ({ ...entry, scores: new Float64Array(docs.length) }));
     let alive = docs.map((_, k) => k);
-    for (const unit of rest) {
+    for (const { these, scores: unitScores } of others) {
         if (alive.length === 0) break;
-        const scored = byUnit[unit] as Float64Array;
         const next: number[] = [];
         // A unit read many ways, such as a prefix of a short word, costs a
         // lookup per reading for each document standing. Read in full, it
         // costs its postings, so it is read whichever way is less.
-        const these = readings[unit] as Readings;
         const whole =
             these.size <= alive.length * these.readings.length ? matcher.expand(these) : undefined;
         for (const k of alive) {
             const doc = docs[k] ?? 0;
             const score = whole ? whole.get(doc) : matcher.scoreOf(these, doc);
             if (score === undefined) continue;
-            scored[k] = score;
+            unitScores[k] = score;
             next.push(k);
         }
         alive = next;
     }
+    // The narrowest unit's scores come from `expanded` in the order `docs` did, so they line up.
+    // Spread first, since filling the array from the map's iterator measured slower.
+    const byUnit = [{ unit: first, scores: new Float64Array([...expanded.values()]) }, ...others]
+        .sort((a, b) => a.unit - b.unit)
+        .map(({ scores }) => scores);
     const scores = alive.map((k) => byUnit.reduce((sum, unit) => sum + (unit[k] ?? 0), 0));
     return {
         docs: alive.map((k) => docs[k] ?? 0),
         scores,
-        narrowest: { unit: narrowest, scores: expanded, readings: unitReadings.readings.length },
+        narrowest: { unit: first, scores: expanded, readings: firstReadings.readings.length },
     };
 };
 
@@ -159,12 +161,16 @@ const matchAll = (
 ): Candidates => {
     const units = matcher.rewrite(terms);
     const last = units.length - 1;
-    const strict = units.map((unit, i) => matcher.strict(unit, i === last, prefixLast));
+    const read = units.map((unit, i) => ({
+        unit,
+        strict: matcher.strict(unit, i === last, prefixLast),
+    }));
+    const strict = read.map((each) => each.strict);
     const exact = matchUnits(strict, matcher);
     if (exact.docs.length > 0) {
         return { docs: exact.docs, scores: exact.scores, readings: strict, mode: 'exact' };
     }
-    const widened = units.map((unit, i) => matcher.widen(unit, strict[i] as Readings));
+    const widened = read.map((each) => matcher.widen(each.unit, each.strict));
     const fuzzy = matchUnits(widened, matcher, exact.narrowest);
     return {
         docs: fuzzy.docs,

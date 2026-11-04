@@ -56,7 +56,7 @@ export const supportedCap = (results: readonly SizeResult[]): number => {
 export const runSizes = async (iterations: number): Promise<SizeResult[]> => {
     const results: SizeResult[] = [];
     for (const products of SIZES) {
-        (globalThis as { gc?: () => void }).gc?.();
+        globalThis.gc?.();
         results.push(await runPopoverBench({ products, iterations }));
     }
     return results;

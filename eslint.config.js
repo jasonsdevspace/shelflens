@@ -178,6 +178,22 @@ export default defineConfig(
         },
     },
     {
+        // The engine and the packages that make its catalog and documents hold no type
+        // assertions, each value typed by how it is built or narrowed by a check, and this keeps
+        // them out, a non-null assertion among them. A const assertion claims nothing and is
+        // still allowed.
+        files: [
+            'packages/engine/src/**/*.ts',
+            'packages/search/src/**/*.ts',
+            'packages/catalog/src/**/*.ts',
+        ],
+        ignores: ['**/*.test.ts'],
+        rules: {
+            '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+            '@typescript-eslint/no-non-null-assertion': 'error',
+        },
+    },
+    {
         // The worker hosts the API for the pages, so it reads what the API packages
         // offer and never a page's own folder, which would make a page its dependency.
         // Its own block replaces the one above for these files, so it names Node too.
