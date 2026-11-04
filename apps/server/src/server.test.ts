@@ -1,4 +1,4 @@
-import type { AddressInfo } from 'node:net';
+import type { Server } from 'node:http';
 
 import {
     createMemoryEventStore,
@@ -15,8 +15,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createRateLimit, createServer } from './server.js';
 
+/** Starts a server on a free port, and the address to reach it at. */
+const listening = async (started: Server): Promise<string> => {
+    await new Promise<void>((resolve) => started.listen(0, resolve));
+    const address = started.address();
+    if (address === null || typeof address === 'string') throw new Error('expected a port');
+    return `http://127.0.0.1:${address.port}`;
+};
+
+/** Stops a server, once every connection it holds has closed, and fails if it was not running. */
+const closed = (started: Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+        started.close((error) => (error ? reject(error) : resolve()));
+    });
+
 const shared = generateCatalog({ seed: 42, products: 200 });
-/** The store host every host serves, over a small catalog with no rules, keeping events if given. */
+/** A store host over a small catalog with no rules, keeping events if given. */
 const hostOf = (events?: EventStore) =>
     createStoreHost({
         source: () => Promise.resolve({ catalog: shared, rules: [] }),
@@ -38,18 +52,15 @@ const STORE = Object.keys(PERSISTED_OPERATIONS).find((hash) =>
 if (!STORE) throw new Error('expected the Store operation to be persisted');
 
 beforeAll(async () => {
-    await new Promise<void>((resolve) => server.listen(0, resolve));
-    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    await new Promise<void>((resolve) => demo.listen(0, resolve));
-    demoBase = `http://127.0.0.1:${(demo.address() as AddressInfo).port}`;
-    await new Promise<void>((resolve) => bare.listen(0, resolve));
-    bareBase = `http://127.0.0.1:${(bare.address() as AddressInfo).port}`;
+    base = await listening(server);
+    demoBase = await listening(demo);
+    bareBase = await listening(bare);
 });
 
 afterAll(async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-    await new Promise<void>((resolve) => demo.close(() => resolve()));
-    await new Promise<void>((resolve) => bare.close(() => resolve()));
+    await closed(server);
+    await closed(demo);
+    await closed(bare);
 });
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
@@ -164,8 +175,7 @@ describe('a store that cannot start', () => {
                 rules: createMemoryRuleStore(),
             }),
         });
-        await new Promise<void>((resolve) => broken.listen(0, resolve));
-        const at = `http://127.0.0.1:${(broken.address() as AddressInfo).port}`;
+        const at = await listening(broken);
         const quiet = console.error;
         console.error = () => undefined;
         try {
@@ -186,7 +196,7 @@ describe('a store that cannot start', () => {
             }
         } finally {
             console.error = quiet;
-            broken.close();
+            await closed(broken);
         }
     });
 });
@@ -206,11 +216,10 @@ describe('rules over HTTP', () => {
     });
     let hostBase = '';
     beforeAll(async () => {
-        await new Promise<void>((resolve) => host.listen(0, resolve));
-        hostBase = `http://127.0.0.1:${(host.address() as AddressInfo).port}`;
+        hostBase = await listening(host);
     });
     afterAll(async () => {
-        await new Promise<void>((resolve) => host.close(() => resolve()));
+        await closed(host);
     });
     const rules = (method: string, body?: unknown) =>
         fetch(`${hostBase}/rules`, {
@@ -260,8 +269,7 @@ describe('rules over HTTP', () => {
                 events: folding,
             }),
         });
-        await new Promise<void>((resolve) => visited.listen(0, resolve));
-        const at = `http://127.0.0.1:${(visited.address() as AddressInfo).port}`;
+        const at = await listening(visited);
         const versionOf = async (query: string) =>
             (await fetch(`${at}/graphql?op=${STORE}${query}`)).headers.get(VERSION_HEADER) ?? '';
         try {
@@ -287,21 +295,20 @@ describe('rules over HTTP', () => {
             expect(next).not.toBe(first);
             expect(next).toMatch(/\+clicks\./);
         } finally {
-            await new Promise<void>((resolve) => visited.close(() => resolve()));
+            await closed(visited);
         }
     });
 
     it('is refused where the host keeps no rules, before any allowance is spent', async () => {
         const ruleless = createServer({ host: hostOf(), rateLimitPerMinute: 2 });
-        await new Promise<void>((resolve) => ruleless.listen(0, resolve));
-        const at = `http://127.0.0.1:${(ruleless.address() as AddressInfo).port}`;
+        const at = await listening(ruleless);
         try {
             // Past the allowance of two, which a rules path that counted would have spent.
             for (let sent = 0; sent < 4; sent += 1) {
                 expect((await fetch(`${at}/rules`)).status).toBe(404);
             }
         } finally {
-            ruleless.close();
+            await closed(ruleless);
         }
     });
 });
@@ -318,14 +325,12 @@ describe('a page on another origin', () => {
     let openBase = '';
     let wideBase = '';
     beforeAll(async () => {
-        await new Promise<void>((resolve) => open.listen(0, resolve));
-        openBase = `http://127.0.0.1:${(open.address() as AddressInfo).port}`;
-        await new Promise<void>((resolve) => wide.listen(0, resolve));
-        wideBase = `http://127.0.0.1:${(wide.address() as AddressInfo).port}`;
+        openBase = await listening(open);
+        wideBase = await listening(wide);
     });
     afterAll(async () => {
-        await new Promise<void>((resolve) => open.close(() => resolve()));
-        await new Promise<void>((resolve) => wide.close(() => resolve()));
+        await closed(open);
+        await closed(wide);
     });
     const from = (origin: string) => ({ origin });
 
@@ -400,8 +405,7 @@ describe('a page on another origin', () => {
             host: hostOf(),
             origins: { allowed: [], own: 'https://shop.example' },
         });
-        await new Promise<void>((resolve) => fronted.listen(0, resolve));
-        const frontedBase = `http://127.0.0.1:${(fronted.address() as AddressInfo).port}`;
+        const frontedBase = await listening(fronted);
         try {
             const own = await fetch(`${frontedBase}/graphql?op=${STORE}`, {
                 headers: from('https://shop.example'),
@@ -409,7 +413,7 @@ describe('a page on another origin', () => {
             expect(own.status).toBe(200);
             expect(own.headers.get('access-control-allow-origin')).toBeNull();
         } finally {
-            await new Promise<void>((resolve) => fronted.close(() => resolve()));
+            await closed(fronted);
         }
     });
 
@@ -470,11 +474,7 @@ describe('behind a proxy', () => {
             trustProxy,
             origins: { allowed: [] },
         });
-        await new Promise<void>((resolve) => server.listen(0, resolve));
-        return {
-            base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
-            close: () => new Promise<void>((resolve) => server.close(() => resolve())),
-        };
+        return { base: await listening(server), close: () => closed(server) };
     };
     const asking = (base: string, client: string, headers: Record<string, string> = {}) =>
         fetch(`${base}/graphql?op=${STORE}`, {

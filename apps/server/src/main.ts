@@ -28,7 +28,7 @@ const listed = (name: string): readonly string[] =>
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
 const isOriginPath = (path: string): path is OriginPath =>
-    (STORE_ROUTES as readonly string[]).includes(path);
+    STORE_ROUTES.some((route) => route === path);
 /** An origin as a browser sends it: scheme and host, no path, no trailing slash, lowercase. */
 const asOrigin = (entry: string): string => {
     const origin = new URL(entry).origin;

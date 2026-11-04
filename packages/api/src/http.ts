@@ -76,16 +76,13 @@ const isStoreRequest = (value: unknown): value is StoreRequest =>
 const persistedRequest = (url: URL, { persisted }: HttpOptions): Resolution | StoreRequest => {
     const id = url.searchParams.get('op');
     if (id === null) return refused(400, 'the request needs an operation');
-    if (!Object.hasOwn(persisted, id)) {
-        return refused(404, 'the operation is not one this store knows');
-    }
-    const query = persisted[id] as string;
+    // An own key only, so an id such as toString is not read off the prototype.
+    const query = Object.hasOwn(persisted, id) ? persisted[id] : undefined;
+    if (query === undefined) return refused(404, 'the operation is not one this store knows');
     const raw = url.searchParams.get('variables');
     const variables = raw === null ? {} : parseJson(raw);
-    if (typeof variables !== 'object' || variables === null || Array.isArray(variables)) {
-        return refused(400, 'the variables are not a JSON object');
-    }
-    return { query, variables: variables as Record<string, unknown> };
+    if (!isRecord(variables)) return refused(400, 'the variables are not a JSON object');
+    return { query, variables };
 };
 
 const fullRequest = (

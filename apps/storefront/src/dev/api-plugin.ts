@@ -1,4 +1,4 @@
-import { routeOf } from '@shelflens/api';
+import { routeOf, STORE_ROUTES } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { createHandler, createLocalHost, readRulesFile } from '@shelflens/server';
 import type { Plugin } from 'vite';
@@ -31,7 +31,10 @@ export const storeApi = (): Plugin => ({
         server.middlewares.use((request, response, next) => {
             // Only the store's own routes, as the Node server serves them. A visitor's catalog is
             // the worker's alone.
-            if (request.url !== undefined && routeOf(request.url, base) !== undefined) {
+            if (
+                request.url !== undefined &&
+                routeOf(request.url, base, STORE_ROUTES) !== undefined
+            ) {
                 void handle(request, response);
             } else {
                 next();

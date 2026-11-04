@@ -16,6 +16,7 @@ import {
     resolveRequest,
     responseHeaders,
     routeOf,
+    STORE_ROUTES,
     type StoreApi,
     type StoreHost,
     type StoreRoute,
@@ -490,7 +491,7 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         const requestId = randomUUID();
         const url = request.url ?? '/';
         // A visitor's catalog lives in the browser, so the server takes none.
-        const route = routeOf(url, base);
+        const route = routeOf(url, base, STORE_ROUTES);
         if (answeredEarly({ request, response, route, origins, requestId, trustProxy }, url)) {
             return;
         }

@@ -43,9 +43,17 @@ const ATTRIBUTES: Readonly<Record<FilterAttribute, string>> = {
     IN_STOCK: 'inStock',
 };
 
-const ATTRIBUTE_NAMES = new Map(
-    Object.entries(ATTRIBUTES).map(([enumValue, name]) => [name, enumValue as FilterAttribute])
-);
+/**
+ * A record over an enum, turned around. Object.entries types every key as
+ * text, since an object may hold keys its type does not name. These records
+ * are literals typed over the enum, so their keys are the enum's.
+ */
+const inverted = <Enum extends string>(
+    record: Readonly<Record<Enum, string>>
+): ReadonlyMap<string, Enum> =>
+    new Map(Object.entries<string>(record).map(([enumValue, name]) => [name, enumValue as Enum]));
+
+const ATTRIBUTE_NAMES = inverted(ATTRIBUTES);
 
 const attributeName = (attribute: FilterAttribute): string => ATTRIBUTES[attribute];
 
@@ -62,9 +70,7 @@ const SORT_FIELDS: Readonly<Record<SortField, string>> = {
     CATALOG: 'id',
 };
 
-const SORT_FIELD_NAMES = new Map(
-    Object.entries(SORT_FIELDS).map(([enumValue, name]) => [name, enumValue as SortField])
-);
+const SORT_FIELD_NAMES = inverted(SORT_FIELDS);
 
 /** A request's mistake, reported as one. */
 export const badInput = (message: string): GraphQLError =>

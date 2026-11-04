@@ -1,4 +1,4 @@
-import { isRecord, parseJson } from './guards.js';
+import { isOneOf, isRecord, parseJson } from './guards.js';
 
 /**
  * The events a storefront collects, and where they land.
@@ -61,7 +61,7 @@ export const BATCH_LIMIT = 100;
 const ID_LIMIT = 64;
 const SKU_LIMIT = 32;
 const PHRASE_LIMIT = 80;
-const KINDS: ReadonlySet<string> = new Set<EventKind>(['search', 'click', 'view']);
+const KINDS: readonly EventKind[] = ['search', 'click', 'view'];
 const SESSION_LIMIT = 64;
 const FIELDS: ReadonlySet<string> = new Set([
     'id',
@@ -86,9 +86,9 @@ type Mutable = { -readonly [Key in keyof StoreEvent]: StoreEvent[Key] };
 const parseRequired = (value: Record<string, unknown>): Mutable | undefined => {
     const id = text(value['id'], ID_LIMIT);
     const { kind, at } = value;
-    if (id === undefined || typeof kind !== 'string' || !KINDS.has(kind)) return undefined;
+    if (id === undefined || !isOneOf(KINDS, kind)) return undefined;
     if (typeof at !== 'number' || !Number.isFinite(at)) return undefined;
-    return { id, kind: kind as EventKind, at };
+    return { id, kind, at };
 };
 
 /** Adds the optional fields that are present. False when one is present and wrong. */
@@ -105,8 +105,10 @@ const parseOptional = (value: Record<string, unknown>, event: Mutable): boolean 
         event.sku = skuText;
     }
     if (position !== undefined) {
-        if (!Number.isInteger(position) || (position as number) < 1) return false;
-        event.position = position as number;
+        if (typeof position !== 'number' || !Number.isInteger(position) || position < 1) {
+            return false;
+        }
+        event.position = position;
     }
     if (session !== undefined) {
         const sessionText = text(session, SESSION_LIMIT);
