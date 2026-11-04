@@ -37,7 +37,7 @@ export const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
     }, [memory]);
     const client = useMemo(
         () => createClient({ url: apiUrl, group, memory }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- the revision is the point, a new client is a fresh set of questions
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- the revision is not read in here, and a new one has to make a new client so every open question asks again
         [apiUrl, group, memory, revision]
     );
     return { client, storeChanged, revision };

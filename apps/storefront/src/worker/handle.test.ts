@@ -129,15 +129,15 @@ describe('the API inside the worker', () => {
                 query: '{ search(input: { phrase: "jacket" }) { items { product { sku } } merchandising { applied } } }',
             })
         );
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const { data } = (await answer?.json()) as {
+        const body: {
             data: {
                 search: {
                     items: { product: { sku: string } }[];
                     merchandising: { applied: string[] };
                 };
             };
-        };
+        } = await answer?.json();
+        const { data } = body;
         expect(data.search.items[0]?.product.sku).toBe(jacket.sku);
         expect(data.search.merchandising.applied).toEqual(['top']);
 
@@ -256,10 +256,11 @@ describe('the answers the worker keeps', () => {
     it('keeps an answer the headers allow, per viewer, and serves it next time', async () => {
         const { store, size, matches } = createAnswerStore();
         const api = withStore(store);
-        const groupOf = async (response: Response | undefined) =>
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-            ((await response?.json()) as { data: { store: { viewer: { group: string } } } }).data
-                .store.viewer.group;
+        const groupOf = async (response: Response | undefined) => {
+            const answer: { data: { store: { viewer: { group: string } } } } =
+                await response?.json();
+            return answer.data.store.viewer.group;
+        };
         const first = await api.handle(persisted({ op: STORE, v: version }));
         expect(first?.headers.get('cache-control')).toBe('public, max-age=300');
         expect(size()).toBe(1);
@@ -347,10 +348,9 @@ describe('events inside the worker', () => {
         try {
             const answer = await api.handle(batch());
             expect(answer?.status).toBe(500);
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-            const body = (await answer?.json()) as {
+            const body: {
                 errors: { message: string; extensions: { requestId: string } }[];
-            };
+            } = await answer?.json();
             const [error] = body.errors;
             expect(error?.message).toBe(INTERNAL_MESSAGE);
             // The id in the answer is the one the console names, beside the path and the reason.
@@ -396,11 +396,10 @@ describe('events inside the worker', () => {
             })
         );
         expect(response?.headers.get('cache-control')).toBe('no-store');
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const answer = (await response?.json()) as {
+        const answer: {
             data: { recommendations: { source: string; items: { sku: string }[] } };
             extensions: unknown;
-        };
+        } = await response?.json();
         expect(answer.extensions).toEqual({ volatile: true });
         expect(answer.data.recommendations.source).toBe('VIEWED_TOGETHER');
         expect(answer.data.recommendations.items[0]?.sku).toBe(a.sku);
@@ -426,10 +425,9 @@ describe('clicks in the worker', () => {
                 items { product { sku } explanation { popularity { clicks } } } } }`,
         });
     const skus = async (response: Response | undefined) => {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const answer = (await response?.json()) as {
+        const answer: {
             data: { search: { items: { product: { sku: string } }[] } };
-        };
+        } = await response?.json();
         return answer.data.search.items.map((item) => item.product.sku);
     };
 

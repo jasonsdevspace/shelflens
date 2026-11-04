@@ -18,7 +18,7 @@ import { workspacePackages } from './repository.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (path: string) =>
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest or the lockfile, read for the fields this test checks
     JSON.parse(readFileSync(new URL(path, root), 'utf8')) as {
         version?: string;
         dependencies?: Record<string, string>;

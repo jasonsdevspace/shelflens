@@ -40,7 +40,10 @@ describe('the persisted operations', () => {
     });
 
     it('leave the text out of the page, which sends only the name', () => {
-        for (const [name, document] of [...documents, ...generated('FragmentDoc')]) {
+        const fragments = generated('FragmentDoc');
+        // The cards are drawn from fragments, so finding none means they were not found.
+        expect(fragments.length).toBeGreaterThan(0);
+        for (const [name, document] of [...documents, ...fragments]) {
             expect(document.toString(), name).toBe('');
         }
     });

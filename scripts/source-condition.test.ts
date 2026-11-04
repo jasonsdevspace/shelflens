@@ -21,7 +21,7 @@ const packages = workspacePackages(root).map((path) => join(root, path));
 /** A tsconfig's compiler options. They are JSON with comments, which are left out before parsing. */
 const optionsOf = (path: string): { customConditions?: string[]; noEmit?: boolean } => {
     const text = readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a tsconfig, read for the fields this test checks
     return (JSON.parse(text) as { compilerOptions?: object }).compilerOptions ?? {};
 };
 

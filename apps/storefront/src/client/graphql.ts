@@ -199,7 +199,7 @@ export const createClient = ({
             const known = recall(keyOf(operation, variables));
             // An answer is kept under its document and variables, and the API answers by the
             // schema this document was generated from, so the data is this document's result.
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the answer is to this document, by the schema it was generated from
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- an answer is kept under its document and variables, so this one is this document's
             if (known !== undefined) return known as Result;
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);

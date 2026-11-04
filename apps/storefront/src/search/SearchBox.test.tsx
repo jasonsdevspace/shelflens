@@ -59,7 +59,7 @@ const createNetwork = ({ late = false }: { readonly late?: boolean } = {}) => {
                 typeof url === 'string' ? url : url instanceof URL ? url.href : url.url,
                 'http://local'
             ).searchParams.get('variables');
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the client writes these variables, and every search this test sends has a phrase
             const variables = JSON.parse(encoded ?? '{}') as { phrase: string };
             const signal = init?.signal ?? undefined;
             if (!late) signal?.addEventListener('abort', () => reject(new Error('aborted')));

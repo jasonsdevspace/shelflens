@@ -107,7 +107,7 @@ export default defineConfig(
         languageOptions: {
             parserOptions: {
                 projectService: {
-                    // The two files at the root that no package's tsconfig includes.
+                    // The two files at the root, which no tsconfig includes.
                     allowDefaultProject: ['vitest.config.ts', 'source-condition.ts'],
                 },
                 tsconfigRootDir: import.meta.dirname,
@@ -190,11 +190,11 @@ export default defineConfig(
         },
     },
     {
-        // A type assertion claims a shape nothing checked, so none is written without a reason.
-        // Each value is typed by how it is built or narrowed by a check, and the few casts left
-        // are allowed one at a time by a disable comment that says why, a non-null assertion
-        // among them. The engine, search and catalog need none. A const assertion claims nothing
-        // and is still allowed.
+        // A type assertion claims a shape nothing checked, and a non-null assertion claims a
+        // value is there. Each value is typed by how it is built or narrowed by a check, and a
+        // cast that is still needed is allowed on its own line by a disable comment that says
+        // why. The engine, search and catalog need none. A const assertion claims nothing and is
+        // still allowed.
         files: ['**/*.{ts,tsx}'],
         rules: {
             '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
@@ -204,9 +204,11 @@ export default defineConfig(
     {
         // The worker hosts the API for the pages, so it reads what the API packages
         // offer and never a page's own folder, which would make a page its dependency.
-        // Its own block replaces the one above for these files, so it names Node too.
+        // Its rule replaces the browser block's restricted imports for these files, so it names
+        // Node too.
         files: ['apps/storefront/src/worker/**/*.ts'],
-        // A test of the worker may reach the pages' fixtures, which the worker itself never does.
+        // A test of the worker may build its input with the pages' code and the shared test
+        // helpers, which the worker itself never imports.
         ignores: ['**/*.test.ts'],
         rules: {
             '@typescript-eslint/no-restricted-imports': [

@@ -4,9 +4,10 @@
         "lib": ["ES2023", "DOM", "DOM.Iterable"],
         "jsx": "react-jsx",
         "types": ["vite/client", "node"],
-        // The pages and the service worker are checked in one project, and the DOM's declarations
-        // and the web worker's, which the service worker loads, declare the same globals
-        // differently, so the libraries are left unchecked here.
+        // The pages and the service worker are checked as one project, and the web worker's
+        // declarations the service worker loads give some of the DOM's globals other types. Apart
+        // from the worker, jest-dom's matchers for Vitest and Lighthouse's trace engine declare
+        // types their own dependencies disagree with, so declaration files are left unchecked.
         "skipLibCheck": true,
         "noEmit": true,
         "customConditions": ["@shelflens/source"]

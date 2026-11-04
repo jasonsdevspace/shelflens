@@ -51,7 +51,7 @@ const ATTRIBUTES: Readonly<Record<FilterAttribute, string>> = {
 const inverted = <Enum extends string>(
     record: Readonly<Record<Enum, string>>
 ): ReadonlyMap<string, Enum> =>
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- each value is a key of this record
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Object.entries types each key as text, and these are the record's own
     new Map(Object.entries<string>(record).map(([enumValue, name]) => [name, enumValue as Enum]));
 
 const ATTRIBUTE_NAMES = inverted(ATTRIBUTES);

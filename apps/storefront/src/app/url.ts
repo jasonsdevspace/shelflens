@@ -57,7 +57,6 @@ export const SORTS = {
 >;
 
 /** Every sort, in the order the page offers them. */
-// Object.keys types every key as text, and this literal has exactly these keys.
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Object.keys types each key as text, and these are the literal's own
 export const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
 
