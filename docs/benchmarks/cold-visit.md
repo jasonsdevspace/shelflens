@@ -9,22 +9,22 @@ numbers leave out the network and show what the browser itself has to do.
 
 | Recorded   | Commit    | Machine                | Node     |
 | ---------- | --------- | ---------------------- | -------- |
-| 2026-11-02 | `8f45def` | Apple M2 Max, 12 cores | v24.22.2 |
+| 2026-11-04 | `2d919c0` | Apple M2 Max, 12 cores | v24.22.2 |
 
 What a first visit downloads, each as a server sends it:
 
 | Catalog (gzip) | Page (gzip) | Worker (gzip) |
 | -------------- | ----------- | ------------- |
-| 332 KB         | 93 KB       | 74 KB         |
+| 332 KB         | 99 KB       | 76 KB         |
 
 | Run    | Ready to search | Catalog and rules downloaded | Store built | First suggestion |
 | ------ | --------------- | ---------------------------- | ----------- | ---------------- |
-| 1      | 213 ms          | 38 ms                        | 52 ms       | 191 ms           |
-| 2      | 209 ms          | 37 ms                        | 49 ms       | 190 ms           |
-| 3      | 211 ms          | 38 ms                        | 50 ms       | 192 ms           |
-| 4      | 208 ms          | 38 ms                        | 50 ms       | 189 ms           |
-| 5      | 209 ms          | 40 ms                        | 50 ms       | 188 ms           |
-| Median | 209 ms          | 38 ms                        | 50 ms       | 190 ms           |
+| 1      | 216 ms          | 40 ms                        | 44 ms       | 192 ms           |
+| 2      | 211 ms          | 37 ms                        | 42 ms       | 192 ms           |
+| 3      | 210 ms          | 41 ms                        | 43 ms       | 190 ms           |
+| 4      | 209 ms          | 38 ms                        | 44 ms       | 188 ms           |
+| 5      | 211 ms          | 39 ms                        | 43 ms       | 192 ms           |
+| Median | 211 ms          | 39 ms                        | 43 ms       | 192 ms           |
 
 "Ready to search" is measured from the start of navigation to the search box appearing, which
 happens once the worker has claimed the page. The worker reports its own two timings. The first
@@ -44,14 +44,14 @@ seconds, and that column is the wait.
 
 | Run            | Reading the file | Pressing search to searching | The worker's share | Wait on a phone | First suggestion |
 | -------------- | ---------------- | ---------------------------- | ------------------ | --------------- | ---------------- |
-| Laptop 1       | 145 ms           | 364 ms                       | 252 ms             | as measured     | 145 ms           |
-| Laptop 2       | 144 ms           | 367 ms                       | 256 ms             | as measured     | 144 ms           |
-| Laptop 3       | 149 ms           | 368 ms                       | 254 ms             | as measured     | 143 ms           |
-| Laptop, median | 145 ms           | 367 ms                       | 254 ms             | as measured     | 144 ms           |
-| Phone 1        | 561 ms           | 1016 ms                      | 244 ms             | 1750 ms         | 136 ms           |
-| Phone 2        | 561 ms           | 1032 ms                      | 250 ms             | 1783 ms         | 140 ms           |
-| Phone 3        | 571 ms           | 1023 ms                      | 242 ms             | 1749 ms         | 135 ms           |
-| Phone, median  | 561 ms           | 1023 ms                      | 244 ms             | 1750 ms         | 136 ms           |
+| Laptop 1       | 148 ms           | 383 ms                       | 252 ms             | as measured     | 147 ms           |
+| Laptop 2       | 147 ms           | 382 ms                       | 251 ms             | as measured     | 148 ms           |
+| Laptop 3       | 149 ms           | 385 ms                       | 251 ms             | as measured     | 148 ms           |
+| Laptop, median | 148 ms           | 383 ms                       | 251 ms             | as measured     | 148 ms           |
+| Phone 1        | 562 ms           | 1036 ms                      | 222 ms             | 1702 ms         | 134 ms           |
+| Phone 2        | 571 ms           | 1039 ms                      | 215 ms             | 1686 ms         | 135 ms           |
+| Phone 3        | 565 ms           | 1027 ms                      | 219 ms             | 1683 ms         | 136 ms           |
+| Phone, median  | 565 ms           | 1036 ms                      | 219 ms             | 1686 ms         | 135 ms           |
 
 "Reading the file" is from picking it to the review being ready, and includes guessing the
 mapping and making the whole catalog. "Pressing search to searching" includes sending the
