@@ -26,10 +26,33 @@ describe('a product over its results', () => {
         const loading = await screen.findByRole('region', { name: 'Loading the product.' });
         expect(screen.queryByRole('status', { name: 'Loading the product.' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Back to results' })).toBeVisible();
-        await waitFor(() => expect(loading).toHaveFocus());
+        expect(loading).toHaveFocus();
         expect(loading).toHaveAttribute('aria-busy', 'true');
         release();
-        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
+    });
+
+    it('leaves focus where the visitor put it while the product was on its way', async () => {
+        const op = `op=${String(ProductDocument.__meta__?.['hash'])}`;
+        const served = globalThis.fetch;
+        let release = () => undefined as void;
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+            if (new Request(input, init).url.includes(op)) await held;
+            return served(input, init);
+        });
+        const user = await open();
+        const [first] = cards();
+        if (!first) throw new Error('expected a product');
+        await user.click(first);
+        await screen.findByRole('region', { name: 'Loading the product.' });
+        const search = screen.getByRole('combobox', { name: 'Search the store' });
+        await user.click(search);
+        release();
+        await screen.findByRole('heading', { level: 1 });
+        expect(search).toHaveFocus();
     });
 
     it('stays busy until the rail beside the product is in', async () => {
@@ -87,8 +110,7 @@ describe('a product over its results', () => {
         const sku = first.getAttribute('data-sku');
         const name = first.querySelector('.card-name')?.textContent ?? '';
         await user.click(first);
-        await screen.findByRole('heading', { level: 1, name });
-        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(await screen.findByRole('heading', { level: 1, name })).toHaveFocus();
 
         await user.click(screen.getByRole('button', { name: 'Back to results' }));
         await settled();

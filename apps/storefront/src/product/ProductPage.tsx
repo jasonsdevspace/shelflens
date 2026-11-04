@@ -136,14 +136,13 @@ const Bare = ({
 
 /**
  * Where focus goes, and when. A new product puts it on the page at once,
- * on the loading line while the product is on its way and on its heading
- * or notice once it lands, so a keyboard or screen reader user starts
- * where the page starts rather than on the body. The same product asked
- * again, as a switch of viewer does, leaves focus where the visitor put
- * it, unless what held it has gone, as Try again goes once pressed. Focus
- * moves in the same commit as what it lands on, as app/focus.ts says, so
- * it never rests on the body between the two, and a visitor who moves it
- * first is never pulled back.
+ * on the loading line while the product is on its way, so a keyboard or
+ * screen reader user starts where the page starts rather than on the body.
+ * After that it moves only while nothing holds it: onto the heading or
+ * notice that replaces the loading line, or onto the view once Try again
+ * has gone. A visitor who has put focus somewhere else meanwhile, as a
+ * switch of viewer does, keeps it there. It moves in the same commit as
+ * what it lands on, so it never rests on the body between the two.
  */
 const useProductFocus = ({
     sku,
@@ -159,12 +158,12 @@ const useProductFocus = ({
     readonly heading: RefObject<HTMLHeadingElement | null>;
     readonly view: RefObject<HTMLElement | null>;
 }) => {
-    const landed = useRef<string>(undefined);
+    const opened = useRef<string>(undefined);
     useLayoutEffect(() => {
         const target = heading.current ?? view.current;
-        if (landed.current !== sku) {
+        if (opened.current !== sku) {
+            opened.current = sku;
             target?.focus();
-            if (!loading) landed.current = sku;
         } else if (focusIsFree()) {
             target?.focus();
         }
