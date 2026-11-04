@@ -16,7 +16,7 @@ const reference = (value: unknown): string => {
     if (value === undefined) return 'null';
     if (Array.isArray(value)) return `[${value.map(reference).join(',')}]`;
     if (value !== null && typeof value === 'object') {
-        const fields = Object.entries(value as Record<string, unknown>)
+        const fields = Object.entries<unknown>({ ...value })
             .filter(([, inner]) => inner !== undefined)
             .sort(([a], [b]) => (a < b ? -1 : 1))
             .map(([name, inner]) => `${JSON.stringify(name)}:${reference(inner)}`);
@@ -44,7 +44,7 @@ describe('the canonical form', () => {
         const signals = signalsOf([
             { id: 'a', kind: 'click', sku: 'SL-00002', at: 1, session: 's' },
             { id: 'b', kind: 'click', sku: 'SL-00001', at: 2, session: 's' },
-        ] as Parameters<typeof signalsOf>[0]);
+        ]);
         const variables = {
             phrase: 'trail ru',
             limit: 5,
@@ -101,7 +101,7 @@ describe('where the native form differs, and still means one thing', () => {
     it('keeps a key named __proto__, so a product with that sku still moves the clicks fingerprint', () => {
         const signals = signalsOf([
             { id: 'a', kind: 'click', sku: '__proto__', at: 1, session: 's' },
-        ] as Parameters<typeof signalsOf>[0]);
+        ]);
         expect(canonical(signals)).toContain('"__proto__"');
         expect(fingerprint(signals)).not.toBe(fingerprint(signalsOf([])));
         const parsed: unknown = JSON.parse('{"__proto__":{"x":1},"a":1}');

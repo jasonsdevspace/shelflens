@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { type RailData, railHeading } from './Rail.jsx';
 
-const rail = (source: RailData['source'], viewedTogether: number, items: number): RailData =>
-    ({
-        source,
-        viewedTogether,
-        category: { id: 'jackets', name: 'Jackets' },
-        items: Array.from({ length: items }, (_, i) => ({ sku: `SL-${String(i)}` })),
-    }) as unknown as RailData;
+const rail = (source: RailData['source'], viewedTogether: number, items: number) => ({
+    source,
+    viewedTogether,
+    category: { name: 'Jackets' },
+    items: Array.from({ length: items }, (_, i) => ({ sku: `SL-${String(i)}` })),
+});
 
 describe('the heading over the rail', () => {
     it('says where the products come from: the category, the views, or both in order', () => {

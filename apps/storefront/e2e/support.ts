@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { type APIRequestContext, expect, type Page, test as base } from '@playwright/test';
+import { parseCatalogFile, parseEventBatch, type StoreEvent } from '@shelflens/api';
+import type { Catalog } from '@shelflens/catalog';
 
 import { DEFAULT_DB_NAME } from '../src/worker/event-db.js';
 
@@ -56,23 +58,14 @@ export const violationsOf = async (
     );
 };
 
-/** An event as the worker keeps it, with the fields the tests read. */
-export interface KeptEvent {
-    readonly kind: string;
-    readonly sku?: string;
-    readonly phrase?: string;
-    readonly position?: number;
-    readonly session?: string;
-}
-
 /**
  * The events the worker keeps, read from the IndexedDB the page shares
  * with it, oldest first. Nothing when the worker has kept none yet.
  */
-export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
-    page.evaluate(
+export const keptEvents = async (page: Page): Promise<StoreEvent[]> => {
+    const kept = await page.evaluate(
         (name) =>
-            new Promise<KeptEvent[]>((resolve, reject) => {
+            new Promise<unknown[]>((resolve, reject) => {
                 const opening = indexedDB.open(name);
                 opening.onerror = () => reject(opening.error ?? new Error('could not open'));
                 opening.onsuccess = () => {
@@ -85,7 +78,7 @@ export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
                     const read = db.transaction('events').objectStore('events').getAll();
                     read.onsuccess = () => {
                         db.close();
-                        resolve(read.result as KeptEvent[]);
+                        resolve(read.result);
                     };
                     read.onerror = () => {
                         db.close();
@@ -95,28 +88,19 @@ export const keptEvents = (page: Page): Promise<KeptEvent[]> =>
             }),
         DEFAULT_DB_NAME
     );
-
-/** The catalog the demo ships, as much of it as the tests read. */
-export interface ShippedCatalog {
-    readonly products: readonly {
-        readonly sku: string;
-        readonly name: string;
-        readonly visibleTo: readonly string[];
-        readonly variants: readonly {
-            readonly color: string;
-            readonly price: number;
-            readonly inStock: boolean;
-        }[];
-        readonly price: {
-            readonly guest: { readonly min: number };
-            readonly member: { readonly min: number };
-        };
-    }[];
-}
+    // Read as the store reads a batch, so an event it would refuse fails here.
+    return kept.map((item) => {
+        const [event] = parseEventBatch([item]) ?? [];
+        if (!event)
+            throw new Error(`expected an event the store accepts, not ${JSON.stringify(item)}`);
+        return event;
+    });
+};
 
 /** The catalog the demo ships, read from the built site as a page reads it. */
-export const shippedCatalog = async (request: APIRequestContext): Promise<ShippedCatalog> =>
-    (await (await request.get('/catalog.json')).json()) as ShippedCatalog;
+export const shippedCatalog = async (request: APIRequestContext): Promise<Catalog> =>
+    // Read as the store reads a catalog file, so one it would refuse fails here.
+    parseCatalogFile(await (await request.get('/catalog.json')).json());
 
 /** The rules panel, opened beside the results on a wide screen, or in its drawer on a phone. */
 export const rulesPanel = async (page: Page, isMobile: boolean) => {

@@ -144,7 +144,7 @@ describe('the cache key', () => {
 
     it('takes the whole viewer, so a field added later is in the key', () => {
         const request = { query: '{ store { name } }' };
-        const richer = { ...guest, tier: 'gold' } as unknown as Viewer;
+        const richer: Viewer = Object.assign({ ...guest }, { tier: 'gold' });
         expect(cacheKey({ version: '1', viewer: richer, request })).not.toBe(
             cacheKey({ version: '1', viewer: guest, request })
         );

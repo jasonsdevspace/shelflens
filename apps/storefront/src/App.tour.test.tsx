@@ -148,17 +148,14 @@ describe('the tour on a phone', () => {
     const asPhone = () => {
         let narrow = true;
         const listeners = new Set<() => void>();
-        const matchMedia = (query: string) =>
-            ({
-                get matches() {
-                    return query === NARROW && narrow;
-                },
-                media: query,
-                addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-                removeEventListener: (_: string, listener: () => void) =>
-                    listeners.delete(listener),
-            }) as unknown as MediaQueryList;
-        Object.defineProperty(window, 'matchMedia', { configurable: true, value: matchMedia });
+        vi.stubGlobal('matchMedia', (query: string) => ({
+            get matches() {
+                return query === NARROW && narrow;
+            },
+            media: query,
+            addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+            removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+        }));
         const restore = () => Reflect.deleteProperty(window, 'matchMedia');
         const turn = () => {
             narrow = false;

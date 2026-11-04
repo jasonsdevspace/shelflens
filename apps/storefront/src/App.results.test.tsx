@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { nth } from './test/dom.js';
 import { cards, catalog, facet, heading, open, settled } from './test/store.jsx';
 
 /* Finding things: browsing, narrowing, counting, paging, searching, a search that finds nothing, what was searched before, and where focus is and what is said as the results change. */
@@ -243,7 +244,7 @@ describe('narrowing', () => {
 
     it('undoes a filter with the back button', async () => {
         const user = await open();
-        await user.click(within(facet('Color')).getAllByRole('checkbox')[0] as HTMLElement);
+        await user.click(nth(within(facet('Color')).getAllByRole('checkbox'), 0, 'a color'));
         await settled();
         expect(window.location.search).toMatch(/^\?color=/);
 
@@ -298,7 +299,7 @@ describe('paging', () => {
 
     it('returns to the first page when a filter changes', async () => {
         const user = await open('?page=2');
-        await user.click(within(facet('Brand')).getAllByRole('checkbox')[0] as HTMLElement);
+        await user.click(nth(within(facet('Brand')).getAllByRole('checkbox'), 0, 'a brand'));
         await settled();
         expect(window.location.search).not.toContain('page=');
     });

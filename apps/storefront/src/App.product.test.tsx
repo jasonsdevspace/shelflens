@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ProductDocument, RecommendationsDocument } from './generated/operations.js';
+import { nth } from './test/dom.js';
 import { cards, catalog, open, settled } from './test/store.jsx';
 
 /* A product over its results: what it says while it loads, where focus goes and returns, and what stands beside it. */
@@ -10,7 +11,7 @@ describe('a product over its results', () => {
     it('says a product is on its way, and busy, with the way back beside it, while it loads', async () => {
         const op = `op=${String(ProductDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });
@@ -35,7 +36,7 @@ describe('a product over its results', () => {
     it('stays busy until the rail beside the product is in', async () => {
         const op = `op=${String(RecommendationsDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });
@@ -166,7 +167,9 @@ describe('beside a product', () => {
         expect(within(rail() ?? document.body).getByRole('list')).not.toHaveAccessibleName();
 
         // A rail card opens its product in place, over the same results.
-        await user.click(within(rail() ?? document.body).getAllByRole('link')[0] as HTMLElement);
+        await user.click(
+            nth(within(rail() ?? document.body).getAllByRole('link'), 0, 'a rail card')
+        );
         await screen.findByRole('heading', { level: 1, name: peer.name });
         expect(window.location.search).toBe(`?product=${peer.sku}`);
     });

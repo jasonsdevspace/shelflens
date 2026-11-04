@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { App } from './App.jsx';
 import { StoreDocument } from './generated/operations.js';
+import { elementAs } from './test/dom.js';
 import { cards, catalog, open, settled, shopAs, shownPrice } from './test/store.jsx';
 
 /* What the viewer switch changes, for a guest and for a member. */
@@ -37,7 +38,7 @@ describe('as a member', () => {
         const line = () => document.querySelector('.callout');
         // The member's answer is held, so the page is seen while it is on its way.
         const served = globalThis.fetch;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });
@@ -88,7 +89,10 @@ describe('as a member', () => {
         // What each view focused was called as focus arrived, so a view reused in place is caught.
         const heard: string[] = [];
         const listen = (event: FocusEvent) => {
-            const id = (event.target as Element).getAttribute('aria-labelledby') ?? '';
+            const id =
+                elementAs(event.target, Element, 'a focused element').getAttribute(
+                    'aria-labelledby'
+                ) ?? '';
             heard.push(document.getElementById(id)?.textContent ?? '');
         };
         document.addEventListener('focusin', listen);
@@ -161,7 +165,7 @@ describe('as a member', () => {
         const rail = () => screen.queryByRole('region', { name: /Viewed with|Most rated in/ });
         await waitFor(() => expect(rail()).not.toBeNull());
         const served = globalThis.fetch;
-        let release = () => undefined as void;
+        let release: () => void = () => undefined;
         const held = new Promise<void>((resolve) => {
             release = resolve;
         });

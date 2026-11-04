@@ -19,8 +19,11 @@ const product: CardFragment = {
     membersOnly: false,
 };
 
-const hitWith = (explanation: Hit['explanation']): Hit =>
-    ({ product, score: 25.34, explanation }) as Hit;
+const hitWith = (explanation: Hit['explanation']): Hit => ({
+    product,
+    score: 25.34,
+    ...(explanation !== undefined && { explanation }),
+});
 
 const card = (hit: Hit) =>
     render(

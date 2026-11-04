@@ -118,7 +118,7 @@ const inspect = () => {
                 element.matches(
                     'button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"])'
                 ) &&
-                !(element as HTMLButtonElement).disabled &&
+                !element.matches(':disabled') &&
                 shown(element)
         )
         .flatMap((control) => [...edgeOf(control), ...selectOf(control)]);
@@ -140,7 +140,9 @@ const rings = async (page: Page): Promise<string[]> => {
             let active = document.activeElement;
             while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
             if (!active || active === document.body) return undefined;
-            const reached = ((window as { reached?: WeakSet<Element> }).reached ??= new WeakSet());
+            // The page's window, with the controls this walk has reached left on it between presses.
+            const walked: Window & { reached?: WeakSet<Element> } = window;
+            const reached = (walked.reached ??= new WeakSet());
             if (reached.has(active)) return 'around';
             reached.add(active);
             if (
@@ -160,9 +162,10 @@ const rings = async (page: Page): Promise<string[]> => {
                 ring: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
                 expected: `solid ${width} ${accent}`,
                 // A file input draws its ring on the box around it.
-                around: active.matches('input[type="file"]')
-                    ? getComputedStyle(active.parentElement as Element).outlineStyle
-                    : undefined,
+                around:
+                    active.matches('input[type="file"]') && active.parentElement
+                        ? getComputedStyle(active.parentElement).outlineStyle
+                        : undefined,
             };
         });
         if (found === 'around') return problems;

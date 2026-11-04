@@ -142,8 +142,9 @@ test('the product page holds its shape: a name without a ring, the stock with th
     // The store answers inside the page, so the request is held there until released.
     await page.addInitScript(() => {
         const answer = window.fetch.bind(window);
+        // The test lets the product through with an event, so nothing is added to the window.
         const gate = new Promise<void>((resolve) => {
-            Object.assign(window, { releaseProduct: resolve });
+            window.addEventListener('release-product', () => resolve(), { once: true });
         });
         window.fetch = async (input, init) => {
             const url =
@@ -159,9 +160,7 @@ test('the product page holds its shape: a name without a ring, the stock with th
         locator.evaluate((el) => getComputedStyle(el).color);
     const text = await color(page.locator('body'));
     expect(await color(loading)).not.toBe(text);
-    await page.evaluate(() => {
-        (window as unknown as { releaseProduct: () => void }).releaseProduct();
-    });
+    await page.evaluate(() => window.dispatchEvent(new Event('release-product')));
 
     // With no product to show, the page has a heading and says so in the text's own color.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('No such product');

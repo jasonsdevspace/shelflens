@@ -32,7 +32,9 @@ test('every sort answers, and the results stay', async ({ page }) => {
     const sort = page.getByRole('combobox', { name: 'Sort by' });
     const options = await sort
         .locator('option')
-        .evaluateAll((all) => all.map((option) => (option as HTMLOptionElement).value));
+        .evaluateAll((all) =>
+            all.flatMap((option) => (option instanceof HTMLOptionElement ? [option.value] : []))
+        );
     for (const option of options) {
         await sort.selectOption(option);
         await expect(page).toHaveURL(new RegExp(`sort=${option}`));
