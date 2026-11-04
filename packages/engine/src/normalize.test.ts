@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyze, foldAccents, normalize, stem, tokenize, wordCount } from './normalize.js';
+import { analyze, foldAccents, normalize, stem, tokenize } from './normalize.js';
 
 describe('foldAccents', () => {
     it('strips accents and leaves the letters', () => {
@@ -72,21 +72,26 @@ describe('tokenize', () => {
     });
 });
 
-describe('wordCount', () => {
+describe('analyze', () => {
+    const words = (text: string) => analyze(text).words;
+
     it('counts a hyphenated word once, however many terms it emits', () => {
-        expect(wordCount('Everyday T-Shirt')).toBe(2);
-        expect(wordCount('Coastal Tee')).toBe(2);
-        expect(tokenize('Everyday T-Shirt')).toHaveLength(4);
+        expect(words('Everyday T-Shirt')).toBe(2);
+        expect(words('Coastal Tee')).toBe(2);
+        expect(analyze('Everyday T-Shirt').terms).toHaveLength(4);
+    });
+
+    it('counts a word with an apostrophe once, as it is one term', () => {
+        expect(analyze("Men's Tee")).toEqual({ terms: ['men', 'tee'], words: 2 });
     });
 
     it('ignores punctuation and empty input', () => {
-        expect(wordCount('Harbor & Pine, size 28!')).toBe(4);
-        expect(wordCount(' - ')).toBe(0);
+        expect(words('Harbor & Pine, size 28!')).toBe(4);
+        expect(words(' - ')).toBe(0);
+        expect(words('')).toBe(0);
     });
-});
 
-describe('analyze', () => {
-    it('gives the terms and the word count the two passes give, from one', () => {
+    it('gives the terms tokenize gives', () => {
         for (const text of [
             "Men's Everyday T-Shirt",
             'Café Racer',
@@ -94,7 +99,7 @@ describe('analyze', () => {
             '',
             'Harbor & Pine, 28!',
         ]) {
-            expect(analyze(text)).toEqual({ terms: tokenize(text), words: wordCount(text) });
+            expect(analyze(text).terms).toEqual(tokenize(text));
         }
     });
 });

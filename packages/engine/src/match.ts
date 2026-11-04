@@ -35,15 +35,6 @@ const KIND_WEIGHT: Readonly<Record<MatchKind, number>> = {
 /** Terms shorter than this are not corrected, since nearly everything is one edit from "ab". */
 const MIN_FUZZY_LENGTH = 3;
 
-/** How one document satisfied one unit of the query. */
-export interface UnitHit {
-    readonly score: number;
-    readonly matches: readonly TermMatch[];
-}
-
-/** The documents matching one query unit, with why each did. */
-export type UnitHits = ReadonlyMap<number, UnitHit>;
-
 /** What scoring reads: the index and the field weights. */
 interface Corpus {
     readonly index: Index;
@@ -53,13 +44,29 @@ interface Corpus {
 const idf = (index: Index, documentFrequency: number): number =>
     Math.log(1 + (index.documents.length - documentFrequency + 0.5) / (documentFrequency + 0.5));
 
-/** One way of reading a query unit: as typed, by synonym, by prefix or by a correction. */
+/**
+ * One way of reading a query unit, as typed, by synonym, by prefix or by a
+ * correction, with the posting list of each index term it needs.
+ */
 interface Reading {
     readonly kind: MatchKind;
     /** The typed words this reading stands in for, for the explanation. */
     readonly label: string;
-    /** Scales the score so a many-word alternative for few typed words does not count extra. */
-    readonly scale: number;
+    /** The index terms a document must have, each with its posting list. */
+    readonly terms: readonly string[];
+    readonly lists: readonly PostingList[];
+    /**
+     * Scales the score by the kind of match, and so a many-word alternative
+     * for few typed words does not count extra.
+     */
+    readonly weight: number;
+}
+
+/** The ways to read one unit of a query, in the order a tie between them goes to. */
+export interface Readings {
+    readonly readings: readonly Reading[];
+    /** How many postings the readings hold, to match the narrowest unit first. */
+    readonly size: number;
 }
 
 /** One term's posting list and the row in it for one document. */
@@ -69,18 +76,20 @@ interface Located {
     readonly position: number;
 }
 
-/** One term's contribution to one document, by field. */
+/**
+ * One term's contribution to one document, summed over its fields, and each
+ * field's share when `matches` is given to hold them.
+ */
 const scoreRow = (
     { index, fieldWeights }: Corpus,
     { term, list, position }: Located,
-    reading: Reading
-): UnitHit => {
-    const weight = KIND_WEIGHT[reading.kind] * reading.scale;
+    reading: Reading,
+    matches?: TermMatch[]
+): number => {
     const termIdf = idf(index, list.docs.length);
     const fields = index.fieldNames.length;
     const doc = list.docs[position] ?? 0;
     let score = 0;
-    const matches: TermMatch[] = [];
     for (let f = 0; f < fields; f += 1) {
         const count = list.counts[position * fields + f] ?? 0;
         if (count === 0) continue;
@@ -88,9 +97,9 @@ const scoreRow = (
         const averageLength = index.averageLength[f] ?? 0;
         const average = averageLength > 0 ? averageLength : 1;
         const saturated = (count * (K1 + 1)) / (count + K1 * (1 - B + (B * length) / average));
-        const contribution = termIdf * saturated * (fieldWeights[f] ?? 1) * weight;
+        const contribution = termIdf * saturated * (fieldWeights[f] ?? 1) * reading.weight;
         score += contribution;
-        matches.push({
+        matches?.push({
             queryTerm: reading.label,
             indexTerm: term,
             field: index.fieldNames[f] ?? '',
@@ -98,59 +107,73 @@ const scoreRow = (
             score: contribution,
         });
     }
-    return { score, matches };
+    return score;
 };
 
 /**
- * Documents containing every one of a group of index terms.
- *
- * A single-term group is the common case. A multi-term one comes from a
- * synonym like "baseball cap", which only counts when the document has both.
+ * A document's score under one reading, or `undefined` when it lacks one of
+ * the reading's terms. The first term's row may be known already, as it is
+ * when walking that term's own list.
  */
-const documentsWithAll = (
+const scoreUnder = (
     corpus: Corpus,
-    terms: readonly string[],
-    reading: Reading
-): Map<number, UnitHit> => {
-    const result = new Map<number, UnitHit>();
-    const lists = terms.map((term) => corpus.index.postings.get(term));
-    const [first, ...rest] = lists;
-    if (!first || lists.some((list) => list === undefined)) return result;
-
-    for (let i = 0; i < first.docs.length; i += 1) {
-        const doc = first.docs[i] ?? 0;
-        let hit = scoreRow(corpus, { term: terms[0] ?? '', list: first, position: i }, reading);
-        let complete = true;
-        for (let t = 0; t < rest.length; t += 1) {
-            const list = rest[t];
-            const position = list ? positionOf(list, doc) : -1;
-            if (!list || position === -1) {
-                complete = false;
-                break;
-            }
-            const more = scoreRow(corpus, { term: terms[t + 1] ?? '', list, position }, reading);
-            hit = { score: hit.score + more.score, matches: [...hit.matches, ...more.matches] };
-        }
-        if (complete) result.set(doc, hit);
+    reading: Reading,
+    doc: number,
+    { first = -1, matches }: { readonly first?: number; readonly matches?: TermMatch[] } = {}
+): number | undefined => {
+    let score = 0;
+    for (let t = 0; t < reading.lists.length; t += 1) {
+        const list = reading.lists[t] as PostingList;
+        const position = t === 0 && first !== -1 ? first : positionOf(list, doc);
+        if (position === -1) return undefined;
+        const term = reading.terms[t] ?? '';
+        score += scoreRow(corpus, { term, list, position }, reading, matches);
     }
-    return result;
+    return score;
 };
 
-/** A document keeps only its best reading of each unit, so a word matched both exactly and by prefix is not counted twice. */
-const merge = (into: Map<number, UnitHit>, from: Map<number, UnitHit>): void => {
-    for (const [doc, hit] of from) {
-        const existing = into.get(doc);
-        if (!existing || hit.score > existing.score) into.set(doc, hit);
+/**
+ * Which reading a document is credited with, and its score under it. A
+ * document keeps only its best reading of each unit, so a word matched both
+ * exactly and by prefix is not counted twice, and of two that score the same
+ * the earlier counts.
+ */
+const bestReading = (
+    corpus: Corpus,
+    { readings }: Readings,
+    doc: number
+): { readonly reading: Reading; readonly score: number } | undefined => {
+    let best: { reading: Reading; score: number } | undefined;
+    for (const reading of readings) {
+        const score = scoreUnder(corpus, reading, doc);
+        if (score !== undefined && (!best || score > best.score)) best = { reading, score };
     }
+    return best;
 };
+
+/** The best scores some first readings of a unit gave, and how many readings that was. */
+export interface Expanded {
+    readonly scores: ReadonlyMap<number, number>;
+    readonly readings: number;
+}
 
 export interface TermMatcher {
     /** Splits the query into units, each a phrase a synonym rule may widen. */
     rewrite(terms: readonly string[]): QueryUnit[];
-    /** Exact, synonym and (for the last unit) prefix matches. */
-    strict(unit: QueryUnit, isLast: boolean, prefixLast: boolean): UnitHits;
-    /** Everything strict finds, plus one-typo neighbors. */
-    fuzzy(unit: QueryUnit, isLast: boolean, prefixLast: boolean): UnitHits;
+    /** Exact and synonym readings of a unit, and for the last unit its prefixes. */
+    strict(unit: QueryUnit, isLast: boolean, prefixLast: boolean): Readings;
+    /** The strict readings, with the unit's one-typo neighbors after them. */
+    widen(unit: QueryUnit, strict: Readings): Readings;
+    /**
+     * Every document some reading admits, with its best score. Given the
+     * scores of the first readings already, as the exact pass leaves them for
+     * the typo pass, it scores only the readings after them.
+     */
+    expand(readings: Readings, from?: Expanded): Map<number, number>;
+    /** A document's best score under the readings, or `undefined` when none admits it. */
+    scoreOf(readings: Readings, doc: number): number | undefined;
+    /** Why a document matched under its best reading, for the page that shows it. */
+    explain(readings: Readings, doc: number): TermMatch[];
 }
 
 export const createMatcher = (
@@ -163,14 +186,38 @@ export const createMatcher = (
         fieldWeights: index.fieldNames.map((field) => config.fields[field]?.weight ?? 1),
     };
 
-    const strict = (unit: QueryUnit, isLast: boolean, prefixLast: boolean) => {
+    /** A reading of these terms, or nothing when one of them is not indexed. */
+    const readingOf = (
+        terms: readonly string[],
+        { kind, label, scale }: { kind: MatchKind; label: string; scale: number }
+    ): Reading | undefined => {
+        const lists: PostingList[] = [];
+        for (const term of terms) {
+            const list = index.postings.get(term);
+            if (!list) return undefined;
+            lists.push(list);
+        }
+        if (lists.length === 0) return undefined;
+        return { kind, label, terms, lists, weight: KIND_WEIGHT[kind] * scale };
+    };
+
+    const collect = (readings: (Reading | undefined)[]): Readings => {
+        const kept = readings.filter((reading): reading is Reading => reading !== undefined);
+        const size = kept.reduce(
+            (sum, reading) => sum + Math.min(...reading.lists.map((list) => list.docs.length)),
+            0
+        );
+        return { readings: kept, size };
+    };
+
+    const strict = (unit: QueryUnit, isLast: boolean, prefixLast: boolean): Readings => {
         const label = unit.terms.join(' ');
-        const hits = documentsWithAll(corpus, unit.terms, { kind: 'exact', label, scale: 1 });
+        const readings = [readingOf(unit.terms, { kind: 'exact', label, scale: 1 })];
         for (const alternative of unit.alternatives) {
             // An alternative is scored per word the shopper typed, so a
             // two-word synonym for one word does not count double.
             const scale = unit.terms.length / alternative.length;
-            merge(hits, documentsWithAll(corpus, alternative, { kind: 'synonym', label, scale }));
+            readings.push(readingOf(alternative, { kind: 'synonym', label, scale }));
         }
         // A word still being typed is a single word. A phrase that a rule
         // recognized is already complete.
@@ -178,32 +225,54 @@ export const createMatcher = (
         if (isLast && prefixLast && term !== undefined && unit.terms.length === 1) {
             for (const candidate of termsWithPrefix(index, term)) {
                 if (candidate === term) continue;
-                merge(
-                    hits,
-                    documentsWithAll(corpus, [candidate], { kind: 'prefix', label, scale: 1 })
-                );
+                readings.push(readingOf([candidate], { kind: 'prefix', label, scale: 1 }));
             }
         }
-        return hits;
+        return collect(readings);
     };
 
-    const fuzzy = (unit: QueryUnit, isLast: boolean, prefixLast: boolean) => {
-        const hits = strict(unit, isLast, prefixLast);
+    const widen = (unit: QueryUnit, { readings }: Readings): Readings => {
         const [term] = unit.terms;
-        if (term === undefined || unit.terms.length > 1 || term.length < MIN_FUZZY_LENGTH) {
-            return hits;
-        }
-        for (const length of [term.length - 1, term.length, term.length + 1]) {
-            for (const candidate of index.termsByLength.get(length) ?? []) {
-                if (candidate === term || !withinOneEdit(term, candidate)) continue;
-                merge(
-                    hits,
-                    documentsWithAll(corpus, [candidate], { kind: 'fuzzy', label: term, scale: 1 })
-                );
+        const all: (Reading | undefined)[] = [...readings];
+        if (term !== undefined && unit.terms.length === 1 && term.length >= MIN_FUZZY_LENGTH) {
+            for (const length of [term.length - 1, term.length, term.length + 1]) {
+                for (const candidate of index.termsByLength.get(length) ?? []) {
+                    if (candidate === term || !withinOneEdit(term, candidate)) continue;
+                    all.push(readingOf([candidate], { kind: 'fuzzy', label: term, scale: 1 }));
+                }
             }
         }
-        return hits;
+        return collect(all);
     };
 
-    return { rewrite: (terms) => synonyms.rewrite(terms), strict, fuzzy };
+    const expand = ({ readings }: Readings, from?: Expanded): Map<number, number> => {
+        const scores = new Map(from?.scores);
+        for (const reading of readings.slice(from?.readings ?? 0)) {
+            const first = reading.lists[0] as PostingList;
+            for (let i = 0; i < first.docs.length; i += 1) {
+                const doc = first.docs[i] ?? 0;
+                const score = scoreUnder(corpus, reading, doc, { first: i });
+                if (score === undefined) continue;
+                const existing = scores.get(doc);
+                if (existing === undefined || score > existing) scores.set(doc, score);
+            }
+        }
+        return scores;
+    };
+
+    const explain = (readings: Readings, doc: number): TermMatch[] => {
+        const best = bestReading(corpus, readings, doc);
+        const matches: TermMatch[] = [];
+        if (best) scoreUnder(corpus, best.reading, doc, { matches });
+        return matches;
+    };
+
+    return {
+        rewrite: (terms) => synonyms.rewrite(terms),
+        strict,
+        widen,
+        expand,
+        scoreOf: (readings, doc) => bestReading(corpus, readings, doc)?.score,
+        explain,
+    };
 };
