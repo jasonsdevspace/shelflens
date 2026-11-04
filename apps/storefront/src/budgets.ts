@@ -1,4 +1,4 @@
-/*
+/**
  * The page's download budget.
  *
  * The popover is the first thing a shopper waits for, so the page that
@@ -31,6 +31,12 @@ export const TRY_BUDGET_BYTES = 115 * 1024;
  * none. Measured at 74 KB compressed when the budget was set.
  */
 export const WORKER_BUDGET_BYTES = 85 * 1024;
+
+/**
+ * The demo's catalog, which the store's first visit downloads and indexes in
+ * the browser. Measured at 332 KB compressed when the budget was set.
+ */
+export const CATALOG_BUDGET_BYTES = 400 * 1024;
 
 /**
  * A sentence only the golden queries hold, which the tests read and nothing

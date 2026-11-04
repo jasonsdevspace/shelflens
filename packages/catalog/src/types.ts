@@ -48,12 +48,14 @@ export interface Variant {
     readonly inStock: boolean;
 }
 
+/** The lowest and highest price of a product's variants, in cents. */
 export interface PriceRange {
     readonly min: number;
     readonly max: number;
 }
 
-interface Rating {
+/** How shoppers rated a product. */
+export interface Rating {
     /** One decimal place, from 1 to 5. Zero when nobody has rated it yet. */
     readonly average: number;
     readonly count: number;

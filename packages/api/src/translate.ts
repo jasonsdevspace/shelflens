@@ -76,10 +76,9 @@ const isSet = <T>(value: T | null | undefined): value is T => value !== null && 
 export const toFilter = (input: FilterInput): Filter => {
     const attribute = attributeName(input.attribute);
     const { match } = input;
+    const numeric = input.attribute === 'PRICE' || input.attribute === 'RATING';
     if (match.range) {
-        if (input.attribute !== 'PRICE' && input.attribute !== 'RATING') {
-            throw badInput(`${input.attribute} takes eq or in, not a range`);
-        }
+        if (!numeric) throw badInput(`${input.attribute} takes eq or in, not a range`);
         return {
             attribute,
             range: {
@@ -94,6 +93,7 @@ export const toFilter = (input: FilterInput): Filter => {
         }
         return { attribute, eq: match.eq === 'true' };
     }
+    if (numeric) throw badInput(`${input.attribute} takes a range, not eq or in`);
     if (isSet(match.eq)) return { attribute, eq: match.eq };
     if (isSet(match.in)) return { attribute, in: match.in };
     throw badInput(`a filter on ${input.attribute} needs eq, in or range`);

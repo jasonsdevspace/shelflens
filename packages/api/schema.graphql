@@ -162,12 +162,12 @@ enum FilterAttribute {
 
 input MatchInput @oneOf {
     """
-    Equal to this value. For IN_STOCK, "true" or "false".
+    Equal to this value. For IN_STOCK, "true" or "false". PRICE and RATING take a range instead.
     """
     eq: String
 
     """
-    Equal to any of these values.
+    Equal to any of these values. PRICE and RATING take a range instead.
     """
     in: [String!]
 

@@ -19,8 +19,6 @@ that the engine deliberately knows nothing about.
 - **The golden queries.** `golden.ts` lists what a shopper might type and what the top results
   must be. The test suite runs them against the default catalog, so a change that makes a result
   worse fails the build. The first run of them found a real flaw in how synonyms were applied.
-- **A size budget.** The demo ships the default catalog to the browser. A test keeps its
-  compressed size under budget.
 
 ```bash
 npm run bench

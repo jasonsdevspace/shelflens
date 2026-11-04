@@ -22,13 +22,13 @@ export type FilterInput = {
 
 export type MatchInput =
     | {
-          /** Equal to this value. For IN_STOCK, "true" or "false". */
+          /** Equal to this value. For IN_STOCK, "true" or "false". PRICE and RATING take a range instead. */
           readonly eq: string;
           readonly in?: never;
           readonly range?: never;
       }
     | {
-          readonly eq?: never; /** Equal to any of these values. */
+          readonly eq?: never; /** Equal to any of these values. PRICE and RATING take a range instead. */
           readonly in: ReadonlyArray<string>;
           readonly range?: never;
       }

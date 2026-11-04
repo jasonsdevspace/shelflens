@@ -1,17 +1,17 @@
-import { withinEdits } from './edits.js';
-import { checkFacets, computeFacet } from './facets.js';
+import { computeFacet, facetsNamed } from './facets.js';
 import { checkFilter, matchesFilter } from './filters.js';
-import { attributeOf, buildIndex, type Index, isList } from './index-builder.js';
+import { attributeOf, buildIndex, type Index } from './index-builder.js';
 import { createMatcher, type TermMatcher, type UnitHit, type UnitHits } from './match.js';
 import { tokenize } from './normalize.js';
 import { firstInOrder } from './order.js';
+import { createRecovery } from './recover.js';
 import { adjustmentsFor, checkRules, planRules, type RulePlan } from './rules.js';
+import { signalsByDoc, signalWeight } from './signals.js';
+import { comparator, resolveSort } from './sort.js';
 import { buildSynonyms } from './synonyms.js';
 import {
-    type AttributeValue,
     type Document,
     type EngineConfig,
-    EngineError,
     type Filter,
     type Hit,
     type MatchMode,
@@ -20,7 +20,6 @@ import {
     type SearchRequest,
     type SearchResult,
     type SignalEffect,
-    type SortClause,
 } from './types.js';
 
 /**
@@ -41,10 +40,8 @@ import {
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MAX_RESULTS = 10_000;
-/** How far a suggested word may be from the typed one. One typo is corrected without asking. */
-const SUGGESTION_EDITS = 2;
-const RELEVANCE: SortClause = { by: 'relevance', direction: 'desc' };
 
+/** An index over one set of documents, and the ways to search it. */
 export interface Engine {
     /**
      * One page of results with its facets. Throws an `EngineError` for a
@@ -57,9 +54,9 @@ export interface Engine {
      * What to offer instead of nothing: a corrected phrase or a shorter one,
      * each only if it finds something, and how many the phrase finds without
      * the request's own filters. Costs several searches, so a caller asks only
-     * after a search found nothing, and throws as `search` does.
-     * `fixedFilters` are kept through every attempt, such as who may see what,
-     * while the request's own filters may be dropped.
+     * after a search found nothing. `fixedFilters`, such as who may see what,
+     * are kept through every attempt, while the request's own filters may be
+     * dropped.
      */
     recover(request: SearchRequest, fixedFilters?: readonly Filter[]): Recovery;
     /**
@@ -169,108 +166,6 @@ const applyPlan = (
     return { docs, scores, units, mode: candidates.mode };
 };
 
-/**
- * The sort by the order the documents were indexed in, unless the config
- * declares an attribute of that name, which then sorts as any other.
- */
-const ID_SORT = 'id';
-
-/** A multi-valued attribute sorts by its first value. */
-const compareValues = (a: AttributeValue, b: AttributeValue): number => {
-    const left = isList(a) ? (a[0] ?? '') : a;
-    const right = isList(b) ? (b[0] ?? '') : b;
-    if (typeof left === 'number' && typeof right === 'number') return left - right;
-    return String(left).localeCompare(String(right));
-};
-
-/**
- * Two numbers in the clause's direction, or a tie.
- *
- * A score that is not a number, as a boost of Infinity on a score of zero
- * gives, sorts last either way, so the order stays total and a page taken
- * from the top of the matches is the page a full sort would give.
- */
-const byNumber = (left: number, right: number, direction: number): number | undefined => {
-    if (left === right) return undefined;
-    if (Number.isNaN(left) || Number.isNaN(right)) {
-        if (Number.isNaN(left) && Number.isNaN(right)) return undefined;
-        return Number.isNaN(left) ? 1 : -1;
-    }
-    return (left - right) * direction;
-};
-
-interface Ordering {
-    readonly sort: readonly SortClause[];
-    readonly index: Index;
-    readonly candidates: Candidates;
-    readonly pinRank: ReadonlyMap<number, number>;
-}
-
-/**
- * Orders two candidates by one clause, or reports a tie with `undefined`
- * so the next clause can break it.
- *
- * A missing value sorts last whichever way the clause runs, so a product
- * nobody has rated never leads a list sorted by rating in either direction.
- */
-const compareByClause = (
-    clause: SortClause,
-    { index, candidates }: Pick<Ordering, 'index' | 'candidates'>,
-    a: number,
-    b: number
-): number | undefined => {
-    const direction = clause.direction === 'asc' ? 1 : -1;
-    if (clause.by === 'relevance') {
-        return byNumber(candidates.scores[a] ?? 0, candidates.scores[b] ?? 0, direction);
-    }
-    if (clause.by === ID_SORT && !index.columns.has(ID_SORT)) {
-        // The order the documents came in, which is the catalog's own.
-        return byNumber(candidates.docs[a] ?? 0, candidates.docs[b] ?? 0, direction);
-    }
-    return byAttribute(
-        attributeOf(index, candidates.docs[a] ?? 0, clause.by),
-        attributeOf(index, candidates.docs[b] ?? 0, clause.by),
-        direction
-    );
-};
-
-/** Two values of an attribute in the clause's direction, a missing one last either way. */
-const byAttribute = (
-    left: AttributeValue | undefined,
-    right: AttributeValue | undefined,
-    direction: number
-): number | undefined => {
-    if (left === undefined || right === undefined) {
-        if (left === undefined && right === undefined) return undefined;
-        return left === undefined ? 1 : -1;
-    }
-    const difference = compareValues(left, right);
-    return difference === 0 ? undefined : difference * direction;
-};
-
-/**
- * Pinned candidates first, in pin order, then the sort, and every sort
- * ends on the id. Documents that tie on everything the caller asked for
- * still come back in one fixed order, so paging through equal scores never
- * shows a document twice or skips one.
- */
-const comparator =
-    ({ sort, index, candidates, pinRank }: Ordering) =>
-    (a: number, b: number): number => {
-        const docA = candidates.docs[a] ?? 0;
-        const docB = candidates.docs[b] ?? 0;
-        if (pinRank.size > 0) {
-            const pinA = pinRank.get(docA) ?? Infinity;
-            const pinB = pinRank.get(docB) ?? Infinity;
-            if (pinA !== pinB) return pinA - pinB;
-        }
-        for (const clause of sort) {
-            const ordered = compareByClause(clause, { index, candidates }, a, b);
-            if (ordered !== undefined) return ordered;
-        }
-        return (index.idRank[docA] ?? 0) - (index.idRank[docB] ?? 0);
-    };
-
 interface Limits {
     readonly maxPageSize: number;
     readonly maxResults: number;
@@ -290,60 +185,6 @@ const pageOf = (count: number, request: SearchRequest, limits: Limits) => {
         end: Math.min(start + pageSize, reachable),
         info: { total: count, page, pageSize, totalPages: Math.ceil(reachable / pageSize) },
     };
-};
-
-/**
- * The sort when the request names none.
- *
- * Relevance for a query. Browsing one value of a scope, such as a
- * category, means its scoped sort, which is how a category page shows a
- * merchandiser's order without asking for it. Index order otherwise.
- */
-const defaultSort = (
-    config: EngineConfig,
-    request: SearchRequest,
-    hasQuery: boolean
-): SortClause => {
-    if (hasQuery) return RELEVANCE;
-    const filters = request.filters ?? [];
-    const browsed = Object.entries(config.sortScopes ?? {}).find(([, scope]) =>
-        filters.some((filter) => filter.attribute === scope && 'eq' in filter)
-    );
-    return browsed ? { by: browsed[0], direction: 'asc' } : { by: ID_SORT, direction: 'asc' };
-};
-
-/**
- * Settles which sort applies.
- *
- * A clause on an unknown attribute is the caller's mistake. The id is
- * always known, as the order the documents were indexed in. A scoped sort
- * without its filter falls back to relevance, as a category position does
- * outside a category.
- */
-const resolveSort = (
-    config: EngineConfig,
-    request: SearchRequest,
-    hasQuery: boolean
-): SortClause[] => {
-    const resolved: SortClause[] = [];
-    for (const clause of request.sort ?? []) {
-        const declared = config.attributes[clause.by] !== undefined;
-        if (clause.by === 'relevance' || (clause.by === ID_SORT && !declared)) {
-            resolved.push(clause);
-            continue;
-        }
-        if (!declared) {
-            throw new EngineError(
-                'unknown_attribute',
-                `cannot sort by unknown attribute ${clause.by}`
-            );
-        }
-        const scope = config.sortScopes?.[clause.by];
-        const scoped = scope && !(request.filters ?? []).some((f) => f.attribute === scope);
-        resolved.push(scoped ? RELEVANCE : clause);
-    }
-    if (resolved.length === 0) resolved.push(defaultSort(config, request, hasQuery));
-    return resolved;
 };
 
 /** Which candidates pass the filters, leaving out those on one attribute. */
@@ -366,50 +207,15 @@ const passing = (
     return result;
 };
 
-/**
- * The most a signal may raise a score, as a multiplier. Below the smallest
- * boost a merchandiser would write, so a rule always says more than the
- * crowd. A pinned or buried document takes no signal at all.
- */
-export const SIGNAL_CAP = 1.25;
-
-/** How many choices it takes to reach the cap. Past it, more choices change nothing. */
-export const SIGNAL_SATURATION = 100;
-
-/**
- * What a count of choices multiplies a score by: one for none, rising with
- * the log of the count so the first few choices count most, and the cap at
- * saturation.
- */
-export const signalWeight = (count: number): number => {
-    if (!(count > 0)) return 1;
-    const share = Math.min(1, Math.log1p(count) / Math.log1p(SIGNAL_SATURATION));
-    return 1 + (SIGNAL_CAP - 1) * share;
-};
-
 interface Adjusted {
     readonly rules: ReadonlyMap<number, RuleEffect[]>;
     readonly signals: ReadonlyMap<number, SignalEffect>;
 }
 
-/** Each document's count of choices, by document number, zero for none. */
-const signalsByDoc = (
-    signals: Readonly<Record<string, number>>,
-    documents: readonly Document[]
-): Float64Array | undefined => {
-    if (Object.keys(signals).length === 0) return undefined;
-    const byDoc = new Float64Array(documents.length);
-    documents.forEach(({ id }, doc) => {
-        const count = Object.hasOwn(signals, id) ? signals[id] : undefined;
-        if (count !== undefined && count > 0) byDoc[doc] = count;
-    });
-    return byDoc;
-};
-
 /**
  * Applies the rules' boosts and buries to the scores, then the signal for
- * a document the rules left alone, and remembers each effect. A search no
- * rule adjusts and no signal reaches leaves every score as it is, without
+ * a document no rule pinned or buried, and remembers each effect. A search
+ * no rule adjusts and no signal reaches leaves every score as it is, without
  * looking at a candidate.
  */
 const adjustScores = (
@@ -459,8 +265,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
     const search = (request: SearchRequest): SearchResult => {
         const filters = request.filters ?? [];
         for (const filter of filters) checkFilter(config, filter);
-        const facetNames = request.facets ?? Object.keys(config.facets ?? {});
-        checkFacets(config, facetNames);
+        const facetsAsked = facetsNamed(config, request.facets ?? Object.keys(config.facets ?? {}));
 
         const terms = tokenize(request.query ?? '');
         const sort = resolveSort(config, request, terms.length > 0);
@@ -506,9 +311,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         // A facet counts past its own selection, so its pass set leaves out
         // the filters on its attribute. Most facets have no such filter and
         // share the one pass set every result used.
-        const facets = facetNames.map((name) => {
-            const facet = config.facets?.[name];
-            if (!facet) throw new EngineError('unknown_facet', `no facet named ${name}`);
+        const facets = facetsAsked.map(([name, facet]) => {
             const filtered = filters.some((filter) => filter.attribute === facet.attribute);
             const passes = filtered
                 ? passing(index, candidates, filters, facet.attribute)
@@ -530,100 +333,7 @@ const createFromIndex = (index: Index, config: EngineConfig): Engine => {
         };
     };
 
-    /** How many documents a query finds, as a plain count. */
-    const finds = (query: string, filters: readonly Filter[], now: Date | undefined): number =>
-        search({ query, filters, pageSize: 1, facets: [], ...(now && { now }) }).total;
-
-    /** The indexed terms within reach of a typed word, most used first. */
-    const nearestTerms = (term: string): string[] => {
-        const lengths = [-SUGGESTION_EDITS, -1, 0, 1, SUGGESTION_EDITS].map((d) => term.length + d);
-        const found: { term: string; frequency: number }[] = [];
-        for (const candidate of lengths.flatMap(
-            (length) => index.termsByLength.get(length) ?? []
-        )) {
-            if (candidate === term || !withinEdits(term, candidate, SUGGESTION_EDITS)) continue;
-            found.push({
-                term: candidate,
-                frequency: index.postings.get(candidate)?.docs.length ?? 0,
-            });
-        }
-        return found.sort((a, b) => b.frequency - a.frequency).map((entry) => entry.term);
-    };
-
-    /**
-     * The words as the shopper typed them, and what each finds on its own
-     * under the fixed filters. The shopper's words are what is shown and
-     * searched, so a suggestion never reads as a stem.
-     */
-    interface Words {
-        readonly typed: readonly string[];
-        readonly alone: ReadonlyMap<string, number>;
-        readonly fixed: readonly Filter[];
-        readonly all: readonly Filter[];
-        readonly now: Date | undefined;
-    }
-
-    /** A word in use for one the shopper typed, the most used that finds something. */
-    const replacement = (word: string, { fixed, now }: Words): string | undefined => {
-        const [term, ...more] = tokenize(word);
-        if (term === undefined || more.length > 0) return undefined;
-        return nearestTerms(term).find((candidate) => finds(candidate, fixed, now) > 0);
-    };
-
-    /** The phrase with each word nothing matched replaced, if that finds something. */
-    const correctionFor = (words: Words): string | undefined => {
-        const { typed, alone, all, now } = words;
-        if (![...alone.values()].includes(0)) return undefined;
-        const corrected = typed.map((word) =>
-            alone.get(word) === 0 ? replacement(word, words) : word
-        );
-        if (corrected.some((word) => word === undefined)) return undefined;
-        const phrase = corrected.join(' ');
-        return finds(phrase, all, now) > 0 ? phrase : undefined;
-    };
-
-    /**
-     * The phrase without the words nothing matched, then without the rarest
-     * of the rest, one more each time, until what is left finds something.
-     */
-    const relaxedFor = ({ typed, alone, all, now }: Words): Recovery['relaxed'] => {
-        const rarestFirst = [...typed].sort((a, b) => (alone.get(a) ?? 0) - (alone.get(b) ?? 0));
-        const unmatched = typed.filter((word) => alone.get(word) === 0).length;
-        for (let count = Math.max(1, unmatched); count < typed.length; count += 1) {
-            const dropped = rarestFirst.slice(0, count);
-            const query = typed.filter((word) => !dropped.includes(word)).join(' ');
-            const total = finds(query, all, now);
-            if (total > 0) return { query, dropped, total };
-        }
-        return undefined;
-    };
-
-    const recover = (request: SearchRequest, fixedFilters: readonly Filter[] = []): Recovery => {
-        // The shopper's filters may be dropped. The fixed ones, such as who
-        // may see what, never are.
-        const own = request.filters ?? [];
-        const { now } = request;
-        const typed = (request.query ?? '')
-            .trim()
-            .split(/\s+/)
-            .filter((word) => word.length > 0);
-        const words: Words = {
-            typed,
-            alone: new Map(typed.map((word) => [word, finds(word, fixedFilters, now)])),
-            fixed: fixedFilters,
-            all: [...fixedFilters, ...own],
-            now,
-        };
-        const correction = correctionFor(words);
-        const relaxed = relaxedFor(words);
-        const foundWithoutFilters =
-            own.length > 0 ? finds(request.query ?? '', fixedFilters, now) : 0;
-        return {
-            ...(correction !== undefined && { correction }),
-            ...(relaxed && { relaxed }),
-            foundWithoutFilters,
-        };
-    };
+    const recover = createRecovery(search, index);
 
     const reconfigure = (changes: Pick<EngineConfig, 'synonyms' | 'rules' | 'signals'>): Engine => {
         const next = { ...config, ...changes };

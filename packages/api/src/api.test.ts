@@ -648,6 +648,17 @@ describe('what a request may not do', () => {
         ]);
     });
 
+    it('refuses eq or in on a number, in the schema’s own names', async () => {
+        for (const match of [{ eq: '9900' }, { in: ['4'] }]) {
+            for (const attribute of ['PRICE', 'RATING']) {
+                const response = await run(RESULTS, { input: { filters: [{ attribute, match }] } });
+                expect(errors(response)).toEqual([
+                    ['BAD_USER_INPUT', `${attribute} takes a range, not eq or in`],
+                ]);
+            }
+        }
+    });
+
     it('refuses a query that nests too deep or selects too much', async () => {
         const deep = await run(
             `{ categories { parent { parent { parent { parent { parent { parent { parent { parent { id } } } } } } } } } }`

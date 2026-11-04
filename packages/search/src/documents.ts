@@ -20,6 +20,12 @@ import {
 /** A price attribute, one per customer group, since members pay differently. */
 export const priceAttribute = (group: CustomerGroup): string => `price.${group}`;
 
+/** The name of the price range facet for one customer group, the attribute it counts. */
+export const priceFacet = (group: CustomerGroup): string => priceAttribute(group);
+
+/** The name of the price stats facet for one customer group, which gives a slider its ends. */
+export const priceStatsFacet = (group: CustomerGroup): string => `priceStats.${group}`;
+
 const categoryNames = (product: Product, categories: ReadonlyMap<string, Category>): string =>
     product.categoryPath.map((id) => categories.get(id)?.name ?? id).join(' ');
 
@@ -73,12 +79,12 @@ const RATING_RANGES = [{ from: 4 }, { from: 3 }, { from: 2 }, { from: 1 }];
 const priceFacets = (): Record<string, FacetConfig> => {
     const facets: Record<string, FacetConfig> = {};
     for (const group of CUSTOMER_GROUPS) {
-        facets[`price.${group}`] = {
+        facets[priceFacet(group)] = {
             kind: 'range',
             attribute: priceAttribute(group),
             ranges: PRICE_RANGES,
         };
-        facets[`priceStats.${group}`] = { kind: 'stats', attribute: priceAttribute(group) };
+        facets[priceStatsFacet(group)] = { kind: 'stats', attribute: priceAttribute(group) };
     }
     return facets;
 };

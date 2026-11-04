@@ -1,6 +1,8 @@
+import { holds, matchesFilter } from './filters.js';
 import { tokenize } from './normalize.js';
 import {
     type AttributeKind,
+    type AttributeValue,
     EngineError,
     type Filter,
     type Rule,
@@ -170,12 +172,7 @@ const isActive = (rule: Rule, now: Date | undefined): boolean => {
 };
 
 const filterHasValue = (filters: readonly Filter[], attribute: string, value: string): boolean =>
-    filters.some(
-        (filter) =>
-            filter.attribute === attribute &&
-            (('eq' in filter && filter.eq === value) ||
-                ('in' in filter && filter.in.includes(value)))
-    );
+    filters.some((filter) => filter.attribute === attribute && matchesFilter(value, filter));
 
 const isTriggered = (rule: Rule, terms: readonly string[], filters: readonly Filter[]): boolean => {
     if (!rule.when) return true;
@@ -317,7 +314,7 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
 export const adjustmentsFor = (
     plan: RulePlan,
     id: string,
-    attribute: (name: string) => unknown
+    attribute: (name: string) => AttributeValue | undefined
 ): { readonly weight: number; readonly effects: RuleEffect[] } => {
     let weight = 1;
     const effects: RuleEffect[] = [];
@@ -325,9 +322,7 @@ export const adjustmentsFor = (
         const byId = adjustment.ids?.includes(id) ?? false;
         const value = adjustment.attribute ? attribute(adjustment.attribute.name) : undefined;
         const byAttribute =
-            adjustment.attribute !== undefined &&
-            (value === adjustment.attribute.value ||
-                (Array.isArray(value) && value.includes(adjustment.attribute.value)));
+            adjustment.attribute !== undefined && holds(value, adjustment.attribute.value);
         if (!byId && !byAttribute) continue;
         weight *= adjustment.weight;
         effects.push({ ruleId, action, weight: adjustment.weight });

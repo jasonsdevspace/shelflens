@@ -11,6 +11,7 @@
 /** Strips accents, so "café" and "cafe" are the same word. */
 export const foldAccents = (text: string): string => text.normalize('NFD').replace(/\p{M}/gu, '');
 
+/** Folds accents and case, so text compares the way a shopper reads it. */
 export const normalize = (text: string): string => foldAccents(text).toLowerCase();
 
 /**

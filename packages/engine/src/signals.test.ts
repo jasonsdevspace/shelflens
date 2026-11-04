@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createEngine, SIGNAL_CAP, SIGNAL_SATURATION, signalWeight } from './search.js';
+import { createEngine } from './search.js';
+import { SIGNAL_CAP, SIGNAL_SATURATION, signalWeight } from './signals.js';
 import type { Document, EngineConfig, Rule } from './types.js';
 
 /*
