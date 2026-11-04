@@ -81,8 +81,8 @@
         ]
     },
     "allowScripts": {
-        "esbuild": false,
-        "unrs-resolver": false,
-        "fsevents": false
+        "esbuild": true,
+        "unrs-resolver": true,
+        "fsevents": true
     }
 }
