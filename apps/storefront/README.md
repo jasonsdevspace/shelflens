@@ -78,6 +78,13 @@ the page.
   something, and the page shows it: a phrase a typo or two away, a shorter phrase with its
   results, the same phrase without the filters, and the most rated products as a last resort.
   Each is one click away, and each changes the URL like anything else.
+- **Visits are counted by path.** `src/analytics.ts` starts Plausible's tracker, bundled from npm,
+  from each of the demo's own pages and never from the widget's own file. It sets no cookie, and
+  starts nothing when the browser sends Global Privacy Control, the check the events make in
+  `src/privacy.ts`. Every address it sends is cut back to its path, keeping only a shared link's
+  tags such as `utm_source` on the page's, and each page hands the next
+  only the site's origin, so no search phrase leaves the browser.
+  [Decision record 18](../../docs/decisions/0018-visits-are-counted-by-path.md) has the choices.
 - **A page on how it works.** `about/index.html` is a second page in the build, static, sharing the
   store's sheet, the strip and the footer, with its prose in `src/about/about.css`, which the
   widget's demo pages share. It tells the same story as the README's two minutes and the tour in
@@ -143,7 +150,7 @@ the page.
 - **A real browser in CI.** `npm run e2e` builds the production page, serves it, and runs
   Playwright against it on a desktop and a phone profile with the service worker answering, with
   an axe audit of each page it reaches. Nothing is mocked.
-- **Budgets.** `src/budgets.ts` holds each download's budget, compressed: the page under 100 KB, the
+- **Budgets.** `src/budgets.ts` holds each download's budget, compressed: the page under 104 KB, the
   page for a visitor's own catalog under 115 KB, the widget under 85 KB, the service worker under
   85 KB and the catalog under 400 KB. A test bundles each entry and generates the catalog, and
   `npm run budget` measures what the build ships. Both fail past a budget, on anything from GraphQL

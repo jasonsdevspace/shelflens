@@ -72,6 +72,8 @@ showing what was viewed together or the category's most rated.
 - An answer built from the events says it is volatile, and the handler, the browser's kept
   answers and the page's memory all leave it out, so the rail is current on every open while the
   product's own answer stays cacheable.
+- These events are not the site's visit counts, which go to Plausible by path alone and stop under
+  the same signal, as record 18 says.
 
 ## How it is tested
 

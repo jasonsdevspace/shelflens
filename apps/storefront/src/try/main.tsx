@@ -4,6 +4,7 @@ import './try.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { startAnalytics } from '../analytics.js';
 import { hostConfig } from '../widget/host-config.js';
 import { controlledByWorker, OnlyOnTheBuiltSite } from '../worker/register.js';
 import { TryPage } from './TryPage.jsx';
@@ -19,6 +20,8 @@ const config = hostConfig(import.meta.env.BASE_URL, 'try');
 const base = config.scope;
 const root = document.getElementById('root');
 if (!root) throw new Error('the page has no root element');
+
+startAnalytics();
 
 const ready = import.meta.env.DEV
     ? Promise.reject(new OnlyOnTheBuiltSite())

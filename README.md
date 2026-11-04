@@ -155,7 +155,7 @@ The libraries are in `packages/`, and what runs, the demo and the server, is in 
   50 ms building the store. The catalog ships at 332 KB compressed, the page at 93 KB, the worker
   at 74 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** Compressed, the catalog stays under 400 KB, the API bundled for a
-  browser under 90 KB, the page under 100 KB, the page for a visitor's own catalog under 115 KB,
+  browser under 90 KB, the page under 104 KB, the page for a visitor's own catalog under 115 KB,
   the widget under 85 KB and the service worker under 85 KB, with nothing from GraphQL in a page or
   the widget and no test fixture in anything shipped, or the build fails. The storefront runs in a
   real browser on a desktop and a phone profile with an accessibility audit of every page it
@@ -190,6 +190,7 @@ again against the code before each release, and amended where the code has moved
 15. [One store host for every transport](docs/decisions/0015-one-store-host-for-every-transport.md)
 16. [The first screen is in the page, drawn by the components the script uses](docs/decisions/0016-the-first-screen-is-in-the-page.md)
 17. [A sort sets aside what rules do to the order, and the page says so](docs/decisions/0017-a-sort-sets-aside-what-rules-do-to-the-order.md)
+18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](docs/decisions/0018-visits-are-counted-by-path.md)
 
 ## Dev setup
 

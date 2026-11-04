@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -100,6 +101,38 @@ describe('the widget in a host page', () => {
         expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(WIDGET_BUDGET_BYTES);
     }, 60_000);
+
+    it('counts no visit, since the page that embeds it is someone else\u2019s site', async () => {
+        const { code } = await bundled('./widget/index.tsx');
+        expect(code).not.toContain('plausible.io');
+    }, 60_000);
+});
+
+describe('the demo\u2019s own pages', () => {
+    it('each count visits, a page added later included', async () => {
+        // Every page the build serves is an index.html the app keeps in git, and each names its
+        // entry. Asked of git, so a page not yet added counts, and a report or a build that writes
+        // one of its own is left out.
+        const app = new URL('..', import.meta.url);
+        const pages = execFileSync(
+            'git',
+            ['ls-files', '--cached', '--others', '--exclude-standard', '*index.html'],
+            {
+                cwd: app,
+                encoding: 'utf8',
+            }
+        )
+            .split('\n')
+            .filter((path) => path.length > 0);
+        expect(pages.length).toBeGreaterThan(1);
+        for (const page of pages) {
+            const html = await readFile(new URL(page, app), 'utf8');
+            const entry = /<script type="module" src="\/(src\/[^"]+)"/.exec(html)?.[1];
+            expect(entry, page).toBeDefined();
+            const { code } = await bundled(`../${entry ?? ''}`);
+            expect(code, page).toContain('plausible.io');
+        }
+    }, 120_000);
 });
 
 describe('the service worker', () => {

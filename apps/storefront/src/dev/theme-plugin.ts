@@ -14,9 +14,15 @@ import { WIDGET } from './shell-plugin.js';
  * A built page also gets its Content Security Policy here, as a meta tag
  * ahead of everything else in the head, since GitHub Pages sends no headers
  * of its own. Everything a page loads comes from its own origin, so the
- * policy allows that and the one inline script, by its hash, and nothing
- * else. The dev server is left without one, since Vite injects its styles
- * and its client inline while it serves.
+ * policy allows that, the one inline script by its hash and the visit
+ * counts' connection to Plausible, and nothing else. The dev server is left
+ * without one, since Vite injects its styles and its client inline while it
+ * serves.
+ *
+ * Beside it goes a referrer policy that hands any page the visitor goes on
+ * to the site's origin and nothing more. The store keeps a search in its
+ * address, and the portfolio shares the store's origin, so the browser's own
+ * default would hand it the search, and its visit counter would send it on.
  */
 const PLACEHOLDER = '<!-- theme-script -->';
 const CHARSET = '<meta charset="UTF-8" />';
@@ -32,7 +38,9 @@ const policyFor = (script: string, widget: boolean): string =>
         `script-src 'self' 'sha256-${createHash('sha256').update(script).digest('base64')}'`,
         widget ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'",
         "img-src 'self' data:",
-        "connect-src 'self'",
+        // The visit counts go to Plausible. Its tracker is bundled with the page, so no
+        // script comes from there.
+        "connect-src 'self' https://plausible.io",
         "worker-src 'self'",
         "object-src 'none'",
         "base-uri 'none'",
@@ -62,7 +70,11 @@ export const themeScript = (): Plugin => {
                 // The theme runs first, so the page still has the mount the shell fills.
                 const widget = page.includes(WIDGET);
                 const meta = `<meta http-equiv="Content-Security-Policy" content="${policyFor(script, widget)}" />`;
-                return page.replace(CHARSET, () => `${CHARSET}\n        ${meta}`);
+                const referrer = '<meta name="referrer" content="strict-origin" />';
+                return page.replace(
+                    CHARSET,
+                    () => `${CHARSET}\n        ${meta}\n        ${referrer}`
+                );
             },
         },
     };

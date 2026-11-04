@@ -1,9 +1,9 @@
 # Decision records
 
 The decisions in this project that had a real alternative, with the option rejected, what the
-choice costs, and the test or measurement behind it. Records 1 to 15 were written when the decision
-was made, so the evidence was still fresh. Records 16 and 17 were written after the work they
-describe, from the code and its tests.
+choice costs, and the test or measurement behind it. Records 1 to 15 and 18 were written when the
+decision was made, so the evidence was still fresh. Records 16 and 17 were written after the work
+they describe, from the code and its tests.
 
 1. [An engine of our own, rather than a library](0001-an-engine-of-our-own.md): the parts a
    library hides are the parts the project exists to show.
@@ -50,3 +50,6 @@ describe, from the code and its tests.
 17. [A sort sets aside what rules do to the order, and the page says so](0017-a-sort-sets-aside-what-rules-do-to-the-order.md):
     hides hold under any sort, pins, boosts and buries give way to it and are named on the page,
     and a category's own sort keeps the pins written for it.
+18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](0018-visits-are-counted-by-path.md):
+    the tracker bundled from npm, one site for the whole domain, each address cut back to its path,
+    and never started under the signal or by the widget's own file.

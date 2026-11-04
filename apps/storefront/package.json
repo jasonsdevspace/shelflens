@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "@jasonsdevspace/shelflens": "*",
+        "@plausible-analytics/tracker": "0.4.6",
         "@shelflens/api": "0.1.0",
         "@shelflens/catalog": "0.1.0",
         "react": "19.3.1",
