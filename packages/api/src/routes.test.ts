@@ -31,10 +31,10 @@ describe('routeOf', () => {
 
     it('answers only with a route the caller named', () => {
         // Without the routes, nothing would tie the answer's type to what was matched, and a
-        // host that serves no catalog could be told it was handed one.
-        // The type check is the test, so the call is written but not made.
-        // @ts-expect-error A host names the routes it serves.
-        const unnamed = (): 'catalog' | undefined => routeOf<'catalog'>('/graphql', '/');
-        expect(unnamed).toBeTypeOf('function');
+        // host that serves no catalog could be told it was handed one. The routes are the third
+        // parameter, and the type is the test: it holds only when they cannot be left out.
+        type Required = undefined extends Parameters<typeof routeOf>[2] ? false : true;
+        const required: Required = true;
+        expect(required).toBe(true);
     });
 });

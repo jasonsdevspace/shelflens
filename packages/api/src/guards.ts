@@ -1,12 +1,16 @@
 /**
  * Checks the API's boundaries share, written once so they agree on what an
- * object is. A request's body, an event batch, a rules file and a visitor's
- * catalog are each checked as objects here, and a request and an event
- * batch are each read as JSON here.
+ * object is. A request's body and its variables, an event batch, a rules file,
+ * a visitor's catalog and the canonical form each check objects here, and a
+ * request, its variables and an event batch are each read as JSON here.
  */
 
 /** Whether a value is text. */
 export const isString = (value: unknown): value is string => typeof value === 'string';
+
+/** Whether a value is one of a known list, such as an event's kind or an error's code. */
+export const isOneOf = <Known>(known: readonly Known[], value: unknown): value is Known =>
+    known.some((entry) => entry === value);
 
 /** Whether a value is a list, of anything. */
 export const isList = (value: unknown): value is readonly unknown[] => Array.isArray(value);

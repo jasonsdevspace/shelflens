@@ -1,4 +1,4 @@
-import { isRecord, parseJson } from './guards.js';
+import { isOneOf, isRecord, parseJson } from './guards.js';
 
 /**
  * The events a storefront collects, and where they land.
@@ -85,9 +85,8 @@ type Mutable = { -readonly [Key in keyof StoreEvent]: StoreEvent[Key] };
 /** The required fields, or nothing when one is missing or wrong. */
 const parseRequired = (value: Record<string, unknown>): Mutable | undefined => {
     const id = text(value['id'], ID_LIMIT);
-    const kind = KINDS.find((known) => known === value['kind']);
-    const { at } = value;
-    if (id === undefined || kind === undefined) return undefined;
+    const { kind, at } = value;
+    if (id === undefined || !isOneOf(KINDS, kind)) return undefined;
     if (typeof at !== 'number' || !Number.isFinite(at)) return undefined;
     return { id, kind, at };
 };

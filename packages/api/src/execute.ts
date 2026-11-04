@@ -18,6 +18,7 @@ import type { Context, Store, Viewer } from './context.js';
 import { INTERNAL_CODE, type StoreError, USER_CODES } from './errors.js';
 import type { EventStore } from './events.js';
 import type { Resolvers } from './generated/schema.js';
+import { isOneOf } from './guards.js';
 import { touch, trimOldest } from './recent.js';
 import { resolvers } from './resolvers.js';
 import { buildStoreSchema } from './schema.js';
@@ -139,7 +140,7 @@ export const INTERNAL_MESSAGE = 'Something went wrong on our side.';
 /** Keeps a user's mistakes as they are, and replaces everything else. */
 const shaped = (error: GraphQLError): StoreError => {
     const code = error.extensions['code'];
-    const isUserError = USER_CODES.some((known) => known === code);
+    const isUserError = isOneOf(USER_CODES, code);
     // Only a resolver's failure has a path. Anything without one was found
     // before any field ran: validation, or a variable that did not fit.
     const fromRequest = error.path === undefined;

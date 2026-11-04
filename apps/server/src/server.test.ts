@@ -1,3 +1,5 @@
+import type { Server } from 'node:http';
+
 import {
     createMemoryEventStore,
     createMemoryRuleStore,
@@ -14,19 +16,21 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createRateLimit, createServer } from './server.js';
 
 /** Starts a server on a free port, and the address to reach it at. */
-const listening = async (started: ReturnType<typeof createServer>): Promise<string> => {
+const listening = async (started: Server): Promise<string> => {
     await new Promise<void>((resolve) => started.listen(0, resolve));
     const address = started.address();
     if (address === null || typeof address === 'string') throw new Error('expected a port');
     return `http://127.0.0.1:${address.port}`;
 };
 
-/** Stops a server, once every connection it holds has closed. */
-const closed = (started: ReturnType<typeof createServer>): Promise<void> =>
-    new Promise((resolve) => started.close(() => resolve()));
+/** Stops a server, once every connection it holds has closed, and fails if it was not running. */
+const closed = (started: Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+        started.close((error) => (error ? reject(error) : resolve()));
+    });
 
 const shared = generateCatalog({ seed: 42, products: 200 });
-/** The store host every host serves, over a small catalog with no rules, keeping events if given. */
+/** A store host over a small catalog with no rules, keeping events if given. */
 const hostOf = (events?: EventStore) =>
     createStoreHost({
         source: () => Promise.resolve({ catalog: shared, rules: [] }),

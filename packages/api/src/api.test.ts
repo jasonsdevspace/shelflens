@@ -95,6 +95,25 @@ describe('searching', () => {
         expect(second.product.price.min.currency).toBe('USD');
     });
 
+    it('answers a stats facet as one, with the lowest and highest price of what matched', async () => {
+        const { search } = data(
+            await run(
+                `query ($input: SearchInput!) { search(input: $input) { total
+                    facets { __typename name attribute ... on StatsFacet { min max count } } } }`,
+                { input: { phrase: 'jacket', facets: ['priceStats'] } }
+            )
+        );
+        const [stats] = search.facets;
+        expect(stats).toMatchObject({
+            __typename: 'StatsFacet',
+            name: 'priceStats',
+            attribute: 'PRICE',
+            count: search.total,
+        });
+        expect(stats.min).toBeGreaterThan(0);
+        expect(stats.max).toBeGreaterThan(stats.min);
+    });
+
     it('reports a pinned product first, and says which rule did it', async () => {
         const { search } = data(await run(RESULTS, { input: { phrase: 'jacket', pageSize: 3 } }));
         expect(search.items[0].product.sku).toBe(catalog.products[3]?.sku);
