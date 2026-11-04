@@ -34,8 +34,8 @@ import {
  * A search can match most of a catalog, as a two-letter prefix or a browse
  * with no query does, so the work per candidate is kept small: a document
  * number, a score, and which filters it passes, in parallel arrays. Hit
- * objects, with their matches and rule effects, are built for the page
- * that is returned and for nothing else.
+ * objects, with their matches, rule effects and signal, are built for the
+ * page that is returned and for nothing else.
  */
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -83,7 +83,7 @@ interface Candidates {
     readonly mode: MatchMode;
 }
 
-/** The documents every unit admits, each with its score under each unit. */
+/** The documents every unit admits, each with its scores summed over the units. */
 interface Matched {
     readonly docs: number[];
     readonly scores: number[];
@@ -94,10 +94,11 @@ interface Matched {
 /**
  * The documents matching every unit, scored.
  *
- * Only the unit with the fewest postings is read in full. Each other unit,
- * narrowest first, scores only the documents still standing, so a common word
- * beside a rare one costs what the rare one matches. The scores are added in
- * the query's own order, so the order the units were read in changes nothing.
+ * The narrowest unit is read in full. Each other unit, narrowest first, is
+ * looked up only for the documents still standing, or read in full when
+ * that is cheaper, so a common word beside a rare one costs what the rare
+ * one matches. The scores are added in the query's own order, so the order
+ * the units were read in changes nothing.
  */
 const matchUnits = (
     readings: readonly Readings[],
@@ -148,8 +149,8 @@ const matchUnits = (
  * Runs the strict pass first. The fuzzy pass runs only if the strict pass
  * finds nothing at all, so a correctly typed query is never diluted with
  * corrections of itself. It adds each unit's one-typo neighbors to the
- * strict readings, and what the strict pass scored is kept rather than
- * scored again.
+ * strict readings, and when the narrowest unit is the same in both passes,
+ * what the strict pass scored of it is kept rather than scored again.
  */
 const matchAll = (
     terms: readonly string[],
@@ -244,7 +245,8 @@ const passing = (
     const { docs } = candidates;
     const result = new Uint8Array(docs.length);
     if (applicable.length === 0) return result.fill(1);
-    // Plain loops, since this runs once per candidate and filter on every search.
+    // Plain loops. Written with `forEach` and `every`, this ran about a quarter
+    // slower once query searches had run, though its code had not changed.
     for (let i = 0; i < docs.length; i += 1) {
         const doc = docs[i] ?? 0;
         let passes = 1;
@@ -259,13 +261,6 @@ const passing = (
     return result;
 };
 
-/** What the rules and signals do to one document's score, in the order they apply. */
-interface Adjustment {
-    /** The boosts and buries together, when some rule adjusts this search. */
-    readonly rules?: number;
-    readonly signal?: SignalEffect;
-}
-
 /** What a document's count of choices does to its score, if it was chosen at all. */
 const signalOf = (signals: Float64Array | undefined, doc: number): SignalEffect | undefined => {
     const count = signals?.[doc] ?? 0;
@@ -273,26 +268,25 @@ const signalOf = (signals: Float64Array | undefined, doc: number): SignalEffect 
 };
 
 /**
- * What the rules and signals do to one document. Each rule effect is added to
- * `effects` when it is given, which a search does only for the page it returns.
+ * What the rules and signals did to one hit on the page: each rule effect,
+ * added to `effects`, and the signal it took, if any.
  */
 const adjustmentOf = (
     { index, plan, signals }: { index: Index; plan: RulePlan; signals: Float64Array | undefined },
     doc: number,
-    effects?: RuleEffect[]
-): Adjustment => {
+    effects: RuleEffect[]
+): SignalEffect | undefined => {
     const adjusting = plan.adjustments.length > 0;
     const pinning = plan.pinnedBy.size > 0;
     const id = adjusting || pinning ? (index.documents[doc]?.id ?? '') : '';
     const pinned = pinning ? plan.pinnedBy.get(id) : undefined;
-    if (pinned) effects?.push({ ruleId: pinned, action: 'pin' });
+    if (pinned) effects.push({ ruleId: pinned, action: 'pin' });
     const adjusted = adjusting
         ? adjustmentsFor(plan, id, (name) => attributeOf(index, doc, name), effects)
         : undefined;
     // A pinned document is placed by the pin, not its score, and a buried one
     // stays where the merchandiser put it, so neither takes the signal.
-    const signal = pinned || adjusted?.buried ? undefined : signalOf(signals, doc);
-    return { ...(adjusted && { rules: adjusted.weight }), ...(signal && { signal }) };
+    return pinned || adjusted?.buried ? undefined : signalOf(signals, doc);
 };
 
 /**
@@ -310,7 +304,8 @@ const adjustScores = (
     const { index } = adjusting;
     const ruling = plan.adjustments.length > 0;
     candidates.docs.forEach((doc, i) => {
-        // The same steps as `adjustmentOf`, keeping only the numbers.
+        // The steps of `adjustmentOf` without the objects it builds, since this
+        // runs for every candidate. A change to one is a change to both.
         const id = ruling || plan.pinnedBy.size > 0 ? (index.documents[doc]?.id ?? '') : '';
         const pinned = Boolean(plan.pinnedBy.get(id));
         let buried = false;
@@ -398,7 +393,7 @@ const createFromIndex = (built: Built, config: EngineConfig): Engine => {
         const hits: Hit[] = positions.map((i) => {
             const doc = candidates.docs[i] ?? 0;
             const rules: RuleEffect[] = [];
-            const { signal } = adjustmentOf(adjusting, doc, rules);
+            const signal = adjustmentOf(adjusting, doc, rules);
             return {
                 id: index.documents[doc]?.id ?? '',
                 score: candidates.scores[i] ?? 0,
@@ -468,7 +463,8 @@ const createFromIndex = (built: Built, config: EngineConfig): Engine => {
  * the engine does not have.
  */
 export const createEngine = (documents: readonly Document[], config: EngineConfig): Engine => {
-    // Documents are numbered in the order they come, by the index as here.
+    // The index numbers documents in the order they come, so this map agrees
+    // with it, and the rules are checked before any indexing is paid for.
     const byId = new Map(documents.map((d, doc) => [d.id, doc]));
     checkRules(config.rules ?? [], byId, config.attributes);
     const index = buildIndex(documents, config);

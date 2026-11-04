@@ -12,7 +12,7 @@ import { searchStore, type StoreSearchRequest } from './store.js';
  *
  * The demo indexes two thousand products, which hides every cost. This
  * indexes far more, so the price of building the index, of a facet count
- * over a wide query, and of a fuzzy pass that checks every term is known
+ * over a wide query, and of a fuzzy pass that checks every term of a similar length is known
  * rather than guessed. Absolute numbers depend on the machine, so each run
  * records what it ran on.
  */
@@ -49,7 +49,7 @@ export interface BenchResult {
     readonly queries: readonly QueryTiming[];
 }
 
-/** The shapes of request a storefront sends, from cheapest to most demanding. */
+/** The shapes of request a storefront sends. */
 const BENCH_QUERIES: readonly {
     name: string;
     request: Omit<StoreSearchRequest, 'group'>;
@@ -58,7 +58,7 @@ const BENCH_QUERIES: readonly {
 }[] = [
     { name: 'search as you type, two letters', request: { query: 'sh', prefixLastTerm: true } },
     { name: 'one common word', request: { query: 'jacket' } },
-    { name: 'two words', request: { query: 'navy blue hoodie' } },
+    { name: 'three words', request: { query: 'navy blue hoodie' } },
     { name: 'a synonym', request: { query: 'trainers' } },
     { name: 'a typo, so the fuzzy pass runs', request: { query: 'sneakr' } },
     {

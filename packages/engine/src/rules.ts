@@ -124,7 +124,7 @@ const checkWindow = (rule: Rule): void => {
  */
 export const checkRules = (
     rules: readonly Rule[],
-    /** The ids the documents have, as a set or as the map from each to its number. */
+    /** The ids the documents have, such as the map from each to its number. */
     documentIds: { has(id: string): boolean },
     attributes: Readonly<Record<string, AttributeKind>>
 ): void => {
@@ -314,7 +314,7 @@ export const planRules = (rules: readonly Rule[], context: RuleContext): RulePla
 /**
  * The multiplier a document's score gets from the boosts and buries, and
  * whether a bury reached it. Each effect is added to `effects` when it is
- * given, which a search does only for the page it returns.
+ * given.
  */
 export const adjustmentsFor = (
     plan: RulePlan,

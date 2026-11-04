@@ -6,10 +6,12 @@ import type { EngineConfig, MatchKind, TermMatch } from './types.js';
 /**
  * Matching and scoring, one query unit at a time.
  *
- * A document matches a query when it matches every unit of it. Each unit
- * can be satisfied in several ways, exact, by prefix, by synonym or by a
- * one-typo neighbor, and each way is scored a little differently, so the
- * best reading of a document is what it gets credit for.
+ * Each unit of a query can be read several ways, as typed, by synonym, by
+ * prefix or by a one-typo neighbor, and each reading is scored a little
+ * differently. A document is credited with its best reading of each unit.
+ * A unit's readings are either expanded to every document they admit or
+ * asked about one document, which is how a search intersects the units and
+ * explains a hit on its page.
  */
 
 /** BM25's usual constants. Term frequency saturates, and long fields are discounted. */
@@ -57,17 +59,18 @@ interface Reading {
     readonly lists: readonly PostingList[];
     /** Which of the lists is shortest, the one a reading is walked by. */
     readonly shortest: number;
-    /**
-     * Scales the score by the kind of match, and so a many-word alternative
-     * for few typed words does not count extra.
-     */
+    /** The kind of match's weight, scaled for a synonym as `strict` explains. */
     readonly weight: number;
 }
 
 /** The ways to read one unit of a query, in the order a tie between them goes to. */
 export interface Readings {
     readonly readings: readonly Reading[];
-    /** How many postings the readings hold, to match the narrowest unit first. */
+    /**
+     * At most how many documents the readings admit, each reading counted by
+     * its shortest list. The narrowest unit is matched first by it, and it
+     * says when another unit is cheaper read in full.
+     */
     readonly size: number;
 }
 
@@ -167,7 +170,10 @@ export interface Expanded {
 export interface TermMatcher {
     /** Splits the query into units, each a phrase a synonym rule may widen. */
     rewrite(terms: readonly string[]): QueryUnit[];
-    /** Exact and synonym readings of a unit, and for the last unit its prefixes. */
+    /**
+     * Exact and synonym readings of a unit, and its prefixes when it is a last
+     * single word typed as a prefix.
+     */
     strict(unit: QueryUnit, isLast: boolean, prefixLast: boolean): Readings;
     /** The strict readings, with the unit's one-typo neighbors after them. */
     widen(unit: QueryUnit, strict: Readings): Readings;
