@@ -151,9 +151,9 @@ The libraries are in `packages/`, and what runs, the demo and the server, is in 
   waits 100 ms for the typing to pause, and the slowest suggestion on the demo catalog takes well
   under the 50 ms left. [The record](docs/benchmarks/popover.md).
 - **The cold first visit.** With nothing cached, the page is ready to search in about a fifth of a
-  second served locally, with the worker spending 38 ms downloading the catalog and the rules and
-  50 ms building the store. The catalog ships at 332 KB compressed, the page at 93 KB, the worker
-  at 74 KB. [The record](docs/benchmarks/cold-visit.md).
+  second served locally, with the worker spending 39 ms downloading the catalog and the rules and
+  43 ms building the store. The catalog ships at 332 KB compressed, the page at 99 KB, the worker
+  at 76 KB. [The record](docs/benchmarks/cold-visit.md).
 - **Budgets and audits, in CI.** Compressed, the catalog stays under 400 KB, the API bundled for a
   browser under 90 KB, the page under 104 KB, the page for a visitor's own catalog under 115 KB,
   the widget under 85 KB and the service worker under 85 KB, with nothing from GraphQL in a page or
