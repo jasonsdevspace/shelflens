@@ -60,8 +60,8 @@ export const createIndexedDbRuleStore = (name = DEFAULT_DB_NAME): RuleStore => {
     return {
         current: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            const kept = (await request(store.get(KEY))) as readonly Rule[] | undefined;
-            return kept;
+            // IndexedDB gives back what was put, typed as any, and only this module writes here.
+            return (await request(store.get(KEY))) as readonly Rule[] | undefined;
         },
         replace: (rules) => write((store) => store.put(rules, KEY)),
         reset: () => write((store) => store.delete(KEY)),

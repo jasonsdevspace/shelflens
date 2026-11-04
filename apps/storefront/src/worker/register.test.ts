@@ -5,12 +5,32 @@ import {
     CLAIM_MESSAGE,
     controlledByWorker,
     isOwnController,
+    type PageWorker,
     StoreDidNotStart,
     VISIT_MESSAGE,
     VISITED_MESSAGE,
+    type WorkerContainer,
     type WorkerHost,
     WorkerUnsupported,
 } from './register.js';
+
+/** A worker being installed, whose state a test moves on. */
+const incoming = (state: ServiceWorkerState) => {
+    const target = new EventTarget();
+    return {
+        state,
+        addEventListener: (type: 'statechange', listener: () => void) =>
+            target.addEventListener(type, listener),
+        /** Moves the worker to a state, as the browser would. */
+        become(next: ServiceWorkerState) {
+            this.state = next;
+            target.dispatchEvent(new Event('statechange'));
+        },
+    };
+};
+
+/** A registration with nothing active, installing or waiting, as a discarded install leaves. */
+const EMPTY = { active: null, installing: null, waiting: null };
 
 /*
  * The page waits for the worker, asks an idle one to take charge, and
@@ -30,25 +50,25 @@ const fakeContainer = ({
     // A worker that answers a visit on the port it was sent, as the real one does.
     const worker = {
         scriptURL,
-        postMessage: vi.fn((message: unknown, transfer?: readonly MessagePort[]) => {
-            if ((message as { type?: string }).type === VISIT_MESSAGE.type) {
-                transfer?.[0]?.postMessage(VISITED_MESSAGE);
+        postMessage: vi.fn<PageWorker['postMessage']>((message, transfer) => {
+            const [port] = transfer ?? [];
+            if (message === VISIT_MESSAGE && port instanceof MessagePort) {
+                port.postMessage(VISITED_MESSAGE);
             }
         }),
     };
     const container = {
-        controller: controlled ? (worker as unknown as ServiceWorker) : null,
+        controller: controlled ? worker : null,
         // A registration with no active worker has one installing, as a first visit does.
-        register: vi.fn(() =>
+        register: vi.fn<WorkerContainer['register']>(() =>
             Promise.resolve({
                 active: active ? worker : null,
-                installing: active
-                    ? null
-                    : Object.assign(new EventTarget(), { state: 'installing' }),
+                installing: active ? null : incoming('installing'),
                 waiting: null,
-            } as unknown as ServiceWorkerRegistration)
+            })
         ),
-        addEventListener: target.addEventListener.bind(target),
+        addEventListener: (type: 'controllerchange', listener: () => void) =>
+            target.addEventListener(type, listener),
         takeOver: () => target.dispatchEvent(new Event('controllerchange')),
         worker,
     };
@@ -57,10 +77,7 @@ const fakeContainer = ({
 
 const hostWith = (container: ReturnType<typeof fakeContainer>) => {
     const reload = vi.fn();
-    const host: WorkerHost = {
-        serviceWorker: container as unknown as ServiceWorkerContainer,
-        reload,
-    };
+    const host: WorkerHost = { serviceWorker: container, reload };
     return { host, reload };
 };
 
@@ -137,19 +154,12 @@ describe('registering the worker', () => {
 
     it('gives up as soon as the worker being installed is discarded, as a failed download leaves it', async () => {
         const container = fakeContainer({ controlled: false, active: false });
-        const installing = Object.assign(new EventTarget(), { state: 'installing' });
-        container.register.mockImplementation(() =>
-            Promise.resolve({
-                active: null,
-                installing,
-                waiting: null,
-            } as unknown as ServiceWorkerRegistration)
-        );
+        const installing = incoming('installing');
+        container.register.mockImplementation(() => Promise.resolve({ ...EMPTY, installing }));
         const { host } = hostWith(container);
         const start = controlledByWorker('/sw.js', '/', host);
         await vi.waitFor(() => expect(container.register).toHaveBeenCalled());
-        installing.state = 'redundant';
-        installing.dispatchEvent(new Event('statechange'));
+        installing.become('redundant');
         await expect(start).rejects.toBeInstanceOf(StoreDidNotStart);
     });
 
@@ -166,13 +176,7 @@ describe('registering the worker', () => {
 
     it('gives up at once on an install that was discarded before the page looked', async () => {
         const container = fakeContainer({ controlled: false, active: false });
-        container.register.mockImplementation(() =>
-            Promise.resolve({
-                active: null,
-                installing: null,
-                waiting: null,
-            } as unknown as ServiceWorkerRegistration)
-        );
+        container.register.mockImplementation(() => Promise.resolve(EMPTY));
         const { host } = hostWith(container);
         await expect(controlledByWorker('/sw.js', '/', host, 60_000)).rejects.toBeInstanceOf(
             StoreDidNotStart
@@ -210,9 +214,7 @@ describe('registering the worker', () => {
 describe('announcing a visit', () => {
     it('resolves when the worker answers, and on its own when the worker does not', async () => {
         const answering = fakeContainer({ controlled: true, active: true }).worker;
-        await expect(
-            announceVisit(answering as unknown as ServiceWorker, 50)
-        ).resolves.toBeUndefined();
+        await expect(announceVisit(answering, 50)).resolves.toBeUndefined();
         const silent = { postMessage: vi.fn() };
         vi.useFakeTimers();
         try {
@@ -251,7 +253,7 @@ describe('announcing a visit', () => {
     });
 
     it('counts only the worker the page registers as its own, read against the page', () => {
-        const worker = (scriptURL: string) => ({ scriptURL }) as ServiceWorker;
+        const worker = (scriptURL: string) => ({ scriptURL });
         const demo = worker('https://example.test/shelflens/sw.js');
         const visitor = worker('https://example.test/shelflens/sw.js?store=try');
         const page = 'https://example.test/shelflens/try/';

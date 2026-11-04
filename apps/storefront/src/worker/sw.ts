@@ -71,12 +71,14 @@ self.addEventListener('activate', (event) => {
 const refreshed = () => api.refresh().catch(() => false);
 
 self.addEventListener('message', (event) => {
-    const data = event.data as { type?: unknown } | null;
-    if (data?.type === CLAIM_MESSAGE.type) {
+    const data: unknown = event.data;
+    const type =
+        typeof data === 'object' && data !== null && 'type' in data ? data.type : undefined;
+    if (type === CLAIM_MESSAGE.type) {
         // A claim is a visit too: fold the clicks first, then take the page.
         event.waitUntil(refreshed().then(() => self.clients.claim().then(announce)));
     }
-    if (data?.type === VISIT_MESSAGE.type) {
+    if (type === VISIT_MESSAGE.type) {
         // Answer on the port the page sent, once the visit's store is ready.
         const [port] = event.ports;
         event.waitUntil(refreshed().then(() => port?.postMessage(VISITED_MESSAGE)));

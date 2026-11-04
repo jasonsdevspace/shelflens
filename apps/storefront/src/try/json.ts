@@ -24,19 +24,21 @@ const asText = (value: unknown): string => {
     return '';
 };
 
-const recordsOf = (data: unknown): unknown[] | undefined => {
-    if (Array.isArray(data)) return data as unknown[];
-    if (data && typeof data === 'object') {
-        const holder = data as Record<string, unknown>;
+const isObject = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isList = (value: unknown): value is readonly unknown[] => Array.isArray(value);
+
+const recordsOf = (data: unknown): readonly unknown[] | undefined => {
+    if (isList(data)) return data;
+    if (isObject(data)) {
         for (const key of ['products', 'items']) {
-            if (Array.isArray(holder[key])) return holder[key] as unknown[];
+            const held = data[key];
+            if (isList(held)) return held;
         }
     }
     return undefined;
 };
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** A JSON file as a table, or an error saying why it is not one. */
 export const parseJsonTable = (text: string): Table => {

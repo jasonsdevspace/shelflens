@@ -79,7 +79,7 @@ const beacon = (url: string, body: string): boolean => {
 /** Whether the visitor asked not to be tracked, as the browser reports it. */
 export const trackingAllowed = (): boolean =>
     typeof navigator === 'undefined' ||
-    (navigator as { globalPrivacyControl?: boolean }).globalPrivacyControl !== true;
+    !('globalPrivacyControl' in navigator && navigator.globalPrivacyControl === true);
 
 const stripUndefined = (
     event: Recorded,

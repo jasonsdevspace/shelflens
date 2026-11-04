@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { GraphQLClient } from '../client/graphql.js';
+import type { GraphQLClient, QueryVariables } from '../client/graphql.js';
 import { createLatest } from '../client/latest.js';
 import type { TypedDocumentString } from '../generated/operations.js';
 
@@ -26,7 +26,7 @@ export interface QueryState<Result, Variables = unknown> {
     readonly retry: () => void;
 }
 
-export const useQuery = <Result, Variables>(
+export const useQuery = <Result, Variables extends QueryVariables>(
     client: GraphQLClient,
     document: TypedDocumentString<Result, Variables>,
     /** The variables, or nothing to ask nothing. */
@@ -57,6 +57,7 @@ export const useQuery = <Result, Variables>(
             latest.cancel();
             return;
         }
+        // The key is these variables written as JSON, so it reads back as them.
         const variables = JSON.parse(key) as Variables;
         void latest
             .run((signal) => client.query(document, variables, { signal }))

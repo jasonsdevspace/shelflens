@@ -57,6 +57,7 @@ export const createIndexedDbCatalogStore = (name = CATALOG_DB_NAME): CatalogStor
     return {
         current: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
+            // IndexedDB gives back what was put, typed as any, and only this module writes here.
             return (await request(store.get(KEY))) as Catalog | undefined;
         },
         replace: (catalog) => write((store) => store.put(catalog, KEY)),

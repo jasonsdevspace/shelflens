@@ -15,6 +15,10 @@ import { count } from '../format/count.js';
 export type Action = 'pin' | 'boost' | 'bury' | 'hide';
 export type Target = 'product' | 'brand';
 
+/** Whether a select's value is one of the targets. */
+export const isTarget = (value: string): value is Target =>
+    value === 'product' || value === 'brand';
+
 export interface Form {
     readonly id: string;
     readonly name: string;

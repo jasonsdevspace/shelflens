@@ -115,6 +115,7 @@ export const runPopoverBench = async ({
     const json = JSON.stringify(generateCatalog({ seed, products }));
 
     const parseStarted = performance.now();
+    // Read back from the catalog just written out, so the parse alone is timed.
     const catalog = JSON.parse(json) as Catalog;
     const parseMs = performance.now() - parseStarted;
 

@@ -3,12 +3,12 @@ import { type FormEvent, type ReactNode, type RefObject, useId } from 'react';
 import {
     ACTIONS,
     type Form,
+    isTarget,
     keptLine,
     type Named,
     namesProducts,
     type Problems,
     STEPS,
-    type Target,
 } from './rule-form.js';
 import { onlyUnderRelevance } from './setAside.js';
 
@@ -247,7 +247,8 @@ export const RuleForm = (props: RuleFormProps) => {
                         className="select"
                         value={form.target}
                         onChange={(event) =>
-                            onChange({ ...form, target: event.target.value as Target })
+                            isTarget(event.target.value) &&
+                            onChange({ ...form, target: event.target.value })
                         }
                     >
                         <option value="product">A product</option>

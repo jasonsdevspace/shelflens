@@ -57,10 +57,11 @@ export const SORTS = {
 >;
 
 /** Every sort, in the order the page offers them. */
+// Object.keys types every key as text, and this literal has exactly these keys.
 export const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
 
-const isSortKey = (value: string): value is SortKey =>
-    (SORT_KEYS as readonly string[]).includes(value);
+/** Whether a value is one of the sorts, as a select or the address may give any text. */
+export const isSortKey = (value: string): value is SortKey => Object.hasOwn(SORTS, value);
 
 /** The key for the sort the API reports it applied, after any fallback. */
 export const sortKeyOf = (

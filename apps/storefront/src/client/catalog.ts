@@ -9,12 +9,23 @@ export interface Loaded {
     readonly products: number;
 }
 
+const isLoaded = (body: unknown): body is Loaded =>
+    typeof body === 'object' &&
+    body !== null &&
+    'version' in body &&
+    typeof body.version === 'string' &&
+    'products' in body &&
+    typeof body.products === 'number';
+
 /** What the worker says is loaded, or nothing when nothing is. */
 export const readLoaded = async (url: string): Promise<Loaded | undefined> => {
     const response = await fetch(url);
     if (response.status === 404) return undefined;
     if (!response.ok) throw new Error(`the store answered ${String(response.status)}`);
-    return (await response.json()) as Loaded;
+    const body: unknown = await response.json();
+    // A page from a new deploy can meet a worker from an old one, so the answer is checked.
+    if (!isLoaded(body)) throw new Error('the store answered in a shape this page does not read');
+    return body;
 };
 
 /**

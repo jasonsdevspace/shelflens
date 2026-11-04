@@ -35,6 +35,7 @@ const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
 /** The two parts a store cannot do without. Every other part has a default. */
 const REQUIRED = new Set<MappedField>(['name', 'price']);
 
+// Object.keys types every key as text, and this literal has exactly these keys.
 const FIELDS = Object.keys(FIELD_LABELS) as MappedField[];
 
 /**
@@ -43,12 +44,11 @@ const FIELDS = Object.keys(FIELD_LABELS) as MappedField[];
  * part takes it from any other, whose choice then shows Not used.
  */
 export const withField = (mapping: Mapping, field: MappedField, header: string): Mapping => {
-    const { [field]: _old, ...others } = mapping;
-    const rest = Object.fromEntries(
-        Object.entries(others).filter(
-            ([key, value]) => key === 'searchOnly' || (value as unknown) !== header
-        )
-    ) as Mapping;
+    const rest: { -readonly [Field in MappedField]?: string } = {};
+    for (const other of FIELDS) {
+        const column = mapping[other];
+        if (other !== field && column !== undefined && column !== header) rest[other] = column;
+    }
     const searchOnly = (mapping.searchOnly ?? []).filter((column) => column !== header);
     const next: Mapping = header === '' ? rest : { ...rest, [field]: header };
     return searchOnly.length > 0 ? { ...next, searchOnly } : withoutSearchOnly(next);

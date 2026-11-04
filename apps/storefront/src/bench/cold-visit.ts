@@ -49,6 +49,9 @@ interface Marks {
     started?: StartedMessage;
 }
 
+/** The page's window, with the marks the benchmark leaves on it for the harness to read. */
+type Marked = Window & { marks?: Marks; capMarks?: CapMarks };
+
 const visit = async (origin: string): Promise<Run> => {
     const browser = await chromium.launch();
     const context = await browser.newContext();
@@ -56,10 +59,29 @@ const visit = async (origin: string): Promise<Run> => {
     // Listen for the worker before the page registers it, so the message is not missed.
     await page.addInitScript(() => {
         const marks: Marks = {};
-        (window as unknown as { marks: Marks }).marks = marks;
+        const shared: Marked = window;
+        shared.marks = marks;
+        // Checked here rather than by a helper, since the script runs in the page, where it can
+        // import nothing and a named function would need the runner's own helper. A message with
+        // no data, or data of another shape, is not the one waited for.
         navigator.serviceWorker.addEventListener('message', (event: MessageEvent<unknown>) => {
-            const data = event.data as { type?: unknown };
-            if (data.type === 'shelflens:started') marks.started = data as StartedMessage;
+            const { data } = event;
+            if (
+                typeof data === 'object' &&
+                data !== null &&
+                'type' in data &&
+                data.type === 'shelflens:started' &&
+                'downloadMs' in data &&
+                typeof data.downloadMs === 'number' &&
+                'buildMs' in data &&
+                typeof data.buildMs === 'number'
+            ) {
+                marks.started = {
+                    type: data.type,
+                    downloadMs: data.downloadMs,
+                    buildMs: data.buildMs,
+                };
+            }
         });
     });
     await page.goto(`${origin}/`);
@@ -69,10 +91,14 @@ const visit = async (origin: string): Promise<Run> => {
 
     const typedAt = await page.evaluate(() => performance.now());
     await search.fill('trail');
-    // The listbox can appear before it has anything in it. A suggestion is the answer.
-    await page.getByRole('option').first().waitFor();
+    // The listbox can appear before it has anything in it. A suggestion is the answer, read
+    // from the list, since the page's own selects hold options too.
+    await page.getByRole('listbox').getByRole('option').first().waitFor();
     const shownAt = await page.evaluate(() => performance.now());
-    const { started } = await page.evaluate(() => (window as unknown as { marks: Marks }).marks);
+    const { started } = await page.evaluate(() => {
+        const shared: Marked = window;
+        return shared.marks ?? {};
+    });
     await browser.close();
     if (!started) throw new Error('the worker never said how the store started');
     return {
@@ -112,12 +138,13 @@ interface CapMarks {
  */
 const markCapSteps = () => {
     const marks: CapMarks = {};
-    (window as unknown as { capMarks: CapMarks }).capMarks = marks;
+    const shared: Marked = window;
+    shared.capMarks = marks;
     document.addEventListener('change', () => (marks.picked ??= performance.now()), true);
     document.addEventListener(
         'click',
         (event) => {
-            const button = (event.target as Element | null)?.closest('button');
+            const button = event.target instanceof Element ? event.target.closest('button') : null;
             if (button && /^Search [\d,]+ products$/.test(button.textContent)) {
                 marks.pressed ??= performance.now();
             }
@@ -176,10 +203,11 @@ const capVisit = async (origin: string, file: string, slowdown: number): Promise
         const box = page.getByRole('combobox', { name: 'Search the store' });
         await box.waitFor({ timeout: 120_000 });
         await box.fill('bag');
-        await page.getByRole('option').first().waitFor({ timeout: 60_000 });
-        const marks = await page.evaluate(
-            () => (window as unknown as { capMarks: CapMarks }).capMarks
-        );
+        await page.getByRole('listbox').getByRole('option').first().waitFor({ timeout: 60_000 });
+        const marks = await page.evaluate(() => {
+            const shared: Marked = window;
+            return shared.capMarks ?? {};
+        });
         const { picked, reviewed, pressed, ready, suggested } = marks;
         if ([picked, reviewed, pressed, ready, suggested].some((mark) => mark === undefined)) {
             throw new Error(`the page did not mark every step: ${JSON.stringify(marks)}`);
@@ -317,7 +345,7 @@ const main = async () => {
         const file = join(folder, 'at-the-cap.csv');
         writeFileSync(file, sampleCsv(CATALOG_ROW_CAP));
         const fileBytes = readFileSync(file).length;
-        const atCap = { laptop: [] as CapRun[], phone: [] as CapRun[] };
+        const atCap: { laptop: CapRun[]; phone: CapRun[] } = { laptop: [], phone: [] };
         try {
             for (let i = 0; i < CAP_RUNS; i += 1) {
                 atCap.laptop.push(await capVisit(preview.origin, file, 1));
