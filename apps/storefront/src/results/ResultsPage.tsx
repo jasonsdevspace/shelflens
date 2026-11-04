@@ -1,5 +1,4 @@
-import type { Rule } from '@jasonsdevspace/shelflens';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { LiveStatus } from '../app/LiveStatus.jsx';
@@ -11,28 +10,13 @@ import {
     hasFilters,
     searchKey,
     type SearchState,
-    SORT_KEYS,
     type SortKey,
     sortKeyOf,
-    SORTS,
-    toSearchInput,
 } from '../app/url.js';
 import { NARROW, useMediaQuery } from '../app/useMediaQuery.js';
-import { useQuery } from '../app/useQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
 import { useRecord } from '../events/EventsContext.jsx';
-import { count } from '../format/count.js';
-import {
-    PreviewDocument,
-    type PreviewQuery,
-    type PreviewQueryVariables,
-    SearchDocument,
-    type SearchQuery,
-    type SearchQueryVariables,
-    type TypedDocumentString,
-} from '../generated/operations.js';
-import { fold, recentSearches, rememberSearch } from '../search/recent.js';
 import { CardList } from './CardList.jsx';
 import { Drawer } from './Drawer.jsx';
 import { FacetDrawer } from './FacetDrawer.jsx';
@@ -40,10 +24,12 @@ import { Facets } from './Facets.jsx';
 import { FilterChips } from './FilterChips.jsx';
 import { NoResults } from './NoResults.jsx';
 import { Pagination } from './Pagination.jsx';
-import { toRuleInput } from './rule-input.js';
-import { RulesPanel, useRulesEditor } from './RulesPanel.jsx';
+import { RulesPanel } from './RulesPanel.jsx';
 import { setAsideBySort, type SetAsideRule } from './setAside.js';
+import { headingFor, sortIdOf, Toolbar } from './Toolbar.jsx';
+import { type Result, useAppliedRules, useRememberedSearch, useResults } from './useResults.js';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
+import { useRulesEditor } from './useRulesEditor.js';
 import { ViewerNotice } from './ViewerNotice.jsx';
 
 /**
@@ -84,35 +70,6 @@ export interface ResultsPageProps {
     /** New each time the visitor comes to this store, as App's own `arrival` says. */
     readonly arrival?: number | undefined;
 }
-
-/**
- * What the heading answers with, and what it notes after: the count, or that
- * the matches are close ones.
- */
-interface Heading {
-    readonly text: string;
-    readonly note: string | undefined;
-}
-
-const headingFor = (
-    state: SearchState,
-    categories: CategoryTree,
-    result: { readonly total: number; readonly matching: string },
-    locale: string
-): Heading => {
-    if (state.phrase) {
-        return {
-            text: `${count(result.total, 'result', 'results', locale)} for "${state.phrase}"`,
-            note: result.matching === 'CORRECTED' ? ', showing close matches' : undefined,
-        };
-    }
-    // A category or the whole store is named, and how many products it holds is said after.
-    const [leaf] = ancestry(categories, state.category).slice(-1);
-    return {
-        text: leaf ? leaf.name : 'All products',
-        note: `, ${count(result.total, 'product', 'products', locale)}`,
-    };
-};
 
 /**
  * The first stop in a column beside the results, seen only when it has
@@ -187,51 +144,6 @@ const announcement = (
         : heading;
 };
 
-const ResultsHeading = ({ id, heading }: { readonly id: string; readonly heading: Heading }) => (
-    <h1 id={id} className="results-heading" tabIndex={-1}>
-        {heading.text}
-        {heading.note !== undefined && <span className="results-note">{heading.note}</span>}
-    </h1>
-);
-
-/** The page's one question, which is a search or a preview of one, asked through one hook. */
-type Asked = TypedDocumentString<
-    SearchQuery | PreviewQuery,
-    SearchQueryVariables | PreviewQueryVariables
->;
-
-/**
- * The one request the page is read from: the search the URL says, or a
- * preview of it with the panel's draft in place of the store's rules.
- * Both go through one hook, so the answer before stays on the page while
- * the next is on its way, and the panel beside the results is never
- * unmounted by the preview it asked for.
- */
-const useResults = (
-    client: GraphQLClient,
-    state: SearchState,
-    draft: readonly Rule[] | undefined
-) => {
-    const previewing = state.rules === true && draft !== undefined;
-    const input = { input: toSearchInput(state), explain: state.explain ?? false };
-    // The two documents answer the same shape under different names, which is
-    // all the hook needs, and more than the generated types say in one breath.
-    const document = (previewing ? PreviewDocument : SearchDocument) as Asked;
-    // The draft is the engine's own rules, sent as the schema's RuleInput.
-    const variables: SearchQueryVariables | PreviewQueryVariables = previewing
-        ? { ...input, rules: draft.map(toRuleInput) }
-        : input;
-    const { data, loading, error, retry } = useQuery(client, document, variables);
-    const result = data && ('preview' in data ? data.preview : data.search);
-    // Whether the result is the answer to this request, rather than one before it.
-    const answered = !loading && error === undefined;
-    // Whether the result is the store's own answer to this search, not a preview.
-    const own = answered && !previewing;
-    return { result, loading, error, retry, previewing, answered, own };
-};
-
-type Result = NonNullable<ReturnType<typeof useResults>['result']>;
-
 const Crumbs = ({
     state,
     navigate,
@@ -263,37 +175,6 @@ const Crumbs = ({
         </nav>
     );
 };
-
-/** The Sort by control's id, beside the results heading it belongs to. */
-const sortIdOf = (heading: string) => `${heading}-sort`;
-
-const SortField = ({
-    id,
-    sortKey,
-    state,
-    navigate,
-}: Pick<ResultsPageProps, 'state' | 'navigate'> & {
-    readonly id: string;
-    readonly sortKey: SortKey;
-}) => (
-    <label className="sort">
-        <span className="sort-label">Sort by</span>
-        <select
-            id={id}
-            className="select"
-            value={sortKey}
-            onChange={(event) =>
-                navigate({ ...state, sort: event.target.value as SortKey, page: 1 })
-            }
-        >
-            {SORT_KEYS.map((key) => (
-                <option key={key} value={key}>
-                    {SORTS[key].label}
-                </option>
-            ))}
-        </select>
-    </label>
-);
 
 /** The rules panel beside the results, or in a drawer where there is no room beside them. */
 const RulesColumn = ({
@@ -348,59 +229,6 @@ const Cards = ({
 const brandsOf = (result: Result): readonly string[] => {
     const facet = result.facets.find((candidate) => candidate.name === 'brand');
     return facet && 'buckets' in facet ? facet.buckets.map((bucket) => bucket.value) : [];
-};
-
-const Toolbar = ({
-    id,
-    state,
-    navigate,
-    categories,
-    result,
-    sortKey,
-    onCloseRules,
-    drawer,
-}: Pick<ResultsPageProps, 'state' | 'navigate' | 'categories'> & {
-    readonly id: string;
-    readonly result: Result;
-    readonly sortKey: SortKey;
-    readonly onCloseRules: () => void;
-    /** On a phone, the drawer's button, which sits with the others under the heading. */
-    readonly drawer: ReactNode;
-}) => {
-    const { locale } = useStoreInfo();
-    return (
-        <div className="results-toolbar">
-            <ResultsHeading id={id} heading={headingFor(state, categories, result, locale)} />
-            {drawer}
-            {/* With nothing found there is nothing to explain or sort, so both step aside,
-            unless explain mode is on, which keeps its switch so it can be turned off. */}
-            {(result.total > 0 || state.explain === true) && (
-                <button
-                    type="button"
-                    className="button"
-                    aria-pressed={state.explain ?? false}
-                    onClick={() => navigate({ ...state, explain: !state.explain })}
-                >
-                    Explain ranking
-                </button>
-            )}
-            <button
-                type="button"
-                className="button"
-                aria-pressed={state.rules ?? false}
-                onClick={() =>
-                    state.rules
-                        ? onCloseRules()
-                        : navigate({ ...state, rules: true, explain: true })
-                }
-            >
-                Rules
-            </button>
-            {result.total > 0 && (
-                <SortField id={sortIdOf(id)} sortKey={sortKey} state={state} navigate={navigate} />
-            )}
-        </div>
-    );
 };
 
 /**
@@ -466,69 +294,6 @@ const Notices = ({
         />
     </>
 );
-
-/**
- * The ids of the rules the store applied or set aside, as one array that
- * changes only when they do, and nothing until the store has answered once.
- */
-const useAppliedRules = (
-    result: Result | undefined,
-    /** Whether the result is the answer to the current request, rather than one before it. */
-    answered: boolean,
-    previewing: boolean,
-    search: string
-): readonly string[] | undefined => {
-    const ids =
-        !answered || previewing || !result
-            ? undefined
-            : // A rule that pins and hides is in both under a sort, and is listed once.
-              [
-                  ...new Set([
-                      ...result.merchandising.applied,
-                      ...result.merchandising.setAside.map((rule) => rule.ruleId),
-                  ]),
-              ];
-    // The last answer from the store itself for this search, kept through a preview
-    // and through the request after it, so the list beside the results never blanks
-    // or shows a draft's. Another search starts over. It is state, so the same array
-    // comes back until the ids themselves change.
-    const [kept, setKept] = useState({ search, ids });
-    const differs = (a: readonly string[], b: readonly string[]) =>
-        a.length !== b.length || a.some((id, i) => id !== b[i]);
-    if (kept.search !== search) setKept({ search, ids });
-    else if (ids !== undefined && (kept.ids === undefined || differs(ids, kept.ids))) {
-        setKept({ search, ids });
-    }
-    return kept.search === search ? kept.ids : ids;
-};
-
-/**
- * A phrase joins this browser's recent searches once its search has found
- * something, so a typo that found nothing is never offered again, and the
- * nothing-found page stays a page with a way forward rather than a place
- * to return to.
- */
-const useRememberedSearch = (
-    phrase: string | undefined,
-    result: Result | undefined,
-    /**
-     * Whether the result is the store's own answer to this search, not a
-     * preview or an older one.
-     */
-    own: boolean,
-    /** Counts the searches submitted, so one run again after a clear joins the list again. */
-    searched: number
-) => {
-    // Close matches for a misspelling are the store's work, not a search to run again.
-    const found =
-        own && result !== undefined && result.total > 0 && result.matching !== 'CORRECTED';
-    useEffect(() => {
-        // A page, a filter or a sort under the phrase is the same search, already first.
-        if (phrase && found && fold(recentSearches()[0] ?? '') !== fold(phrase)) {
-            rememberSearch(phrase);
-        }
-    }, [phrase, found, searched]);
-};
 
 /**
  * What an answer puts under the toolbar: the notices, the cards or the nothing

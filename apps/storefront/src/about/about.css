@@ -1,0 +1,112 @@
+/*
+ * The explainer at about/: prose at a reading measure, sharing the
+ * wordmark's left edge, with the demo's own steps for type and space.
+ */
+.about {
+    max-width: var(--measure);
+    line-height: var(--leading-body);
+}
+
+.about h1 {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-display);
+    font-weight: var(--weight-strong);
+}
+
+.about-pitch {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-lead);
+}
+
+.about section {
+    margin-top: var(--space-6);
+    padding-block: var(--space-6) 0;
+    border-top: 1px solid var(--line);
+}
+
+.about h2 {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-title);
+    font-weight: var(--weight-strong);
+}
+
+.about h3 {
+    margin: var(--space-5) 0 var(--space-1);
+    font-size: var(--text-body);
+    font-weight: var(--weight-strong);
+}
+
+.about p {
+    margin: 0 0 var(--space-4);
+}
+
+.about p:last-child {
+    margin-bottom: 0;
+}
+
+/*
+ * The accent, not the browser's blue, so links match the rest of the page in
+ * both themes. It is too close to the text to mark a link by itself, so the
+ * underline stays.
+ */
+.about a:not(.button) {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.about code {
+    font-size: var(--text-small);
+    overflow-wrap: anywhere;
+}
+
+.about-where {
+    margin: 0;
+}
+
+.eyebrow {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-caption);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The steps stack, one under the next, with the arrow between them saying so. */
+.flow {
+    list-style: none;
+    margin: var(--space-4) 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-5);
+}
+
+.flow li {
+    position: relative;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-large);
+    font-size: var(--text-small);
+}
+
+.flow li + li::before {
+    content: '\2193' / '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(-1 * var(--space-5));
+    /* The arrow fills the gap between two steps, and its line is the gap's height, so it sits in the middle. */
+    height: var(--space-5);
+    line-height: var(--space-5);
+    text-align: center;
+    color: var(--control);
+}
+
+.flow strong {
+    display: block;
+    font-weight: var(--weight-medium);
+}
+
+.flow-note {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--muted);
+}

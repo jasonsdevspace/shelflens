@@ -21,7 +21,7 @@ import { STOPS } from './stops.js';
  * into it, and Escape inside it closes it.
  */
 
-export const TOUR_ID = 'tour';
+const TOUR_ID = 'tour';
 
 /** The class on the page's root while the tour is open, and the property its height is kept in. */
 const TOURING = 'is-touring';
@@ -70,7 +70,7 @@ const closeOnEscape = (onClose: () => void) => (event: KeyboardEvent) => {
  * What a phone shows on a first visit in place of the sheet: a short bar
  * across the bottom that says what the tour is, and opens it on Start.
  */
-export const TourOffer = ({
+const TourOffer = ({
     onStart,
     onDecline,
 }: {
@@ -245,3 +245,34 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
         </aside>
     );
 };
+
+/** Opens and closes the tour, and says which panel it controls. */
+export const TourToggle = ({
+    touring,
+    onToggle,
+    buttonRef,
+}: {
+    readonly touring: boolean;
+    readonly onToggle: () => void;
+    readonly buttonRef: RefObject<HTMLButtonElement | null>;
+}) => (
+    <button
+        ref={buttonRef}
+        type="button"
+        className="button"
+        aria-expanded={touring}
+        // Names the tour only while there is one to name.
+        aria-controls={touring ? TOUR_ID : undefined}
+        onClick={onToggle}
+    >
+        Tour
+    </button>
+);
+
+/** The tour, or on a phone's first visit the short bar that offers it. */
+export const TourPlace = ({
+    offering,
+    onStart,
+    ...tour
+}: TourProps & { readonly offering: boolean; readonly onStart: () => void }) =>
+    offering ? <TourOffer onStart={onStart} onDecline={tour.onClose} /> : <Tour {...tour} />;

@@ -1,6 +1,8 @@
 @import './tokens.css';
 @import './search/searchbox.css';
 
+/* The base: the theme and what every element takes. */
+
 :root {
     --column: 72rem;
     --bg: var(--light-bg);
@@ -102,689 +104,24 @@ h4 {
     font-weight: var(--weight-strong);
 }
 
-/* Whose demo this is, above the masthead: two links, one line, scrolls away. */
-/*
- * The strip and the masthead keep their borders across the whole viewport
- * and line their content up with the column below, so the page reads as
- * one column from the first line to the footer.
- */
-.portfolio,
-.topbar,
-.masthead,
-.colophon {
-    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + var(--space-4));
-}
-
-/*
- * The strip and the demo's own switches, one row on a wide screen: whose
- * demo it is on the left, who the visitor shops as and the tour on the
- * right, apart from the masthead a shopper uses.
- */
-.topbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0 var(--space-5);
-    border-bottom: 1px solid var(--line);
-}
-
-.topbar .portfolio {
-    justify-content: flex-start;
-    gap: 0 var(--space-5);
-    padding-inline: 0;
-    border-bottom: 0;
-}
-
-/* The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row. */
-.topbar-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    padding-block: var(--space-1);
-}
-
-.topbar-tools:empty {
-    display: none;
-}
-
-.portfolio {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0 var(--space-4);
-    border-bottom: 1px solid var(--line);
-    font-size: var(--text-small);
-}
-
-/* The whole row height is the target, not the one line of small text. */
-.portfolio a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.5rem;
-}
-
-.portfolio a,
-.colophon a {
-    color: var(--muted);
-}
-
-.portfolio a:hover,
-.portfolio a:focus-visible,
-.colophon a:hover,
-.colophon a:focus-visible {
-    color: var(--fg);
-}
-
-/* The footer's rule runs the width of the page, as the header's do, with its text in the column. */
-.colophon {
-    margin-top: var(--space-6);
-    padding-block: var(--space-4);
-    border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: var(--text-small);
-}
-
-.colophon p {
-    margin: 0;
-}
-
-.masthead {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4);
-    padding-block: var(--space-3);
-    border-bottom: 1px solid var(--line);
-}
-
-/*
- * The room the search box and the category links take once the store is
- * ready, kept while the masthead holds the brand alone, so the page below
- * does not move when they arrive. One row on a wide screen, and two on a
- * phone, the brand and the search box, then the categories. The demo's
- * switches keep their room in the strip the same way, beside its links on
- * a wide screen and on a row of their own on a phone.
- */
-.masthead.is-waiting {
-    min-height: 4.35rem;
-}
-
-/*
- * A field's height and the padding around it, and the width of the two
- * switches, as they take once they arrive, so they wrap, or not, as they
- * will.
- */
-.topbar.is-waiting .topbar-tools:empty {
-    display: flex;
-    min-width: 15.65rem;
-    min-height: calc(var(--field-height) + var(--space-2));
-}
-
-@media (max-width: 48rem) {
-    .masthead.is-waiting {
-        min-height: 7.35rem;
-    }
-
-    .topbar-tools {
-        flex-basis: 100%;
-    }
-
-    /*
-     * A field is a thumb's height on a phone, so the room kept is too. Its
-     * width is the row's already, so it never asks for more than the screen.
-     */
-    .topbar.is-waiting .topbar-tools:empty {
-        min-width: 0;
-        min-height: calc(var(--target) + var(--space-2));
-    }
-}
-
-.brand {
-    font-weight: var(--weight-mark);
-    font-size: var(--text-title);
-    color: inherit;
-    text-decoration: none;
-}
-
-.content {
-    padding: var(--space-4);
-    max-width: var(--column);
-    margin: 0 auto;
-}
-
-/*
- * The end of the page can scroll above the tour's box, at its drawn height
- * and the gap it floats in, so what a stop points at there is never under it.
- */
-.content.has-tour {
-    padding-bottom: calc(var(--tour-height, 0dvh) + var(--space-6));
-}
-
-/*
- * The pages the script draws, whose answer arrives after the first screen,
- * are at least a screen tall, so the footer starts below the fold and the
- * answer arriving above it never moves it on screen. The pages written in
- * their HTML have nothing on its way, and keep their height.
- */
-#root > .content {
-    min-height: 100dvh;
-}
+/* The shared look: notices, fields, buttons, a failure to load and the skip link. */
 
 .notice {
     color: var(--muted);
 }
 
-/* A store that did not start says so as the page's heading, in the text's own color. */
-.standby-heading {
-    font-size: var(--text-title);
-    color: var(--fg);
-}
-
-/* What did not load, in the text's own color since it asks for something to be done. */
-.load-failure {
-    color: var(--fg);
-}
-
-/* What did not load, with the way to ask again and any other way on beside it. */
-.load-failure-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-}
-
-/* The results heading. */
-
-.results-heading {
-    font-size: var(--text-title);
-    font-weight: var(--weight-strong);
-}
-
-.results-note {
-    font-weight: var(--weight-normal);
-    color: var(--muted);
-}
-
-/* The masthead: the brand, the search box and the root categories, one row on a wide screen. */
-
-.masthead {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-}
-
-.masthead-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-5);
-}
-
-/* The search box gives way before anything wraps, so the row holds from a phone's width up. */
-.masthead .searchbox {
-    flex-basis: 12em;
-}
-
-.category-nav {
-    margin-left: auto;
-}
-
-.tour {
-    position: fixed;
-    right: var(--space-4);
-    bottom: var(--space-4);
-    z-index: 5;
-    width: min(24rem, calc(100vw - 2rem));
-    padding: var(--space-3) var(--space-4) var(--space-4);
-    background: var(--raised);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-raised);
-}
-
-/*
- * Whatever takes focus is scrolled into view above the tour, never left
- * behind it, at the height it is drawn, on a phone and on a wide screen.
- */
-:root.is-touring {
-    scroll-padding-bottom: calc(var(--tour-height, 0rem) + var(--space-4) * 2);
-}
-
-.tour-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.tour-count {
-    margin: 0;
-    font-size: var(--text-caption);
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-}
-
-/* Close is there when wanted and quiet otherwise, so Try it is the panel's one strong action. */
-.button.tour-close {
-    margin-right: calc(var(--space-2) * -1);
-    padding-inline: var(--space-2);
-    color: var(--muted);
-    background: none;
-    border-color: transparent;
-}
-
-.button.tour-close:hover {
-    color: var(--fg);
-    border-color: transparent;
-}
-
-/* The panel's buttons sit on its raised surface, not in wells of the page's. */
-.tour .button:not(.button-primary) {
-    background: var(--raised);
-}
-
-/* How far through the tour the visitor is, drawn under the count it repeats. */
-.tour-progress {
-    height: var(--space-1);
-    margin-top: var(--space-2);
-    background: var(--line);
-    border-radius: var(--radius-small);
-}
-
-.tour-progress-done {
-    display: block;
-    height: 100%;
-    background: var(--accent);
-    border-radius: var(--radius-small);
-}
-
-.tour-title {
-    margin: var(--space-3) 0 var(--space-2);
-    font-size: var(--text-lead);
-    line-height: var(--leading-tight);
-}
-
-.tour-body {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-small);
-    line-height: var(--leading-body);
-}
-
-.tour-test {
+/* A line the page wants seen, such as who is shopping or whose catalog this is, on the highlight. */
+.callout {
     margin: 0 0 var(--space-4);
-    font-size: var(--text-caption);
-    color: var(--muted);
-}
-
-/* Each file whole on a line where it fits, broken inside its name only where it cannot. */
-.tour-test-file {
-    color: var(--fg);
-    overflow-wrap: anywhere;
-}
-
-/*
- * The buttons wrap onto a second line where larger text leaves no room for
- * them on one. Previous and Next keep together on the right, so they stand in
- * the same place on the last stop, which has no Try it, as on every other.
- */
-.tour-nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.tour-step-label {
-    display: inline-grid;
-}
-
-.tour-step-label > * {
-    grid-area: 1 / 1;
-}
-
-/* Drawn for its width alone, so it is neither seen nor heard. */
-.tour-step-unused {
-    visibility: hidden;
-}
-
-.tour-steps {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    margin-left: auto;
-}
-
-/* A phone's first visit: one line saying what the tour is, with its two answers beside it. */
-.tour-offer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-/* The two answers keep together, wrapping as one where larger text leaves no room, then apart. */
-.tour-offer-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    margin-left: auto;
-}
-
-.tour-offer-text {
-    flex: 1 1 7em;
-    margin: 0;
+    padding: var(--space-2) var(--space-3);
     font-size: var(--text-small);
-}
-
-/* Its select drops under its label where larger text leaves no room beside it. */
-.viewer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-small);
-    color: var(--muted);
-}
-
-/* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
-.category-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-5);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.category-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--target);
-    color: var(--muted);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-    border-bottom: 2px solid transparent;
-}
-
-.category-link:hover,
-.category-link:focus-visible {
-    color: var(--fg);
-    border-bottom-color: var(--control);
-}
-
-.category-link[aria-current='page'] {
-    color: var(--fg);
-    font-weight: var(--weight-strong);
-    border-bottom-color: var(--accent);
-}
-
-/* The results page: facets beside a grid of cards. */
-
-.results-layout {
-    display: grid;
-    grid-template-columns: 15rem minmax(0, 1fr);
-    gap: var(--space-6);
-    align-items: start;
-}
-
-/* The column keeps up with the results and scrolls on its own when it is taller than the screen. */
-.results-side {
-    position: sticky;
-    top: var(--space-4);
-    max-height: calc(100dvh - 2rem);
-    overflow-y: auto;
-    /* A scrolling box clips what spills past its edge, so the focus ring gets room inside it. */
-    padding: var(--space-1);
-    margin: calc(-1 * var(--space-1));
-}
-
-/*
- * Nothing found: no facets to show, so the results take the whole width,
- * and never more than it, whatever their widest content asks for.
- */
-.results-layout.is-empty {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-/*
- * The results dim while the next ones load, after a short wait, so a fast
- * answer never flickers. They come back at once, and with reduced motion
- * they change without fading.
- */
-.results-main {
-    transition: opacity 0.15s;
-}
-
-.results-layout.is-loading .results-main {
-    opacity: 0.6;
-    transition-delay: 0.1s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .results-main {
-        transition-duration: 0s;
-    }
-}
-
-/* Each group set apart under a line, its title small and strong, its rows the column's width. */
-.facets {
-    display: grid;
-    gap: 0;
-}
-
-.facets > .text-button {
-    margin-bottom: var(--space-3);
-}
-
-.facet {
-    margin: 0;
-    padding: var(--space-4) 0;
-    border: none;
-    border-top: 1px solid var(--line);
-    display: grid;
-    gap: var(--space-1);
-}
-
-.facet:first-of-type {
-    padding-top: 0;
-    border-top: 0;
-}
-
-/* Floated, so a fieldset draws its legend inside it rather than into the line above. */
-.facet-title {
-    float: left;
-    width: 100%;
-    font-size: var(--text-small);
-    font-weight: var(--weight-strong);
-    padding: 0;
-    margin-bottom: var(--space-1);
-}
-
-.facet-title + * {
-    clear: both;
-}
-
-/*
- * A row lights up under the pointer across the column's width. Everything in
- * a group is inset alike, so the rows' edges line up with the title and the
- * column, which scrolls on its own, never scrolls sideways.
- */
-.facet-title,
-.facet-current,
-.facet .text-button,
-.facet .option-button {
-    padding-inline: var(--space-2);
-}
-
-.facet-option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 2rem;
-    padding-inline: var(--space-2);
-    font-size: var(--text-small);
-    border-radius: var(--radius-small);
-}
-
-.facet-option:hover {
     background: var(--highlight);
-}
-
-.facets .hint {
-    font-variant-numeric: tabular-nums;
-}
-
-/* Where the shopper is in the categories, with the way up above it and its own below it. */
-.facet-current {
-    display: flex;
-    align-items: center;
-    min-height: 2rem;
-    font-size: var(--text-small);
-    font-weight: var(--weight-strong);
-}
-
-.facet-links.is-nested {
-    padding-left: var(--space-3);
-}
-
-/* A rating band: the stars a card shows at it, then its words, on one line. */
-.facet-rating {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    white-space: nowrap;
-}
-
-/* The filters that are on, each a chip that removes itself, then the way to clear them all. */
-.chips {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-4);
-    padding: 0;
-    list-style: none;
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 2rem;
-    padding: 0 var(--space-3);
-    font: inherit;
-    font-size: var(--text-small);
-    color: var(--fg);
-    background: var(--highlight);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-large);
-}
-
-.chip-x {
-    color: var(--muted);
-}
-
-.chip:hover .chip-x,
-.chip:focus-visible .chip-x {
-    color: var(--fg);
-}
-
-.facet-label {
-    flex: 1;
+    border-radius: var(--radius);
 }
 
 .hint {
     color: var(--muted);
     font-size: var(--text-caption);
-}
-
-.facet-links {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-1);
-}
-
-.option-button {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    min-height: 2rem;
-    font: inherit;
-    font-size: var(--text-small);
-    text-align: left;
-    color: var(--accent);
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-.option-button:hover,
-.option-button:focus-visible {
-    text-decoration: underline;
-}
-
-.crumbs {
-    font-size: var(--text-small);
-    color: var(--muted);
-}
-
-.crumb-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    list-style: none;
-    margin: 0 0 var(--space-2);
-    padding: 0;
-}
-
-.crumb-list li + li::before {
-    content: '/';
-    margin-right: var(--space-1);
-}
-
-.crumb-list a {
-    color: inherit;
-}
-
-.crumb-list a[aria-current='page'] {
-    color: var(--fg);
-    text-decoration: none;
-}
-
-/* The heading owns the left, and the buttons and the sort sit together on the right. */
-.results-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-4);
-}
-
-.results-heading {
-    margin: 0 auto 0 0;
-}
-
-.sort {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    font-size: var(--text-small);
-}
-
-/* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
-.sort .select {
-    min-width: 0;
 }
 
 /*
@@ -938,6 +275,584 @@ h4 {
 .rules .text-button {
     min-height: 1.5rem;
     font-size: var(--text-small);
+}
+
+.option-button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 2rem;
+    font: inherit;
+    font-size: var(--text-small);
+    text-align: left;
+    color: var(--accent);
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.option-button:hover,
+.option-button:focus-visible {
+    text-decoration: underline;
+}
+
+/* What did not load, in the text's own color since it asks for something to be done. */
+.load-failure {
+    color: var(--fg);
+}
+
+/* What did not load, with the way to ask again and any other way on beside it. */
+.load-failure-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+/* Skip to content, out of sight until it takes focus. */
+.skip {
+    position: absolute;
+    left: var(--space-4);
+    top: -10rem;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--on-accent);
+    z-index: 10;
+}
+
+.skip:focus-visible {
+    top: var(--space-4);
+}
+
+/* The page frame: the strip, the masthead, the categories and the footer. */
+
+/*
+ * The strip and the masthead keep their borders across the whole viewport
+ * and line their content up with the column below, so the page reads as
+ * one column from the first line to the footer.
+ */
+.portfolio,
+.topbar,
+.masthead,
+.colophon {
+    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + var(--space-4));
+}
+
+/*
+ * The strip and the demo's own switches, one row on a wide screen: whose
+ * demo it is on the left, who the visitor shops as and the tour on the
+ * right, apart from the masthead a shopper uses.
+ */
+.topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 var(--space-5);
+    border-bottom: 1px solid var(--line);
+}
+
+.topbar .portfolio {
+    justify-content: flex-start;
+    gap: 0 var(--space-5);
+    padding-inline: 0;
+    border-bottom: 0;
+}
+
+/* The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row. */
+.topbar-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block: var(--space-1);
+}
+
+.topbar-tools:empty {
+    display: none;
+}
+
+/* Whose demo this is, above the masthead: two links, one line, scrolls away. */
+.portfolio {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0 var(--space-4);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--text-small);
+}
+
+/* The whole row height is the target, not the one line of small text. */
+.portfolio a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+}
+
+.portfolio a,
+.colophon a {
+    color: var(--muted);
+}
+
+.portfolio a:hover,
+.portfolio a:focus-visible,
+.colophon a:hover,
+.colophon a:focus-visible {
+    color: var(--fg);
+}
+
+/* The footer's rule runs the width of the page, as the header's do, with its text in the column. */
+.colophon {
+    margin-top: var(--space-6);
+    padding-block: var(--space-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--text-small);
+}
+
+.colophon p {
+    margin: 0;
+}
+
+.masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--line);
+}
+
+/*
+ * The room the search box and the category links take once the store is
+ * ready, kept while the masthead holds the brand alone, so the page below
+ * does not move when they arrive. One row on a wide screen, and two on a
+ * phone, the brand and the search box, then the categories. The demo's
+ * switches keep their room in the strip the same way, beside its links on
+ * a wide screen and on a row of their own on a phone.
+ */
+.masthead.is-waiting {
+    min-height: 4.35rem;
+}
+
+/*
+ * A field's height and the padding around it, and the width of the two
+ * switches, as they take once they arrive, so they wrap, or not, as they
+ * will.
+ */
+.topbar.is-waiting .topbar-tools:empty {
+    display: flex;
+    min-width: 15.65rem;
+    min-height: calc(var(--field-height) + var(--space-2));
+}
+
+.brand {
+    font-weight: var(--weight-mark);
+    font-size: var(--text-title);
+    color: inherit;
+    text-decoration: none;
+}
+
+.content {
+    padding: var(--space-4);
+    max-width: var(--column);
+    margin: 0 auto;
+}
+
+/*
+ * The pages the script draws, whose answer arrives after the first screen,
+ * are at least a screen tall, so the footer starts below the fold and the
+ * answer arriving above it never moves it on screen. The pages written in
+ * their HTML have nothing on its way, and keep their height.
+ */
+#root > .content {
+    min-height: 100dvh;
+}
+
+/* The masthead: the brand, the search box and the root categories, one row on a wide screen. */
+
+.masthead {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+}
+
+.masthead-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-5);
+}
+
+/* The search box gives way before anything wraps, so the row holds from a phone's width up. */
+.masthead .searchbox {
+    flex-basis: 12em;
+}
+
+.category-nav {
+    margin-left: auto;
+}
+
+/* Its select drops under its label where larger text leaves no room beside it. */
+.viewer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-small);
+    color: var(--muted);
+}
+
+/* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
+.category-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.category-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: var(--muted);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+}
+
+.category-link:hover,
+.category-link:focus-visible {
+    color: var(--fg);
+    border-bottom-color: var(--control);
+}
+
+.category-link[aria-current='page'] {
+    color: var(--fg);
+    font-weight: var(--weight-strong);
+    border-bottom-color: var(--accent);
+}
+
+@media (max-width: 48rem) {
+    .masthead.is-waiting {
+        min-height: 7.35rem;
+    }
+
+    .topbar-tools {
+        flex-basis: 100%;
+    }
+
+    /*
+     * A field is a thumb's height on a phone, so the room kept is too. Its
+     * width is the row's already, so it never asks for more than the screen.
+     */
+    .topbar.is-waiting .topbar-tools:empty {
+        min-width: 0;
+        min-height: calc(var(--target) + var(--space-2));
+    }
+
+    /* The three links on one line in small text, the switches on the line below them. */
+    .topbar .portfolio {
+        gap: 0 var(--space-4);
+        font-size: var(--text-caption);
+    }
+
+    .topbar-tools {
+        padding-block: 0 var(--space-2);
+    }
+
+    /* The brand and the search box on one row, the categories below, as focus takes them. */
+    .masthead-row {
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-3);
+    }
+
+    .masthead .searchbox {
+        flex: 1 1 10em;
+        max-width: none;
+    }
+
+    .category-nav {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
+}
+
+/* A store that did not start says so as the page's heading, in the text's own color. */
+.standby-heading {
+    font-size: var(--text-title);
+    color: var(--fg);
+}
+
+/* The results page: facets beside a grid of cards. */
+
+.results-layout {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+}
+
+/* The column keeps up with the results and scrolls on its own when it is taller than the screen. */
+.results-side {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    /* A scrolling box clips what spills past its edge, so the focus ring gets room inside it. */
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+}
+
+/*
+ * Nothing found: no facets to show, so the results take the whole width,
+ * and never more than it, whatever their widest content asks for.
+ */
+.results-layout.is-empty {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * The results dim while the next ones load, after a short wait, so a fast
+ * answer never flickers. They come back at once, and with reduced motion
+ * they change without fading.
+ */
+.results-main {
+    transition: opacity 0.15s;
+}
+
+.results-layout.is-loading .results-main {
+    opacity: 0.6;
+    transition-delay: 0.1s;
+}
+
+@media (max-width: 48rem) {
+    /* The column is the screen's width, never what its widest content asks for. */
+    .results-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-4);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .results-main {
+        transition-duration: 0s;
+    }
+}
+
+/* Each group set apart under a line, its title small and strong, its rows the column's width. */
+.facets {
+    display: grid;
+    gap: 0;
+}
+
+.facets > .text-button {
+    margin-bottom: var(--space-3);
+}
+
+.facet {
+    margin: 0;
+    padding: var(--space-4) 0;
+    border: none;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: var(--space-1);
+}
+
+.facet:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Floated, so a fieldset draws its legend inside it rather than into the line above. */
+.facet-title {
+    float: left;
+    width: 100%;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+    padding: 0;
+    margin-bottom: var(--space-1);
+}
+
+.facet-title + * {
+    clear: both;
+}
+
+/*
+ * A row lights up under the pointer across the column's width. Everything in
+ * a group is inset alike, so the rows' edges line up with the title and the
+ * column, which scrolls on its own, never scrolls sideways.
+ */
+.facet-title,
+.facet-current,
+.facet .text-button,
+.facet .option-button {
+    padding-inline: var(--space-2);
+}
+
+.facet-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2rem;
+    padding-inline: var(--space-2);
+    font-size: var(--text-small);
+    border-radius: var(--radius-small);
+}
+
+.facet-option:hover {
+    background: var(--highlight);
+}
+
+.facets .hint {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Where the shopper is in the categories, with the way up above it and its own below it. */
+.facet-current {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+}
+
+.facet-links.is-nested {
+    padding-left: var(--space-3);
+}
+
+/* A rating band: the stars a card shows at it, then its words, on one line. */
+.facet-rating {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.facet-label {
+    flex: 1;
+}
+
+.facet-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+}
+
+/* The filters that are on, each a chip that removes itself, then the way to clear them all. */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    list-style: none;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-small);
+    color: var(--fg);
+    background: var(--highlight);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-large);
+}
+
+.chip-x {
+    color: var(--muted);
+}
+
+.chip:hover .chip-x,
+.chip:focus-visible .chip-x {
+    color: var(--fg);
+}
+
+.crumbs {
+    font-size: var(--text-small);
+    color: var(--muted);
+}
+
+.crumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    list-style: none;
+    margin: 0 0 var(--space-2);
+    padding: 0;
+}
+
+.crumb-list li + li::before {
+    content: '/';
+    margin-right: var(--space-1);
+}
+
+.crumb-list a {
+    color: inherit;
+}
+
+.crumb-list a[aria-current='page'] {
+    color: var(--fg);
+    text-decoration: none;
+}
+
+/* The heading owns the left, and the buttons and the sort sit together on the right. */
+.results-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+/* The results heading. */
+
+.results-heading {
+    font-size: var(--text-title);
+    font-weight: var(--weight-strong);
+}
+
+.results-note {
+    font-weight: var(--weight-normal);
+    color: var(--muted);
+}
+
+.results-heading {
+    margin: 0 auto 0 0;
+}
+
+@media (max-width: 48rem) {
+    /* The heading on a line of its own, then the buttons together under it. */
+    .results-heading {
+        flex-basis: 100%;
+        margin-right: 0;
+    }
+}
+
+.sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-small);
+}
+
+/* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
+.sort .select {
+    min-width: 0;
 }
 
 .cards {
@@ -1122,15 +1037,6 @@ h4 {
     color: var(--accent);
 }
 
-/* A line the page wants seen, such as who is shopping or whose catalog this is, on the highlight. */
-.callout {
-    margin: 0 0 var(--space-4);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-small);
-    background: var(--highlight);
-    border-radius: var(--radius);
-}
-
 /* The rules a sort set aside, with the way back after the line rather than inside it. */
 .set-aside {
     display: flex;
@@ -1171,6 +1077,151 @@ h4 {
     margin-left: auto;
     font-size: var(--text-small);
     color: var(--muted);
+}
+
+/* The facets as a drawer, on a phone. */
+.drawer-badge {
+    font-weight: var(--weight-strong);
+    color: var(--accent);
+}
+
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: var(--scrim);
+}
+
+.drawer-panel {
+    position: fixed;
+    z-index: 21;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(22rem, 90vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    /* An edge as well as the shadow, which cannot show against a dark backdrop. */
+    border-right: 1px solid var(--line);
+    box-shadow: var(--shadow-raised);
+}
+
+.drawer-panel[hidden] {
+    display: none;
+}
+
+.drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+.drawer-title {
+    margin: 0;
+    font-size: var(--text-lead);
+}
+
+/* The first stop in the drawer, as big as a thumb, as its rows are. */
+.drawer-close {
+    min-height: var(--target);
+    padding-inline: var(--space-2);
+}
+
+.drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+}
+
+/* Rows a thumb can hit. */
+.drawer-body .facet-option,
+.drawer-body .option-button,
+.drawer-body .facet-current {
+    min-height: var(--target);
+}
+
+.drawer-done {
+    margin: var(--space-4);
+}
+
+/*
+ * The merchandiser's rules panel, in the facet column's place. Its parts
+ * wear classes of their own and the shared look.
+ */
+.rules {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.rules-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+}
+
+.rules-rule {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+}
+
+/* The panel's heading is the size of the filter titles beside it, below the page's own heading. */
+.rules-title {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-body);
+    font-weight: var(--weight-strong);
+}
+
+.rules-rule-name {
+    font-weight: var(--weight-strong);
+}
+
+.rules-form {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.rules-field {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: var(--text-small);
+}
+
+.rules-field > label,
+.rules-field > legend {
+    font-weight: var(--weight-strong);
+    padding: 0;
+}
+
+.rules-input[aria-invalid='true'],
+.select[aria-invalid='true'] {
+    border-color: var(--warn);
+}
+
+.rules-choice {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    font-size: var(--text-small);
+}
+
+.rules-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: center;
+}
+
+.rules-notice {
+    margin: 0 0 var(--space-4);
 }
 
 /* One product. */
@@ -1264,13 +1315,169 @@ h4 {
     .product-name {
         font-size: var(--text-heading);
     }
+}
 
-    /* The heading on a line of its own, then the buttons together under it. */
-    .results-heading {
-        flex-basis: 100%;
-        margin-right: 0;
-    }
+/* The tour. */
 
+.tour {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    z-index: 5;
+    width: min(24rem, calc(100vw - 2rem));
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    background: var(--raised);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-raised);
+}
+
+/*
+ * Whatever takes focus is scrolled into view above the tour, never left
+ * behind it, at the height it is drawn, on a phone and on a wide screen.
+ */
+:root.is-touring {
+    scroll-padding-bottom: calc(var(--tour-height, 0rem) + var(--space-4) * 2);
+}
+
+.tour-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.tour-count {
+    margin: 0;
+    font-size: var(--text-caption);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Close is there when wanted and quiet otherwise, so Try it is the panel's one strong action. */
+.button.tour-close {
+    margin-right: calc(var(--space-2) * -1);
+    padding-inline: var(--space-2);
+    color: var(--muted);
+    background: none;
+    border-color: transparent;
+}
+
+.button.tour-close:hover {
+    color: var(--fg);
+    border-color: transparent;
+}
+
+/* The panel's buttons sit on its raised surface, not in wells of the page's. */
+.tour .button:not(.button-primary) {
+    background: var(--raised);
+}
+
+/* How far through the tour the visitor is, drawn under the count it repeats. */
+.tour-progress {
+    height: var(--space-1);
+    margin-top: var(--space-2);
+    background: var(--line);
+    border-radius: var(--radius-small);
+}
+
+.tour-progress-done {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: var(--radius-small);
+}
+
+.tour-title {
+    margin: var(--space-3) 0 var(--space-2);
+    font-size: var(--text-lead);
+    line-height: var(--leading-tight);
+}
+
+.tour-body {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-small);
+    line-height: var(--leading-body);
+}
+
+.tour-test {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-caption);
+    color: var(--muted);
+}
+
+/* Each file whole on a line where it fits, broken inside its name only where it cannot. */
+.tour-test-file {
+    color: var(--fg);
+    overflow-wrap: anywhere;
+}
+
+/*
+ * The buttons wrap onto a second line where larger text leaves no room for
+ * them on one. Previous and Next keep together on the right, so they stand in
+ * the same place on the last stop, which has no Try it, as on every other.
+ */
+.tour-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.tour-step-label {
+    display: inline-grid;
+}
+
+.tour-step-label > * {
+    grid-area: 1 / 1;
+}
+
+/* Drawn for its width alone, so it is neither seen nor heard. */
+.tour-step-unused {
+    visibility: hidden;
+}
+
+.tour-steps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+/* A phone's first visit: one line saying what the tour is, with its two answers beside it. */
+.tour-offer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* The two answers keep together, wrapping as one where larger text leaves no room, then apart. */
+.tour-offer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+.tour-offer-text {
+    flex: 1 1 7em;
+    margin: 0;
+    font-size: var(--text-small);
+}
+
+/*
+ * The end of the page can scroll above the tour's box, at its drawn height
+ * and the gap it floats in, so what a stop points at there is never under it.
+ */
+.content.has-tour {
+    padding-bottom: calc(var(--tour-height, 0dvh) + var(--space-6));
+}
+
+@media (max-width: 48rem) {
     /*
      * A sheet across the bottom, as tall as its stop and never more than half
      * the screen, so a short stop leaves the page in view. A long stop scrolls
@@ -1309,38 +1516,6 @@ h4 {
     .content.has-tour {
         padding-bottom: calc(var(--tour-height, 50dvh) + var(--space-4));
     }
-
-    /* The column is the screen's width, never what its widest content asks for. */
-    .results-layout {
-        grid-template-columns: minmax(0, 1fr);
-        gap: var(--space-4);
-    }
-
-    /* The three links on one line in small text, the switches on the line below them. */
-    .topbar .portfolio {
-        gap: 0 var(--space-4);
-        font-size: var(--text-caption);
-    }
-
-    .topbar-tools {
-        padding-block: 0 var(--space-2);
-    }
-
-    /* The brand and the search box on one row, the categories below, as focus takes them. */
-    .masthead-row {
-        flex-wrap: wrap;
-        gap: var(--space-2) var(--space-3);
-    }
-
-    .masthead .searchbox {
-        flex: 1 1 10em;
-        max-width: none;
-    }
-
-    .category-nav {
-        flex-basis: 100%;
-        margin-left: 0;
-    }
 }
 
 /*
@@ -1353,278 +1528,4 @@ h4 {
         position: sticky;
         bottom: 0;
     }
-}
-
-/* The facets as a drawer, on a phone. */
-.drawer-badge {
-    font-weight: var(--weight-strong);
-    color: var(--accent);
-}
-
-.drawer-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    background: var(--scrim);
-}
-
-.drawer-panel {
-    position: fixed;
-    z-index: 21;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: min(22rem, 90vw);
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    /* An edge as well as the shadow, which cannot show against a dark backdrop. */
-    border-right: 1px solid var(--line);
-    box-shadow: var(--shadow-raised);
-}
-
-.drawer-panel[hidden] {
-    display: none;
-}
-
-.drawer-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--line);
-}
-
-.drawer-title {
-    margin: 0;
-    font-size: var(--text-lead);
-}
-
-/* The first stop in the drawer, as big as a thumb, as its rows are. */
-.drawer-close {
-    min-height: var(--target);
-    padding-inline: var(--space-2);
-}
-
-.drawer-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--space-4);
-}
-
-/* Rows a thumb can hit. */
-.drawer-body .facet-option,
-.drawer-body .option-button,
-.drawer-body .facet-current {
-    min-height: var(--target);
-}
-
-.drawer-done {
-    margin: var(--space-4);
-}
-
-/* Skip to content, out of sight until it takes focus. */
-.skip {
-    position: absolute;
-    left: var(--space-4);
-    top: -10rem;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius);
-    background: var(--accent);
-    color: var(--on-accent);
-    z-index: 10;
-}
-
-.skip:focus-visible {
-    top: var(--space-4);
-}
-
-/*
- * The explainer at about/: prose at a reading measure, sharing the
- * wordmark's left edge, with the demo's own steps for type and space.
- */
-.about {
-    max-width: var(--measure);
-    line-height: var(--leading-body);
-}
-
-.about h1 {
-    margin: var(--space-4) 0 var(--space-2);
-    font-size: var(--text-display);
-    font-weight: var(--weight-strong);
-}
-
-.about-pitch {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-lead);
-}
-
-.about section {
-    margin-top: var(--space-6);
-    padding-block: var(--space-6) 0;
-    border-top: 1px solid var(--line);
-}
-
-.about h2 {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-title);
-    font-weight: var(--weight-strong);
-}
-
-.about h3 {
-    margin: var(--space-5) 0 var(--space-1);
-    font-size: var(--text-body);
-    font-weight: var(--weight-strong);
-}
-
-.about p {
-    margin: 0 0 var(--space-4);
-}
-
-.about p:last-child {
-    margin-bottom: 0;
-}
-
-/*
- * The accent, not the browser's blue, so links match the rest of the page in
- * both themes. It is too close to the text to mark a link by itself, so the
- * underline stays.
- */
-.about a:not(.button) {
-    color: var(--accent);
-    text-decoration: underline;
-}
-
-.about code {
-    font-size: var(--text-small);
-    overflow-wrap: anywhere;
-}
-
-.about-where {
-    margin: 0;
-}
-
-.eyebrow {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-caption);
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-}
-
-/* The steps stack, one under the next, with the arrow between them saying so. */
-.flow {
-    list-style: none;
-    margin: var(--space-4) 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-5);
-}
-
-.flow li {
-    position: relative;
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
-    font-size: var(--text-small);
-}
-
-.flow li + li::before {
-    content: '\2193' / '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(-1 * var(--space-5));
-    /* The arrow fills the gap between two steps, and its line is the gap's height, so it sits in the middle. */
-    height: var(--space-5);
-    line-height: var(--space-5);
-    text-align: center;
-    color: var(--control);
-}
-
-.flow strong {
-    display: block;
-    font-weight: var(--weight-medium);
-}
-
-.flow-note {
-    display: block;
-    margin-top: var(--space-1);
-    color: var(--muted);
-}
-
-/*
- * The merchandiser's rules panel, in the facet column's place. Its parts
- * wear classes of their own and the shared look.
- */
-.rules {
-    display: grid;
-    gap: var(--space-4);
-}
-
-.rules-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
-}
-
-.rules-rule {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-1);
-}
-
-/* The panel's heading is the size of the filter titles beside it, below the page's own heading. */
-.rules-title {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-body);
-    font-weight: var(--weight-strong);
-}
-
-.rules-rule-name {
-    font-weight: var(--weight-strong);
-}
-
-.rules-form {
-    display: grid;
-    gap: var(--space-3);
-}
-
-.rules-field {
-    display: grid;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-size: var(--text-small);
-}
-
-.rules-field > label,
-.rules-field > legend {
-    font-weight: var(--weight-strong);
-    padding: 0;
-}
-
-.rules-input[aria-invalid='true'],
-.select[aria-invalid='true'] {
-    border-color: var(--warn);
-}
-
-.rules-choice {
-    display: flex;
-    gap: var(--space-2);
-    align-items: baseline;
-    font-size: var(--text-small);
-}
-
-.rules-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    align-items: center;
-}
-
-.rules-notice {
-    margin: 0 0 var(--space-4);
 }

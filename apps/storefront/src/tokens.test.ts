@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -10,7 +10,14 @@ import { describe, expect, it } from 'vitest';
  * site, which is why it is not one of these.
  */
 
-const SHEETS = ['styles.css', 'try/try.css', 'widget/widget.css', 'search/searchbox.css'];
+/** The sheets that hold the values, and the host pages' own, which are no store sheet. */
+const NOT_STORE_SHEETS = new Set(['tokens.css', 'widget/host.css']);
+
+/** Every other sheet under src, so a sheet split off is read without being listed. */
+const SHEETS = readdirSync(__dirname, { recursive: true, encoding: 'utf8' })
+    .map((path) => path.split(sep).join('/'))
+    .filter((path) => path.endsWith('.css') && !NOT_STORE_SHEETS.has(path))
+    .sort();
 
 /** The search box, whose sizes follow its own text, since it lives on other people's pages too. */
 const RELATIVE = 'search/searchbox.css';
@@ -78,6 +85,10 @@ const roles = (block: string) =>
         .filter(({ pairs }) => pairs.length > 0);
 
 describe('the design tokens', () => {
+    it('read every store sheet, the ones split off included', () => {
+        expect(SHEETS).toEqual(expect.arrayContaining(['styles.css', 'about/about.css']));
+    });
+
     it('write the palette once, so no sheet writes a color of its own', () => {
         const byValue = SHEETS.flatMap((at) =>
             [

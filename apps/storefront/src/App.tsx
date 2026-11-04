@@ -8,7 +8,7 @@ import {
     useState,
 } from 'react';
 
-import { type CategoryTree, treeOf } from './app/categories.js';
+import type { CategoryTree } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { PageTop } from './app/PageTop.jsx';
 import { DemoFooter } from './app/Portfolio.jsx';
@@ -16,27 +16,18 @@ import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
-import { NARROW, useMediaQuery } from './app/useMediaQuery.js';
-import { useQuery } from './app/useQuery.js';
+import { type Readiness, startOf, useStore, useStoreClient } from './app/useStore.js';
 import { type Navigate, useUrlState } from './app/useUrlState.js';
-import {
-    createClient,
-    createClientMemory,
-    type CustomerGroup,
-    type GraphQLClient,
-} from './client/graphql.js';
+import type { CustomerGroup, GraphQLClient } from './client/graphql.js';
 import { createCollector } from './events/collector.js';
 import { EventsProvider } from './events/EventsContext.jsx';
 import { sessionId } from './events/session.js';
-import { CategoriesDocument, StoreDocument } from './generated/operations.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { DiscardRules } from './results/RulesPanel.jsx';
 import { SearchBox } from './search/SearchBox.jsx';
-import { hasSeenTour, keepTourStop, keptTourStop, markTourSeen } from './tour/seen.js';
-import { STOPS } from './tour/stops.js';
-import { Tour, TOUR_ID, TourOffer, type TourProps } from './tour/Tour.jsx';
-import { startFailure, type StartFailureKind } from './worker/register.js';
+import { TourPlace, TourToggle } from './tour/Tour.jsx';
+import { useTour } from './tour/useTour.js';
 
 export interface AppProps {
     readonly apiUrl: string;
@@ -63,12 +54,6 @@ export interface AppProps {
 }
 
 /**
- * Whether the store answers yet. A browser that cannot run it is told what
- * to do instead, and a store that did not start this time can be tried again.
- */
-type Readiness = 'waiting' | 'ready' | StartFailureKind;
-
-/**
  * Whether the masthead keeps the room its search box and links will take,
  * and the strip the room of the demo's switches: only on the store's own
  * page, whose masthead is the one the room fits, and only while the store
@@ -88,29 +73,6 @@ const Standby = ({
     if (readiness === 'ready') return null;
     return <StartFailure kind={readiness} retry={retry} />;
 };
-
-/** Opens and closes the tour, and says which panel it controls. */
-const TourToggle = ({
-    touring,
-    onToggle,
-    buttonRef,
-}: {
-    readonly touring: boolean;
-    readonly onToggle: () => void;
-    readonly buttonRef: RefObject<HTMLButtonElement | null>;
-}) => (
-    <button
-        ref={buttonRef}
-        type="button"
-        className="button"
-        aria-expanded={touring}
-        // Names the tour only while there is one to name.
-        aria-controls={touring ? TOUR_ID : undefined}
-        onClick={onToggle}
-    >
-        Tour
-    </button>
-);
 
 /**
  * Said on every page while a saved set of rules is in effect, since the tour
@@ -181,17 +143,6 @@ const ViewerSwitch = ({
  */
 const switchesViewer = (info: StoreInfo): boolean => info.memberPricing || info.membersOnlyProducts;
 
-/** The masthead once the store is ready: the search box and the categories. */
-interface MastheadProps {
-    readonly client: GraphQLClient;
-    readonly state: SearchState;
-    readonly fresh: SearchState;
-    readonly navigate: Navigate;
-    readonly categories: CategoryTree;
-    /** The shopper submitted a search, whether or not it changed the page. */
-    readonly onSearched: () => void;
-}
-
 /**
  * The demo's own switches, which sit with the strip rather than in the
  * store's masthead: who the visitor shops as, when the store has groups to
@@ -221,6 +172,17 @@ const DemoTools = ({
         {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
     </>
 );
+
+/** The masthead once the store is ready: the search box and the categories. */
+interface MastheadProps {
+    readonly client: GraphQLClient;
+    readonly state: SearchState;
+    readonly fresh: SearchState;
+    readonly navigate: Navigate;
+    readonly categories: CategoryTree;
+    /** The shopper submitted a search, whether or not it changed the page. */
+    readonly onSearched: () => void;
+}
 
 const Masthead = ({ client, state, fresh, onSearched, navigate, categories }: MastheadProps) => (
     <>
@@ -266,133 +228,11 @@ const useDirectVisit = (product: string | undefined): boolean => {
     return direct;
 };
 
-/** The tour, or on a phone's first visit the short bar that offers it. */
-const TourPlace = ({
-    offering,
-    onStart,
-    ...tour
-}: TourProps & { readonly offering: boolean; readonly onStart: () => void }) =>
-    offering ? <TourOffer onStart={onStart} onDecline={tour.onClose} /> : <Tour {...tour} />;
-
-const useTour = (offered: boolean) => {
-    const [touring, setTouring] = useState(() => offered && !hasSeenTour());
-    // The stop last shown, kept in the browser so a reload resumes it.
-    const [tourStop, setStop] = useState(() => keptTourStop(STOPS.map((stop) => stop.id)));
-    const setTourStop = (index: number) => {
-        keepTourStop(STOPS[index]?.id ?? '');
-        setStop(index);
-    };
-    // Whether the panel was asked for, as opposed to opening itself on a first visit.
-    const [tourAsked, setTourAsked] = useState(false);
-    // A phone's first visit offers the tour in a short bar, and opens the sheet only on Start.
-    // Whether it is a phone is settled as the page opens, so turning it never swaps the two.
-    const narrow = useMediaQuery(NARROW);
-    const [onPhone] = useState(narrow);
-    const offering = touring && !tourAsked && onPhone;
-    // The Tour button opens and closes the sheet. While the bar only offers it, the sheet is closed.
-    const sheetOpen = touring && !offering;
-    const tourButton = useRef<HTMLButtonElement>(null);
-    const openTour = () => {
-        setTourAsked(true);
-        setTouring(true);
-    };
-    const closeTour = () => {
-        markTourSeen();
-        setTouring(false);
-        tourButton.current?.focus();
-    };
-    return {
-        touring,
-        offering,
-        sheetOpen,
-        tourStop,
-        setTourStop,
-        tourAsked,
-        tourButton,
-        openTour,
-        closeTour,
-    };
-};
-
-/**
- * The client the page asks with, and the way to start it over. A save or a
- * reset of the rules builds the store again under a new version. Everything
- * remembered is for the old one, so the memory is emptied and a new client
- * makes every open question ask again.
- */
-const useStoreClient = (apiUrl: string, group: CustomerGroup) => {
-    // One memory for both viewers: the viewer is in the key, so switching keeps both.
-    const [memory] = useState(createClientMemory);
-    const [revision, setRevision] = useState(0);
-    // The count is kept beside the state so a caller learns the revision its change made.
-    const counted = useRef(0);
-    const storeChanged = useCallback(() => {
-        memory.forget();
-        counted.current += 1;
-        setRevision(counted.current);
-        return counted.current;
-    }, [memory]);
-    const client = useMemo(
-        () => createClient({ url: apiUrl, group, memory }),
-        // The revision is the point: a new client is a fresh set of questions.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [apiUrl, group, memory, revision]
-    );
-    return { client, storeChanged, revision };
-};
-
 /** A new search starts over, except that explain mode is a way of looking, not a filter. */
 const freshFrom = (state: SearchState): SearchState => ({
     ...EMPTY_STATE,
     ...(state.explain && { explain: true }),
 });
-
-/** How long the page waits for the categories before it shows the store without them. */
-export const REVEAL_WITHIN_MS = 1000;
-
-/** Already answered, for what waits on the store's start without a promise of its own. */
-const STARTED = Promise.resolve();
-
-/** The store's start, as a promise either way. */
-const startOf = (ready: Promise<void> | 'started') => (ready === 'started' ? STARTED : ready);
-
-/**
- * Whether the store answers, and what the page knows about it once it does:
- * the category tree and the store line. A store that is starting shows
- * once its categories have answered, or failed, so the masthead and the
- * content arrive together and change once. A slow answer holds the page
- * a second at most, and once shown it stays shown. A store that already
- * answers shows at once.
- */
-const useStore = (client: GraphQLClient, ready: Promise<void> | 'started') => {
-    const [started, setStarted] = useState<Readiness>(ready === 'started' ? 'ready' : 'waiting');
-    const [shown, setShown] = useState(ready === 'started');
-    useEffect(() => {
-        startOf(ready).then(
-            () => setStarted('ready'),
-            (error: unknown) => setStarted(startFailure(error))
-        );
-    }, [ready]);
-    // Neither query takes variables, so an empty set asks and nothing waits.
-    const whenStarted = started === 'ready' ? {} : undefined;
-    const categories = useQuery(client, CategoriesDocument, whenStarted);
-    const store = useQuery(client, StoreDocument, whenStarted);
-    const tree = useMemo(() => treeOf(categories.data?.categories), [categories.data]);
-    // The categories and the store's own facts, which decide the viewer switch, so the
-    // masthead arrives whole rather than with the switch a beat behind it.
-    const settled = [categories, store].every(
-        (query) => query.data !== undefined || query.error !== undefined
-    );
-    // Kept once true, so a later client, whose categories are not in yet, never hides the store.
-    if (started === 'ready' && settled && !shown) setShown(true);
-    useEffect(() => {
-        if (started !== 'ready' || shown) return undefined;
-        const timer = window.setTimeout(() => setShown(true), REVEAL_WITHIN_MS);
-        return () => window.clearTimeout(timer);
-    }, [started, shown]);
-    const readiness: Readiness = started === 'ready' && !shown && !settled ? 'waiting' : started;
-    return { readiness, tree, store };
-};
 
 export const App = ({
     apiUrl,

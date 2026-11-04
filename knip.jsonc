@@ -45,7 +45,7 @@
             "vite": false,
             "entry": [
                 "src/main.tsx",
-                "src/about.ts",
+                "src/about/main.ts",
                 "src/try/main.tsx",
                 "src/widget/demo.tsx",
                 "src/widget/index.tsx",
