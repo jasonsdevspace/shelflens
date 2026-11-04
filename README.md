@@ -190,6 +190,7 @@ again against the code before each release, and amended where the code has moved
 15. [One store host for every transport](docs/decisions/0015-one-store-host-for-every-transport.md)
 16. [The first screen is in the page, drawn by the components the script uses](docs/decisions/0016-the-first-screen-is-in-the-page.md)
 17. [A sort sets aside what rules do to the order, and the page says so](docs/decisions/0017-a-sort-sets-aside-what-rules-do-to-the-order.md)
+18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](docs/decisions/0018-visits-are-counted-by-path.md)
 
 ## Dev setup
 

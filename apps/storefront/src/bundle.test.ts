@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
@@ -104,9 +104,27 @@ describe('the widget in a host page', () => {
     it('counts no visit, since the page that embeds it is someone else\u2019s site', async () => {
         const { code } = await bundled('./widget/index.tsx');
         expect(code).not.toContain('plausible.io');
-        // The demo's own page does, so the probe is one the build would carry.
-        expect((await bundled('./main.tsx')).code).toContain('plausible.io');
     }, 60_000);
+});
+
+describe('the demo\u2019s own pages', () => {
+    it('each count visits, a page added later included', async () => {
+        // Every page the build serves is an index.html in the app, and each names its entry.
+        const app = new URL('..', import.meta.url);
+        const pages = (await readdir(app, { recursive: true })).filter(
+            (path) =>
+                path.endsWith('index.html') &&
+                !/^(dist|node_modules|playwright-report)\//.test(path)
+        );
+        expect(pages.length).toBeGreaterThan(1);
+        for (const page of pages) {
+            const html = await readFile(new URL(page, app), 'utf8');
+            const entry = /<script type="module" src="\/(src\/[^"]+)"/.exec(html)?.[1];
+            expect(entry, page).toBeDefined();
+            const { code } = await bundled(`../${entry ?? ''}`);
+            expect(code, page).toContain('plausible.io');
+        }
+    }, 120_000);
 });
 
 describe('the service worker', () => {

@@ -53,4 +53,31 @@ describe('counting visits', () => {
         });
         expect(sent.r).toBeNull();
     });
+
+    it('sends a link out by its path, without its query or fragment', () => {
+        const sent = withoutQueries({
+            n: 'Outbound Link: Click',
+            u: 'https://jasonsdevspace.com/shelflens/?q=jacket',
+            d: 'jasonsdevspace.com',
+            p: { url: 'https://github.com/jasonsdevspace/shelflens?tab=readme#jacket' },
+        });
+        expect(sent.p).toEqual({ url: 'https://github.com/jasonsdevspace/shelflens' });
+        expect(JSON.stringify(sent)).not.toContain('jacket');
+    });
+
+    it('keeps a referrer that is no web address as it is, and sends none that is no address', () => {
+        const from = (r: string) =>
+            withoutQueries({ n: 'pageview', u: 'https://jasonsdevspace.com/', d: 'x', r }).r;
+        expect(from('android-app://com.google.android.gm/')).toBe(
+            'android-app://com.google.android.gm/'
+        );
+        expect(from('not an address')).toBeNull();
+    });
+
+    it('leaves the page as it was when the tracker cannot start', () => {
+        init.mockImplementationOnce(() => {
+            throw new Error('plausible.init() can only be called once');
+        });
+        expect(startAnalytics(true)).toBe(false);
+    });
 });

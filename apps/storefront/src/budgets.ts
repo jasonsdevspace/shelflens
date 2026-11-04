@@ -7,7 +7,7 @@
  * hold nothing from GraphQL: the operations are generated as names, the
  * hash of each one's text, so no parser, printer or query text is needed in
  * the browser. Raised from 100 KB to 104 KB for the visit counter, which adds
- * about 2 KB, when the page measured 99 KB without it.
+ * about 2 KB, when the bundle test measured the page at 99 KB without it.
  */
 export const BUDGET_BYTES = 104 * 1024;
 

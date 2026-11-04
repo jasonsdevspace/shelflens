@@ -4,9 +4,9 @@
  * lead off the site, or stay on the explainer, are left alone.
  *
  * The key and the value are the tour's own, written here rather than
- * imported so the explainer shares no code with the store and the store's
- * page stays one file. The test reads them back through the tour's own
- * function, so the two cannot drift unnoticed.
+ * imported so the explainer shares none of the store's code but the visit
+ * counter. The test reads them back through the tour's own function, so the
+ * two cannot drift unnoticed.
  */
 
 const markTourSeen = (): void => {

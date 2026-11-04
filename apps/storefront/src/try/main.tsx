@@ -16,12 +16,12 @@ import { TryPage } from './TryPage.jsx';
  * registered exactly as the store's page registers its own, so the two pages
  * never replace each other's worker.
  */
-startAnalytics();
-
 const config = hostConfig(import.meta.env.BASE_URL, 'try');
 const base = config.scope;
 const root = document.getElementById('root');
 if (!root) throw new Error('the page has no root element');
+
+startAnalytics();
 
 const ready = import.meta.env.DEV
     ? Promise.reject(new OnlyOnTheBuiltSite())

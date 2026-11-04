@@ -2,10 +2,10 @@ import { expect, type Page, test } from './support.js';
 
 /*
  * Every page carries a Content Security Policy that allows only its own
- * origin and its one inline script. Anything the page does that the policy
- * refuses shows up as a violation, so the store, the explainer, the widget
- * and the page for a visitor's catalog are each used here with every
- * violation collected, and none is allowed.
+ * origin, its one inline script and a connection to Plausible. Anything the
+ * page does that the policy refuses shows up as a violation, so the store,
+ * the explainer, the widget and the page for a visitor's catalog are each
+ * used here with every violation collected, and none is allowed.
  */
 
 const watch = async (page: Page): Promise<string[]> => {
@@ -91,4 +91,20 @@ test('the widget styles its box within the policy where a browser cannot share a
     // The stylesheet applied: the input takes the width of its box, not the browser's default.
     expect(Number.parseFloat(styled.width)).toBeGreaterThan(200);
     expect(refused).toEqual([]);
+});
+
+test('hands the next page the site and never the search', async ({ page }) => {
+    await page.goto('./?q=wool+jacket');
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin');
+    // The portfolio shares the store's origin, so a link to it would otherwise carry the search.
+    await page.evaluate(() => {
+        const link = document.createElement('a');
+        link.href = 'about/';
+        document.body.append(link);
+        link.click();
+    });
+    await page.waitForURL(/about\/$/);
+    const referrer = await page.evaluate(() => document.referrer);
+    expect(referrer).toBe(`${new URL(page.url()).origin}/`);
+    expect(referrer).not.toContain('jacket');
 });
