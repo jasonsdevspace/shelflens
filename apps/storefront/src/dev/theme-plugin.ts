@@ -32,7 +32,9 @@ const policyFor = (script: string, widget: boolean): string =>
         `script-src 'self' 'sha256-${createHash('sha256').update(script).digest('base64')}'`,
         widget ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'",
         "img-src 'self' data:",
-        "connect-src 'self'",
+        // The visit counts go to Plausible. Its tracker is bundled with the page, so no
+        // script comes from there.
+        "connect-src 'self' https://plausible.io",
         "worker-src 'self'",
         "object-src 'none'",
         "base-uri 'none'",

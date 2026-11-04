@@ -1,5 +1,6 @@
 import { BATCH_LIMIT, type EventKind, type StoreEvent } from '@shelflens/api';
 
+import { trackingAllowed } from '../privacy.js';
 import { randomId } from './session.js';
 
 /**
@@ -75,11 +76,6 @@ const beacon = (url: string, body: string): boolean => {
         return false;
     }
 };
-
-/** Whether collection is allowed, which it is unless the browser sends Global Privacy Control. */
-export const trackingAllowed = (): boolean =>
-    typeof navigator === 'undefined' ||
-    !('globalPrivacyControl' in navigator && navigator.globalPrivacyControl === true);
 
 const stripUndefined = (
     event: Recorded,

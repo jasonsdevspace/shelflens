@@ -100,6 +100,13 @@ describe('the widget in a host page', () => {
         expect(code).not.toContain(FIXTURE_PROBE);
         expect(compressed).toBeLessThan(WIDGET_BUDGET_BYTES);
     }, 60_000);
+
+    it('counts no visit, since the page that embeds it is someone else\u2019s site', async () => {
+        const { code } = await bundled('./widget/index.tsx');
+        expect(code).not.toContain('plausible.io');
+        // The demo's own page does, so the probe is one the build would carry.
+        expect((await bundled('./main.tsx')).code).toContain('plausible.io');
+    }, 60_000);
 });
 
 describe('the service worker', () => {

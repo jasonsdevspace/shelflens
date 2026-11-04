@@ -1,7 +1,7 @@
 import { parseEventBatch } from '@shelflens/api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createCollector, PAUSE_MS, trackingAllowed } from './collector.js';
+import { createCollector, PAUSE_MS } from './collector.js';
 
 /*
  * The telemetry rules, in the page: a batch holds only what the store
@@ -157,13 +157,6 @@ describe('the collector', () => {
         flush();
         await vi.advanceTimersByTimeAsync(PAUSE_MS);
         expect(send).not.toHaveBeenCalled();
-    });
-
-    it('reads Global Privacy Control from the browser', () => {
-        vi.stubGlobal('navigator', { globalPrivacyControl: true });
-        expect(trackingAllowed()).toBe(false);
-        vi.stubGlobal('navigator', {});
-        expect(trackingAllowed()).toBe(true);
     });
 
     it('breaks nothing when the browser has no beacon', async () => {

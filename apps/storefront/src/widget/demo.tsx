@@ -1,6 +1,7 @@
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { startAnalytics } from '../analytics.js';
 import { UNSUPPORTED_ADVICE } from '../app/StartFailure.jsx';
 import { readLoaded } from '../client/catalog.js';
 import { controlledByWorker, OnlyOnTheBuiltSite, startFailure } from '../worker/register.js';
@@ -13,6 +14,8 @@ import type { mountShelfLens } from './index.jsx';
  * loaded as a host would load it, from its own file. The page says which store
  * it searches, the demo's or a visitor's own, in its body's `data-store`.
  */
+
+startAnalytics();
 
 const base = import.meta.env.BASE_URL;
 const store = storeOf(document.body.dataset['store']);

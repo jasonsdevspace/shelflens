@@ -33,6 +33,11 @@ test('the store, the explainer, the widget and the try page run within their pol
         'content',
         /script-src 'self' 'sha256-/
     );
+    // Visit counts are sent to Plausible, and nothing else leaves for another origin.
+    await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+        'content',
+        /connect-src 'self' https:\/\/plausible\.io;/
+    );
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await search.fill('jack');
     await expect(page.getByRole('listbox')).toBeVisible();

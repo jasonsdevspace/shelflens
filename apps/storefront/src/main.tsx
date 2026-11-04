@@ -3,8 +3,11 @@ import './styles.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { startAnalytics } from './analytics.js';
 import { App } from './App.jsx';
 import { controlledByWorker } from './worker/register.js';
+
+startAnalytics();
 
 const base = import.meta.env.BASE_URL;
 const root = document.getElementById('root');

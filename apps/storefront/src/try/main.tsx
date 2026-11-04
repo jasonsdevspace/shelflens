@@ -4,6 +4,7 @@ import './try.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { startAnalytics } from '../analytics.js';
 import { hostConfig } from '../widget/host-config.js';
 import { controlledByWorker, OnlyOnTheBuiltSite } from '../worker/register.js';
 import { TryPage } from './TryPage.jsx';
@@ -15,6 +16,8 @@ import { TryPage } from './TryPage.jsx';
  * registered exactly as the store's page registers its own, so the two pages
  * never replace each other's worker.
  */
+startAnalytics();
+
 const config = hostConfig(import.meta.env.BASE_URL, 'try');
 const base = config.scope;
 const root = document.getElementById('root');

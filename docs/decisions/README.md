@@ -50,3 +50,6 @@ describe, from the code and its tests.
 17. [A sort sets aside what rules do to the order, and the page says so](0017-a-sort-sets-aside-what-rules-do-to-the-order.md):
     hides hold under any sort, pins, boosts and buries give way to it and are named on the page,
     and a category's own sort keeps the pins written for it.
+18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](0018-visits-are-counted-by-path.md):
+    the tracker bundled from npm as one site for the domain, each address cut back to its path,
+    never started under the signal or in the widget.
