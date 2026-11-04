@@ -122,10 +122,11 @@ const asHttp = async (request: Request) => ({
 
 const noCatalog = () => refuse(404, 'no catalog is loaded, so there is nothing to search yet');
 
-const fetchJson = async <T>(fetchImpl: typeof fetch, url: string, what: string): Promise<T> => {
+/** A file's JSON as it came, for the caller to check or to trust with its reason. */
+const fetchJson = async (fetchImpl: typeof fetch, url: string, what: string): Promise<unknown> => {
     const response = await fetchImpl(url);
     if (!response.ok) throw new Error(`the ${what} came back with status ${response.status}`);
-    return response.json() as Promise<T>;
+    return response.json();
 };
 
 /**
@@ -138,8 +139,8 @@ const KEEPS_RULES = Symbol('keeps saved rules');
  * The API as a `fetch` handler, which is all a service worker needs.
  *
  * The store is built the first time anything asks, from the catalog and the
- * rules the site ships beside it, and a rules file that names what the store
- * does not have fails that build, so a mistake is reported rather than
+ * rules the site ships beside it, and a rules file of the wrong shape, or one
+ * that names what the store does not have, fails that build, so a mistake is reported rather than
  * shipped. A `GET` or `POST` to `graphql` under the base is answered here,
  * the storefront's own operations by name and full query text only when
  * allowed. Any other request is left to the network, as decision record 6
@@ -186,7 +187,10 @@ export const createWorkerApi = ({
             return inHand;
         }
         if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
-        return fetchJson<Catalog>(fetchImpl, catalogUrl, 'catalog');
+        // The site's own catalog, written by its build from the generator, so
+        // it is trusted rather than checked on every first visit. A test
+        // holds the generator's catalog to the check a visitor's file passes.
+        return (await fetchJson(fetchImpl, catalogUrl, 'catalog')) as Catalog;
     };
 
     /**
@@ -212,7 +216,7 @@ export const createWorkerApi = ({
                 catalogNow(),
                 rulesUrl === undefined
                     ? Promise.resolve([])
-                    : fetchJson<unknown>(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
+                    : fetchJson(fetchImpl, rulesUrl, 'rules file').then(parseRulesFile),
             ]);
             return { catalog, rules: shipped };
         },

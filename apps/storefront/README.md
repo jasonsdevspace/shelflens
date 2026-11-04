@@ -30,9 +30,9 @@ the page.
   matched which term in which field, exactly, by prefix, by synonym or corrected, and which rule
   pinned, boosted or buried it. When a sort sets the merchandising aside, the page says so.
 - **Rules are config.** `public/rules.json` is the merchandising the demo ships, loaded beside the
-  catalog when the store is built and validated then: a rule that names a product or an attribute
-  the store does not have fails the build, in the worker, the Node server and the dev server
-  alike. A test runs the shipped rules against the shipped catalog.
+  catalog when the store is built and validated then: a rule of the wrong shape, or one that names
+  a product or an attribute the store does not have, fails the build, in the worker, the Node
+  server and the dev server alike. A test runs the shipped rules against the shipped catalog.
 - **The search box as a widget.** `widget.js`, built beside the page, mounts the box into an
   element a host page hands over, inside a shadow root with its own sheet and its own React, and
   opens its list in the browser's top layer, over anything the host stacks or clips. The host

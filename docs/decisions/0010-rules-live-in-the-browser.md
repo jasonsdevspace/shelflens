@@ -64,11 +64,16 @@ is tried, not while the rule is half typed.
 - A preview is an uncached request, so typing into the panel asks the engine on each change. In the
   browser that is the worker, and a search answers in a few milliseconds. The Node server rates the
   path as it rates its siblings, since every save builds a new store version.
-- The rules path is a plain `POST` outside the schema, like events, and for the same reason: the
+- The rules path is a plain `POST` outside the schema, like events, and for the same reason:
   every host refuses full queries unless told otherwise, and a mutation would have to go where they
   are refused.
-- A saved set is a whole set, not a patch. The host checks the whole thing with the engine before
-  it replaces anything, so the store is never built from a set that fails to load.
+- A saved set is a whole set, not a patch. The host reads it into rules field by field, so each list
+  is a list of text, each weight a number and each key one a rule takes, and then checks the whole
+  set with the engine before it replaces anything, so the store is never built from a set that fails
+  to load. The engine checks what a rule names, its weights and its window, and trusts the shape it
+  is given. Without the read, a search's words written as one word would be saved and then fail
+  every search, a misspelled key would save a rule that never applies, and a pin written as one SKU
+  would be read one letter at a time and refused over its first letter.
 - A rule can name a product that is not on the current page only by typing its SKU, and the panel
   refuses it until it is. That is a limit chosen over a product search inside the panel, which
   would be a second search box on a page about search.
@@ -78,8 +83,8 @@ is tried, not while the rule is half typed.
 - The API: a preview equals a search over a store built with the same rules, is volatile, and
   refuses a rule naming a product that does not exist with a user error that says the SKU.
 - The rules path: a `GET` says the shipped set and that it is not edited, a `POST` with a set the
-  engine refuses changes nothing and says why, a good `POST` is the new set, and a `DELETE` gives
-  the shipped set back.
+  engine refuses, or with a rule of the wrong shape, changes nothing and says why, a good `POST` is
+  the new set, and a `DELETE` gives the shipped set back.
 - The worker: a save is a new store version, the search after it equals the preview before it,
   and every answer kept under the old version is gone.
 - The panel: the rules that apply to the search are listed, a draft goes up the moment the rule

@@ -35,10 +35,10 @@ production.
 
 `RULES=path` loads the merchandising the server starts with from a JSON file of the shape the demo
 ships in `apps/storefront/public/rules.json`: an object with the rules under `rules`, each with an
-`id`. A file of another shape stops the server before it listens, and so does a rule that names a
-product or an attribute the catalog does not have, since the store is built from the catalog and the
-rules before the server takes a request. Without it the server starts with no rules, and `/rules`
-takes a set to put in effect.
+`id`. A file of another shape, or a rule with a field of the wrong shape, stops the server before it
+listens, and so does a rule that names a product or an attribute the catalog does not have, since
+the store is built from the catalog and the rules before the server takes a request. Without it the
+server starts with no rules, and `/rules` takes a set to put in effect.
 
 `PORT` and `PRODUCTS` set the port and the size of the generated catalog. `FULL_QUERIES=true` takes
 full queries as well as the persisted operations, which are all it runs otherwise. Behind one proxy

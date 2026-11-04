@@ -18,6 +18,12 @@ describe('reading a catalog file', () => {
         expect(parseCatalogFile(SAMPLE)).toBe(SAMPLE);
     });
 
+    it('accepts the catalog the site ships, which its worker trusts without this check', () => {
+        // The build writes the generator's default catalog, as JSON.
+        const shipped: unknown = JSON.parse(JSON.stringify(generateCatalog()));
+        expect(parseCatalogFile(shipped)).toEqual(shipped);
+    });
+
     it.each([
         ['a missing name', withProduct({ name: undefined }), 'product 1 has no name'],
         [
@@ -54,6 +60,62 @@ describe('reading a catalog file', () => {
             'a lowercase currency',
             { ...SAMPLE, currency: 'usd' },
             'the catalog has no currency code',
+        ],
+        [
+            'a catalog with no locale',
+            { ...SAMPLE, locale: undefined },
+            'the catalog is not in the en-US locale',
+        ],
+        ['a catalog with no seed', { ...SAMPLE, seed: '7' }, 'the catalog has no seed'],
+        [
+            'a category parent that is not an id',
+            { ...SAMPLE, categories: [{ ...SAMPLE.categories[0], parentId: 7 }] },
+            'or a parent that is not an id',
+        ],
+        [
+            'a product price that is not an object',
+            withProduct({ price: 4999 }),
+            'product 1 has no price for each group',
+        ],
+        [
+            'a visibleTo given as one group',
+            withProduct({ visibleTo: 'guest' }),
+            'product 1 has a visibleTo that is not a list of words',
+        ],
+        [
+            'a product visible to nobody',
+            withProduct({ visibleTo: [] }),
+            'product 1 is visible to a group the store does not have, or to none',
+        ],
+        [
+            'a category path through a category the catalog lacks',
+            {
+                ...SAMPLE,
+                categories: SAMPLE.categories.map((c, i) =>
+                    i === 0 ? { ...c, path: ['nope', ...c.path] } : c
+                ),
+            },
+            "has a path that does not run through the catalog's categories to it",
+        ],
+        [
+            'a category path that ends somewhere else',
+            {
+                ...SAMPLE,
+                categories: SAMPLE.categories.map((c, i) =>
+                    i === 0 ? { ...c, path: [...c.path, 'beyond'] } : c
+                ),
+            },
+            "has a path that does not run through the catalog's categories to it",
+        ],
+        [
+            'a parent the catalog lacks',
+            {
+                ...SAMPLE,
+                categories: SAMPLE.categories.map((c, i) =>
+                    i === 0 ? { ...c, parentId: 'nope' } : c
+                ),
+            },
+            'names a parent the catalog does not have',
         ],
     ])('refuses %s, saying what is wrong', (_, catalog, reason) => {
         expect(() => parseCatalogFile(catalog)).toThrow(reason);
