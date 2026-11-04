@@ -163,11 +163,9 @@ describe('what did not load', () => {
         await openProduct();
         await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }));
         // Try again has gone, so focus is on the loading view rather than the body.
-        await waitFor(() =>
-            expect(screen.getByRole('region', { name: 'Loading the product.' })).toHaveFocus()
-        );
+        expect(screen.getByRole('region', { name: 'Loading the product.' })).toHaveFocus();
         release();
-        await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+        expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
     });
 
     it('says the products could not be loaded, and loads them on Try again', async () => {
