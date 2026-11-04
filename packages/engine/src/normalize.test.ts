@@ -48,6 +48,10 @@ describe('tokenize', () => {
 
     it('drops apostrophes rather than splitting on them', () => {
         expect(tokenize("Men's")).toEqual(['men']);
+        for (const curly of ['Men\u2019s', 'Men\u2018s', 'Men\u02bcs']) {
+            expect(tokenize(curly), curly).toEqual(['men']);
+            expect(analyze(`${curly} Tee`), curly).toEqual(analyze("Men's Tee"));
+        }
     });
 
     it('folds accents, case and plurals', () => {

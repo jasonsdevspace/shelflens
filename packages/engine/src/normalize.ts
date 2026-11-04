@@ -32,6 +32,14 @@ export const stem = (term: string): string => {
 };
 
 /**
+ * Apostrophes, dropped rather than split on: the typewriter one, the curly
+ * ones a word processor puts in, and the letter apostrophe some keyboards
+ * type. A catalog written in any of them reads the same as one typed with
+ * the plain key.
+ */
+const APOSTROPHES = /['\u2018\u2019\u02bc]/g;
+
+/**
  * The ways a phrase can be written as terms.
  *
  * A hyphenated word is indexed as both its joined form and its parts, so a
@@ -42,7 +50,7 @@ export const stem = (term: string): string => {
 export const phraseVariants = (text: string): string[][] => {
     let variants: string[][] = [[]];
     for (const chunk of normalize(text)
-        .replace(/'/g, '')
+        .replace(APOSTROPHES, '')
         .split(/[^a-z0-9-]+/)) {
         const parts = chunk.split('-').filter((part) => part.length > 0);
         if (parts.length === 0) continue;
@@ -65,7 +73,7 @@ export const phraseVariants = (text: string): string[][] => {
 const termsIn = (normalized: string): { readonly terms: string[]; readonly words: number } => {
     const terms: string[] = [];
     let words = 0;
-    for (const chunk of normalized.replace(/'/g, '').split(/[^a-z0-9-]+/)) {
+    for (const chunk of normalized.replace(APOSTROPHES, '').split(/[^a-z0-9-]+/)) {
         const parts = chunk.split('-').filter((part) => part.length > 0);
         if (parts.length === 0) continue;
         words += 1;
@@ -79,9 +87,10 @@ const termsIn = (normalized: string): { readonly terms: string[]; readonly words
  * Splits text into terms.
  *
  * Hyphenated words produce both their parts and the joined form, so
- * "T-Shirt" is found by "t shirt", "t-shirt" and "tshirt" alike. Apostrophes
- * are dropped rather than split on, so "men's" becomes "mens" and then
- * "men". Everything else that is not a letter or digit separates words.
+ * "T-Shirt" is found by "t shirt", "t-shirt" and "tshirt" alike. Apostrophes,
+ * straight or curly, are dropped rather than split on, so "men's" becomes
+ * "mens" and then "men". Everything else that is not a letter or digit
+ * separates words.
  */
 export const tokenize = (text: string): string[] => termsIn(normalize(text)).terms;
 

@@ -10,6 +10,11 @@ describe('phraseVariants', () => {
         expect(phraseVariants('t-shirt')).toEqual([['tshirt'], ['t', 'shirt']]);
     });
 
+    it('reads a curly apostrophe as it reads a straight one', () => {
+        expect(phraseVariants('men\u2019s tee')).toEqual(phraseVariants("men's tee"));
+        expect(phraseVariants("men's tee")).toEqual([['men', 'tee']]);
+    });
+
     it('combines the forms of every word in a phrase', () => {
         expect(phraseVariants('baseball cap')).toEqual([['baseball', 'cap']]);
         expect(phraseVariants('Quarter-Zip Sweaters')).toEqual([

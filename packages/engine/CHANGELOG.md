@@ -23,6 +23,10 @@ the error codes have a type of their own.
   count together, and a word with an apostrophe, such as "Men's", now counts as the one word it is,
   where it counted as two. Length normalization reads that count and the field's average, so the
   scores in a field where any text has an apostrophe move a little.
+- **A curly apostrophe reads as a straight one.** The curly apostrophes a word processor puts in,
+  and the letter apostrophe some keyboards type, are dropped as the straight one is, so "Men’s" is
+  found by "mens" and "men's" and counts as one word. They used to split the word in two, in the
+  catalog, the query and the synonyms alike.
 - **A word for a number or a boolean is refused.** A filter whose `eq` is a word, or any `in`
   filter, on a number or boolean attribute throws an `EngineError` with the code
   `wrong_attribute_kind`, as a range on anything but a number and true or false on anything but a
