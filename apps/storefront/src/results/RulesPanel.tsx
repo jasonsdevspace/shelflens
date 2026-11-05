@@ -90,17 +90,28 @@ const RuleList = ({
     );
 };
 
-/** Two steps to give up a saved set, since there is no undo for it. */
+/**
+ * Two steps to give up a saved set, since there is no undo for it. The panel holds the host's
+ * refusal in its editor, so it is still said when the panel is drawn again on a phone or a wide
+ * screen. The banner, which is drawn once, holds its own.
+ */
 export const DiscardRules = ({
     rulesUrl,
     onReset,
+    held,
 }: {
     readonly rulesUrl: string;
     /** The host has its own rules back. */
     readonly onReset: () => void;
+    readonly held?: {
+        readonly failure: string | undefined;
+        readonly setFailure: (reason: string | undefined) => void;
+    };
 }) => {
     const [asking, setAsking] = useState(false);
-    const [failure, setFailure] = useState<string>();
+    const [own, setOwn] = useState<string>();
+    const failure = held ? held.failure : own;
+    const setFailure = held ? held.setFailure : setOwn;
     const discard = async () => {
         const discarded = await discardRules(rulesUrl);
         const failed = discarded.ok ? undefined : (discarded.reason ?? NOT_RESTORED);
@@ -211,7 +222,13 @@ export const RulesPanel = ({
                                 Add a rule
                             </button>
                         </div>
-                        {edited && <DiscardRules rulesUrl={rulesUrl} onReset={editor.reset} />}
+                        {edited && (
+                            <DiscardRules
+                                rulesUrl={rulesUrl}
+                                onReset={editor.reset}
+                                held={{ failure: editor.refused, setFailure: editor.refuse }}
+                            />
+                        )}
                     </>
                 )
             )}

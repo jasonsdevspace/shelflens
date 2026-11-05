@@ -35,6 +35,9 @@ export interface RulesEditor {
     readonly tried: boolean;
     readonly problems: Problems;
     readonly message: string;
+    /** The host's words when it refused to discard the saved set, until the panel closes. */
+    readonly refused: string | undefined;
+    readonly refuse: (reason: string | undefined) => void;
     readonly fields: RefObject<HTMLFormElement | null>;
     /** The whole set with the rule being typed in it, once that rule is sound, for the preview. */
     readonly draft: readonly Rule[] | undefined;
@@ -154,6 +157,7 @@ export const useRulesEditor = ({
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
     const [message, setMessage] = useState('');
+    const [refused, setRefused] = useState<string>();
     const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
     // A closed panel holds no rule being typed and previews nothing.
@@ -165,6 +169,7 @@ export const useRulesEditor = ({
             setTried(false);
             setDraft(undefined);
             setMessage('');
+            setRefused(undefined);
         }
     }
     // Whether the panel is open now, for a request that lands after it closed.
@@ -274,6 +279,8 @@ export const useRulesEditor = ({
         tried,
         problems,
         message,
+        refused,
+        refuse: setRefused,
         fields,
         draft,
         retry,
