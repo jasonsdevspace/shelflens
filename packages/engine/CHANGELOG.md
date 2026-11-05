@@ -7,7 +7,7 @@ names the package on npm and how to install that version once it is promoted.
 
 ## 0.7.0
 
-Synonym rules that share a phrase chain through it.
+Synonym rules chain through a phrase they share.
 
 - **Rules chain.** A phrase now offers every phrase the rules lead it to, not only the ones a
   single rule names. A one-way rule from "raincoat" to "rain shell" and an equivalence of "rain
@@ -16,8 +16,10 @@ Synonym rules that share a phrase chain through it.
   along the chain, so "anorak" does not reach "raincoat", and rules that lead back to where they
   began stop there.
 - **Searches may find more.** A rule set whose rules share a phrase widens what its searches find,
-  and a document found only along a chain scores as any synonym match does. A rule set with no
-  shared phrase finds what it found before.
+  and a document found along a chain scores as any synonym match does, however far along. A
+  hyphenated word in an equivalence now also offers its other spelling through the rule's other
+  words, so with "t-shirt" and "tee" equivalent, "t shirt" finds a product written "Tshirt".
+  Rules that share nothing else find what they found before.
 
 ## 0.6.1
 

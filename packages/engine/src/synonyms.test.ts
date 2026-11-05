@@ -31,9 +31,11 @@ describe('rewriting a query', () => {
     ]);
 
     it('turns a phrase a rule names into one unit with alternatives', () => {
+        // "tee" leads back to the other spelling of "t-shirt", so a product written "Tshirt"
+        // is found by "t shirt" too.
         expect(synonyms.rewrite(['red', 't', 'shirt'])).toEqual([
             { terms: ['red'], alternatives: [] },
-            { terms: ['t', 'shirt'], alternatives: [['tee']] },
+            { terms: ['t', 'shirt'], alternatives: [['tee'], ['tshirt']] },
         ]);
     });
 
@@ -181,7 +183,7 @@ describe('changing synonyms without reindexing', () => {
 });
 
 /*
- * Rules that share a phrase chain through it, so a merchandiser who says a raincoat is a rain
+ * Rules chain through a phrase they share, so a merchandiser who says a raincoat is a rain
  * shell, and a rain shell is an anorak, has said a raincoat is an anorak. A one-way rule stays
  * one way along the chain.
  */
@@ -224,6 +226,17 @@ describe('rules that share a phrase', () => {
         ] as const;
         expect(alternativesOf(rules, ['cap'])).toEqual([['hat']]);
         expect(alternativesOf(rules, ['hat'])).toEqual([['cap']]);
+    });
+
+    it('offer what a phrase reaches whatever other rules the set holds', () => {
+        const rules = [
+            { kind: 'one-way', from: 't shirt', to: 'tee' },
+            { kind: 'equivalent', terms: ['tee', 'tshirt'] },
+        ] as const;
+        const unrelated = [...rules, { kind: 'one-way', from: 't-shirt', to: 'top' }] as const;
+        expect(alternativesOf(rules, ['t', 'shirt'])).toEqual([['tee'], ['tshirt']]);
+        // A rule that names "t-shirt" adds what it gives, nearest first, and takes nothing away.
+        expect(alternativesOf(unrelated, ['t', 'shirt'])).toEqual([['tee'], ['top'], ['tshirt']]);
     });
 
     it('find what the end of the chain names', () => {

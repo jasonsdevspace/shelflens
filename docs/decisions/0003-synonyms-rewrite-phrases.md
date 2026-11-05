@@ -52,11 +52,11 @@ Option B, with three details that the same investigation settled.
   different precedence would need a rule order, which does not exist.
 - Rules on the same phrase add up rather than compete, so the order rules are given in does not
   change what a phrase offers.
-- **Amended with engine 0.7.0.** Rules that share a phrase chain through it, so a phrase offers
-  every phrase the rules lead it to. A one-way rule stays one way along the chain, a chain that
-  leads back to where it began stops there, and another spelling of a phrase, such as "tshirt" for
-  "t-shirt", is offered only when a rule names it, since it is the same word. A merchandiser who
-  wants two phrases kept apart writes rules that share neither.
+- **Amended with engine 0.7.0.** Rules chain through a phrase they share, so a phrase offers
+  every phrase the rules lead it to, and a match along a chain scores as any synonym does, however
+  far along. A one-way rule stays one way along the chain, and a chain that leads back to where it
+  began stops there. Two phrases stay apart only when no chain of rules leads from one to the
+  other.
 
 ## How it is tested
 
@@ -68,3 +68,5 @@ Option B, with three details that the same investigation settled.
   what both give.
 - Unit tests where rules chain: a one-way rule on through an equivalence and not back, two
   equivalences joined by a shared word, one-way rules one after another, and rules that loop.
+  What a phrase offers does not change with rules that lead nowhere near it, and a search for
+  "raincoat" finds an Anorak at the end of a chain.
