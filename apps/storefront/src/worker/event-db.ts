@@ -1,4 +1,4 @@
-import { EVENT_LIMIT, type EventStore, type StoreEvent } from '@shelflens/api';
+import { EVENT_LIMIT, type EventStore, parseEventBatch } from '@shelflens/api';
 
 /**
  * Events kept in IndexedDB, which is what a service worker has.
@@ -112,8 +112,10 @@ export const createIndexedDbEventStore = ({
         },
         all: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- IndexedDB types what it gives back as any, and nothing here checks it
-            return request(store.index(BY_TIME).getAll()) as Promise<StoreEvent[]>;
+            const stored: unknown[] = await request(store.index(BY_TIME).getAll());
+            // An event outlives the page that wrote it, so each is checked as it is read, as one a
+            // page sends is. One the check now refuses is left out, and goes with the oldest.
+            return stored.flatMap((event) => parseEventBatch([event]) ?? []);
         },
     };
 };

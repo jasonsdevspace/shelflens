@@ -1,5 +1,4 @@
-import type { Rule } from '@jasonsdevspace/shelflens';
-import type { RuleStore } from '@shelflens/api';
+import { parseRulesFile, type RuleStore } from '@shelflens/api';
 
 /**
  * The rules a visitor saved, kept in IndexedDB, which is what a service
@@ -60,8 +59,17 @@ export const createIndexedDbRuleStore = (name = DEFAULT_DB_NAME): RuleStore => {
     return {
         current: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- IndexedDB types what it gives back as any, and nothing here checks it
-            return (await request(store.get(KEY))) as readonly Rule[] | undefined;
+            const stored: unknown = await request(store.get(KEY));
+            if (stored === undefined) return undefined;
+            // A saved set outlives the page that wrote it, so it is checked as it is read, as a
+            // rules file is. One an older page wrote that the check now refuses is let go, and the
+            // store goes back to the rules the site ships.
+            try {
+                return parseRulesFile({ rules: stored });
+            } catch {
+                await write((kept) => kept.delete(KEY));
+                return undefined;
+            }
         },
         replace: (rules) => write((store) => store.put(rules, KEY)),
         reset: () => write((store) => store.delete(KEY)),

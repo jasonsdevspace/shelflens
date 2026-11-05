@@ -74,6 +74,9 @@ showing what was viewed together or the category's most rated.
   product's own answer stays cacheable.
 - These events are not the site's visit counts, which go to Plausible by path alone and stop under
   the same signal, as record 18 says.
+- A kept event outlives the page that wrote it, so the store checks each one as it reads it,
+  as a batch a page sends is checked. One the check now refuses is left out of what the store
+  gives back, and stays until the limit lets it go with the oldest.
 
 ## How it is tested
 
@@ -88,3 +91,5 @@ showing what was viewed together or the category's most rated.
 - The worker and the Node server: a posted batch reaches the store each was given.
 - In a real browser, through the service worker: a search, a click and a view arrive in
   IndexedDB.
+- The store in IndexedDB: an event an older page kept that the batch check now refuses is left
+  out of what it gives back, and the rest are kept.

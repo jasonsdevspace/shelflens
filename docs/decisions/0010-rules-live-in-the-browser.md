@@ -77,6 +77,9 @@ is tried, not while the rule is half typed.
 - A rule can name a product that is not on the current page only by typing its SKU, and the panel
   refuses it until it is. That is a limit chosen over a product search inside the panel, which
   would be a second search box on a page about search.
+- A saved set outlives the page that wrote it, so the worker checks it as it reads it back, as
+  a rules file is checked. A set an older page saved that the check now refuses is let go, and
+  the store goes back to the shipped rules rather than failing every search.
 
 ## How it is tested
 
@@ -96,3 +99,5 @@ is tried, not while the rule is half typed.
   the page, and the way back gives the shipped order.
 - In a real browser: the same flow through the service worker, the saved set outliving a reload,
   and an audit of the page with the panel open.
+- The store in IndexedDB: a set an older page saved that the rules check now refuses is let go
+  as it is read, and nothing is left of it.

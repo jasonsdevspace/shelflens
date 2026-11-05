@@ -99,6 +99,10 @@ again keeps its answers.
   never offered over a visitor's products, or the other way round.
 - The page for a visitor's catalog runs only on the built site, where its worker does. The dev
   server answers the demo's API and nothing else.
+- A kept catalog outlives the page that wrote it, so the worker checks it again as it reads it
+  back, the same check a file is given when it is loaded, a small part of building the store
+  from it. One an older page kept that the check now refuses is let go, and the page asks for a
+  file as it does when nothing is loaded.
 
 ## How it is tested
 
@@ -119,3 +123,5 @@ again keeps its answers.
   clipping box, every request on the page's own origin and every search sent to the visitor's
   store under `try/`, Enter and a pick landing on the visitor's store, and the notice with
   nothing loaded.
+- The store in IndexedDB: a catalog an older page kept that the catalog check now refuses is
+  let go as it is read, and nothing is left of it.

@@ -8,8 +8,10 @@ import {
     type RuleStore,
     type StoreEvent,
 } from '@shelflens/api';
+import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
+import { createIndexedDbCatalogStore } from './catalog-db.js';
 import { createIndexedDbEventStore } from './event-db.js';
 import { createIndexedDbRuleStore } from './rule-db.js';
 
@@ -107,5 +109,71 @@ describe('the stores the demo runs on', () => {
         expect(
             (await createIndexedDbEventStore({ name: events }).all()).map((event) => event.id)
         ).toEqual(['a']);
+    });
+});
+
+/** Opens a store's database as it stands, to reach a record as an older page left it. */
+const databaseOf = (name: string): Promise<IDBDatabase> =>
+    new Promise((resolve, reject) => {
+        const opening = indexedDB.open(name);
+        opening.onsuccess = () => resolve(opening.result);
+        opening.onerror = () => reject(opening.error ?? new Error('could not open'));
+    });
+
+/** Writes a record straight into a store, as a page from before a check might have. */
+const putRaw = async (name: string, store: string, value: unknown, key?: string) => {
+    const db = await databaseOf(name);
+    const transaction = db.transaction(store, 'readwrite');
+    if (key === undefined) transaction.objectStore(store).put(value);
+    else transaction.objectStore(store).put(value, key);
+    await new Promise<void>((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error ?? new Error('could not write'));
+    });
+    db.close();
+};
+
+/** What a store holds under a key, read past the store's own check. */
+const rawAt = async (name: string, store: string, key: string): Promise<unknown> => {
+    const db = await databaseOf(name);
+    const read = db.transaction(store).objectStore(store).get(key);
+    const found = await new Promise<unknown>((resolve, reject) => {
+        read.onsuccess = () => resolve(read.result);
+        read.onerror = () => reject(read.error ?? new Error('could not read'));
+    });
+    db.close();
+    return found;
+};
+
+describe('what a store kept from an older page', () => {
+    it('lets a rule set go that the rules check now refuses, so the shipped rules apply', async () => {
+        const name = fresh();
+        const store = createIndexedDbRuleStore(name);
+        await store.replace(rules);
+        // Its queries as one text rather than a list, which every search failed on.
+        await putRaw(name, 'rules', [{ id: 'old', when: { queries: 'jacket' } }], 'saved');
+        expect(await store.current()).toBeUndefined();
+        expect(await rawAt(name, 'rules', 'saved')).toBeUndefined();
+    });
+
+    it('lets a catalog go that the catalog check now refuses, so the page asks for a file', async () => {
+        const name = fresh();
+        const store = createIndexedDbCatalogStore(name);
+        const catalog = generateCatalog({ seed: 7, products: 5 });
+        await store.replace(catalog);
+        expect(await store.current()).toEqual(catalog);
+        // Without its locale, which the store's locale query failed on.
+        const { locale: _, ...withoutLocale } = catalog;
+        await putRaw(name, 'catalog', withoutLocale, 'loaded');
+        expect(await store.current()).toBeUndefined();
+        expect(await rawAt(name, 'catalog', 'loaded')).toBeUndefined();
+    });
+
+    it('leaves out an event the events check now refuses, and keeps the rest', async () => {
+        const name = fresh();
+        const store = createIndexedDbEventStore({ name });
+        await store.append([view('a', 1)]);
+        await putRaw(name, 'events', { ...view('b', 2), email: 'someone@example.test' });
+        expect((await store.all()).map((event) => event.id)).toEqual(['a']);
     });
 });

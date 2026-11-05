@@ -1,3 +1,4 @@
+import { parseCatalogFile } from '@shelflens/api';
 import type { Catalog } from '@shelflens/catalog';
 
 /**
@@ -57,8 +58,17 @@ export const createIndexedDbCatalogStore = (name = CATALOG_DB_NAME): CatalogStor
     return {
         current: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- IndexedDB types what it gives back as any, and nothing here checks it
-            return (await request(store.get(KEY))) as Catalog | undefined;
+            const stored: unknown = await request(store.get(KEY));
+            if (stored === undefined) return undefined;
+            // A catalog outlives the page that wrote it, so it is checked as it is read, as a
+            // visitor's file is. One an older page wrote that the check now refuses is let go, and
+            // the page asks for a file again.
+            try {
+                return parseCatalogFile(stored);
+            } catch {
+                await write((kept) => kept.delete(KEY));
+                return undefined;
+            }
         },
         replace: (catalog) => write((store) => store.put(catalog, KEY)),
         clear: () => write((store) => store.delete(KEY)),
