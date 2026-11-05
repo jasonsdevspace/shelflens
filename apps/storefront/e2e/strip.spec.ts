@@ -2,14 +2,14 @@ import { expect, type Page, settle, test } from './support.js';
 
 /*
  * The strip above every page, drawn as every demo on jasonsdevspace.com draws it: its three links
- * together on the left, in one row over its rule, with the demo's own switches on the right.
+ * together on the left, in one row over its rule.
  */
 
 /** Where the strip's links sit, and how tall the bar holding them is, as the screen draws it. */
 const stripLayout = async (page: Page) => {
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
-    // The bar the strip sits in on the store's pages, or the strip itself where it stands alone.
-    const bar = page.locator('.topbar').or(strip).first();
+    // The bar the strip sits in.
+    const bar = page.locator('.topbar');
     const box = async (locator: ReturnType<Page['locator']>) => {
         const drawn = await locator.boundingBox();
         if (!drawn) throw new Error('expected the strip to be drawn');
@@ -29,7 +29,7 @@ for (const [name, path] of [
     ['the store', '/'],
     ['the about page', '/about/'],
 ] as const) {
-    test(`draws the strip on ${name} as every demo does, its links together on the left`, async ({
+    test(`draws the strip on ${name} as every demo does, its links side by side in one row`, async ({
         page,
     }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
