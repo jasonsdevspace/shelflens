@@ -5,6 +5,20 @@ change the public types. Each version is published from a tag by the release wor
 provenance, and has a release on GitHub with the entry below as its notes, under a line that
 names the package on npm and how to install that version once it is promoted.
 
+## 0.7.0
+
+Synonym rules that share a phrase chain through it.
+
+- **Rules chain.** A phrase now offers every phrase the rules lead it to, not only the ones a
+  single rule names. A one-way rule from "raincoat" to "rain shell" and an equivalence of "rain
+  shell" and "anorak" let a search for "raincoat" find an Anorak, and two equivalences that share
+  "sweater" make "jumper" and "pullover" stand in for each other. A one-way rule stays one way
+  along the chain, so "anorak" does not reach "raincoat", and rules that lead back to where they
+  began stop there.
+- **Searches may find more.** A rule set whose rules share a phrase widens what its searches find,
+  and a document found only along a chain scores as any synonym match does. A rule set with no
+  shared phrase finds what it found before.
+
 ## 0.6.1
 
 Every synonym rule on a phrase applies, not only the first.

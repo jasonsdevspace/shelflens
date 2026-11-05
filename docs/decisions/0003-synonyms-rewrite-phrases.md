@@ -52,6 +52,11 @@ Option B, with three details that the same investigation settled.
   different precedence would need a rule order, which does not exist.
 - Rules on the same phrase add up rather than compete, so the order rules are given in does not
   change what a phrase offers.
+- **Amended with engine 0.7.0.** Rules that share a phrase chain through it, so a phrase offers
+  every phrase the rules lead it to. A one-way rule stays one way along the chain, a chain that
+  leads back to where it began stops there, and another spelling of a phrase, such as "tshirt" for
+  "t-shirt", is offered only when a rule names it, since it is the same word. A merchandiser who
+  wants two phrases kept apart writes rules that share neither.
 
 ## How it is tested
 
@@ -61,3 +66,5 @@ Option B, with three details that the same investigation settled.
 - Unit tests for phrase variants and query rewriting.
 - A unit test where a one-way rule and an equivalence name the same phrase, and the phrase offers
   what both give.
+- Unit tests where rules chain: a one-way rule on through an equivalence and not back, two
+  equivalences joined by a shared word, one-way rules one after another, and rules that loop.
