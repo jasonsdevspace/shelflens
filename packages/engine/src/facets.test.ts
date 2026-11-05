@@ -79,6 +79,25 @@ describe('facet counts', () => {
         });
     });
 
+    it('counts a document in every band it falls in when bands overlap', () => {
+        const overlapping = createEngine(documents, {
+            ...config,
+            facets: {
+                price: {
+                    kind: 'range',
+                    attribute: 'price',
+                    ranges: [{ to: 10000 }, { from: 5000 }],
+                },
+            },
+        });
+        expect(facet(overlapping.search({}).facets, 'price')).toMatchObject({
+            buckets: [
+                { to: 10000, count: 3 },
+                { from: 5000, count: 5 },
+            ],
+        });
+    });
+
     it('reports the smallest and largest value, skipping documents without one', () => {
         const { facets } = engine.search({ facets: ['rating'] });
         expect(facet(facets, 'rating')).toEqual({
@@ -169,6 +188,26 @@ describe('counts after a selection', () => {
             buckets: [
                 { value: 'Black', count: 1 },
                 { value: 'Blue', count: 1 },
+            ],
+        });
+    });
+});
+
+describe('counts under rules', () => {
+    it('counts a product a rule pins without a match, and leaves out one a rule hides', () => {
+        // "northwind" matches s1 and s2. The pin brings in s5, and the hide takes out s2.
+        const ruled = engine.reconfigure({
+            rules: [
+                { id: 'pin', when: { queries: ['northwind'] }, pin: ['s5'] },
+                { id: 'hide', when: { queries: ['northwind'] }, hide: ['s2'] },
+            ],
+        });
+        const { facets, hits } = ruled.search({ query: 'northwind', facets: ['brand'] });
+        expect(hits.map((h) => h.id)).toEqual(['s5', 's1']);
+        expect(facet(facets, 'brand')).toMatchObject({
+            buckets: [
+                { value: 'Northwind', count: 1 },
+                { value: 'Ridgeback', count: 1 },
             ],
         });
     });

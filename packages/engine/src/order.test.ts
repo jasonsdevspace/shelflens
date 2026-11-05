@@ -30,14 +30,20 @@ describe('firstInOrder', () => {
     });
 
     it('compares most items once when it needs far fewer than there are', () => {
+        // Shuffled, since a full sort of items already in order also compares each about once.
+        const next = numbers(11);
         const items = Array.from({ length: 10_000 }, (_, i) => i);
+        for (let i = items.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(next() * (i + 1));
+            [items[i], items[j]] = [items[j] ?? 0, items[i] ?? 0];
+        }
         let comparisons = 0;
         const compare = (a: number, b: number) => {
             comparisons += 1;
             return a - b;
         };
-        expect(firstInOrder(items, 20, compare)).toEqual(items.slice(0, 20));
-        // A full sort of ten thousand takes over a hundred thousand.
-        expect(comparisons).toBeLessThan(11_000);
+        expect(firstInOrder(items, 20, compare)).toEqual(Array.from({ length: 20 }, (_, i) => i));
+        // A full sort of these ten thousand takes over a hundred thousand.
+        expect(comparisons).toBeLessThan(12_000);
     });
 });

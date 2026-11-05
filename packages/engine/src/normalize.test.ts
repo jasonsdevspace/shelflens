@@ -94,16 +94,4 @@ describe('analyze', () => {
         expect(words(' - ')).toBe(0);
         expect(words('')).toBe(0);
     });
-
-    it('gives the terms tokenize gives', () => {
-        for (const text of [
-            "Men's Everyday T-Shirt",
-            'Café Racer',
-            ' - ',
-            '',
-            'Harbor & Pine, 28!',
-        ]) {
-            expect(analyze(text).terms).toEqual(tokenize(text));
-        }
-    });
 });

@@ -85,12 +85,10 @@ describe('the published engine', () => {
         expect(floorOf('>=24 <25')).toBeUndefined();
     });
 
-    it('declares a floor the smoke test can install', () => {
-        expect(floorOf(pkg.engines.node)).toBeDefined();
-    });
-
     it('compiles against no newer a language than its lowest supported Node runs', () => {
-        const floor = Number(floorOf(pkg.engines.node)?.split('.')[0]);
+        const lowest = floorOf(pkg.engines.node);
+        expect(lowest, `${pkg.engines.node} names no lowest Node to install`).toBeDefined();
+        const floor = Number(lowest?.split('.')[0]);
         const edition = EDITION_BY_MAJOR[floor];
         expect(edition, `add Node ${floor} to the table`).toBeDefined();
         for (const name of compiledAgainst()) {

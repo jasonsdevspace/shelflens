@@ -76,6 +76,13 @@ describe('rules on a query', () => {
         expect(second?.rules).toEqual([{ ruleId: 'runner-promo', action: 'bury', weight: 0.5 }]);
     });
 
+    it('normalizes the phrase a rule is written with, as it does the query', () => {
+        const written = engine.reconfigure({
+            rules: [{ id: 'r', when: { queries: ['Trail Runners'] }, pin: ['p3'] }],
+        });
+        expect(written.search({ query: 'trail runner' }).rules.applied).toEqual(['r']);
+    });
+
     it('matches the trigger after normalization, so plurals and case do not matter', () => {
         // "RUNNERS" normalizes to "runner", which both rules name.
         expect(engine.search({ query: 'RUNNERS' }).rules.applied).toEqual([
@@ -92,6 +99,56 @@ describe('rules on a query', () => {
         expect(
             ids({ query: 'runner', filters: [{ attribute: 'brand', eq: 'Northwind' }] })
         ).toEqual(['p1']);
+    });
+
+    it('places nothing for a pin of a hidden product the query did not match', () => {
+        // The sweater does not match "runner", so only the pin could bring it in.
+        const hiddenPin = engine.reconfigure({
+            rules: [
+                { id: 'pin', when: { queries: ['runner'] }, pin: ['p4'] },
+                { id: 'hide', when: { queries: ['runner'] }, hide: ['p4'] },
+            ],
+        });
+        expect(hiddenPin.search({ query: 'runner' }).hits.map((h) => h.id)).toEqual([
+            'p1',
+            'p3',
+            'p2',
+        ]);
+    });
+
+    it('credits a product two rules pin to the first, in the place the first gave it', () => {
+        const twice = engine.reconfigure({
+            rules: [
+                { id: 'first', when: { queries: ['runner'] }, pin: ['p1'] },
+                { id: 'second', when: { queries: ['runner'] }, pin: ['p3', 'p1'] },
+            ],
+        });
+        const hits = twice.search({ query: 'runner' }).hits;
+        expect(hits.map((h) => h.id)).toEqual(['p1', 'p3', 'p2']);
+        expect(hits[0]?.rules).toEqual([{ ruleId: 'first', action: 'pin' }]);
+    });
+
+    it('multiplies two adjustments that reach one product', () => {
+        const plain = createEngine(documents, base);
+        const twice = plain.reconfigure({
+            rules: [
+                {
+                    id: 'both',
+                    when: { queries: ['runner'] },
+                    boost: [
+                        { ids: ['p3'], weight: 2 },
+                        { attribute: { name: 'brand', value: 'Ostara' }, weight: 3 },
+                    ],
+                },
+            ],
+        });
+        const score = (from: typeof plain) => {
+            const hit = from.search({ query: 'runner' }).hits.find((h) => h.id === 'p3');
+            if (!hit) throw new Error('expected p3 among the runners');
+            return hit.score;
+        };
+        expect(score(plain)).toBeGreaterThan(0);
+        expect(score(twice)).toBeCloseTo(score(plain) * 6, 10);
     });
 
     it('pins in rule order, across page boundaries, when there are more pins than fit', () => {
@@ -223,6 +280,15 @@ describe('rules in time', () => {
         expect(engine.search({ query: 'parka', now: outside }).rules.applied).toEqual([]);
         expect(engine.search({ query: 'parka' }).rules.applied).toEqual([]);
     });
+
+    it('applies a windowed rule from the instant it starts, and not at the instant it ends', () => {
+        const at = (text: string) =>
+            engine.search({ query: 'parka', now: new Date(text) }).rules.applied;
+        expect(at('2026-10-31T23:59:59.999Z')).toEqual([]);
+        expect(at('2026-11-01T00:00:00.000Z')).toEqual(['winter-sale']);
+        expect(at('2027-01-31T23:59:59.999Z')).toEqual(['winter-sale']);
+        expect(at('2027-02-01T00:00:00.000Z')).toEqual([]);
+    });
 });
 
 describe('checking rules at startup', () => {
@@ -231,6 +297,15 @@ describe('checking rules at startup', () => {
     it('refuses a rule that names a document that does not exist', () => {
         expect(make({ id: 'r', pin: ['nope'] })).toThrow(EngineError);
         expect(make({ id: 'r', boost: [{ ids: ['nope'], weight: 2 }] })).toThrow(/does not exist/);
+        expect(make({ id: 'r', hide: ['nope'] })).toThrow(/does not exist: nope/);
+        expect(make({ id: 'r', bury: [{ ids: ['nope'], weight: 0.5 }] })).toThrow(
+            /does not exist: nope/
+        );
+    });
+
+    it('refuses a boost or a bury that names neither ids nor an attribute', () => {
+        expect(make({ id: 'r', boost: [{ weight: 2 }] })).toThrow(/adjusts nothing/);
+        expect(make({ id: 'r', bury: [{ weight: 0.5 }] })).toThrow(/adjusts nothing/);
     });
 
     it('refuses a rule that names an attribute the engine does not have, or cannot match on', () => {
@@ -294,5 +369,12 @@ describe('changing rules without reindexing', () => {
         expect(changed.search({ query: 'runner' }).hits.map((h) => h.id)).toEqual(['p1', 'p2']);
         expect(engine.search({ query: 'runner' }).hits.map((h) => h.id)).toEqual(['p3', 'p1']);
         expect(changed.size).toBe(engine.size);
+    });
+
+    it('refuses a rule createEngine refuses', () => {
+        expect(() => engine.reconfigure({ rules: [{ id: 'r', pin: ['nope'] }] })).toThrow(
+            /does not exist: nope/
+        );
+        expect(() => engine.reconfigure({ rules: [{ id: 'r' }] })).toThrow(/does nothing/);
     });
 });
