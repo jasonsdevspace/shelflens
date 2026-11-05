@@ -130,6 +130,63 @@ describe('matching', () => {
     });
 });
 
+describe('ranking', () => {
+    const ranked = (docs: Document[], query: string) =>
+        createEngine(docs, config).search({ query }).hits;
+
+    it('counts a word in the name for more than the same word in a description as long', () => {
+        const hits = ranked(
+            [
+                product('in-description', 'Plain Bag', 'Canvas tote', {}),
+                product('in-name', 'Canvas Tote', 'Plain bag', {}),
+            ],
+            'canvas'
+        );
+        expect(hits.map((h) => h.id)).toEqual(['in-name', 'in-description']);
+    });
+
+    it('ranks a word in a short field above the same word in a long one', () => {
+        const hits = ranked(
+            [
+                product('long', 'Classic Linen Camp Shirt', '', {}),
+                product('short', 'Classic Tee', '', {}),
+            ],
+            'classic'
+        );
+        expect(hits.map((h) => h.id)).toEqual(['short', 'long']);
+    });
+
+    it('measures a field in words, so a hyphenated word does not make it longer', () => {
+        // "T-Shirt" is indexed as three terms, and it is still one word, so both names are two
+        // words long.
+        const [first, second] = ranked(
+            [
+                product('hyphenated', 'Classic T-Shirt', '', {}),
+                product('plain', 'Classic Tee', '', {}),
+            ],
+            'classic'
+        );
+        expect(first?.score).toBeGreaterThan(0);
+        expect(first?.score).toBeCloseTo(second?.score ?? 0, 10);
+    });
+
+    it('counts a rare word for more than a common one', () => {
+        const [hit] = ranked(
+            [
+                product('tote', 'Red Linen Tote', '', {}),
+                product('scarf', 'Red Wool Scarf', '', {}),
+                product('shirt', 'Red Cotton Shirt', '', {}),
+            ],
+            'red linen'
+        );
+        const scoreOf = (word: string) =>
+            hit?.matches.find((match) => match.queryTerm === word)?.score ?? 0;
+        expect(hit?.id).toBe('tote');
+        expect(scoreOf('red')).toBeGreaterThan(0);
+        expect(scoreOf('linen')).toBeGreaterThan(scoreOf('red'));
+    });
+});
+
 describe('normalization', () => {
     it('finds an accented name from an unaccented query, and the reverse', () => {
         expect(ids({ query: 'cafe racer' })).toEqual(['p3']);
@@ -157,6 +214,16 @@ describe('search as you type', () => {
     it('treats only the last word as a prefix', () => {
         expect(ids({ query: 'ost sneak', prefixLastTerm: true })).toEqual([]);
         expect(ids({ query: 'ostara sneak', prefixLastTerm: true })).toEqual(['p2']);
+    });
+
+    it('ranks a word typed in full above a longer word it begins', () => {
+        const typing = createEngine(
+            [product('as-prefix', 'Runner', '', {}), product('exact', 'Run', '', {})],
+            config
+        );
+        expect(typing.search({ query: 'run', prefixLastTerm: true }).hits.map((h) => h.id)).toEqual(
+            ['exact', 'as-prefix']
+        );
     });
 
     it('marks a prefix match as one', () => {
@@ -243,7 +310,39 @@ describe('typo tolerance', () => {
 
     it('gives up on two typos, and on very short words', () => {
         expect(engine.search({ query: 'snaekre' }).mode).toBe('none');
-        expect(engine.search({ query: 'xz' }).mode).toBe('none');
+        // "ca" is one letter shorter than the shortest word the typo pass corrects, and one
+        // letter from "cap", so only its length keeps it from being corrected.
+        expect(engine.search({ query: 'ca' }).mode).toBe('none');
+    });
+
+    it('ranks a product with the word as typed above one with a correction of it', () => {
+        // "blak" matches nothing as typed, so both products are found by the typo pass.
+        const typos = createEngine(
+            [
+                product('corrected', 'Black Boat', '', {}),
+                product('typed-right', 'Black Boot', '', {}),
+            ],
+            config
+        );
+        const result = typos.search({ query: 'boot blak' });
+        expect(result.mode).toBe('fuzzy');
+        expect(result.hits.map((h) => h.id)).toEqual(['typed-right', 'corrected']);
+    });
+
+    it('keeps each word to its own matches when the typo pass starts from another word', () => {
+        // As typed, "boot" is the narrower word. With its typo "boat" it matches more than
+        // "red" does, so the typo pass starts from "red".
+        const typos = createEngine(
+            [
+                product('p1', 'Boot', '', {}),
+                product('p2', 'Red Boat', '', {}),
+                product('p3', 'Red Boat Classic', '', {}),
+            ],
+            config
+        );
+        const result = typos.search({ query: 'boot red' });
+        expect(result.mode).toBe('fuzzy');
+        expect(result.hits.map((h) => h.id)).toEqual(['p2', 'p3']);
     });
 });
 
@@ -259,7 +358,16 @@ describe('synonyms', () => {
     });
 
     it('expands to a multi-word synonym only where every word is present', () => {
-        expect(ids({ query: 'cap' })).toEqual(['p6']);
+        // Each of the other two holds one word of "baseball cap".
+        const hats = createEngine(
+            [
+                product('cap', 'Ridgeback Baseball Cap', '', {}),
+                product('glove', 'Leather Baseball Glove', '', {}),
+                product('wool', 'Wool Cap', '', {}),
+            ],
+            { ...config, synonyms: [{ kind: 'one-way', from: 'hat', to: 'baseball cap' }] }
+        );
+        expect(hats.search({ query: 'hat' }).hits.map((h) => h.id)).toEqual(['cap']);
     });
 });
 
@@ -313,6 +421,30 @@ describe('filters', () => {
         }
     });
 
+    it('reports no match when the filters remove every match of the query', () => {
+        // The jacket is the only match for "jacket", and it is out of stock.
+        const result = engine.search({
+            query: 'jacket',
+            filters: [{ attribute: 'inStock', eq: true }],
+        });
+        expect(result).toMatchObject({ mode: 'none', total: 0, hits: [] });
+    });
+
+    it('refuses true or false for an attribute that is not a boolean', () => {
+        for (const filter of [
+            { attribute: 'brand', eq: true },
+            { attribute: 'price', eq: false },
+        ]) {
+            expect(() => engine.search({ filters: [filter] }), filter.attribute).toThrow(
+                expect.objectContaining({
+                    code: 'wrong_attribute_kind',
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest types its asymmetric matchers as any
+                    message: expect.stringMatching(/only a boolean attribute/),
+                })
+            );
+        }
+    });
+
     it('refuses a range on anything but a number', () => {
         expect(() =>
             engine.search({ filters: [{ attribute: 'brand', range: { from: 1 } }] })
@@ -359,6 +491,18 @@ describe('sorting', () => {
                 ],
             }).slice(2, 4)
         ).toEqual(['p2', 'p5']);
+    });
+
+    it('sorts a multi-valued attribute by its first value', () => {
+        // By their last colors the order would start with the cap and the T-shirt.
+        expect(ids({ sort: [{ by: 'color', direction: 'asc' }] })).toEqual([
+            'p1',
+            'p3',
+            'p5',
+            'p6',
+            'p2',
+            'p4',
+        ]);
     });
 
     it('puts documents missing the attribute last, whichever direction', () => {
@@ -443,7 +587,7 @@ describe('sorting', () => {
 });
 
 describe('pagination', () => {
-    it('pages with a default size and reports the shape', () => {
+    it('pages by the size asked for and reports the shape', () => {
         const result = engine.search({ pageSize: 4 });
         expect(result).toMatchObject({ total: 6, page: 1, pageSize: 4, totalPages: 2 });
         expect(result.hits).toHaveLength(4);
@@ -464,11 +608,13 @@ describe('pagination', () => {
     });
 
     it('caps how far a query can be paged while still reporting the full total', () => {
-        const capped = createEngine(documents, { ...config, limits: { results: 5 } });
-        const result = capped.search({ pageSize: 2, page: 3 });
+        // Three of six in reach, two to a page, is two pages, where all six would be three.
+        const capped = createEngine(documents, { ...config, limits: { results: 3 } });
+        const result = capped.search({ pageSize: 2, page: 2 });
         expect(result.total).toBe(6);
-        expect(result.totalPages).toBe(3);
-        expect(result.hits.map((h) => h.id)).toEqual(['p5']);
+        expect(result.totalPages).toBe(2);
+        expect(result.hits.map((h) => h.id)).toEqual(['p3']);
+        expect(capped.search({ pageSize: 2, page: 3 }).hits).toEqual([]);
     });
 
     /*
@@ -491,10 +637,49 @@ describe('pagination', () => {
     });
 });
 
+describe('pagination under the default limits', () => {
+    // One more than the default cap on results, so the cap and not the catalog ends the last page.
+    const many = createEngine(
+        Array.from({ length: 10_001 }, (_, i) =>
+            product(`d${String(i).padStart(5, '0')}`, 'Widget', '', {})
+        ),
+        config
+    );
+
+    it('pages twenty at a time when no size is asked for', () => {
+        const result = many.search({});
+        expect(result.pageSize).toBe(20);
+        expect(result.hits).toHaveLength(20);
+    });
+
+    it('gives a page at most a hundred, however many are asked for', () => {
+        const result = many.search({ pageSize: 500 });
+        expect(result.pageSize).toBe(100);
+        expect(result.hits).toHaveLength(100);
+    });
+
+    it('pages no further than ten thousand results, while reporting the full total', () => {
+        const last = many.search({ pageSize: 100, page: 100 });
+        expect(last).toMatchObject({ total: 10_001, totalPages: 100 });
+        expect(last.hits.at(-1)?.id).toBe('d09999');
+        expect(many.search({ pageSize: 100, page: 101 }).hits).toEqual([]);
+    });
+});
+
 describe('configuration', () => {
     it('refuses a document whose attribute is the wrong kind', () => {
         expect(() => createEngine([product('x', 'X', '', { price: 'cheap' })], config)).toThrow(
             /declared number/
+        );
+    });
+
+    it('refuses a keyword list with a number in it, and a boolean given as text', () => {
+        // A document read from JSON can carry what its type says it cannot.
+        const listed = { id: 'x', text: {}, attributes: { color: ['Red', 5] } };
+        // @ts-expect-error -- a number in a keyword list, which the type rules out
+        expect(() => createEngine([listed], config)).toThrow(/color is declared keyword/);
+        expect(() => createEngine([product('x', 'X', '', { inStock: 'yes' })], config)).toThrow(
+            /inStock is declared boolean/
         );
     });
 

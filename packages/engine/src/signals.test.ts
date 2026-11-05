@@ -42,9 +42,16 @@ describe('the weight of a signal', () => {
         expect(signalWeight(SIGNAL_SATURATION * 1000)).toBe(SIGNAL_CAP);
     });
 
-    it('stays below the smallest boost a merchandiser writes, and leaves a bury buried', () => {
-        expect(SIGNAL_CAP).toBeLessThan(1.4);
-        expect(0.5 * SIGNAL_CAP).toBeLessThan(1);
+    it('rises with the log of the count, so each choice adds less than the one before', () => {
+        const lift = (count: number) => signalWeight(count) - 1;
+        // Ten choices of a hundred reach about half the lift, where a straight line gives a tenth.
+        expect(lift(10) / lift(SIGNAL_SATURATION)).toBeGreaterThan(0.4);
+        expect(lift(10)).toBeLessThan(lift(1) * 5);
+        expect(lift(50) - lift(10)).toBeLessThan(lift(10) - lift(1));
+    });
+
+    it('caps a signal at the 1.25 the README gives', () => {
+        expect(SIGNAL_CAP).toBe(1.25);
     });
 });
 
@@ -64,6 +71,17 @@ describe('signals in ranking', () => {
         const rules: Rule[] = [{ id: 'promo', when: { queries: ['trail runner'] }, pin: ['b'] }];
         const engine = createEngine(documents, { ...config, rules, signals: { c: 100_000 } });
         expect(ids(engine, 'trail runner')).toEqual(['b', 'c', 'a', 'd']);
+    });
+
+    it('gives a pinned product no signal and leaves its score as its match made it', () => {
+        const rules: Rule[] = [{ id: 'promo', when: { queries: ['trail runner'] }, pin: ['b'] }];
+        const pinnedOnly = createEngine(documents, { ...config, rules });
+        const chosen = pinnedOnly.reconfigure({ signals: { b: 50 } });
+        const [pinned] = chosen.search({ query: 'trail runner' }).hits;
+        const [plain] = pinnedOnly.search({ query: 'trail runner' }).hits;
+        expect(pinned).toMatchObject({ id: 'b', rules: [{ ruleId: 'promo', action: 'pin' }] });
+        expect(pinned?.signal).toBeUndefined();
+        expect(pinned?.score).toBe(plain?.score);
     });
 
     it('lifts a score by the cap and no further, however often the product was chosen', () => {
