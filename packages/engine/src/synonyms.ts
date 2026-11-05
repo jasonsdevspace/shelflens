@@ -32,6 +32,13 @@ interface Entry {
 
 const key = (terms: readonly string[]) => terms.join(' ');
 
+/**
+ * How many rules a chain may follow from the phrase typed. Two reaches a raincoat that is a rain
+ * shell that is an anorak, and a hyphenated word's other spelling through an equivalence, and keeps
+ * a chain through a generic word from drifting further than that.
+ */
+const MAX_CHAIN = 2;
+
 const startsWith = (terms: readonly string[], at: number, phrase: readonly string[]): boolean =>
     phrase.every((term, i) => terms[at + i] === term);
 
@@ -58,18 +65,23 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
      * shell, and a rain shell that is an anorak, is an anorak. The phrase's
      * own other spellings are offered too when a chain reaches them, since
      * leaving them out made what a phrase offered depend on unrelated rules.
-     * Each phrase is offered once, so each reading is tried once, and the
-     * phrase itself is never offered.
+     * A chain follows no more than MAX_CHAIN rules. Each phrase is offered
+     * once, so each reading is tried once, and the phrase itself is never
+     * offered.
      */
     const reachedFrom = (own: string): (readonly string[])[] => {
         const reached = new Map<string, readonly string[]>();
-        const queue = [own];
-        for (let at = 0; at < queue.length; at += 1) {
-            for (const [named, phrase] of byPhrase.get(queue[at] ?? '')?.next ?? []) {
-                if (named === own || reached.has(named)) continue;
-                reached.set(named, phrase);
-                queue.push(named);
+        let frontier = [own];
+        for (let step = 0; step < MAX_CHAIN && frontier.length > 0; step += 1) {
+            const next: string[] = [];
+            for (const from of frontier) {
+                for (const [named, phrase] of byPhrase.get(from)?.next ?? []) {
+                    if (named === own || reached.has(named)) continue;
+                    reached.set(named, phrase);
+                    next.push(named);
+                }
             }
+            frontier = next;
         }
         return [...reached.values()];
     };

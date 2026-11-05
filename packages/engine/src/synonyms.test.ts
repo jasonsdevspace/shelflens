@@ -219,6 +219,27 @@ describe('rules that share a phrase', () => {
         expect(alternativesOf(rules, ['screen'])).toEqual([]);
     });
 
+    it('go no further than two rules from the phrase typed', () => {
+        const rules = [
+            { kind: 'one-way', from: 'tv', to: 'television' },
+            { kind: 'one-way', from: 'television', to: 'screen' },
+            { kind: 'one-way', from: 'screen', to: 'monitor' },
+        ] as const;
+        expect(alternativesOf(rules, ['tv'])).toEqual([['television'], ['screen']]);
+        expect(alternativesOf(rules, ['television'])).toEqual([['screen'], ['monitor']]);
+    });
+
+    it('keep a chain through a generic word to two rules', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+            { kind: 'equivalent', terms: ['tee', 'top'] },
+            { kind: 'equivalent', terms: ['top', 'lid'] },
+        ] as const;
+        const offered = alternativesOf(rules, ['tshirt']).map((phrase) => phrase.join(' '));
+        expect(offered).toContain('top');
+        expect(offered).not.toContain('lid');
+    });
+
     it('stop where rules lead back to where they began', () => {
         const rules = [
             { kind: 'one-way', from: 'cap', to: 'hat' },
