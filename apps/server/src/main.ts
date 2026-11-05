@@ -30,20 +30,24 @@ const listed = (name: string): readonly string[] =>
 const isOriginPath = (path: string): path is OriginPath =>
     STORE_ROUTES.some((route) => route === path);
 /** An origin as a browser sends it: scheme and host, no path, no trailing slash, lowercase. */
-const asOrigin = (entry: string): string => {
-    const origin = new URL(entry).origin;
-    if (origin === 'null')
-        throw new Error(`ORIGINS holds something that is not an origin: ${entry}`);
-    return origin;
-};
-const allowedOrigins = listed('ORIGINS').map(asOrigin);
+const asOrigin =
+    (setting: string) =>
+    (entry: string): string => {
+        const origin = new URL(entry).origin;
+        if (origin === 'null')
+            throw new Error(`${setting} holds something that is not an origin: ${entry}`);
+        return origin;
+    };
+const allowedOrigins = listed('ORIGINS').map(asOrigin('ORIGINS'));
 const originPaths = listed('ORIGIN_PATHS').map((path) => {
     if (!isOriginPath(path))
         throw new Error(`ORIGIN_PATHS holds a path the store has not got: ${path}`);
     return path;
 });
 const own =
-    process.env['OWN_ORIGIN'] === undefined ? undefined : asOrigin(process.env['OWN_ORIGIN']);
+    process.env['OWN_ORIGIN'] === undefined
+        ? undefined
+        : asOrigin('OWN_ORIGIN')(process.env['OWN_ORIGIN']);
 const origins: OriginsSupport | undefined =
     allowedOrigins.length > 0
         ? {
