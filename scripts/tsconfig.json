@@ -6,5 +6,5 @@
         "noEmit": true,
         "types": ["node"]
     },
-    "include": ["*.test.ts", "json.ts"]
+    "include": ["*.test.ts", "json.ts", "test-repository.ts"]
 }
