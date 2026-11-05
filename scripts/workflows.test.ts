@@ -8,9 +8,10 @@ import { lookupText, readJson } from './json.js';
 /*
  * What the workflows promise that only reading them can hold: a name for
  * every job a reviewer sees in the checks, the screenshots taken in the
- * image of the Playwright the tests pin, and an engine published only as
- * the tarball the oldest Node check proved, and a release on GitHub named
- * for the part of the project it is.
+ * image of the Playwright the tests pin, a browser installed without the
+ * system packages the runner already has and within a time of its own, an
+ * engine published only as the tarball the oldest Node check proved, and a
+ * release on GitHub named for the part of the project it is.
  */
 
 const ROOT = join(import.meta.dirname, '..');
@@ -42,24 +43,31 @@ describe('the workflows', () => {
         expect(unnamed).toEqual([]);
     });
 
-    it('run every browser in the image of the Playwright the tests pin', () => {
+    it('take the screenshots in the image of the Playwright the tests pin', () => {
         const pinned = lookupText(
             readJson(join(ROOT, 'package.json')),
             'devDependencies',
             '@playwright/test'
         );
-        const ci = read('ci.yml');
-        const images = [...ci.matchAll(/mcr\.microsoft\.com\/playwright:v([\d.]+)-/g)].map(
-            ([, version]) => version
-        );
+        const image = /mcr\.microsoft\.com\/playwright:v([\d.]+)-/.exec(read('ci.yml'))?.[1];
         expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
-        expect(images).toEqual(['browser', 'lighthouse', 'visual'].map(() => pinned));
-        for (const job of ['browser', 'lighthouse', 'visual']) {
-            expect(jobsOf(ci).get(job)).toMatch(/image: mcr\.microsoft\.com\/playwright:v/);
-        }
-        // A browser installed on the runner comes from Ubuntu's mirror, which has been slow
-        // enough to run a job out of time.
-        expect(ci).not.toMatch(/playwright install/);
+        expect(image).toBe(pinned);
+    });
+
+    it('install a browser without system packages, and give each install a time of its own', () => {
+        // The packages come from Ubuntu's mirror, which has been slow enough to run a job out
+        // of time before its tests began, and the runner image already has them.
+        const withPackages = files.filter((name) =>
+            /--with-deps|install-deps|apt-get install/.test(read(name))
+        );
+        expect(withPackages).toEqual([]);
+        const installs = files.flatMap((name) =>
+            [...read(name).matchAll(/^( *)- name: .*\n((?:\1 {2}.*\n)*)/gm)]
+                .map(([step = '']) => step)
+                .filter((step) => /playwright(?:@\S+)?\s+install/.test(step))
+        );
+        expect(installs.length).toBeGreaterThan(0);
+        for (const step of installs) expect(step).toMatch(/timeout-minutes: [1-5]\n/);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {

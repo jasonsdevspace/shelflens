@@ -96,11 +96,6 @@ jobs:
         name: Browser tests
         runs-on: ubuntu-latest
         timeout-minutes: 10
-        # Playwright's own image, with Chromium and what it needs already in it, as the
-        # screenshots use, rather than installing them from Ubuntu's mirror on every run.
-        container:
-            # Pinned by digest, as the actions are, so the image cannot change under its tag.
-            image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -115,6 +110,13 @@ jobs:
 
             - name: Install dependencies
               run: npm ci
+
+            # The runner image has the libraries Chromium needs, so only the browser is
+            # fetched. Installing the libraries again reads Ubuntu's mirror, which has been
+            # slow enough to run a job out of time before its tests began.
+            - name: Install Chromium
+              timeout-minutes: 3
+              run: npx playwright install chromium
 
             - name: Browser tests
               run: npm run e2e
@@ -137,11 +139,6 @@ jobs:
         name: Lighthouse audits
         runs-on: ubuntu-latest
         timeout-minutes: 10
-        # Playwright's own image, with Chromium and what it needs already in it, as the
-        # screenshots use, rather than installing them from Ubuntu's mirror on every run.
-        container:
-            # Pinned by digest, as the actions are, so the image cannot change under its tag.
-            image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -156,6 +153,13 @@ jobs:
 
             - name: Install dependencies
               run: npm ci
+
+            # The runner image has the libraries Chromium needs, so only the browser is
+            # fetched. Installing the libraries again reads Ubuntu's mirror, which has been
+            # slow enough to run a job out of time before its tests began.
+            - name: Install Chromium
+              timeout-minutes: 3
+              run: npx playwright install chromium
 
             # The script builds the store before it audits it.
             - name: Lighthouse audits
