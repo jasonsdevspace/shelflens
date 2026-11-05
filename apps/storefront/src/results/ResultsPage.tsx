@@ -27,6 +27,7 @@ import { Pagination } from './Pagination.jsx';
 import { RulesPanel } from './RulesPanel.jsx';
 import { setAsideBySort, type SetAsideRule } from './setAside.js';
 import { headingFor, sortIdOf, Toolbar } from './Toolbar.jsx';
+import { useFitsOnScreen } from './useFitsOnScreen.js';
 import { type Result, useAppliedRules, useRememberedSearch, useResults } from './useResults.js';
 import { useArrivalFocus, useKeptFocus, useReturnFocus } from './useReturnFocus.js';
 import { useRulesEditor } from './useRulesEditor.js';
@@ -109,11 +110,38 @@ const FacetColumn = ({
             {children}
         </FacetDrawer>
     ) : (
-        <aside className="results-side" aria-label="Filters">
+        <SideColumn label="Filters" heading={heading}>
+            {children}
+        </SideColumn>
+    );
+
+/**
+ * A column beside the results on a wide screen, with the way past it first. It scrolls with the
+ * page, and stays in view beside the results only while it fits on the screen.
+ */
+const SideColumn = ({
+    label,
+    heading,
+    children,
+}: {
+    readonly label: string;
+    /** The results heading's id, for the link past the column. */
+    readonly heading: string;
+    readonly children: ReactNode;
+}) => {
+    const [element, setElement] = useState<HTMLElement | null>(null);
+    const fits = useFitsOnScreen(element, '--space-4');
+    return (
+        <aside
+            ref={setElement}
+            className={fits ? 'results-side is-pinned' : 'results-side'}
+            aria-label={label}
+        >
             <SkipToResults heading={heading} />
             {children}
         </aside>
     );
+};
 
 /**
  * What the status line says: the heading once an answer has landed, nothing
@@ -193,10 +221,9 @@ const RulesColumn = ({
             {children}
         </Drawer>
     ) : (
-        <aside className="results-side" aria-label="Rules">
-            <SkipToResults heading={heading} />
+        <SideColumn label="Rules" heading={heading}>
             {children}
-        </aside>
+        </SideColumn>
     );
 
 const Cards = ({
