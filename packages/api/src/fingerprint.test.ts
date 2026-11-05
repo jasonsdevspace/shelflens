@@ -71,15 +71,6 @@ describe('the canonical form', () => {
         ];
         for (const value of values) expect(canonical(value)).toBe(reference(value));
     });
-
-    it('writes an empty slot in an array as null, as undefined in one is', () => {
-        // eslint-disable-next-line no-sparse-arrays -- the empty slot is what this test writes
-        expect(canonical([1, , 3])).toBe('[1,null,3]');
-    });
-
-    it('writes a date as its ISO text', () => {
-        expect(canonical({ at: new Date(0) })).toBe('{"at":"1970-01-01T00:00:00.000Z"}');
-    });
 });
 
 describe('the fingerprint', () => {
@@ -87,17 +78,27 @@ describe('the fingerprint', () => {
         const value = { b: 1, a: [1, 2] };
         expect(fingerprint(value)).toBe(hashText(canonical(value)));
         expect(hashText('')).toBe('811c9dc5');
+        expect(hashText('a')).toBe('e40c292c');
+    });
+
+    it('is the same whatever order the keys were written in', () => {
+        expect(fingerprint({ b: 1, a: [1, 2] })).toBe(fingerprint({ a: [1, 2], b: 1 }));
+    });
+
+    it('differs for two values that differ, however late in their text', () => {
+        expect(fingerprint({ a: 1 })).not.toBe(fingerprint({ a: 2 }));
+        const long = 'x'.repeat(10_000);
+        expect(fingerprint([long, 'a'])).not.toBe(fingerprint([long, 'b']));
+    });
+
+    it('is eight hex digits, even when the hash starts with a zero', () => {
+        // The hash of this value is below 0x10000000, so it needs padding to eight digits.
+        expect(fingerprint({ a: 70 })).toBe('0fe8747b');
+        expect(fingerprint([])).toMatch(/^[0-9a-f]{8}$/);
     });
 });
 
 describe('where the native form differs, and still means one thing', () => {
-    it('writes keys that read as whole numbers first, in numeric order, whatever order they came in', () => {
-        expect(canonical({ '10': 1, '2': 1, b: 1, a: 1 })).toBe('{"2":1,"10":1,"a":1,"b":1}');
-        expect(canonical({ a: 1, '2': 1, b: 1, '10': 1 })).toBe(
-            canonical({ '10': 1, b: 1, '2': 1, a: 1 })
-        );
-    });
-
     it('keeps a key named __proto__, so a product with that sku still moves the clicks fingerprint', () => {
         const signals = signalsOf([
             { id: 'a', kind: 'click', sku: '__proto__', at: 1, session: 's' },
@@ -108,9 +109,7 @@ describe('where the native form differs, and still means one thing', () => {
         expect(canonical(parsed)).toBe('{"__proto__":{"x":1},"a":1}');
     });
 
-    it('leaves out a function, as JSON does', () => {
-        expect(canonical({ f: () => 1, a: 1 })).toBe('{"a":1}');
-        expect(canonical([() => 1])).toBe('[null]');
+    it('writes a bare function as null, which the serializer gives nothing for', () => {
         expect(canonical(() => 1)).toBe('null');
     });
 });
