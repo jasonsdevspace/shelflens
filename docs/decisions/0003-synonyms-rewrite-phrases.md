@@ -53,15 +53,17 @@ Option B, with three details that the same investigation settled.
 - Rules on the same phrase add up rather than compete, so the order rules are given in does not
   change what a phrase offers.
 - **Amended with engine 0.7.0.** Rules chain through a phrase they share, so a phrase offers
-  every phrase the rules lead it to within two rules, and a match along a chain scores as any
-  synonym match does. A one-way rule stays one way along the chain, and a chain that leads back to
-  where it began stops there. A hyphenated word's other spelling is reached through a rule's other
-  words, so with "t-shirt" and "tee" equivalent, "t shirt" also offers "tshirt". Two rules is the
-  limit because it reaches a raincoat that is a rain shell that is an anorak, and keeps a chain
-  through a generic word from drifting further: with "t-shirt" and "tee", "tee" and "top", and
-  "top" and "lid" equivalent, "t-shirt" reaches "top" but not "lid". A match along a chain is not
-  scored lower for its length, so the limit is what keeps a far one out, and two rules through a
-  generic word still join what it joins.
+  every phrase the rules lead it to in two steps, a step being one phrase a rule leads to, and a
+  match along a chain scores as any synonym match does. A one-way rule stays one way along the
+  chain, and a chain that leads back to where it began stops there. A chain starts from every
+  spelling of the phrase at once, since "t shirt" and "tshirt" are one word, and a hyphenated
+  word's other spelling is offered through a rule's other words, so with "t-shirt" and "tee"
+  equivalent, "t shirt" also offers "tshirt". Two steps is the limit because it reaches a raincoat
+  that is a rain shell that is an anorak, and keeps a chain through a generic word from drifting
+  further. With "t-shirt" and "tee", "tee" and "top", and "top" and "lid" equivalent, "t-shirt"
+  reaches "top" but not "lid". A match along a chain is not scored lower for its length, so the
+  limit is all that keeps a far one out, and a phrase next to a generic word still reaches what
+  that word joins, as "tee" reaches "lid".
 
 ## How it is tested
 
@@ -72,6 +74,7 @@ Option B, with three details that the same investigation settled.
 - A unit test where a one-way rule and an equivalence name the same phrase, and the phrase offers
   what both give.
 - Unit tests where rules chain: a one-way rule on through an equivalence and not back, two
-  equivalences joined by a shared word, one-way rules one after another, rules that loop, and a
-  chain that stops after two rules. A rule added on a phrase adds to what it offers and takes nothing away, and a search for
-  "raincoat" finds an Anorak at the end of a chain.
+  equivalences joined by a shared word, one-way rules one after another, rules that loop, chains
+  that stop two steps from the phrase typed, through a generic word among them, and a chain that
+  starts from every spelling of a phrase. A rule added on a phrase adds to what it offers and
+  takes nothing away, and a search for "raincoat" finds an Anorak at the end of a chain.

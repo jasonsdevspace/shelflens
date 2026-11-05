@@ -219,7 +219,7 @@ describe('rules that share a phrase', () => {
         expect(alternativesOf(rules, ['screen'])).toEqual([]);
     });
 
-    it('go no further than two rules from the phrase typed', () => {
+    it('go no further than two steps from the phrase typed', () => {
         const rules = [
             { kind: 'one-way', from: 'tv', to: 'television' },
             { kind: 'one-way', from: 'television', to: 'screen' },
@@ -229,15 +229,29 @@ describe('rules that share a phrase', () => {
         expect(alternativesOf(rules, ['television'])).toEqual([['screen'], ['monitor']]);
     });
 
-    it('keep a chain through a generic word to two rules', () => {
+    it('keep a chain through a generic word to two steps', () => {
         const rules = [
             { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
             { kind: 'equivalent', terms: ['tee', 'top'] },
             { kind: 'equivalent', terms: ['top', 'lid'] },
         ] as const;
-        const offered = alternativesOf(rules, ['tshirt']).map((phrase) => phrase.join(' '));
-        expect(offered).toContain('top');
-        expect(offered).not.toContain('lid');
+        const offered = (terms: string[]) =>
+            alternativesOf(rules, terms).map((phrase) => phrase.join(' '));
+        for (const spelling of [['tshirt'], ['t', 'shirt']]) {
+            expect(offered(spelling)).toContain('top');
+            expect(offered(spelling)).not.toContain('lid');
+        }
+        // A phrase next to the generic word still reaches what it joins.
+        expect(offered(['tee'])).toContain('lid');
+    });
+
+    it('start from every spelling of a phrase at once', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+            { kind: 'one-way', from: 'tshirt', to: 'jersey' },
+        ] as const;
+        expect(alternativesOf(rules, ['tshirt'])).toContainEqual(['jersey']);
+        expect(alternativesOf(rules, ['t', 'shirt'])).toContainEqual(['jersey']);
     });
 
     it('stop where rules lead back to where they began', () => {

@@ -9,18 +9,21 @@ names the package on npm and how to install that version once it is promoted.
 
 Synonym rules chain through a phrase they share.
 
-- **Rules chain.** A phrase now offers every phrase the rules lead it to within two rules, not
-  only the ones the rules on it name. A one-way rule from "raincoat" to "rain shell" and an equivalence of "rain
+- **Rules chain.** A phrase now offers every phrase the rules lead it to, not only the ones the
+  rules on it name. A one-way rule from "raincoat" to "rain shell" and an equivalence of "rain
   shell" and "anorak" let a search for "raincoat" find an Anorak, and two equivalences that share
   "sweater" make "jumper" and "pullover" stand in for each other. A one-way rule stays one way
   along the chain, so "anorak" does not reach "raincoat", and rules that lead back to where they
-  began stop there. A chain ends after two rules, so with "t-shirt" and "tee", "tee" and "top",
-  and "top" and "lid" equivalent, "t-shirt" reaches "top" but not "lid".
+  began stop there.
+- **Two steps at most.** A chain ends two steps from the phrase typed, a step being one phrase a
+  rule leads to, and starts from every spelling of the phrase at once, so "t shirt" goes as far as
+  "tshirt" does. With "t-shirt" and "tee", "tee" and "top", and "top" and "lid" equivalent,
+  "t-shirt" reaches "top" but not "lid", though "tee" reaches "lid".
 - **Searches may find more.** A rule set whose rules share a phrase widens what its searches find,
-  and a document found along a chain scores as any synonym match does. A
-  hyphenated word in an equivalence now also offers its other spelling through the rule's other
-  words, so with "t-shirt" and "tee" equivalent, "t shirt" finds a product written "Tshirt". Apart
-  from these, a search finds what it found before.
+  and a document found along a chain scores as any synonym match does. A hyphenated word in an
+  equivalence now also offers its other spelling through the rule's other words, so with "t-shirt"
+  and "tee" equivalent, "t shirt" finds a product written "Tshirt". Apart from these, a search
+  finds what it found before.
 
 ## 0.6.1
 

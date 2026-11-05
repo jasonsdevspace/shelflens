@@ -33,9 +33,10 @@ interface Entry {
 const key = (terms: readonly string[]) => terms.join(' ');
 
 /**
- * How many rules a chain may follow from the phrase typed. Two reaches a raincoat that is a rain
- * shell that is an anorak, and a hyphenated word's other spelling through an equivalence, and keeps
- * a chain through a generic word from drifting further than that.
+ * How many steps a chain may take from the phrase typed, a step being one phrase a rule leads to.
+ * Two reaches a raincoat that is a rain shell that is an anorak, and keeps a chain through a
+ * generic word from drifting further than that, so with "t-shirt" and "tee", "tee" and "top", and
+ * "top" and "lid" equivalent, "t-shirt" reaches "top" but not "lid".
  */
 const MAX_CHAIN = 2;
 
@@ -65,13 +66,17 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
      * shell, and a rain shell that is an anorak, is an anorak. The phrase's
      * own other spellings are offered too when a chain reaches them, since
      * leaving them out made what a phrase offered depend on unrelated rules.
-     * A chain follows no more than MAX_CHAIN rules. Each phrase is offered
-     * once, so each reading is tried once, and the phrase itself is never
-     * offered.
+     * A chain takes no more than MAX_CHAIN steps, and starts from every
+     * spelling of the phrase at once, so "t shirt" goes as far as "tshirt"
+     * does. Each phrase is offered once, so each reading is tried once, and
+     * the phrase itself is never offered.
      */
     const reachedFrom = (own: string): (readonly string[])[] => {
         const reached = new Map<string, readonly string[]>();
-        let frontier = [own];
+        let frontier = [
+            own,
+            ...(spellings.get(joined(own)) ?? []).filter((other) => other !== own),
+        ];
         for (let step = 0; step < MAX_CHAIN && frontier.length > 0; step += 1) {
             const next: string[] = [];
             for (const from of frontier) {
@@ -86,6 +91,11 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
         return [...reached.values()];
     };
 
+    // Phrases that are one word written apart or together, such as "t shirt"
+    // and "tshirt", found from the phrases alone so no other rule decides it.
+    const joined = (named: string) => named.replaceAll(' ', '');
+    const spellings = new Map<string, string[]>();
+
     for (const rule of rules) {
         if (rule.kind === 'one-way') {
             for (const phrase of phraseVariants(rule.from)) add(phrase, phraseVariants(rule.to));
@@ -96,6 +106,10 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
             const others = variants.flatMap((other, j) => (i === j ? [] : other));
             for (const phrase of own) add(phrase, others);
         });
+    }
+
+    for (const named of byPhrase.keys()) {
+        spellings.set(joined(named), [...(spellings.get(joined(named)) ?? []), named]);
     }
 
     // Entries by their first term, longest phrase first, so the longest phrase
