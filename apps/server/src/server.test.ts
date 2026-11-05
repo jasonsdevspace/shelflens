@@ -1,4 +1,4 @@
-import { request as httpRequest, type Server } from 'node:http';
+import type { Server } from 'node:http';
 
 import {
     createMemoryEventStore,
@@ -271,20 +271,8 @@ describe('event beacons', () => {
 });
 
 describe('a request the server cannot read', () => {
-    /** Sends a GET for a raw path, which fetch would tidy up first, and the status it gets. */
-    const rawGet = (at: string, path: string) =>
-        new Promise<number | undefined>((resolve, reject) => {
-            const sent = httpRequest(`${at}${path}`, (answer) => {
-                answer.resume();
-                resolve(answer.statusCode);
-            });
-            sent.path = path;
-            sent.on('error', reject);
-            sent.end();
-        });
-
     it('answers a path that is no path with a 404 and keeps serving', async () => {
-        expect(await rawGet(base, '//')).toBe(404);
+        expect((await fetch(`${base}//`)).status).toBe(404);
         expect((await fetch(`${base}/health`)).status).toBe(200);
     });
 

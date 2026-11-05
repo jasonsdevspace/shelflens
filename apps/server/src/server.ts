@@ -561,7 +561,8 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
     };
 
     // Whatever throws on the way to an answer is answered as ours, since a rejection no one
-    // caught would end the process and every other client's request with it.
+    // caught would end the process and every other client's request with it. One that throws
+    // after its answer began closes the connection instead, since its status is already sent.
     return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
         const requestId = randomUUID();
         try {

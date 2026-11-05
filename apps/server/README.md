@@ -62,13 +62,15 @@ ORIGINS=https://shop.example,https://www.shop.example npm run api
 
 `ORIGINS` is a list of origins, each a scheme and a host, never a wildcard. The server answers the
 browser's preflight for them, with the customer group header among those the page may send, and
-every answer to them varies on the origin. By default those origins may use the API alone.
-`ORIGIN_PATHS=graphql,events` opens the events path to them too, and `rules` the rules path, which a
-host should open only to a page it would let a merchandiser use. A request that names the server's
-own origin is the store's own page and needs no leave. The server takes that origin from the
-request, its scheme and its host, so behind a proxy that rewrites the host, name it with
-`OWN_ORIGIN=https://shop.example`. A page on another origin may read the store version and the
-request id from each answer, so the widget there caches as the store's own page does.
+every answer to them varies on the origin and the customer group. By default those origins may use
+the API alone. `ORIGIN_PATHS=graphql,events` opens the events path to them too, and `rules` the
+rules path, which a host should open only to a page it would let a merchandiser use. A request that
+names the server's own origin is the store's own page and needs no leave. The server takes that
+origin from the request, its scheme and its host, so behind a proxy that rewrites the host, name it
+with `OWN_ORIGIN=https://shop.example`. A page on another origin may read the store version and the
+request id from each answer, so the widget there caches as the store's own page does. An `ORIGINS`
+or `OWN_ORIGIN` entry that is not an origin, or an `ORIGIN_PATHS` entry the store has not got, stops
+the server before it listens, naming the setting.
 
 With the server running, the host page loads the widget's file from the demo or from a copy of it,
 and mounts the box with the server's address as the API and the store's page for searches:

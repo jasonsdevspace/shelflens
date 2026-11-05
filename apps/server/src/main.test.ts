@@ -50,8 +50,8 @@ interface Run {
 }
 
 /**
- * Runs the server from its source under the given settings, until it says it is listening,
- * when it is stopped, or until it exits on its own.
+ * Runs the server from its source under the given settings, stopping it once it says it is
+ * listening, and whether it listened and what it wrote to stderr.
  */
 const run = (settings: Record<string, string>): Promise<Run> =>
     new Promise((resolve, reject) => {

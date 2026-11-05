@@ -14,10 +14,10 @@ export type StoreRoute = Exclude<Route, 'catalog'>;
 export const STORE_ROUTES: readonly StoreRoute[] = ['graphql', 'events', 'rules'];
 
 /**
- * Which of the routes a host serves a URL names under its base, parsing it
- * once, or nothing. The answer is one of the routes the host named, so a
- * host that serves no catalog is never handed one. A path that is no URL,
- * such as "//", names nothing, rather than throwing out of the host.
+ * The route a URL names under the host's base, from the routes the host serves, or nothing.
+ * The answer is one of the routes the host named, so a host that serves no catalog is never
+ * handed one. A path that does not parse as a URL, such as "//", names nothing rather than
+ * throwing out of the host.
  */
 export const routeOf = <Served extends Route>(
     url: string,
