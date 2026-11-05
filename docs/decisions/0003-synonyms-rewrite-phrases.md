@@ -50,6 +50,8 @@ Option B, with three details that the same investigation settled.
 - The explanation on a hit names the phrase the synonym stood in for, not a single word.
 - Where two rules could apply at one position, the longer phrase wins. A merchandiser wanting a
   different precedence would need a rule order, which does not exist.
+- Rules on the same phrase add up rather than compete, so the order rules are given in does not
+  change what a phrase offers.
 
 ## How it is tested
 
@@ -57,3 +59,5 @@ Option B, with three details that the same investigation settled.
 - The golden query "t shirt", and its siblings "tshirt" and "trainers", where an exact name match
   must beat the synonym.
 - Unit tests for phrase variants and query rewriting.
+- A unit test where a one-way rule and an equivalence name the same phrase, and the phrase offers
+  what both give.

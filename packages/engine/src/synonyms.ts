@@ -36,18 +36,24 @@ const startsWith = (terms: readonly string[], at: number, phrase: readonly strin
     phrase.every((term, i) => terms[at + i] === term);
 
 export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
-    // Entries by their first term, longest phrase first, so the most
-    // specific rule wins where two could apply at one position.
-    const entries = new Map<string, Entry[]>();
+    // One entry per phrase, which every rule on the phrase adds to, because
+    // rewrite reads only the first entry that fits, and a one-way rule from
+    // "tshirt" would otherwise hide the "tee" an equivalence of "t-shirt"
+    // and "tee" gives it. An alternative the entry already has, or the
+    // phrase itself, is left out, so each reading is tried once.
+    const byPhrase = new Map<
+        string,
+        { phrase: readonly string[]; alternatives: Map<string, readonly string[]> }
+    >();
     const add = (phrase: readonly string[], alternatives: readonly (readonly string[])[]) => {
-        const first = phrase[0];
-        if (first === undefined) return;
-        const seen = new Set([key(phrase)]);
-        const kept = alternatives.filter((alt) => !seen.has(key(alt)) && seen.add(key(alt)));
-        const list = entries.get(first) ?? [];
-        list.push({ phrase, alternatives: kept });
-        list.sort((a, b) => b.phrase.length - a.phrase.length);
-        entries.set(first, list);
+        if (phrase.length === 0) return;
+        const own = key(phrase);
+        const entry = byPhrase.get(own) ?? { phrase, alternatives: new Map() };
+        for (const alt of alternatives) {
+            const named = key(alt);
+            if (named !== own && !entry.alternatives.has(named)) entry.alternatives.set(named, alt);
+        }
+        byPhrase.set(own, entry);
     };
 
     for (const rule of rules) {
@@ -61,6 +67,17 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
             for (const phrase of own) add(phrase, others);
         });
     }
+
+    // Entries by their first term, longest phrase first, so the most
+    // specific rule wins where two could apply at one position.
+    const entries = new Map<string, Entry[]>();
+    for (const { phrase, alternatives } of byPhrase.values()) {
+        const first = phrase[0] ?? '';
+        const list = entries.get(first) ?? [];
+        list.push({ phrase, alternatives: [...alternatives.values()] });
+        entries.set(first, list);
+    }
+    for (const list of entries.values()) list.sort((a, b) => b.phrase.length - a.phrase.length);
 
     const rewrite = (terms: readonly string[]): QueryUnit[] => {
         const units: QueryUnit[] = [];

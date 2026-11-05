@@ -642,11 +642,22 @@ describe('what a request may not do', () => {
     const errors = (response: StoreResponse) =>
         (response.errors ?? []).map((e) => [e.extensions?.['code'], e.message]);
 
-    it('refuses an unknown attribute at validation', async () => {
+    it("refuses a field the schema does not have, in GraphQL's own words", async () => {
+        expect(errors(await run('{ store { nothing } }'))).toEqual([
+            ['GRAPHQL_VALIDATION_FAILED', 'Cannot query field "nothing" on type "Store".'],
+        ]);
+    });
+
+    it('refuses an unknown attribute in a variable, saying which value does not fit', async () => {
         const response = await run(RESULTS, {
             input: { filters: [{ attribute: 'COLOUR', match: { eq: 'Red' } }] },
         });
-        expect(errors(response)[0]?.[0]).toBe('GRAPHQL_VALIDATION_FAILED');
+        expect(errors(response)).toEqual([
+            [
+                'GRAPHQL_VALIDATION_FAILED',
+                expect.stringMatching(/^Variable "\$input" .*"COLOUR" does not exist/),
+            ],
+        ]);
         expect(response.data).toBeUndefined();
     });
 
@@ -677,19 +688,42 @@ describe('what a request may not do', () => {
         }
     });
 
-    it('refuses a query that nests too deep or selects too much', async () => {
-        const deep = await run(
-            `{ categories { parent { parent { parent { parent { parent { parent { parent { parent { id } } } } } } } } } }`
-        );
-        expect(errors(deep)[0]).toEqual(['QUERY_TOO_DEEP', expect.stringMatching(/deeper than 8/)]);
-        const wide = await run(
-            `{ ${Array.from({ length: 201 }, (_, i) => `s${i}: store { name }`).join(' ')} }`
-        );
-        expect(errors(wide)[0]?.[0]).toBe('QUERY_TOO_WIDE');
+    it('answers a query exactly at the depth limit and refuses one level past it', async () => {
+        // The categories field and the id under the parents make two of the levels.
+        const nested = (parents: number) =>
+            `{ categories { ${'parent { '.repeat(parents)}id${' }'.repeat(parents)} } }`;
+        expect((await run(nested(6))).errors).toBeUndefined();
+        expect(errors(await run(nested(7)))).toEqual([
+            ['QUERY_TOO_DEEP', 'the query nests deeper than 8 levels'],
+        ]);
     });
 
-    it('reports a parse failure as one', async () => {
-        expect(errors(await run('{ search('))[0]?.[0]).toBe('GRAPHQL_PARSE_FAILED');
+    it('answers exactly the most fields and refuses one more, counting nested ones', async () => {
+        // Each alias and the name under it are two fields, so a hundred of them are the limit.
+        const aliases = Array.from({ length: 100 }, (_, i) => `s${i}: store { name }`).join(' ');
+        const wide = (extra: string) => `{ ${aliases} ${extra} }`;
+        expect((await run(wide(''))).errors).toBeUndefined();
+        expect(errors(await run(wide('__typename')))).toEqual([
+            ['QUERY_TOO_WIDE', 'the query selects more than 200 fields'],
+        ]);
+    });
+
+    it("reports a parse failure as one, in GraphQL's own words", async () => {
+        expect(errors(await run('{ search('))).toEqual([
+            ['GRAPHQL_PARSE_FAILED', 'Syntax Error: Expected Name, found <EOF>.'],
+        ]);
+    });
+
+    it('runs the operation the request names from a document that holds two', async () => {
+        const response = await api.run(
+            {
+                query: 'query A { store { name } } query B { categories { id } }',
+                operationName: 'B',
+            },
+            guest,
+            NOW
+        );
+        expect(Object.keys(data(response))).toEqual(['categories']);
     });
 
     it('never shows a client why a resolver failed', async () => {

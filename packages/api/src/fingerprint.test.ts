@@ -87,6 +87,23 @@ describe('the fingerprint', () => {
         const value = { b: 1, a: [1, 2] };
         expect(fingerprint(value)).toBe(hashText(canonical(value)));
         expect(hashText('')).toBe('811c9dc5');
+        expect(hashText('a')).toBe('e40c292c');
+    });
+
+    it('is the same whatever order the keys were written in', () => {
+        expect(fingerprint({ b: 1, a: [1, 2] })).toBe(fingerprint({ a: [1, 2], b: 1 }));
+    });
+
+    it('differs for two values that differ, however late in their text', () => {
+        expect(fingerprint({ a: 1 })).not.toBe(fingerprint({ a: 2 }));
+        const long = 'x'.repeat(10_000);
+        expect(fingerprint([long, 'a'])).not.toBe(fingerprint([long, 'b']));
+    });
+
+    it('is eight hex digits, even when the hash starts with a zero', () => {
+        // The hash of this value is below 0x10000000, so it needs padding to eight digits.
+        expect(fingerprint({ a: 70 })).toBe('0fe8747b');
+        expect(fingerprint([])).toMatch(/^[0-9a-f]{8}$/);
     });
 });
 
@@ -108,7 +125,7 @@ describe('where the native form differs, and still means one thing', () => {
         expect(canonical(parsed)).toBe('{"__proto__":{"x":1},"a":1}');
     });
 
-    it('leaves out a function, as JSON does', () => {
+    it('leaves out a function, as JSON does, and writes a bare one as null', () => {
         expect(canonical({ f: () => 1, a: 1 })).toBe('{"a":1}');
         expect(canonical([() => 1])).toBe('[null]');
         expect(canonical(() => 1)).toBe('null');

@@ -54,6 +54,16 @@ describe('rewriting a query', () => {
         ]);
     });
 
+    it('offers what every rule on one phrase gives, not only the first rule', () => {
+        const both = buildSynonyms([
+            { kind: 'one-way', from: 'tshirt', to: 't-shirt' },
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+        ]);
+        expect(both.rewrite(['tshirt'])).toEqual([
+            { terms: ['tshirt'], alternatives: [['t', 'shirt'], ['tee']] },
+        ]);
+    });
+
     it('widens a one-way rule in its one direction only', () => {
         expect(synonyms.rewrite(['cap'])).toEqual([
             { terms: ['cap'], alternatives: [['baseball', 'cap']] },
@@ -92,6 +102,24 @@ describe('a synonym never counts twice', () => {
         ]);
         expect(engine.search({ query: 'tshirt' }).hits.map((h) => h.id)).toEqual(['tshirt', 'tee']);
         expect(engine.search({ query: 'tee' }).hits.map((h) => h.id)).toEqual(['tee', 'tshirt']);
+    });
+
+    it('ranks the exact name above the synonym for a hyphenated query under two rules', () => {
+        // "t-shirt" is read as both "tshirt" and "t shirt", and a one-way rule on "tshirt" adds
+        // to the equivalence, so the Tee answers both readings and still ranks below the name.
+        const both = createEngine(
+            [product('tee', 'Coastal Tee'), product('tshirt', 'Everyday T-Shirt')],
+            {
+                fields: { name: { weight: 1 } },
+                attributes: {},
+                synonyms: [
+                    { kind: 'one-way', from: 'tshirt', to: 't-shirt' },
+                    { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+                ],
+            }
+        );
+        expect(both.search({ query: 't-shirt' }).hits.map((h) => h.id)).toEqual(['tshirt', 'tee']);
+        expect(both.search({ query: 'tshirt' }).hits.map((h) => h.id)).toEqual(['tshirt', 'tee']);
     });
 
     it('explains the synonym reading by the phrase it stood in for', () => {

@@ -84,12 +84,38 @@ describe('an event batch', () => {
         expect(parseEventBatch([sent({ at: Number.NaN })])).toBe(undefined);
         expect(parseEventBatch([sent({ id: '' })])).toBe(undefined);
         expect(parseEventBatch([sent({ position: 0 })])).toBe(undefined);
-        expect(parseEventBatch([sent({ sku: 'x'.repeat(33) })])).toBe(undefined);
-        expect(parseEventBatch([sent({ session: 'x'.repeat(65) })])).toBe(undefined);
         expect(parseEventBatch([sent({ session: '' })])).toBe(undefined);
         expect(parseEventBatch(Array.from({ length: BATCH_LIMIT + 1 }, () => sent()))).toBe(
             undefined
         );
+    });
+
+    it('accepts an id, a sku and a session at their length limits', () => {
+        const [read] =
+            parseEventBatch([
+                sent({ id: 'i'.repeat(64), sku: 's'.repeat(32), session: 't'.repeat(64) }),
+            ]) ?? [];
+        expect(read).toMatchObject({
+            id: 'i'.repeat(64),
+            sku: 's'.repeat(32),
+            session: 't'.repeat(64),
+        });
+    });
+
+    it.each([
+        ['id', { id: 'i'.repeat(65) }],
+        ['sku', { sku: 's'.repeat(33) }],
+        ['session', { session: 't'.repeat(65) }],
+    ])('refuses an event whose %s is one character past its limit', (_, over) => {
+        expect(parseEventBatch([sent(over)])).toBe(undefined);
+    });
+
+    it.each([
+        ['a phrase that is not text', { phrase: 7 }],
+        ['a position that is not a whole number', { position: 1.5 }],
+        ['a time that is not finite', { at: Number.POSITIVE_INFINITY }],
+    ])('refuses a batch with %s', (_, over) => {
+        expect(parseEventBatch([sent(over)])).toBe(undefined);
     });
 
     it('folds a phrase to a few lower case words and caps it', () => {
@@ -114,6 +140,14 @@ describe('the memory store', () => {
         await store.append([event({ id: 'b', at: 9 })]);
         expect((await store.all()).map((e) => e.id)).toEqual(['a', 'd', 'b']);
     });
+
+    it('keeps ten thousand events by default, letting the oldest go', async () => {
+        const store = createMemoryEventStore();
+        await store.append(Array.from({ length: 10_001 }, (_, at) => event({ id: `e${at}`, at })));
+        const all = await store.all();
+        expect(all).toHaveLength(10_000);
+        expect(all[0]?.id).toBe('e1');
+    });
 });
 
 describe('the receiver', () => {
@@ -123,13 +157,6 @@ describe('the receiver', () => {
         const store = createMemoryEventStore();
         expect(await receiveEvents(post([sent()]), store, new Date())).toEqual({ status: 204 });
         expect(await kept(store)).toEqual(['e1']);
-    });
-
-    it('keeps a batch delivered twice once', async () => {
-        const store = createMemoryEventStore();
-        await receiveEvents(post([sent(), sent({ id: 'e2' })]), store, new Date());
-        await receiveEvents(post([sent(), sent({ id: 'e2' })]), store, new Date());
-        expect(await kept(store)).toEqual(['e1', 'e2']);
     });
 
     it('brings a time ahead of its own back to when the batch arrived', async () => {

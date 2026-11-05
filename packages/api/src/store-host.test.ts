@@ -2,6 +2,8 @@ import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMemoryEventStore } from './events.js';
+import { fingerprint } from './fingerprint.js';
+import { viewerFromHeader } from './http.js';
 import { createMemoryRuleStore } from './rules.js';
 import { createStoreHost } from './store-host.js';
 
@@ -17,6 +19,13 @@ const hostWith = () => {
     const host = createStoreHost({ source, events, rules });
     return { host, source, events, rules };
 };
+
+const save = (host: ReturnType<typeof hostWith>['host'], rules: readonly unknown[]) =>
+    host.receiveRules({ method: 'POST', body: JSON.stringify({ rules }) });
+
+/** The rules the served store applies to a search for jackets. */
+const applied = async (host: ReturnType<typeof hostWith>['host']) =>
+    (await host.current()).model.engine.search({ query: 'jacket' }).rules.applied;
 
 const click = (id: string, sku: string, session: string) => ({
     id,
@@ -57,7 +66,7 @@ describe('a store host', () => {
         expect(next.model.products).toBe(first.model.products);
     });
 
-    it('refuses a set the engine refuses, and keeps the store it has', async () => {
+    it('refuses a set the engine refuses with no version, and keeps the store it has', async () => {
         const { host } = hostWith();
         const first = await host.current();
         const answer = await host.receiveRules({
@@ -65,7 +74,39 @@ describe('a store host', () => {
             body: JSON.stringify({ rules: [{ id: 'ghost', pin: ['SL-99999'] }] }),
         });
         expect(answer.status).toBe(400);
+        expect(answer.version).toBeUndefined();
         expect(await host.current()).toBe(first);
+    });
+
+    it('builds a second save with the second set, not the first', async () => {
+        const { host } = hostWith();
+        await host.current();
+        await save(host, [{ id: 'first', when: { queries: ['jacket'] }, pin: [jacket.sku] }]);
+        expect(await applied(host)).toEqual(['first']);
+        await save(host, [{ id: 'second', when: { queries: ['jacket'] }, pin: [jacket.sku] }]);
+        expect(await applied(host)).toEqual(['second']);
+    });
+
+    it('says the rules are edited when the set saved is exactly the shipped one', async () => {
+        const { host } = hostWith();
+        const first = await host.current();
+        const answer = await save(host, shipped);
+        expect(answer.status).toBe(204);
+        const next = await host.current();
+        expect(next.model.rulesEdited).toBe(true);
+        expect(next).not.toBe(first);
+    });
+
+    it('tells apart two saved sets whose fingerprints collide', async () => {
+        const { host } = hostWith();
+        await host.current();
+        // These two ids were searched for because the sets around them hash alike.
+        const one = [{ id: 'pteuvaen', when: { queries: ['jacket'] }, pin: [jacket.sku] }];
+        const other = [{ id: 'fuioqjpz', when: { queries: ['jacket'] }, pin: [jacket.sku] }];
+        expect(fingerprint(one)).toBe(fingerprint(other));
+        await save(host, one);
+        await save(host, other);
+        expect(await applied(host)).toEqual(['fuioqjpz']);
     });
 
     it('refuses a set of the wrong shape, and keeps the store it has', async () => {
@@ -113,6 +154,25 @@ describe('a store host', () => {
         expect(last.api.version).toBe(answer.version);
         expect(last.model.rulesEdited).toBe(true);
         expect(last.api.version).toMatch(/\+clicks\./);
+    });
+
+    it('answers through the response cache in its first store and in a rebuilt one', async () => {
+        const { host, events } = hostWith();
+        const guest = viewerFromHeader(undefined);
+        const now = new Date('2026-11-01T12:00:00Z');
+        // Only a kept answer comes back as the very same object.
+        const askedTwice = async () => {
+            const { api } = await host.current();
+            const request = { query: '{ store { rulesEdited } }' };
+            return [await api.run(request, guest, now), await api.run(request, guest, now)];
+        };
+        const [asked, again] = await askedTwice();
+        expect(again).toBe(asked);
+        await events.append([click('c1', jacket.sku, 'a')]);
+        expect(await host.refresh()).toBe(true);
+        const [rebuilt, rebuiltAgain] = await askedTwice();
+        expect(rebuiltAgain).toBe(rebuilt);
+        expect(rebuilt).not.toBe(asked);
     });
 
     it('reads its source again once cleared', async () => {
