@@ -55,19 +55,21 @@ describe('the workflows', () => {
     });
 
     it('install a browser without system packages, and give each install a time of its own', () => {
+        /** A workflow's steps, each with its lines, read without comments or Windows line ends. */
+        const stepsOf = (name: string) =>
+            [
+                ...read(name)
+                    .replace(/\r\n/g, '\n')
+                    .replace(/^\s*#.*\n/gm, '')
+                    .matchAll(/^( *)- .*\n(?:\1 {2}.*\n|[ \t]*\n)*/gm),
+            ].map(([step = '']) => step);
+        const steps = files.flatMap(stepsOf);
         // The packages come from Ubuntu's mirror, which has been slow enough to run a job out
         // of time before its tests began, and the runner image already has them.
-        const withPackages = files.filter((name) =>
-            /--with-deps|install-deps|apt-get install/.test(read(name))
-        );
-        expect(withPackages).toEqual([]);
-        const installs = files.flatMap((name) =>
-            [...read(name).matchAll(/^( *)- name: .*\n((?:\1 {2}.*\n)*)/gm)]
-                .map(([step = '']) => step)
-                .filter((step) => /playwright(?:@\S+)?\s+install/.test(step))
-        );
+        expect(steps.filter((step) => /--with-deps|\binstall-deps\b/.test(step))).toEqual([]);
+        const installs = steps.filter((step) => /playwright(?:@\S+)?\s+install\b/.test(step));
         expect(installs.length).toBeGreaterThan(0);
-        for (const step of installs) expect(step).toMatch(/timeout-minutes: [1-5]\n/);
+        for (const step of installs) expect(step).toMatch(/^\s+timeout-minutes: [1-5]\b/m);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {
