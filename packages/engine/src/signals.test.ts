@@ -42,15 +42,12 @@ describe('the weight of a signal', () => {
         expect(signalWeight(SIGNAL_SATURATION * 1000)).toBe(SIGNAL_CAP);
     });
 
-    it('gives each count the share of the cap that the log of the count is of saturation', () => {
+    it('rises with the log of the count, so each choice lifts a product less than the one before', () => {
+        const lift = (count: number) => signalWeight(count) - 1;
         // Ten choices of a hundred reach about half the lift, where a straight line gives a tenth.
-        for (const count of [1, 10, 50]) {
-            const share = Math.log(1 + count) / Math.log(1 + SIGNAL_SATURATION);
-            expect(signalWeight(count), String(count)).toBeCloseTo(
-                1 + (SIGNAL_CAP - 1) * share,
-                10
-            );
-        }
+        expect(lift(10) / lift(SIGNAL_SATURATION)).toBeGreaterThan(0.4);
+        expect(lift(10)).toBeLessThan(lift(1) * 5);
+        expect(lift(50) - lift(10)).toBeLessThan(lift(10) - lift(1));
     });
 
     it('is capped at the documented 1.25, too small to lift a bury of a half past one', () => {

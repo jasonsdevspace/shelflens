@@ -309,7 +309,8 @@ describe('typo tolerance', () => {
 
     it('gives up on two typos, and on very short words', () => {
         expect(engine.search({ query: 'snaekre' }).mode).toBe('none');
-        // "ca" is one letter short of the cap, so only its length keeps it from being corrected.
+        // "ca" is one letter short of the shortest word that is corrected, and one letter from
+        // "cap", so only its length keeps it from being corrected.
         expect(engine.search({ query: 'ca' }).mode).toBe('none');
     });
 

@@ -85,6 +85,8 @@ describe('within so many edits', () => {
             ['', 'ab'],
         ] as const) {
             expect(withinEdits(a, b, 1), `${a} ${b}`).toBe(distance(a, b) <= 1);
+            // The typo pass asks this one directly.
+            expect(withinOneEdit(a, b), `${a} ${b}`).toBe(distance(a, b) <= 1);
         }
     });
 });

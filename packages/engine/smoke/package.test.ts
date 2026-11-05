@@ -86,7 +86,9 @@ describe('the published engine', () => {
     });
 
     it('compiles against no newer a language than its lowest supported Node runs', () => {
-        const floor = Number(floorOf(pkg.engines.node)?.split('.')[0]);
+        const lowest = floorOf(pkg.engines.node);
+        expect(lowest, `${pkg.engines.node} names no lowest Node to install`).toBeDefined();
+        const floor = Number(lowest?.split('.')[0]);
         const edition = EDITION_BY_MAJOR[floor];
         expect(edition, `add Node ${floor} to the table`).toBeDefined();
         for (const name of compiledAgainst()) {

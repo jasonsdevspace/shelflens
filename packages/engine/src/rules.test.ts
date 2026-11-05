@@ -142,8 +142,12 @@ describe('rules on a query', () => {
                 },
             ],
         });
-        const score = (from: typeof plain) =>
-            from.search({ query: 'runner' }).hits.find((h) => h.id === 'p3')?.score ?? 0;
+        const score = (from: typeof plain) => {
+            const hit = from.search({ query: 'runner' }).hits.find((h) => h.id === 'p3');
+            if (!hit) throw new Error('expected p3 among the runners');
+            return hit.score;
+        };
+        expect(score(plain)).toBeGreaterThan(0);
         expect(score(twice)).toBeCloseTo(score(plain) * 6, 10);
     });
 
@@ -277,12 +281,13 @@ describe('rules in time', () => {
         expect(engine.search({ query: 'parka' }).rules.applied).toEqual([]);
     });
 
-    it('stops applying a windowed rule at the instant its window ends', () => {
+    it('applies a windowed rule from the instant its window starts, and stops at the instant it ends', () => {
         const at = (text: string) =>
             engine.search({ query: 'parka', now: new Date(text) }).rules.applied;
+        expect(at('2026-10-31T23:59:59.999Z')).toEqual([]);
+        expect(at('2026-11-01T00:00:00.000Z')).toEqual(['winter-sale']);
         expect(at('2027-01-31T23:59:59.999Z')).toEqual(['winter-sale']);
         expect(at('2027-02-01T00:00:00.000Z')).toEqual([]);
-        expect(at('2027-03-01T00:00:00.000Z')).toEqual([]);
     });
 });
 
