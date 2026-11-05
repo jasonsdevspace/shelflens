@@ -5,8 +5,10 @@ import {
     createMemoryRuleStore,
     createStore,
     errorBody,
+    type EventStore,
     PERSISTED_OPERATIONS,
     type RuleStore,
+    type StoreEvent,
     VERSION_HEADER,
 } from '@shelflens/api';
 import { type Catalog, generateCatalog } from '@shelflens/catalog';
@@ -60,6 +62,7 @@ const LAMPS = fromCsv('name,price\nBrass Desk Lamp,$40.00\nPaper Floor Lamp,$65.
 const storeVersion = (catalog: Catalog) => createStore({ catalog }).version;
 
 const MUGS = fromCsv('name,price\nStoneware Mug,$12.00\nEnamel Camp Mug,$9.00\n');
+/** A catalog with no second row, so a rule pinning the second row's SKU cannot be built. */
 const ONE_MUG = fromCsv('name,price\nStoneware Mug,$12.00\n');
 
 const memoryAnswers = () => {
@@ -144,6 +147,83 @@ describe('the worker for a visitor’s own catalog', () => {
             errorBody(404, 'no catalog is loaded, so there is nothing to search yet')
         );
         expect(await events.all()).toEqual([]);
+    });
+
+    it('keeps no batch that was still being written when the catalog was removed', async () => {
+        const kept: StoreEvent[] = [];
+        let written = (): void => undefined;
+        const writing = new Promise<void>((resolve) => {
+            written = resolve;
+        });
+        let begun = (): void => undefined;
+        const beginning = new Promise<void>((resolve) => {
+            begun = resolve;
+        });
+        const events: EventStore = {
+            append: async (batch) => {
+                begun();
+                await writing;
+                kept.push(...batch);
+            },
+            all: () => Promise.resolve(kept),
+        };
+        const api = createWorkerApi({
+            catalogs: createMemoryCatalogStore(),
+            base: BASE,
+            events,
+            forgetEvents: () => {
+                kept.length = 0;
+                return Promise.resolve();
+            },
+        });
+        await api.handle(catalogRequest('PUT', LAMPS));
+        const posted = api.handle(
+            new Request(`${ORIGIN}${BASE}events`, {
+                method: 'POST',
+                body: JSON.stringify([
+                    { id: 'e1', kind: 'view', at: 1, sku: LAMPS.products[0]?.sku ?? '' },
+                ]),
+            })
+        );
+        // The removal is asked while the batch is being written, and given time to run before
+        // the write ends, as it would if it did not wait for the batch.
+        await beginning;
+        const removed = api.handle(catalogRequest('DELETE'));
+        await Promise.race([removed, new Promise((resolve) => setTimeout(resolve, 50))]);
+        written();
+        expect((await posted)?.status).toBe(204);
+        expect((await removed)?.status).toBe(204);
+        expect(kept).toEqual([]);
+    });
+
+    it('keeps the catalog loaded while an older read of the saved one was waiting', async () => {
+        const catalogs = createMemoryCatalogStore();
+        await catalogs.replace(LAMPS);
+        let read = (): void => undefined;
+        const reading = new Promise<void>((resolve) => {
+            read = resolve;
+        });
+        let reads = 0;
+        // Only the first read waits, the one asking what is loaded.
+        const slow: CatalogStore = {
+            ...catalogs,
+            current: async () => {
+                reads += 1;
+                const saved = await catalogs.current();
+                if (reads === 1) await reading;
+                return saved;
+            },
+        };
+        const api = createWorkerApi({ catalogs: slow, base: BASE });
+        // Asking what is loaded starts reading the saved catalog, and a new one is loaded before
+        // the read ends.
+        const asked = api.handle(catalogRequest('GET'));
+        expect((await api.handle(catalogRequest('PUT', MUGS)))?.status).toBe(204);
+        read();
+        await asked;
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toMatchObject({
+            version: MUGS.version,
+        });
     });
 
     it('says a catalog saved before it started is loaded, and builds from it', async () => {
@@ -387,6 +467,14 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(textAt(await refused?.json(), 'errors', 0, 'message')).toMatch(/^rule odd /);
         expect((await catalogs.current())?.version).toBe(LAMPS.version);
         expect(await rules.current()).toEqual(pinFirst(LAMPS));
+        // What the worker says is loaded, and searches, is the last catalog too.
+        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: LAMPS.version,
+            products: 2,
+        });
+        // The rules part of the version moves with the rules put back, the catalog part stays.
+        const searched = await versionOf(await api.handle(get({ op: STORE })));
+        expect(searched.split('+')[0]).toBe(storeVersion(LAMPS).split('+')[0]);
     });
 
     it('holds a removal until a load that is building lands, then removes it, so both paths agree', async () => {

@@ -16,18 +16,26 @@ test('a page loaded past the worker is claimed by it and can search', async ({ p
     await page.goto('/');
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await expect(search).toBeVisible();
+    const controlled = () => page.evaluate(() => navigator.serviceWorker.controller !== null);
+    const atLoad = () => page.evaluate(() => sessionStorage.getItem('controlled at load'));
+    // Once claimed, an ordinary reload is answered by the worker.
+    await expect.poll(controlled).toBe(true);
+    await page.reload();
+    expect(await atLoad()).toBe('true');
 
     // A hard reload, which the browser loads from the network rather than through the worker.
     const session = await page.context().newCDPSession(page);
+    const reloaded = page.waitForEvent('load');
     await session.send('Page.reload', { ignoreCache: true });
+    await reloaded;
     await session.detach();
-    await page.waitForLoadState();
-    expect(await page.evaluate(() => sessionStorage.getItem('controlled at load'))).toBe('false');
+    expect(await atLoad()).toBe('false');
 
+    // The page asks to be claimed, and searches once it is.
+    await expect.poll(controlled).toBe(true);
     await search.fill('jacket');
     await search.press('Enter');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
-    expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
 });
 
 test('a new worker that takes over a page reloads it once, and the page searches after', async ({
@@ -39,8 +47,8 @@ test('a new worker that takes over a page reloads it once, and the page searches
     page.on('load', () => {
         loads += 1;
     });
-    // The browser fetches a worker's script where no route reaches, so the next build is the
-    // same script at another address, which the browser installs as a new worker for the scope.
+    // A test's routes do not reach the fetch of a worker's script, so the next build is the same
+    // script at another address, which the browser installs as a new worker for the scope.
     await page.evaluate(async () => {
         await navigator.serviceWorker.register('/sw.js?build=next', { type: 'module', scope: '/' });
     });
