@@ -233,10 +233,10 @@ describe('rules that share a phrase', () => {
             { kind: 'one-way', from: 't shirt', to: 'tee' },
             { kind: 'equivalent', terms: ['tee', 'tshirt'] },
         ] as const;
-        const unrelated = [...rules, { kind: 'one-way', from: 't-shirt', to: 'top' }] as const;
+        const added = [...rules, { kind: 'one-way', from: 't-shirt', to: 'top' }] as const;
         expect(alternativesOf(rules, ['t', 'shirt'])).toEqual([['tee'], ['tshirt']]);
         // A rule that names "t-shirt" adds what it gives, nearest first, and takes nothing away.
-        expect(alternativesOf(unrelated, ['t', 'shirt'])).toEqual([['tee'], ['top'], ['tshirt']]);
+        expect(alternativesOf(added, ['t', 'shirt'])).toEqual([['tee'], ['top'], ['tshirt']]);
     });
 
     it('find what the end of the chain names', () => {

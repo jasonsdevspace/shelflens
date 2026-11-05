@@ -55,9 +55,11 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
     /**
      * Every phrase this one leads to through the rules, nearest first, so
      * rules chain through a phrase they share. A raincoat that is a rain
-     * shell, and a rain shell that is an anorak, is an anorak. Each phrase is
-     * offered once, so each reading is tried once, and the phrase itself is
-     * never offered.
+     * shell, and a rain shell that is an anorak, is an anorak. The phrase's
+     * own other spellings are offered too when a chain reaches them, since
+     * leaving them out made what a phrase offered depend on unrelated rules.
+     * Each phrase is offered once, so each reading is tried once, and the
+     * phrase itself is never offered.
      */
     const reachedFrom = (own: string): (readonly string[])[] => {
         const reached = new Map<string, readonly string[]>();
