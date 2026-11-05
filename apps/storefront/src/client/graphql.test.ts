@@ -86,7 +86,7 @@ describe('the client', () => {
         expect(client.remembered).toBe(2);
     });
 
-    it('asks again when an answer comes from a new version, and never thrashes between two', async () => {
+    it('asks again under a new version, and answers from memory when an older one comes back', async () => {
         const fetchImpl = vi
             .fn<typeof fetch>()
             .mockResolvedValueOnce(answer(SUGGEST, 'v1'))
