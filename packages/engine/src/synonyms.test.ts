@@ -179,3 +179,68 @@ describe('changing synonyms without reindexing', () => {
         expect(ids(widened.reconfigure({ synonyms: [] }))).toEqual(['tee']);
     });
 });
+
+/*
+ * Rules that share a phrase chain through it, so a merchandiser who says a raincoat is a rain
+ * shell, and a rain shell is an anorak, has said a raincoat is an anorak. A one-way rule stays
+ * one way along the chain.
+ */
+describe('rules that share a phrase', () => {
+    const alternativesOf = (rules: Parameters<typeof buildSynonyms>[0], terms: string[]) =>
+        buildSynonyms(rules).rewrite(terms)[0]?.alternatives ?? [];
+
+    it('carry a one-way rule on through an equivalence, and not back', () => {
+        const rules = [
+            { kind: 'one-way', from: 'raincoat', to: 'rain shell' },
+            { kind: 'equivalent', terms: ['rain shell', 'anorak'] },
+        ] as const;
+        expect(alternativesOf(rules, ['raincoat'])).toEqual([['rain', 'shell'], ['anorak']]);
+        expect(alternativesOf(rules, ['anorak'])).toEqual([['rain', 'shell']]);
+    });
+
+    it('join two equivalences that share a word', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['sweater', 'jumper'] },
+            { kind: 'equivalent', terms: ['sweater', 'pullover'] },
+        ] as const;
+        expect(alternativesOf(rules, ['jumper'])).toEqual([['sweater'], ['pullover']]);
+        expect(alternativesOf(rules, ['pullover'])).toEqual([['sweater'], ['jumper']]);
+    });
+
+    it('follow one-way rules one after another', () => {
+        const rules = [
+            { kind: 'one-way', from: 'tv', to: 'television' },
+            { kind: 'one-way', from: 'television', to: 'screen' },
+        ] as const;
+        expect(alternativesOf(rules, ['tv'])).toEqual([['television'], ['screen']]);
+        expect(alternativesOf(rules, ['television'])).toEqual([['screen']]);
+        expect(alternativesOf(rules, ['screen'])).toEqual([]);
+    });
+
+    it('stop where rules lead back to where they began', () => {
+        const rules = [
+            { kind: 'one-way', from: 'cap', to: 'hat' },
+            { kind: 'one-way', from: 'hat', to: 'cap' },
+        ] as const;
+        expect(alternativesOf(rules, ['cap'])).toEqual([['hat']]);
+        expect(alternativesOf(rules, ['hat'])).toEqual([['cap']]);
+    });
+
+    it('find what the end of the chain names', () => {
+        const engine = createEngine(
+            [
+                { id: 'anorak', text: { name: 'Harbor Anorak' }, attributes: {} },
+                { id: 'tote', text: { name: 'Main Street Tote' }, attributes: {} },
+            ],
+            {
+                fields: { name: { weight: 1 } },
+                attributes: {},
+                synonyms: [
+                    { kind: 'one-way', from: 'raincoat', to: 'rain shell' },
+                    { kind: 'equivalent', terms: ['rain shell', 'anorak'] },
+                ],
+            }
+        );
+        expect(engine.search({ query: 'raincoat' }).hits.map((h) => h.id)).toEqual(['anorak']);
+    });
+});

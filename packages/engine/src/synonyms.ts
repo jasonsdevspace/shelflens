@@ -36,32 +36,67 @@ const startsWith = (terms: readonly string[], at: number, phrase: readonly strin
     phrase.every((term, i) => terms[at + i] === term);
 
 export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
-    // One entry per phrase, which every rule on the phrase adds to, because
-    // rewrite reads only the first entry that fits, and a one-way rule from
-    // "tshirt" would otherwise hide the "tee" an equivalence of "t-shirt"
-    // and "tee" gives it. An alternative the entry already has, or the
-    // phrase itself, is left out, so each reading is tried once.
+    // What each phrase leads to directly, by every rule on it. One entry per
+    // phrase, because rewrite reads only the first entry that fits, and a
+    // one-way rule from "tshirt" would otherwise hide the "tee" an
+    // equivalence of "t-shirt" and "tee" gives it.
     const byPhrase = new Map<
         string,
-        { phrase: readonly string[]; alternatives: Map<string, readonly string[]> }
+        { phrase: readonly string[]; next: Map<string, readonly string[]> }
     >();
     const add = (phrase: readonly string[], alternatives: readonly (readonly string[])[]) => {
         if (phrase.length === 0) return;
         const own = key(phrase);
-        const entry = byPhrase.get(own) ?? { phrase, alternatives: new Map() };
-        for (const alt of alternatives) {
-            const named = key(alt);
-            if (named !== own && !entry.alternatives.has(named)) entry.alternatives.set(named, alt);
-        }
+        const entry = byPhrase.get(own) ?? { phrase, next: new Map() };
+        for (const alt of alternatives) if (alt.length > 0) entry.next.set(key(alt), alt);
         byPhrase.set(own, entry);
+    };
+
+    // The ways one word or phrase of a rule is written, such as "tshirt" and
+    // "t shirt" for "t-shirt", which are the same word, not synonyms of it.
+    const spellings = new Map<string, Set<string>>();
+    const variantsOf = (text: string): string[][] => {
+        const variants = phraseVariants(text);
+        const keys = new Set(variants.map(key));
+        for (const named of keys) {
+            const known = spellings.get(named) ?? new Set();
+            for (const other of keys) known.add(other);
+            spellings.set(named, known);
+        }
+        return variants;
+    };
+
+    /**
+     * Every phrase one leads to through the rules, nearest first, so rules
+     * that share a phrase chain through it: a raincoat that is a rain shell,
+     * and a rain shell that is an anorak, is an anorak. The phrase itself,
+     * and one reached twice, is left out, so each reading is tried once, and
+     * so is another spelling of the phrase reached only along a chain, which
+     * is the same word and not a synonym of it. A rule that names one, as
+     * "tshirt" to "t-shirt" does, still gives it.
+     */
+    const reachedFrom = (own: string): (readonly string[])[] => {
+        const same = spellings.get(own) ?? new Set([own]);
+        const reached = new Map<string, readonly string[]>();
+        const seen = new Set([own]);
+        const queue = [own];
+        for (let at = 0; at < queue.length; at += 1) {
+            for (const [named, phrase] of byPhrase.get(queue[at] ?? '')?.next ?? []) {
+                if (seen.has(named)) continue;
+                seen.add(named);
+                queue.push(named);
+                if (at === 0 || !same.has(named)) reached.set(named, phrase);
+            }
+        }
+        return [...reached.values()];
     };
 
     for (const rule of rules) {
         if (rule.kind === 'one-way') {
-            for (const phrase of phraseVariants(rule.from)) add(phrase, phraseVariants(rule.to));
+            for (const phrase of variantsOf(rule.from)) add(phrase, variantsOf(rule.to));
             continue;
         }
-        const variants = rule.terms.map(phraseVariants);
+        const variants = rule.terms.map(variantsOf);
         variants.forEach((own, i) => {
             const others = variants.flatMap((other, j) => (i === j ? [] : other));
             for (const phrase of own) add(phrase, others);
@@ -71,10 +106,10 @@ export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
     // Entries by their first term, longest phrase first, so the most
     // specific rule wins where two could apply at one position.
     const entries = new Map<string, Entry[]>();
-    for (const { phrase, alternatives } of byPhrase.values()) {
+    for (const [own, { phrase }] of byPhrase) {
         const first = phrase[0] ?? '';
         const list = entries.get(first) ?? [];
-        list.push({ phrase, alternatives: [...alternatives.values()] });
+        list.push({ phrase, alternatives: reachedFrom(own) });
         entries.set(first, list);
     }
     for (const list of entries.values()) list.sort((a, b) => b.phrase.length - a.phrase.length);
