@@ -1,10 +1,12 @@
 import { act, screen, within } from '@testing-library/react';
 import axe from 'axe-core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { cards, open, settled } from './test/store.jsx';
 
-/** A viewport the test can turn across the phone breakpoint, with the listeners the page attached. */
+/* The store on a phone: the facets and the rules in drawers. */
+
+/** A viewport the test can turn across the phone breakpoint, telling the page each time it turns. */
 const turnableViewport = () => {
     let phone = false;
     const listeners = new Set<() => void>();
@@ -22,8 +24,6 @@ const turnableViewport = () => {
             for (const listener of listeners) listener();
         });
 };
-
-/* The store on a phone: the facets and the rules in drawers. */
 
 describe('on a phone', () => {
     const narrow = () => {
@@ -146,7 +146,7 @@ describe('on a phone', () => {
         };
         const missing = /The results have not shown a product with the SKU SL-9\./;
 
-        // A rule refused for what it lacks keeps saying so on a phone.
+        // A rule naming a product the results have not shown keeps saying so on a phone.
         await user.click(
             within(await screen.findByRole('complementary', { name: 'Rules' })).getByRole(
                 'button',
@@ -189,8 +189,11 @@ describe('on a phone', () => {
         await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
         await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
         await within(panel).findByRole('status');
-        // The host refuses the discard, in its own words.
+        // The host refuses the discard, in its own words, for the rest of this test only.
         const real = globalThis.fetch;
+        onTestFinished(() => {
+            vi.stubGlobal('fetch', real);
+        });
         vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
             init?.method === 'DELETE'
                 ? Promise.resolve(
@@ -203,15 +206,34 @@ describe('on a phone', () => {
         );
         const column = screen.getByRole('complementary', { name: 'Rules' });
         await user.click(within(column).getByRole('button', { name: 'Discard your rules' }));
-        await user.click(within(column).getByRole('button', { name: 'Yes, discard' }));
-        expect(await within(column).findByRole('alert')).toHaveTextContent(
-            'the rules are being saved elsewhere'
+        // The step the visitor is on survives the screen turning too.
+        turn(true);
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
+        expect(
+            within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('button', {
+                name: 'Yes, discard',
+            })
+        ).toBeVisible();
+        turn(false);
+        await user.click(
+            within(screen.getByRole('complementary', { name: 'Rules' })).getByRole('button', {
+                name: 'Yes, discard',
+            })
         );
+        expect(
+            await within(screen.getByRole('complementary', { name: 'Rules' })).findByRole('alert')
+        ).toHaveTextContent('the rules are being saved elsewhere');
         turn(true);
         await user.click(screen.getByRole('button', { name: 'Edit rules' }));
         const drawer = screen.getByRole('dialog', { name: 'Rules' });
         expect(within(drawer).getByRole('alert')).toHaveTextContent(
             'the rules are being saved elsewhere'
         );
+        // Taking up a rule lets the refusal go, so it is not said again beside the saved set, even
+        // when the rule is put down unsaved.
+        await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
+        await user.click(within(drawer).getByRole('button', { name: 'Cancel' }));
+        expect(within(drawer).getByRole('button', { name: 'Discard your rules' })).toBeVisible();
+        expect(within(drawer).queryByRole('alert')).toBeNull();
     });
 });

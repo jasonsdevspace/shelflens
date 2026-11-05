@@ -25,6 +25,7 @@ import { sessionId } from './events/session.js';
 import { ProductPage } from './product/ProductPage.jsx';
 import { ResultsPage } from './results/ResultsPage.jsx';
 import { DiscardRules } from './results/RulesPanel.jsx';
+import { useDiscard } from './results/useDiscard.js';
 import { SearchBox } from './search/SearchBox.jsx';
 import { TourPlace, TourToggle } from './tour/Tour.jsx';
 import { useTour } from './tour/useTour.js';
@@ -84,11 +85,15 @@ const EditedRulesNotice = ({
 }: {
     readonly rulesUrl: string;
     readonly onReset: () => void;
-}) => (
-    <div className="callout rules-notice">
-        Your edited rules are in effect. <DiscardRules rulesUrl={rulesUrl} onReset={onReset} />
-    </div>
-);
+}) => {
+    // Drawn once above the page, so it holds its own discard.
+    const discarding = useDiscard(rulesUrl, onReset, 0);
+    return (
+        <div className="callout rules-notice">
+            Your edited rules are in effect. <DiscardRules held={discarding} />
+        </div>
+    );
+};
 
 /** What is said above the results: the store starting, a page's banner, and edited rules. */
 const Notices = ({
