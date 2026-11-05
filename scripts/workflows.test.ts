@@ -42,15 +42,24 @@ describe('the workflows', () => {
         expect(unnamed).toEqual([]);
     });
 
-    it('take the screenshots in the image of the Playwright the tests pin', () => {
+    it('run every browser in the image of the Playwright the tests pin', () => {
         const pinned = lookupText(
             readJson(join(ROOT, 'package.json')),
             'devDependencies',
             '@playwright/test'
         );
-        const image = /mcr\.microsoft\.com\/playwright:v([\d.]+)-/.exec(read('ci.yml'))?.[1];
+        const ci = read('ci.yml');
+        const images = [...ci.matchAll(/mcr\.microsoft\.com\/playwright:v([\d.]+)-/g)].map(
+            ([, version]) => version
+        );
         expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
-        expect(image).toBe(pinned);
+        expect(images).toEqual(['browser', 'lighthouse', 'visual'].map(() => pinned));
+        for (const job of ['browser', 'lighthouse', 'visual']) {
+            expect(jobsOf(ci).get(job)).toMatch(/image: mcr\.microsoft\.com\/playwright:v/);
+        }
+        // A browser installed on the runner comes from Ubuntu's mirror, which has been slow
+        // enough to run a job out of time.
+        expect(ci).not.toMatch(/playwright install/);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {
