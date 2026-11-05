@@ -31,9 +31,11 @@ describe('rewriting a query', () => {
     ]);
 
     it('turns a phrase a rule names into one unit with alternatives', () => {
+        // "tee" leads back to the other spelling of "t-shirt", so a product written "Tshirt"
+        // is found by "t shirt" too.
         expect(synonyms.rewrite(['red', 't', 'shirt'])).toEqual([
             { terms: ['red'], alternatives: [] },
-            { terms: ['t', 'shirt'], alternatives: [['tee']] },
+            { terms: ['t', 'shirt'], alternatives: [['tee'], ['tshirt']] },
         ]);
     });
 
@@ -177,5 +179,122 @@ describe('changing synonyms without reindexing', () => {
         expect(ids(engine)).toEqual(['tee']);
         expect(ids(widened)).toEqual(['tee', 'tshirt']);
         expect(ids(widened.reconfigure({ synonyms: [] }))).toEqual(['tee']);
+    });
+});
+
+/*
+ * Rules chain through a phrase they share, so a merchandiser who says a raincoat is a rain
+ * shell, and a rain shell is an anorak, has said a raincoat is an anorak. A one-way rule stays
+ * one way along the chain.
+ */
+describe('rules that share a phrase', () => {
+    const alternativesOf = (rules: Parameters<typeof buildSynonyms>[0], terms: string[]) =>
+        buildSynonyms(rules).rewrite(terms)[0]?.alternatives ?? [];
+
+    it('carry a one-way rule on through an equivalence, and not back', () => {
+        const rules = [
+            { kind: 'one-way', from: 'raincoat', to: 'rain shell' },
+            { kind: 'equivalent', terms: ['rain shell', 'anorak'] },
+        ] as const;
+        expect(alternativesOf(rules, ['raincoat'])).toEqual([['rain', 'shell'], ['anorak']]);
+        expect(alternativesOf(rules, ['anorak'])).toEqual([['rain', 'shell']]);
+    });
+
+    it('join two equivalences that share a word', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['sweater', 'jumper'] },
+            { kind: 'equivalent', terms: ['sweater', 'pullover'] },
+        ] as const;
+        expect(alternativesOf(rules, ['jumper'])).toEqual([['sweater'], ['pullover']]);
+        expect(alternativesOf(rules, ['pullover'])).toEqual([['sweater'], ['jumper']]);
+    });
+
+    it('follow one-way rules one after another', () => {
+        const rules = [
+            { kind: 'one-way', from: 'tv', to: 'television' },
+            { kind: 'one-way', from: 'television', to: 'screen' },
+        ] as const;
+        expect(alternativesOf(rules, ['tv'])).toEqual([['television'], ['screen']]);
+        expect(alternativesOf(rules, ['television'])).toEqual([['screen']]);
+        expect(alternativesOf(rules, ['screen'])).toEqual([]);
+    });
+
+    it('go no further than two steps from the phrase typed', () => {
+        const rules = [
+            { kind: 'one-way', from: 'tv', to: 'television' },
+            { kind: 'one-way', from: 'television', to: 'screen' },
+            { kind: 'one-way', from: 'screen', to: 'monitor' },
+        ] as const;
+        expect(alternativesOf(rules, ['tv'])).toEqual([['television'], ['screen']]);
+        expect(alternativesOf(rules, ['television'])).toEqual([['screen'], ['monitor']]);
+    });
+
+    it('keep a chain through a generic word to two steps', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+            { kind: 'equivalent', terms: ['tee', 'top'] },
+            { kind: 'equivalent', terms: ['top', 'lid'] },
+        ] as const;
+        const offered = (terms: string[]) =>
+            alternativesOf(rules, terms).map((phrase) => phrase.join(' '));
+        for (const spelling of [['tshirt'], ['t', 'shirt']]) {
+            expect(offered(spelling)).toContain('top');
+            expect(offered(spelling)).not.toContain('lid');
+        }
+        // A phrase next to the generic word still reaches what it joins.
+        expect(offered(['tee'])).toContain('lid');
+    });
+
+    it('start from every spelling of a phrase at once', () => {
+        const rules = [
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+            { kind: 'one-way', from: 'tshirt', to: 'jersey' },
+        ] as const;
+        expect(alternativesOf(rules, ['tshirt'])).toContainEqual(['jersey']);
+        expect(alternativesOf(rules, ['t', 'shirt'])).toContainEqual(['jersey']);
+        const apart = [
+            { kind: 'one-way', from: 't shirt', to: 'tee' },
+            { kind: 'one-way', from: 'tshirt', to: 'jersey' },
+        ] as const;
+        // A spelling no rule leads to is a place to start from, never something offered.
+        expect(alternativesOf(apart, ['t', 'shirt'])).toEqual([['tee'], ['jersey']]);
+    });
+
+    it('stop where rules lead back to where they began', () => {
+        const rules = [
+            { kind: 'one-way', from: 'cap', to: 'hat' },
+            { kind: 'one-way', from: 'hat', to: 'cap' },
+        ] as const;
+        expect(alternativesOf(rules, ['cap'])).toEqual([['hat']]);
+        expect(alternativesOf(rules, ['hat'])).toEqual([['cap']]);
+    });
+
+    it('keep what a phrase offers when a rule is added on it', () => {
+        const rules = [
+            { kind: 'one-way', from: 't shirt', to: 'tee' },
+            { kind: 'equivalent', terms: ['tee', 'tshirt'] },
+        ] as const;
+        const added = [...rules, { kind: 'one-way', from: 't-shirt', to: 'top' }] as const;
+        expect(alternativesOf(rules, ['t', 'shirt'])).toEqual([['tee'], ['tshirt']]);
+        // A rule that names "t-shirt" adds what it gives, nearest first, and takes nothing away.
+        expect(alternativesOf(added, ['t', 'shirt'])).toEqual([['tee'], ['top'], ['tshirt']]);
+    });
+
+    it('find what the end of the chain names', () => {
+        const engine = createEngine(
+            [
+                { id: 'anorak', text: { name: 'Harbor Anorak' }, attributes: {} },
+                { id: 'tote', text: { name: 'Main Street Tote' }, attributes: {} },
+            ],
+            {
+                fields: { name: { weight: 1 } },
+                attributes: {},
+                synonyms: [
+                    { kind: 'one-way', from: 'raincoat', to: 'rain shell' },
+                    { kind: 'equivalent', terms: ['rain shell', 'anorak'] },
+                ],
+            }
+        );
+        expect(engine.search({ query: 'raincoat' }).hits.map((h) => h.id)).toEqual(['anorak']);
     });
 });
