@@ -363,13 +363,15 @@ h4 {
 
 /*
  * The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row.
- * They share the links' row, so the strip is one row tall, as every demo's strip is.
+ * They share the links' row, so the strip is one row tall, as every demo's strip is, and are a
+ * row as tall as the links' themselves, so a row of them that wraps keeps its room from the rule.
  */
 .topbar-tools {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+    min-height: 2.5rem;
 }
 
 .topbar-tools:empty {
