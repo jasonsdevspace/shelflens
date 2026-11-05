@@ -12,7 +12,6 @@ import {
 } from '../app/url.js';
 import { count, formatCount } from '../format/count.js';
 import { priceBandText } from '../format/money.js';
-import { ratingBandText } from '../format/rating.js';
 import type { SearchQuery } from '../generated/operations.js';
 import { Stars } from './Stars.jsx';
 
@@ -305,10 +304,19 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         checked={state.rating === bucket.from}
                         onChange={() => choose(bucket.from)}
                     />
-                    {/* The stars a card shows at that rating, seen, and the words, heard. */}
+                    {/*
+                     * Seen, the stars a card shows at that rating, then "and up". Heard, the
+                     * stars are their number in words, so the band is said in full once.
+                     */}
                     <span className="facet-label facet-rating">
                         <Stars average={bucket.from} />
-                        <span>{ratingBandText(bucket.from, locale)}</span>
+                        <span>
+                            <span className="visually-hidden">
+                                {count(bucket.from, 'star', 'stars', locale)}
+                            </span>
+                            {/* The space is outside the hidden words, so the name keeps it. */}
+                            {' and up'}
+                        </span>
                     </span>
                     {bucket.count !== undefined && <FacetCount n={bucket.count} />}
                 </label>
