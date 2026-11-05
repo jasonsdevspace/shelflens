@@ -85,12 +85,106 @@ describe('recovering from no results', () => {
         });
     });
 
-    it('keeps the filters it is told are fixed, even when counting without filters', () => {
-        const fixed = [{ attribute: 'category', eq: 'clothing' }];
-        const filters = [{ attribute: 'brand', eq: 'Nobody' }];
-        expect(engine.recover({ query: 'sweater', filters }, fixed)).toEqual({
-            foundWithoutFilters: 2,
+    it("withholds a correction that finds nothing under the shopper's filters", () => {
+        // Northwind makes no sweater, so the correction would only lead to another empty page.
+        const filters = [{ attribute: 'brand', eq: 'Northwind' }];
+        expect(engine.recover({ query: 'swaetter', filters })).toEqual({ foundWithoutFilters: 0 });
+    });
+
+    it("counts a relaxed phrase under the shopper's filters, and offers none that finds nothing there", () => {
+        const filters = [{ attribute: 'brand', eq: 'Ostara' }];
+        expect(engine.recover({ query: 'xqzv sweater', filters })).toEqual({
+            relaxed: { query: 'sweater', dropped: ['xqzv'], total: 1 },
+            foundWithoutFilters: 0,
         });
-        expect(engine.recover({ query: 'xqzv runner' }, fixed)).toEqual({ foundWithoutFilters: 0 });
+        expect(engine.recover({ query: 'xqzv parka', filters })).toEqual({
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('keeps the filters it is told are fixed, even when counting without filters', () => {
+        const fixed = [{ attribute: 'brand', eq: 'Ostara' }];
+        const filters = [{ attribute: 'category', eq: 'nowhere' }];
+        // Two sweaters are in the index, and only one of them is Ostara's.
+        expect(engine.recover({ query: 'sweater', filters }, fixed)).toEqual({
+            foundWithoutFilters: 1,
+        });
+        const clothing = [{ attribute: 'category', eq: 'clothing' }];
+        expect(engine.recover({ query: 'xqzv runner' }, clothing)).toEqual({
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('counts each word alone under the fixed filters, so a word only they rule out goes first', () => {
+        const fixed = [{ attribute: 'category', eq: 'clothing' }];
+        expect(engine.recover({ query: 'wool runner' }, fixed)).toEqual({
+            relaxed: { query: 'wool', dropped: ['runner'], total: 1 },
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('corrects a word two letters shorter or longer than the word in use', () => {
+        expect(engine.recover({ query: 'swter' })).toEqual({
+            correction: 'sweater',
+            foundWithoutFilters: 0,
+        });
+        expect(engine.recover({ query: 'woolxx' })).toEqual({
+            correction: 'wool',
+            foundWithoutFilters: 0,
+        });
+    });
+});
+
+describe('choosing a replacement word', () => {
+    // Both words are two typos from "plaxxer". Planter is the more used, and plaster is the
+    // only one sold in hardware.
+    const shop = createEngine(
+        [
+            product('g1', 'Clay Planter', 'Terra', 'garden'),
+            product('g2', 'Cedar Planter', 'Terra', 'garden'),
+            product('h1', 'Wall Plaster', 'Mason', 'hardware'),
+        ],
+        config
+    );
+
+    it('offers the most used of two words within reach', () => {
+        expect(shop.recover({ query: 'plaxxer' })).toEqual({
+            correction: 'planter',
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('passes over a word that finds nothing under the fixed filters for one that does', () => {
+        const fixed = [{ attribute: 'category', eq: 'hardware' }];
+        expect(shop.recover({ query: 'plaxxer' }, fixed)).toEqual({
+            correction: 'plaster',
+            foundWithoutFilters: 0,
+        });
+    });
+});
+
+describe("recovering at the request's time", () => {
+    // The parka is pulled for December, so every count made in December leaves it out.
+    const recall = createEngine(documents, {
+        ...config,
+        rules: [
+            {
+                id: 'parka-recall',
+                active: { from: '2026-12-01T00:00:00Z', to: '2027-01-01T00:00:00Z' },
+                hide: ['p5'],
+            },
+        ],
+    });
+    const filters = [{ attribute: 'brand', eq: 'Ostara' }];
+
+    it('counts what a phrase finds with the rules in force at that time', () => {
+        const december = new Date('2026-12-15T00:00:00.000Z');
+        const june = new Date('2026-06-01T00:00:00.000Z');
+        expect(recall.recover({ query: 'parka', filters, now: december })).toEqual({
+            foundWithoutFilters: 0,
+        });
+        expect(recall.recover({ query: 'parka', filters, now: june })).toEqual({
+            foundWithoutFilters: 1,
+        });
     });
 });

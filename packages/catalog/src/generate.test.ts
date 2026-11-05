@@ -39,6 +39,19 @@ describe('the products', () => {
 
     it('refuses a size that makes no sense', () => {
         expect(() => generateCatalog({ products: 0 })).toThrow(/positive integer/);
+        expect(() => generateCatalog({ products: 2.5 })).toThrow(/positive integer/);
+    });
+
+    it('gives every variant a SKU no other variant in the catalog has', () => {
+        const skus = catalog.products.flatMap((p) => p.variants.map((v) => v.sku));
+        expect(new Set(skus).size).toBe(skus.length);
+    });
+
+    it("dates every product on or before the catalog's reference date", () => {
+        const reference = Date.UTC(2026, 9, 1);
+        for (const { createdAt } of catalog.products) {
+            expect(Date.parse(createdAt)).toBeLessThanOrEqual(reference);
+        }
     });
 
     it('places every product in a leaf category that exists', () => {
