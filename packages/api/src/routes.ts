@@ -16,13 +16,19 @@ export const STORE_ROUTES: readonly StoreRoute[] = ['graphql', 'events', 'rules'
 /**
  * Which of the routes a host serves a URL names under its base, parsing it
  * once, or nothing. The answer is one of the routes the host named, so a
- * host that serves no catalog is never handed one.
+ * host that serves no catalog is never handed one. A path that is no URL,
+ * such as "//", names nothing, rather than throwing out of the host.
  */
 export const routeOf = <Served extends Route>(
     url: string,
     base: string,
     served: readonly Served[]
 ): Served | undefined => {
-    const { pathname } = new URL(url, 'http://local');
+    let pathname: string;
+    try {
+        ({ pathname } = new URL(url, 'http://local'));
+    } catch {
+        return undefined;
+    }
     return served.find((route) => pathname === `${base}${route}`);
 };

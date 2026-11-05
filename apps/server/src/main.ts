@@ -33,7 +33,7 @@ const isOriginPath = (path: string): path is OriginPath =>
 const asOrigin =
     (setting: string) =>
     (entry: string): string => {
-        const origin = new URL(entry).origin;
+        const origin = URL.canParse(entry) ? new URL(entry).origin : 'null';
         if (origin === 'null')
             throw new Error(`${setting} holds something that is not an origin: ${entry}`);
         return origin;

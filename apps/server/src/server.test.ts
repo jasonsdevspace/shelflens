@@ -1,4 +1,4 @@
-import type { Server } from 'node:http';
+import { request as httpRequest, type Server } from 'node:http';
 
 import {
     createMemoryEventStore,
@@ -13,7 +13,7 @@ import {
     VERSION_HEADER,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createRateLimit, createServer } from './server.js';
 
@@ -173,8 +173,7 @@ describe('the API over HTTP', () => {
             },
         });
         const at = await listening(throwing);
-        const quiet = console.error;
-        console.error = () => undefined;
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             const response = await fetch(`${at}/graphql?op=${STORE}`);
             expect(response.status).toBe(500);
@@ -182,7 +181,7 @@ describe('the API over HTTP', () => {
             expect(requestId).toMatch(/[0-9a-f-]{36}/);
             expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
         } finally {
-            console.error = quiet;
+            quiet.mockRestore();
             await closed(throwing);
         }
     });
@@ -236,9 +235,12 @@ describe('event beacons', () => {
                 body: JSON.stringify([{ id: 'b1', kind: 'view', at: 1, sku: 'SL-1' }]),
             });
         try {
+            // Each side spends its one request, and neither spends the other's.
+            const search = () => fetch(`${at}/graphql?op=${STORE}`);
+            expect((await search()).status).toBe(200);
             expect((await beacon()).status).toBe(204);
+            expect((await search()).status).toBe(429);
             expect((await beacon()).status).toBe(429);
-            expect((await fetch(`${at}/graphql?op=${STORE}`)).status).toBe(200);
         } finally {
             await closed(counted);
         }
@@ -252,8 +254,7 @@ describe('event beacons', () => {
             }),
         });
         const at = await listening(failing);
-        const quiet = console.error;
-        console.error = () => undefined;
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             const response = await fetch(`${at}/events`, {
                 method: 'POST',
@@ -263,8 +264,51 @@ describe('event beacons', () => {
             const requestId = response.headers.get('x-request-id') ?? '';
             expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
         } finally {
-            console.error = quiet;
+            quiet.mockRestore();
             await closed(failing);
+        }
+    });
+});
+
+describe('a request the server cannot read', () => {
+    /** Sends a GET for a raw path, which fetch would tidy up first, and the status it gets. */
+    const rawGet = (at: string, path: string) =>
+        new Promise<number | undefined>((resolve, reject) => {
+            const sent = httpRequest(`${at}${path}`, (answer) => {
+                answer.resume();
+                resolve(answer.statusCode);
+            });
+            sent.path = path;
+            sent.on('error', reject);
+            sent.end();
+        });
+
+    it('answers a path that is no path with a 404 and keeps serving', async () => {
+        expect(await rawGet(base, '//')).toBe(404);
+        expect((await fetch(`${base}/health`)).status).toBe(200);
+    });
+
+    it('answers a failure outside every store call with a 500 and keeps serving', async () => {
+        const host = hostOf();
+        const throwing = createServer({
+            host: {
+                ...host,
+                get keepsRules(): boolean {
+                    throw new Error('the secret reason');
+                },
+            },
+        });
+        const at = await listening(throwing);
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const response = await fetch(`${at}/rules`, { method: 'POST', body: '{}' });
+            expect(response.status).toBe(500);
+            const requestId = response.headers.get('x-request-id') ?? '';
+            expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
+            expect((await fetch(`${at}/health`)).status).toBe(200);
+        } finally {
+            quiet.mockRestore();
+            await closed(throwing);
         }
     });
 });
@@ -278,8 +322,7 @@ describe('a store that cannot start', () => {
             }),
         });
         const at = await listening(broken);
-        const quiet = console.error;
-        console.error = () => undefined;
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             for (const path of [`graphql?op=${STORE}`, 'rules']) {
                 const response = await fetch(`${at}/${path}`);
@@ -297,7 +340,7 @@ describe('a store that cannot start', () => {
                 });
             }
         } finally {
-            console.error = quiet;
+            quiet.mockRestore();
             await closed(broken);
         }
     });

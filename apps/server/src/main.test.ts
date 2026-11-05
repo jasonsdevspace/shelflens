@@ -1,10 +1,10 @@
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { SOURCE_CONDITION } from '../../../source-condition.js';
 
@@ -12,9 +12,30 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const main = fileURLToPath(new URL('./main.ts', import.meta.url));
 const scratch = mkdtempSync(join(tmpdir(), 'shelflens-main-'));
 
+/** The servers started, so one a test gave up on is stopped rather than left running. */
+const children = new Set<ChildProcess>();
+
+afterEach(() => {
+    for (const child of children) child.kill('SIGKILL');
+    children.clear();
+});
+
 afterAll(() => {
     rmSync(scratch, { recursive: true, force: true });
 });
+
+/**
+ * Only what Node needs to run, so a setting exported in the shell that runs the tests, or a
+ * debugger's NODE_OPTIONS, never reaches the server under test.
+ */
+const quietEnvironment = (): NodeJS.ProcessEnv => {
+    const kept: NodeJS.ProcessEnv = {};
+    for (const name of ['PATH', 'HOME', 'TMPDIR', 'SYSTEMROOT']) {
+        const value = process.env[name];
+        if (value !== undefined) kept[name] = value;
+    }
+    return kept;
+};
 
 /** A rules file holding the given JSON, for `RULES` to name. */
 const rulesFile = (name: string, json: unknown): string => {
@@ -37,8 +58,9 @@ const run = (settings: Record<string, string>): Promise<Run> =>
         const child = spawn(
             process.execPath,
             ['--import', 'tsx', `--conditions=${SOURCE_CONDITION}`, main],
-            { cwd: root, env: { ...process.env, PORT: '0', PRODUCTS: '50', ...settings } }
+            { cwd: root, env: { ...quietEnvironment(), PORT: '0', PRODUCTS: '50', ...settings } }
         );
+        children.add(child);
         let stdout = '';
         let stderr = '';
         let listened = false;
@@ -53,7 +75,10 @@ const run = (settings: Record<string, string>): Promise<Run> =>
             stderr += chunk.toString('utf8');
         });
         child.on('error', reject);
-        child.on('close', () => resolve({ listened, stderr }));
+        child.on('close', () => {
+            children.delete(child);
+            resolve({ listened, stderr });
+        });
     });
 
 describe('starting the server', () => {
@@ -82,11 +107,17 @@ describe('starting the server', () => {
         expect(started.stderr).toContain('rule ghost names a document that does not exist');
     }, 30_000);
 
-    it('stops before it listens when an allowed origin is not an origin', async () => {
-        const started = await run({ ORIGINS: 'https://a.example,file:///etc/hosts' });
-        expect(started.listened).toBe(false);
-        expect(started.stderr).toContain('ORIGINS holds something that is not an origin');
-    }, 30_000);
+    it.each(['file:///etc/hosts', 'shop.example'])(
+        'stops before it listens when an allowed origin, such as %s, is not an origin',
+        async (entry) => {
+            const started = await run({ ORIGINS: `https://a.example,${entry}` });
+            expect(started.listened).toBe(false);
+            expect(started.stderr).toContain(
+                `ORIGINS holds something that is not an origin: ${entry}`
+            );
+        },
+        30_000
+    );
 
     it('stops before it listens when the store’s own origin is not an origin', async () => {
         const started = await run({

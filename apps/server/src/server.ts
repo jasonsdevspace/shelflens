@@ -487,8 +487,11 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
         write(response, answerOf(receipt), requestId);
     };
 
-    return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
-        const requestId = randomUUID();
+    const answer = async (
+        request: IncomingMessage,
+        response: ServerResponse,
+        requestId: string
+    ): Promise<void> => {
         const url = request.url ?? '/';
         // A visitor's catalog lives in the browser, so the server takes none.
         const route = routeOf(url, base, STORE_ROUTES);
@@ -553,6 +556,22 @@ export const createHandler = (options: ServerOptions): RequestHandler => {
                 }),
             });
         } catch (error) {
+            failed(response, requestId, error);
+        }
+    };
+
+    // Whatever throws on the way to an answer is answered as ours, since a rejection no one
+    // caught would end the process and every other client's request with it.
+    return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+        const requestId = randomUUID();
+        try {
+            await answer(request, response, requestId);
+        } catch (error) {
+            if (response.headersSent) {
+                console.error(`request ${requestId} failed after its answer began`, error);
+                response.destroy();
+                return;
+            }
             failed(response, requestId, error);
         }
     };
