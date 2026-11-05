@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateCatalog, slugify } from './generate.js';
+import { CATALOG_REFERENCE_DATE, generateCatalog, slugify } from './generate.js';
 import { createRandom } from './random.js';
 import { CUSTOMER_GROUPS } from './types.js';
 
@@ -39,6 +39,18 @@ describe('the products', () => {
 
     it('refuses a size that makes no sense', () => {
         expect(() => generateCatalog({ products: 0 })).toThrow(/positive integer/);
+        expect(() => generateCatalog({ products: 2.5 })).toThrow(/positive integer/);
+    });
+
+    it('gives every variant a SKU no other variant in the catalog has', () => {
+        const skus = catalog.products.flatMap((p) => p.variants.map((v) => v.sku));
+        expect(new Set(skus).size).toBe(skus.length);
+    });
+
+    it("dates every product on or before the catalog's reference date", () => {
+        for (const { createdAt } of catalog.products) {
+            expect(Date.parse(createdAt)).toBeLessThanOrEqual(CATALOG_REFERENCE_DATE);
+        }
     });
 
     it('places every product in a leaf category that exists', () => {
