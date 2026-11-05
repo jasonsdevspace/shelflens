@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { at, readJson, recordAt, textAt } from './json.js';
+import { lookup, lookupRecord, lookupText, readJson } from './json.js';
 import { workspacePackages } from './repository.mjs';
 
 /*
@@ -30,7 +30,7 @@ describe('the engine in the workspace', () => {
             .map((path) => [path, read(`${path}/package.json`)] as const)
             .flatMap(([name, manifest]) =>
                 ['dependencies', 'devDependencies'].flatMap((listed) => {
-                    const pin = at(manifest, listed, ENGINE);
+                    const pin = lookup(manifest, listed, ENGINE);
                     return pin === undefined ? [] : [[name, pin] as const];
                 })
             );
@@ -45,13 +45,13 @@ describe('the engine in the workspace', () => {
 
     it('is the only copy the lockfile knows', () => {
         const lock = read('package-lock.json');
-        const copies = Object.entries(recordAt(lock, 'packages') ?? {}).filter(([path]) =>
+        const copies = Object.entries(lookupRecord(lock, 'packages') ?? {}).filter(([path]) =>
             path.endsWith(`node_modules/${ENGINE}`)
         );
         expect(copies.map(([path]) => path)).toEqual([`node_modules/${ENGINE}`]);
         // A version on each side, so the two cannot agree by both being missing.
-        const version = textAt(engine, 'version');
+        const version = lookupText(engine, 'version');
         expect(version).toMatch(/^\d+\.\d+\.\d+/);
-        expect(textAt(lock, 'packages', 'packages/engine', 'version')).toBe(version);
+        expect(lookupText(lock, 'packages', 'packages/engine', 'version')).toBe(version);
     });
 });

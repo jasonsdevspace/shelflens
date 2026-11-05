@@ -57,8 +57,6 @@ export const useQuery = <Result, Variables extends QueryVariables>(
             latest.cancel();
             return;
         }
-        // The key is these variables written as JSON, and a query's variables are plain JSON
-        // values, so it reads back as them.
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the key was written from these variables, which are plain JSON
         const variables = JSON.parse(key) as Variables;
         void latest

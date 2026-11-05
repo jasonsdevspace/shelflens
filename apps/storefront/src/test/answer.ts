@@ -17,11 +17,22 @@ const fail = (answer: unknown, path: readonly Step[], expected: string): never =
 export const at = (answer: unknown, ...path: readonly Step[]): unknown => {
     let value = answer;
     for (const [index, step] of path.entries()) {
-        const here = isList(value) ? value : isRecord(value) ? value : undefined;
-        if (here === undefined || !(step in here)) {
+        // A number steps into a list and text into a record's own fields, never into what
+        // either inherits, such as a list's length or a record's constructor.
+        const here = value;
+        if (
+            typeof step === 'number' &&
+            isList(here) &&
+            Number.isInteger(step) &&
+            step >= 0 &&
+            step < here.length
+        ) {
+            value = here[step];
+        } else if (typeof step === 'string' && isRecord(here) && Object.hasOwn(here, step)) {
+            value = here[step];
+        } else {
             return fail(answer, path.slice(0, index + 1), 'a value');
         }
-        value = isList(here) ? here[Number(step)] : here[step];
     }
     return value;
 };

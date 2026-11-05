@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { readJson, textAt } from './json.js';
+import { lookupText, readJson } from './json.js';
 
 /*
  * What the workflows promise that only reading them can hold: a name for
@@ -43,7 +43,7 @@ describe('the workflows', () => {
     });
 
     it('take the screenshots in the image of the Playwright the tests pin', () => {
-        const pinned = textAt(
+        const pinned = lookupText(
             readJson(join(ROOT, 'package.json')),
             'devDependencies',
             '@playwright/test'
@@ -96,7 +96,7 @@ describe('the workflows', () => {
         /** A command as written in either place, without the npx a CI step runs it through. */
         const commands = (line: string) =>
             line.split(' && ').map((command) => command.trim().replace(/^npx /, ''));
-        const verify = textAt(readJson(join(ROOT, 'package.json')), 'scripts', 'verify');
+        const verify = lookupText(readJson(join(ROOT, 'package.json')), 'scripts', 'verify');
         const job = jobsOf(read('ci.yml')).get('verify') ?? '';
         // The checks, by the names a failed run shows, each with the command its step runs.
         const steps = [
@@ -126,9 +126,10 @@ describe('the workflows', () => {
             )?.[1];
             expect(dir, prefix).toBeDefined();
             // The folder holds the package the tag names, with the changelog its notes come from.
-            expect(textAt(readJson(join(ROOT, dir ?? '', 'package.json')), 'name'), prefix).toBe(
-                name === 'engine' ? '@jasonsdevspace/shelflens' : '@shelflens/storefront'
-            );
+            expect(
+                lookupText(readJson(join(ROOT, dir ?? '', 'package.json')), 'name'),
+                prefix
+            ).toBe(name === 'engine' ? '@jasonsdevspace/shelflens' : '@shelflens/storefront');
             expect(readFileSync(join(ROOT, dir ?? '', 'CHANGELOG.md'), 'utf8'), prefix).toContain(
                 '## '
             );

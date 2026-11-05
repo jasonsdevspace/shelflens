@@ -235,14 +235,17 @@ export const createClient = ({
             const body: unknown = await response.json().catch(() => undefined);
             const envelope = isRecord(body) ? body : {};
             const { data, errors, extensions } = envelope;
-            const refused = isList(errors) ? errors.flatMap((error) => errorOf(error) ?? []) : [];
-            if (refused.length > 0) throw new GraphQLClientError(refused, response.status);
+            // Any error fails the query, one that cannot be read among them, with what can be.
+            if (isList(errors) && errors.length > 0) {
+                const readable = errors.flatMap((error) => errorOf(error) ?? []);
+                throw new GraphQLClientError(readable, response.status);
+            }
             if (!response.ok || data === undefined) {
                 throw new GraphQLClientError([], response.status);
             }
             // Keyed under the version that answered, which may be new. An answer that
             // depends on more than the version says so, and is asked for every time.
-            if (!(isRecord(extensions) && extensions['volatile'] === true))
+            if (!(isRecord(extensions) && Boolean(extensions['volatile'])))
                 remember(keyOf(operation, variables), data);
             return resultOf(document, data);
         },

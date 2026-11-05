@@ -137,8 +137,16 @@ export default defineConfig(
         files: ['apps/storefront/**/*.{ts,tsx}'],
         languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
         plugins: { 'react-hooks': reactHooks },
+        // What the plugin recommends, with every warning made an error and its options kept.
         rules: Object.fromEntries(
-            Object.keys(reactHooks.configs.flat.recommended.rules).map((rule) => [rule, 'error'])
+            Object.entries(reactHooks.configs.flat.recommended.rules).map(([rule, setting]) => [
+                rule,
+                setting === 'warn'
+                    ? 'error'
+                    : Array.isArray(setting) && setting[0] === 'warn'
+                      ? ['error', ...setting.slice(1)]
+                      : setting,
+            ])
         ),
     },
     {

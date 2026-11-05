@@ -22,6 +22,16 @@ describe('reading an answer', () => {
         );
     });
 
+    it('fails on a name a record only inherits, a name stepped into a list, and an index past its end', () => {
+        expect(() => at(answer, 'data', 'store', 'toString')).toThrow(
+            'expected a value at data.store.toString'
+        );
+        expect(() => at(answer, 'data', 'items', 'length')).toThrow(
+            'expected a value at data.items.length'
+        );
+        expect(() => at(answer, 'data', 'items', 1)).toThrow('expected a value at data.items.1');
+    });
+
     it('fails when the value at the path is not the kind asked for', () => {
         expect(() => numberAt(answer, 'data', 'store', 'version')).toThrow(
             'expected a number at data.store.version'

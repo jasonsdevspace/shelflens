@@ -1,10 +1,4 @@
-import {
-    createStore,
-    createStoreApi,
-    parseCatalogFile,
-    type StoreApi,
-    viewerFromHeader,
-} from '@shelflens/api';
+import { createStore, createStoreApi, type StoreApi, viewerFromHeader } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
 import { GOLDEN_CASES } from '@shelflens/search';
 
@@ -118,13 +112,15 @@ export const runPopoverBench = async ({
     seed = 20261027,
     iterations = 20,
 }: PopoverBenchOptions = {}): Promise<PopoverBench> => {
-    const json = JSON.stringify(generateCatalog({ seed, products }));
+    const catalog = generateCatalog({ seed, products });
+    const json = JSON.stringify(catalog);
 
+    // The parse of the text a page fetches is what is timed, and the store is built from the
+    // catalog it came from, which holds the same products. The sizes go past the cap a
+    // visitor's file is held to, since that is how the cap is found.
     const parseStarted = performance.now();
-    const parsed: unknown = JSON.parse(json);
+    JSON.parse(json);
     const parseMs = performance.now() - parseStarted;
-    // Checked as a visitor's file is, after the parse, which is all that is timed.
-    const catalog = parseCatalogFile(parsed);
 
     const buildStarted = performance.now();
     const api = createStoreApi(createStore({ catalog }));

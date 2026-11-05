@@ -190,6 +190,20 @@ describe('the client', () => {
         expect(client.remembered).toBe(0);
     });
 
+    it('fails on an error it cannot read, rather than taking the data beside it, and remembers nothing', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: ['boom', { extensions: { code: 'X' } }] }),
+        });
+        const failure = await client
+            .query(SuggestDocument, variables)
+            .catch((error: unknown) => error);
+        if (!(failure instanceof GraphQLClientError))
+            throw new Error("expected the client's error");
+        expect(failure.errors).toEqual([]);
+        expect(client.remembered).toBe(0);
+    });
+
     it('throws on a response that is not an answer at all', async () => {
         const client = createClient({
             url: '/graphql',
