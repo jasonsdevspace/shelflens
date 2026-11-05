@@ -598,15 +598,23 @@ h4 {
     align-items: start;
 }
 
-/* The column keeps up with the results and scrolls on its own when it is taller than the screen. */
+/*
+ * The column scrolls with the page, so the page's one scrollbar reaches all of it, and stays in
+ * view beside the results only while it fits on the screen, measured again as the window or the
+ * column changes size. The room it keeps above it while in view is its scroll margin, which the
+ * script reads to measure it. It is always positioned, so the way past it shows at its top.
+ */
 .results-side {
+    position: relative;
+    --pinned-top: var(--space-4);
+    scroll-margin-top: var(--pinned-top);
+    /* Not what the browser holds the page still by, since the page scrolls to hold the column. */
+    overflow-anchor: none;
+}
+
+.results-side.is-pinned {
     position: sticky;
-    top: var(--space-4);
-    max-height: calc(100dvh - 2rem);
-    overflow-y: auto;
-    /* A scrolling box clips what spills past its edge, so the focus ring gets room inside it. */
-    padding: var(--space-1);
-    margin: calc(-1 * var(--space-1));
+    top: var(--pinned-top);
 }
 
 /*
@@ -656,6 +664,8 @@ h4 {
 }
 
 .facet {
+    /* A fieldset is as wide as its widest row unless told otherwise, and the column is narrower. */
+    min-inline-size: 0;
     margin: 0;
     padding: var(--space-4) 0;
     border: none;
@@ -684,9 +694,9 @@ h4 {
 }
 
 /*
- * A row lights up under the pointer across the column's width. Everything in
- * a group is inset alike, so the rows' edges line up with the title and the
- * column, which scrolls on its own, never scrolls sideways.
+ * A checkbox or radio row lights up under the pointer, or around the control a keyboard is on,
+ * across the column's width. Everything in a group is inset alike, so the rows' edges line up
+ * with the title.
  */
 .facet-title,
 .facet-current,
@@ -705,11 +715,13 @@ h4 {
     border-radius: var(--radius-small);
 }
 
-.facet-option:hover {
+.facet-option:hover,
+.facet-option:has(:focus-visible) {
     background: var(--highlight);
 }
 
 .facets .hint {
+    flex: none;
     font-variant-numeric: tabular-nums;
 }
 
@@ -726,16 +738,23 @@ h4 {
     padding-left: var(--space-3);
 }
 
-/* A rating band: the stars a card shows at it, then its words, on one line. */
+/* A rating band: the stars a card shows at it, then "and up", which wraps under them if it must. */
 .facet-rating {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    white-space: nowrap;
+    gap: 0 var(--space-2);
 }
 
+.facet-rating .stars {
+    flex: none;
+}
+
+/* A label narrows and wraps rather than pushing the count, and the column, wider. */
 .facet-label {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .facet-links {
