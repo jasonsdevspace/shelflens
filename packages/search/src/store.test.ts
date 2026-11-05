@@ -19,8 +19,9 @@ const discounted = catalog.products.find(
     (product) => product.price.member.min < product.price.guest.min
 );
 
-/*
- * A product whose words are only the ones a test gives it, so a match can come from one field.
+/**
+ * A product of plain words in every field but its category, so a test that gives it one word
+ * knows which field matched.
  */
 const plain = (sku: string, fields: Partial<Product>): Product => {
     const base = catalog.products[0];
@@ -34,6 +35,7 @@ const plain = (sku: string, fields: Partial<Product>): Product => {
         material: 'Cotton',
         tags: [],
         description: 'Made to last.',
+        visibleTo: ['guest', 'member'],
         ...fields,
     };
 };
@@ -88,13 +90,13 @@ describe('the text a search reads', () => {
         expect(hits.map((hit) => hit.id)).toEqual(['merino']);
     });
 
-    it('finds a product by the name of its category, not only its id', () => {
-        const leaf = catalog.products[0]?.categoryId;
-        // A name that shares nothing with the category's id.
+    it('finds a product by the name of its category', () => {
+        const shelved = plain('p1', {});
+        // Hearthside is in no id and no other field, so only the category's name can match it.
         const renamed: Catalog = {
-            ...storeOf([plain('p1', {}), plain('p2', { categoryPath: [] })]),
+            ...storeOf([shelved, plain('p2', { categoryPath: [] })]),
             categories: catalog.categories.map((category) =>
-                category.id === leaf ? { ...category, name: 'Hearthside' } : category
+                category.id === shelved.categoryId ? { ...category, name: 'Hearthside' } : category
             ),
         };
         const { hits } = searchStore(createStoreEngine(renamed), {
@@ -106,7 +108,7 @@ describe('the text a search reads', () => {
 });
 
 describe('price bands', () => {
-    it('counts every price in one band, with no gap where two bands meet', () => {
+    it('counts each price in exactly one band, with no gap where two bands meet', () => {
         const prices = [4999, 5000, 9999, 10000, 19999, 20000];
         const small = createStoreEngine(storeOf(prices.map((cents) => priced(`p${cents}`, cents))));
         const [facet] = searchStore(small, { group: 'guest', facets: ['price'] }).facets;
@@ -165,6 +167,7 @@ describe('customer groups', () => {
 });
 
 describe('recovering in the store', () => {
+    // A filter nothing passes, so recovery counts what the phrase finds without it.
     const nowhere = { attribute: 'brand', eq: 'Nobody' };
 
     it('counts only what the group may see', () => {
@@ -227,7 +230,7 @@ describe('the most rated', () => {
         }
     });
 
-    it('puts the higher rated first among products with as many ratings', () => {
+    it('puts the higher rated first among products with the same number of ratings', () => {
         const tied = [3, 4, 4.5].map((average, i) =>
             plain(`p${i}`, { rating: { count: 100, average } })
         );

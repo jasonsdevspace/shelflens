@@ -91,7 +91,7 @@ describe('recovering from no results', () => {
         expect(engine.recover({ query: 'swaetter', filters })).toEqual({ foundWithoutFilters: 0 });
     });
 
-    it("counts a relaxed phrase under the shopper's filters, and offers none that finds nothing there", () => {
+    it("relaxes a phrase only to one that finds something under the shopper's filters", () => {
         const filters = [{ attribute: 'brand', eq: 'Ostara' }];
         expect(engine.recover({ query: 'xqzv sweater', filters })).toEqual({
             relaxed: { query: 'sweater', dropped: ['xqzv'], total: 1 },
@@ -109,13 +109,16 @@ describe('recovering from no results', () => {
         expect(engine.recover({ query: 'sweater', filters }, fixed)).toEqual({
             foundWithoutFilters: 1,
         });
+        // Every runner is a shoe, so with clothing fixed the phrase finds nothing even once the
+        // shopper's brand is dropped.
         const clothing = [{ attribute: 'category', eq: 'clothing' }];
-        expect(engine.recover({ query: 'xqzv runner' }, clothing)).toEqual({
+        expect(engine.recover({ query: 'runner', filters }, clothing)).toEqual({
             foundWithoutFilters: 0,
         });
     });
 
-    it('counts each word alone under the fixed filters, so a word only they rule out goes first', () => {
+    it('drops first a word that finds nothing under the fixed filters', () => {
+        // Runner finds three products anywhere and none in clothing, so it goes before wool.
         const fixed = [{ attribute: 'category', eq: 'clothing' }];
         expect(engine.recover({ query: 'wool runner' }, fixed)).toEqual({
             relaxed: { query: 'wool', dropped: ['runner'], total: 1 },
@@ -136,28 +139,39 @@ describe('recovering from no results', () => {
 });
 
 describe('choosing a replacement word', () => {
-    // Both words are two typos from "plaxxer". Planter is the more used, and plaster is the
-    // only one sold in hardware.
+    // Both words are two typos from "plaxxer". Plaster is the more used, and sorts after
+    // planter, so only counting their uses puts it first. Planter is the only one in garden.
     const shop = createEngine(
         [
             product('g1', 'Clay Planter', 'Terra', 'garden'),
-            product('g2', 'Cedar Planter', 'Terra', 'garden'),
-            product('h1', 'Wall Plaster', 'Mason', 'hardware'),
+            product('h1', 'Wall Plaster', 'Terra', 'hardware'),
+            product('h2', 'Fine Plaster', 'Mason', 'hardware'),
         ],
         config
     );
 
     it('offers the most used of two words within reach', () => {
         expect(shop.recover({ query: 'plaxxer' })).toEqual({
-            correction: 'planter',
+            correction: 'plaster',
             foundWithoutFilters: 0,
         });
     });
 
     it('passes over a word that finds nothing under the fixed filters for one that does', () => {
-        const fixed = [{ attribute: 'category', eq: 'hardware' }];
+        const fixed = [{ attribute: 'category', eq: 'garden' }];
         expect(shop.recover({ query: 'plaxxer' }, fixed)).toEqual({
-            correction: 'plaster',
+            correction: 'planter',
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it("chooses the word under the fixed filters alone, and withholds it when the shopper's filters rule it out", () => {
+        // Under Terra both words find something, so plaster wins as the more used. The shopper's
+        // garden filter rules plaster out, and the correction is withheld rather than swapped
+        // for planter.
+        const fixed = [{ attribute: 'brand', eq: 'Terra' }];
+        const filters = [{ attribute: 'category', eq: 'garden' }];
+        expect(shop.recover({ query: 'plaxxer', filters }, fixed)).toEqual({
             foundWithoutFilters: 0,
         });
     });
@@ -176,15 +190,31 @@ describe("recovering at the request's time", () => {
         ],
     });
     const filters = [{ attribute: 'brand', eq: 'Ostara' }];
+    const december = new Date('2026-12-15T00:00:00.000Z');
+    const june = new Date('2026-06-01T00:00:00.000Z');
 
-    it('counts what a phrase finds with the rules in force at that time', () => {
-        const december = new Date('2026-12-15T00:00:00.000Z');
-        const june = new Date('2026-06-01T00:00:00.000Z');
+    it('counts what a phrase finds without its filters under the rules in force at that time', () => {
         expect(recall.recover({ query: 'parka', filters, now: december })).toEqual({
             foundWithoutFilters: 0,
         });
         expect(recall.recover({ query: 'parka', filters, now: june })).toEqual({
             foundWithoutFilters: 1,
+        });
+    });
+
+    it('counts each word alone under the rules in force at that time', () => {
+        // In December parka finds nothing, so it goes before wool even though it was typed last.
+        expect(recall.recover({ query: 'wool parka', now: december })).toEqual({
+            relaxed: { query: 'wool', dropped: ['parka'], total: 1 },
+            foundWithoutFilters: 0,
+        });
+    });
+
+    it('counts a relaxed phrase under the rules in force at that time', () => {
+        // Ridgeback makes the parka and a sweater, and in December only the sweater is found.
+        expect(recall.recover({ query: 'xqzv ridgeback', now: december })).toEqual({
+            relaxed: { query: 'ridgeback', dropped: ['xqzv'], total: 1 },
+            foundWithoutFilters: 0,
         });
     });
 });

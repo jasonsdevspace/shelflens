@@ -21,7 +21,7 @@ const catalogOf = (products: readonly (readonly [name: string, brand: string])[]
     };
 };
 
-// A name starts with its brand, as the generator writes it, so Harbor is in one product twice.
+// Harbor Hat starts with its brand, as a generated name does, so it holds harbor twice.
 const completions = createCompletions(
     catalogOf([
         ['Harbor Hat', 'Harbor'],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateCatalog, slugify } from './generate.js';
+import { CATALOG_REFERENCE_DATE, generateCatalog, slugify } from './generate.js';
 import { createRandom } from './random.js';
 import { CUSTOMER_GROUPS } from './types.js';
 
@@ -48,9 +48,8 @@ describe('the products', () => {
     });
 
     it("dates every product on or before the catalog's reference date", () => {
-        const reference = Date.UTC(2026, 9, 1);
         for (const { createdAt } of catalog.products) {
-            expect(Date.parse(createdAt)).toBeLessThanOrEqual(reference);
+            expect(Date.parse(createdAt)).toBeLessThanOrEqual(CATALOG_REFERENCE_DATE);
         }
     });
 

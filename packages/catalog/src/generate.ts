@@ -121,11 +121,13 @@ const describe = (random: Random, noun: string, material: string): string => {
     ].join(' ');
 };
 
+/** The day every generated product was created on or before, so a seed's dates never move. */
+export const CATALOG_REFERENCE_DATE = Date.UTC(2026, 9, 1);
+
 /** A date within the two years before the catalog's reference date. */
 const createdAtFor = (random: Random): string => {
-    const reference = Date.UTC(2026, 9, 1);
     const daysAgo = random.int(0, 730);
-    return new Date(reference - daysAgo * 86_400_000).toISOString();
+    return new Date(CATALOG_REFERENCE_DATE - daysAgo * 86_400_000).toISOString();
 };
 
 /** Everything one product's generation draws on, shared across the run. */
