@@ -186,24 +186,24 @@ export const createStoreHost = ({
 
     /**
      * The first store, from these inputs, or from the shipped rules when a saved set cannot be
-     * built. A saved set outlives the engine that checked it, so one this engine refuses is let
-     * go, in the turn the build runs in, rather than failing every request after it. A build that
-     * fails on the shipped rules too fails for another reason, and the saved set is kept. Later
-     * builds run in a change that checks or resets the rules itself.
+     * built with them. A saved set outlives the engine and the catalog it was checked against, so
+     * one this store refuses is set aside rather than failing every request, and kept, so it
+     * applies again once a store can be built with it. A build that fails on the shipped rules
+     * too fails for another reason. Later builds run in a change that checks the rules itself.
      */
-    const buildFrom = async (now: Inputs): Promise<{ hosted: HostedStore; used: Inputs }> => {
+    const buildFrom = (now: Inputs): { hosted: HostedStore; used: Inputs } => {
         try {
             return { hosted: build(now), used: now };
         } catch (error) {
-            if (now.saved === undefined || !rules) throw error;
+            if (now.saved === undefined) throw error;
             const shippedOnly: Inputs = { ...now, saved: undefined };
-            let hosted: HostedStore;
-            try {
-                hosted = build(shippedOnly);
-            } catch {
-                throw error;
-            }
-            await rules.reset();
+            const hosted = (() => {
+                try {
+                    return build(shippedOnly);
+                } catch {
+                    throw error;
+                }
+            })();
             return { hosted, used: shippedOnly };
         }
     };
@@ -241,7 +241,7 @@ export const createStoreHost = ({
         const began = performance.now();
         const now = await inputs();
         const downloaded = performance.now();
-        const { hosted, used } = await buildFrom(now);
+        const { hosted, used } = buildFrom(now);
         timing = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
         return serve(hosted, fromOf(used));
     };

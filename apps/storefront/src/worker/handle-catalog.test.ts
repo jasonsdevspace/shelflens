@@ -242,15 +242,6 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await rules.current()).toEqual(pinFirst(LAMPS));
     });
 
-    it('loads without asking over rules left from a catalog that is gone, and forgets them', async () => {
-        const rules = createMemoryRuleStore();
-        const api = visitorApi(undefined, { rules });
-        // Rules with no catalog, as when the one they were made for no longer passes its check.
-        await rules.replace(pinFirst(LAMPS));
-        expect((await api.handle(catalogRequest('PUT', MUGS)))?.status).toBe(204);
-        expect(await rules.current()).toBeUndefined();
-    });
-
     it('loads over an empty saved set without asking, since there are no rules to lose', async () => {
         const rules = createMemoryRuleStore();
         const api = visitorApi(undefined, { rules });

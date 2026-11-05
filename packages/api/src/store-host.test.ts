@@ -68,12 +68,14 @@ describe('a store host', () => {
         expect(await host.current()).toBe(first);
     });
 
-    it('lets go a saved set this engine refuses, as one an older engine let through, and serves the shipped rules', async () => {
+    it('serves the shipped rules over a saved set it cannot build with, and keeps the set', async () => {
         const { host, rules } = hostWith();
-        await rules.replace([{ id: 'ghost', pin: ['SL-99999'] }]);
+        // A set an older engine let through, or that names a product the catalog has lost.
+        const saved = [{ id: 'ghost', pin: ['SL-99999'] }];
+        await rules.replace(saved);
         const served = await host.current();
         expect(served.model.rulesEdited).toBe(false);
-        expect(await rules.current()).toBeUndefined();
+        expect(await rules.current()).toEqual(saved);
     });
 
     it('keeps a saved set when the build fails on the shipped rules too', async () => {

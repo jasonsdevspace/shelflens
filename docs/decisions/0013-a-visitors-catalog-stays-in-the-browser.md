@@ -102,7 +102,7 @@ again keeps its answers.
 - A kept catalog outlives the page that wrote it, so the worker checks it again as it reads it
   back, the same check a file is given when it is loaded. One an older page kept that the check
   now refuses reads as nothing, so the page asks for a file as it does when nothing is loaded,
-  and rules saved for the catalog that is gone do not stand in the way of loading one.
+  and nothing is deleted until a load takes its place.
 
 ## How it is tested
 
@@ -124,5 +124,4 @@ again keeps its answers.
   store under `try/`, Enter and a pick landing on the visitor's store, and the notice with
   nothing loaded.
 - The store in IndexedDB: a catalog an older page kept that the catalog check now refuses reads
-  as nothing, and a load takes its place. The worker loads a file over rules left from a
-  catalog that is gone without asking.
+  as nothing, and a load takes its place.

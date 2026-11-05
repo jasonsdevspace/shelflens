@@ -77,10 +77,12 @@ is tried, not while the rule is half typed.
 - A rule can name a product that is not on the current page only by typing its SKU, and the panel
   refuses it until it is. That is a limit chosen over a product search inside the panel, which
   would be a second search box on a page about search.
-- A saved set outlives the page and the engine that checked it. The worker reads it through the
-  rules file's check, and one that fails reads as nothing until a save takes its place. One that
-  passes but that this engine refuses is let go when the store is first built, which is then
-  built from the shipped rules rather than failing every search.
+- A saved set outlives the page, the engine and the catalog it was checked against. The worker
+  reads it through the rules file's check, and one that fails reads as nothing until a save
+  takes its place. One that passes but that the store cannot be built with is set aside when the
+  store is first built, which is built from the shipped rules rather than failing every search.
+  Nothing is deleted: the rules path still gives the set, so the visitor can change it or go back
+  to the shipped file, and it applies again once a store can be built with it.
 
 ## How it is tested
 
@@ -102,5 +104,5 @@ is tried, not while the rule is half typed.
   and an audit of the page with the panel open.
 - The store in IndexedDB: a set an older page saved that the rules check now refuses reads as
   nothing, and a save takes its place.
-- The store host: a saved set the engine refuses is let go when the store is first built, and
-  is kept when the build fails on the shipped rules too.
+- The store host: over a saved set it cannot build with, the first store is built from the
+  shipped rules and the set is kept, and a build that fails on the shipped rules too fails.

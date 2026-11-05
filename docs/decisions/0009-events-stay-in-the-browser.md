@@ -75,8 +75,9 @@ showing what was viewed together or the category's most rated.
 - These events are not the site's visit counts, which go to Plausible by path alone and stop under
   the same signal, as record 18 says.
 - A kept event outlives the page that wrote it, so the store checks each one as it reads it,
-  as a batch a page sends is checked. One the check now refuses, or one with no time or a time
-  later than now, is let go as it is read, so none keeps a place under the limit.
+  as a batch a page sends is checked. One the check now refuses is left out of what the store
+  gives back. Nothing is deleted as it is read. Every event the store has kept carried a time,
+  no later than when it arrived, so each is trimmed in its turn past the limit.
 
 ## How it is tested
 
@@ -91,5 +92,5 @@ showing what was viewed together or the category's most rated.
 - The worker and the Node server: a posted batch reaches the store each was given.
 - In a real browser, through the service worker: a search, a click and a view arrive in
   IndexedDB.
-- The store in IndexedDB: an event an older page kept that the batch check now refuses, one with
-  no time and one later than now are let go as they are read, and the rest are given back.
+- The store in IndexedDB: an event an older page kept that the batch check now refuses is left
+  out of what it gives back and stays stored, and the rest are given back.

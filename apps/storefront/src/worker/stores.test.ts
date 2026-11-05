@@ -171,16 +171,12 @@ describe('what a store kept from an older page', () => {
         expect(await store.current()).toEqual(catalog);
     });
 
-    it('lets go an event the batch check now refuses, one with no time, and one later than now', async () => {
+    it('leaves out an event the batch check now refuses, keeps it stored, and gives back the rest', async () => {
         const name = fresh();
         const store = createIndexedDbEventStore({ name });
         await store.append([view('a', 1)]);
         await putRaw(name, 'events', { ...view('b', 2), email: 'someone@example.test' });
-        const { at: _, ...timeless } = view('c', 3);
-        await putRaw(name, 'events', timeless);
-        await putRaw(name, 'events', view('d', Date.now() + 60_000));
         expect((await store.all()).map((event) => event.id)).toEqual(['a']);
-        // Let go, so none keeps a place under the limit.
-        for (const id of ['b', 'c', 'd']) expect(await rawAt(name, 'events', id)).toBeUndefined();
+        expect(await rawAt(name, 'events', 'b')).toBeDefined();
     });
 });
