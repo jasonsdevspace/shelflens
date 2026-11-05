@@ -8,9 +8,10 @@ import { lookupText, readJson } from './json.js';
 /*
  * What the workflows promise that only reading them can hold: a name for
  * every job a reviewer sees in the checks, the screenshots taken in the
- * image of the Playwright the tests pin, and an engine published only as
- * the tarball the oldest Node check proved, and a release on GitHub named
- * for the part of the project it is.
+ * image of the Playwright the tests pin, a browser installed without the
+ * system packages the runner already has and within a time of its own, an
+ * engine published only as the tarball the oldest Node check proved, and a
+ * release on GitHub named for the part of the project it is.
  */
 
 const ROOT = join(import.meta.dirname, '..');
@@ -51,6 +52,24 @@ describe('the workflows', () => {
         const image = /mcr\.microsoft\.com\/playwright:v([\d.]+)-/.exec(read('ci.yml'))?.[1];
         expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
         expect(image).toBe(pinned);
+    });
+
+    it('install a browser without system packages, and give each install a time of its own', () => {
+        /** A workflow's steps, each with its lines, read without comments or Windows line ends. */
+        const stepsOf = (name: string) =>
+            [
+                ...read(name)
+                    .replace(/\r\n/g, '\n')
+                    .replace(/^\s*#.*\n/gm, '')
+                    .matchAll(/^( *)- .*\n(?:\1 {2}.*\n|[ \t]*\n)*/gm),
+            ].map(([step = '']) => step);
+        const steps = files.flatMap(stepsOf);
+        // The packages come from Ubuntu's mirror, which has been slow enough to run a job out
+        // of time before its tests began, and the runner image already has them.
+        expect(steps.filter((step) => /--with-deps|\binstall-deps\b/.test(step))).toEqual([]);
+        const installs = steps.filter((step) => /playwright(?:@\S+)?\s+install\b/.test(step));
+        expect(installs.length).toBeGreaterThan(0);
+        for (const step of installs) expect(step).toMatch(/^\s+timeout-minutes: [1-5]\b/m);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {
