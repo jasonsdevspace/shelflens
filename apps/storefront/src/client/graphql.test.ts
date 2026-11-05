@@ -204,6 +204,26 @@ describe('the client', () => {
         expect(client.remembered).toBe(0);
     });
 
+    it('fails on an errors field that is not a list, rather than taking the data beside it', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: 'boom' }),
+        });
+        const failure = await client
+            .query(SuggestDocument, variables)
+            .catch((error: unknown) => error);
+        expect(failure).toBeInstanceOf(GraphQLClientError);
+        expect(client.remembered).toBe(0);
+    });
+
+    it('takes the data beside a null errors field, which says there were none', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: null }),
+        });
+        expect(await client.query(SuggestDocument, variables)).toEqual(SUGGEST.data);
+    });
+
     it('throws on a response that is not an answer at all', async () => {
         const client = createClient({
             url: '/graphql',

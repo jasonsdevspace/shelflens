@@ -1,5 +1,5 @@
 import { createStore, createStoreApi, type StoreApi, viewerFromHeader } from '@shelflens/api';
-import { generateCatalog } from '@shelflens/catalog';
+import { type Catalog, generateCatalog } from '@shelflens/catalog';
 import { GOLDEN_CASES } from '@shelflens/search';
 
 import { round } from './record.js';
@@ -115,15 +115,16 @@ export const runPopoverBench = async ({
     const catalog = generateCatalog({ seed, products });
     const json = JSON.stringify(catalog);
 
-    // Only the parse of the text a page fetches is timed. The store is built from the catalog
-    // that text was written from, which holds the same products. The sizes go past the cap a
-    // visitor's file is held to, since the cap is set from where they stop fitting.
+    // Parse the text a page fetches, then build from that parsed catalog as the worker does. The
+    // sizes go past the cap a visitor's file is held to, since the cap is set from where they stop
+    // fitting.
     const parseStarted = performance.now();
-    JSON.parse(json);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the text was just written from a generated catalog
+    const parsed = JSON.parse(json) as Catalog;
     const parseMs = performance.now() - parseStarted;
 
     const buildStarted = performance.now();
-    const api = createStoreApi(createStore({ catalog }));
+    const api = createStoreApi(createStore({ catalog: parsed }));
     const buildMs = performance.now() - buildStarted;
 
     const phrases = GOLDEN_CASES.map((golden) => golden.query);

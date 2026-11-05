@@ -130,6 +130,18 @@ const errorOf = (value: unknown): GraphQLErrorShape | undefined => {
 };
 
 /**
+ * The errors an answer carries, read as far as they can be, or nothing when it carries none. Any
+ * error fails the query, even one that cannot be read, or an errors field that is not a list, so
+ * the data beside it is never taken. Each entry is read on its own, since its message reaches the
+ * page. A null field, which some servers send beside their data, says there were none.
+ */
+const errorsIn = (errors: unknown): GraphQLErrorShape[] | undefined => {
+    if (errors === undefined || errors === null) return undefined;
+    if (!isList(errors)) return [];
+    return errors.length === 0 ? undefined : errors.flatMap((error) => errorOf(error) ?? []);
+};
+
+/**
  * An answer's data, typed as the result of the document it answers. A remembered answer is
  * kept under its own document, so it answers that document too, and checking the data would
  * take the schema, which the page does not carry. The document is taken only for its type.
@@ -237,13 +249,8 @@ export const createClient = ({
             const body: unknown = await response.json().catch(() => undefined);
             const envelope = isRecord(body) ? body : {};
             const { data, errors, extensions } = envelope;
-            // Any error fails the query, even one that cannot be read. Each entry is read on its
-            // own, since its message reaches the page, and the thrown error keeps those that can
-            // be read, or the status alone when none can.
-            if (isList(errors) && errors.length > 0) {
-                const readable = errors.flatMap((error) => errorOf(error) ?? []);
-                throw new GraphQLClientError(readable, response.status);
-            }
+            const refused = errorsIn(errors);
+            if (refused) throw new GraphQLClientError(refused, response.status);
             if (!response.ok || data === undefined) {
                 throw new GraphQLClientError([], response.status);
             }
