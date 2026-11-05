@@ -44,11 +44,12 @@ const inKeyOrder = (_key: string, value: unknown): unknown => {
     return ordered;
 };
 
+/** The serializer, typed as it behaves: it gives nothing back for a bare function. */
+const stringify: (value: unknown, replacer: typeof inKeyOrder) => string | undefined =
+    JSON.stringify;
+
 export const canonical = (value: unknown): string => {
-    // The serializer gives nothing back for a bare function, whatever its type says.
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- JSON.stringify's type leaves out the undefined it gives a function
-    const text = JSON.stringify(value === undefined ? null : value, inKeyOrder) as
-        string | undefined;
+    const text = stringify(value === undefined ? null : value, inKeyOrder);
     return text ?? 'null';
 };
 

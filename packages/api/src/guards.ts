@@ -24,6 +24,15 @@ export const isStrings = (value: unknown): value is readonly string[] =>
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * A record's keys, as the keys its type names. Object.keys types every key as
+ * text, since an object may hold keys its type does not name, so this is for a
+ * record written as a literal over its keys, which holds no others.
+ */
+export const keysOf = <Key extends string>(record: Readonly<Record<Key, unknown>>): Key[] =>
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a literal over its keys holds no others
+    Object.keys(record) as Key[];
+
 /** The value a text holds as JSON, or undefined when it holds none. */
 export const parseJson = (text: string): unknown => {
     try {

@@ -24,6 +24,7 @@ import type {
     SortField,
     SortInput,
 } from './generated/schema.js';
+import { keysOf } from './guards.js';
 
 /**
  * The API's words and the engine's words, translated in one place.
@@ -43,16 +44,10 @@ const ATTRIBUTES: Readonly<Record<FilterAttribute, string>> = {
     IN_STOCK: 'inStock',
 };
 
-/**
- * A record over an enum, turned around. Object.entries types every key as
- * text, since an object may hold keys its type does not name. These records
- * are literals typed over the enum, so their keys are the enum's.
- */
+/** A record over an enum, turned around. Each record is a literal over the enum. */
 const inverted = <Enum extends string>(
     record: Readonly<Record<Enum, string>>
-): ReadonlyMap<string, Enum> =>
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Object.entries types each key as text, and these are the record's own
-    new Map(Object.entries<string>(record).map(([enumValue, name]) => [name, enumValue as Enum]));
+): ReadonlyMap<string, Enum> => new Map(keysOf(record).map((key) => [record[key], key]));
 
 const ATTRIBUTE_NAMES = inverted(ATTRIBUTES);
 

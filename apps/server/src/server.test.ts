@@ -7,6 +7,7 @@ import {
     errorBody,
     type EventStore,
     GROUP_HEADER,
+    isRecord,
     PERSISTED_OPERATIONS,
     VERSION_HEADER,
 } from '@shelflens/api';
@@ -234,11 +235,12 @@ describe('rules over HTTP', () => {
                 query: '{ search(input: { phrase: "jacket" }) { merchandising { applied } } }',
             }),
         });
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const answer = (await response.json()) as {
-            data: { search: { merchandising: { applied: string[] } } };
-        };
-        return answer.data.search.merchandising.applied;
+        // The rules applied, or the whole answer when it is not a search's, so a failure shows it.
+        const answer: unknown = await response.json();
+        const data = isRecord(answer) ? answer['data'] : undefined;
+        const search = isRecord(data) ? data['search'] : undefined;
+        const merchandising = isRecord(search) ? search['merchandising'] : undefined;
+        return isRecord(merchandising) ? merchandising['applied'] : answer;
     };
 
     it('serves the shipped set, replaces it under a new version, and rates the path', async () => {

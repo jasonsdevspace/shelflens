@@ -1,4 +1,12 @@
-import { cacheKeyOf, GROUP_HEADER, touch, trimOldest, VERSION_HEADER } from '@shelflens/api';
+import {
+    cacheKeyOf,
+    GROUP_HEADER,
+    isList,
+    isRecord,
+    touch,
+    trimOldest,
+    VERSION_HEADER,
+} from '@shelflens/api';
 import type { CustomerGroup } from '@shelflens/catalog';
 
 import type { TypedDocumentString } from '../generated/operations.js';
@@ -104,11 +112,32 @@ export interface GraphQLClient {
     ): Promise<Result>;
 }
 
-interface Envelope<Result> {
-    readonly data?: Result;
-    readonly errors?: readonly GraphQLErrorShape[];
-    readonly extensions?: { readonly volatile?: boolean };
-}
+/** An error as the API sends one, or nothing for an entry that is not one. */
+const errorOf = (value: unknown): GraphQLErrorShape | undefined => {
+    if (!isRecord(value) || typeof value['message'] !== 'string') return undefined;
+    const { path, extensions } = value;
+    const code = isRecord(extensions) ? extensions['code'] : undefined;
+    return {
+        message: value['message'],
+        ...(isList(path) && {
+            path: path.filter((step) => typeof step === 'string' || typeof step === 'number'),
+        }),
+        ...(typeof code === 'string' && { extensions: { code } }),
+    };
+};
+
+/**
+ * An answer's data, as the result of the document it answers. The API at this
+ * address answers by the schema each document was generated from, and an
+ * answer is kept under its own document, so the data is that document's result,
+ * which nothing in the page could check without the schema beside it.
+ */
+const resultOf = <Result, Variables>(
+    _document: TypedDocumentString<Result, Variables>,
+    data: unknown
+): Result =>
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the API answers by the schema this document was generated from
+    data as Result;
 
 /** The persisted name a generated document carries, if it has one. */
 const nameOf = <Result, Variables>(
@@ -197,29 +226,25 @@ export const createClient = ({
                 throw new Error('the document has neither a persisted name nor any text to send');
             }
             const known = recall(keyOf(operation, variables));
-            // An answer is kept under its document and variables, and the API answers by the
-            // schema this document was generated from, so the data is this document's result.
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- an answer is kept under its document and variables, so this one is this document's
-            if (known !== undefined) return known as Result;
+            if (known !== undefined) return resultOf(document, known);
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
             if (answered !== null) memory.version = answered;
-            // Read as the envelope of the API at this address, which answers by the schema this
-            // document was generated from. A body that is not JSON reads as an empty envelope,
-            // which fails below. What else a stray answer holds is not checked.
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the answer is to this document, by the schema it was generated from
-            const envelope = (await response.json().catch(() => ({}))) as Envelope<Result>;
-            if (envelope.errors && envelope.errors.length > 0) {
-                throw new GraphQLClientError(envelope.errors, response.status);
-            }
-            if (!response.ok || envelope.data === undefined) {
+            // A body that is not JSON reads as an empty envelope, which fails below. The errors
+            // are read entry by entry, since their messages reach the page.
+            const body: unknown = await response.json().catch(() => undefined);
+            const envelope = isRecord(body) ? body : {};
+            const { data, errors, extensions } = envelope;
+            const refused = isList(errors) ? errors.flatMap((error) => errorOf(error) ?? []) : [];
+            if (refused.length > 0) throw new GraphQLClientError(refused, response.status);
+            if (!response.ok || data === undefined) {
                 throw new GraphQLClientError([], response.status);
             }
             // Keyed under the version that answered, which may be new. An answer that
             // depends on more than the version says so, and is asked for every time.
-            if (!envelope.extensions?.volatile)
-                remember(keyOf(operation, variables), envelope.data);
-            return envelope.data;
+            if (!(isRecord(extensions) && extensions['volatile'] === true))
+                remember(keyOf(operation, variables), data);
+            return resultOf(document, data);
         },
     };
 };

@@ -5,6 +5,8 @@ import { createStore, createStoreApi, parseRulesFile, viewerFromHeader } from '@
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it } from 'vitest';
 
+import { listAt, textAt } from '../test/answer.js';
+
 /*
  * The rules file the demo ships, against the catalog the demo ships.
  *
@@ -29,13 +31,11 @@ describe('the shipped rules', () => {
             now
         );
         if (response.errors) throw new Error(JSON.stringify(response.errors));
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const { search } = response.data as {
-            search: { items: { product: { sku: string } }[]; merchandising: { applied: string[] } };
-        };
         return {
-            skus: search.items.map((hit) => hit.product.sku),
-            applied: search.merchandising.applied,
+            skus: listAt(response.data, 'search', 'items').map((hit) =>
+                textAt(hit, 'product', 'sku')
+            ),
+            applied: listAt(response.data, 'search', 'merchandising', 'applied'),
         };
     };
 

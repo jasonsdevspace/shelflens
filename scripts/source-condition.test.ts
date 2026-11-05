@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { SOURCE_CONDITION } from '../source-condition.js';
+import { readJson, recordAt, textAt } from './json.js';
 import { workspacePackages } from './repository.mjs';
 
 /*
@@ -18,33 +19,39 @@ const root = join(__dirname, '..');
 /** Every workspace package, in the folders the root's manifest names: packages/ and apps/. */
 const packages = workspacePackages(root).map((path) => join(root, path));
 
-/** A tsconfig's compiler options. They are JSON with comments, which are left out before parsing. */
-const optionsOf = (path: string): { customConditions?: string[]; noEmit?: boolean } => {
-    const text = readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a tsconfig, read for the fields this test checks
-    return (JSON.parse(text) as { compilerOptions?: object }).compilerOptions ?? {};
+/** The two compiler options this test reads, from a tsconfig. */
+const optionsOf = (path: string) => {
+    const options = recordAt(readJson(path), 'compilerOptions');
+    const conditions = options?.['customConditions'];
+    return {
+        customConditions: Array.isArray(conditions)
+            ? conditions.filter((condition) => typeof condition === 'string')
+            : [],
+        noEmit: options?.['noEmit'] === true,
+    };
 };
 
 describe('the source condition', () => {
     it('comes first in every workspace package, naming its source', () => {
-        expect(packages.length).toBeGreaterThan(0);
+        const exporting: string[] = [];
         for (const dir of packages) {
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a manifest, read for the fields this test checks
-            const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
-                exports?: { '.'?: Record<string, string> };
-            };
-            const entry = manifest.exports?.['.'];
+            const entry = recordAt(readJson(join(dir, 'package.json')), 'exports', '.');
             if (!entry) continue;
+            exporting.push(dir);
             expect(Object.keys(entry)[0], dir).toBe(SOURCE_CONDITION);
-            expect(existsSync(join(dir, entry[SOURCE_CONDITION] ?? '')), dir).toBe(true);
+            expect(existsSync(join(dir, textAt(entry, SOURCE_CONDITION) ?? '')), dir).toBe(true);
         }
+        // The packages known to export their entry this way, so finding none fails.
+        expect(exporting).toEqual(
+            expect.arrayContaining([join(root, 'packages/engine'), join(root, 'packages/api')])
+        );
     });
 
     it('is asked for by every type check of the sources, and by no build', () => {
         for (const dir of packages) {
             for (const name of readdirSync(dir).filter((file) => /^tsconfig.*\.json$/.test(file))) {
                 const options = optionsOf(join(dir, name));
-                const asked = options.customConditions ?? [];
+                const asked = options.customConditions;
                 if (name === 'tsconfig.json' && options.noEmit) {
                     expect(asked, `${dir}/${name}`).toEqual([SOURCE_CONDITION]);
                 } else {

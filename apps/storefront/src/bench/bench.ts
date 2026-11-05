@@ -1,5 +1,11 @@
-import { createStore, createStoreApi, type StoreApi, viewerFromHeader } from '@shelflens/api';
-import { type Catalog, generateCatalog } from '@shelflens/catalog';
+import {
+    createStore,
+    createStoreApi,
+    parseCatalogFile,
+    type StoreApi,
+    viewerFromHeader,
+} from '@shelflens/api';
+import { generateCatalog } from '@shelflens/catalog';
 import { GOLDEN_CASES } from '@shelflens/search';
 
 import { round } from './record.js';
@@ -115,11 +121,10 @@ export const runPopoverBench = async ({
     const json = JSON.stringify(generateCatalog({ seed, products }));
 
     const parseStarted = performance.now();
-    // The text was just written from a generated catalog, so it parses back as one, and the
-    // parse is all that is timed.
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the text was just written from a generated catalog
-    const catalog = JSON.parse(json) as Catalog;
+    const parsed: unknown = JSON.parse(json);
     const parseMs = performance.now() - parseStarted;
+    // Checked as a visitor's file is, after the parse, which is all that is timed.
+    const catalog = parseCatalogFile(parsed);
 
     const buildStarted = performance.now();
     const api = createStoreApi(createStore({ catalog }));

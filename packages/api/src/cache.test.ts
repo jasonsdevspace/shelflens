@@ -6,6 +6,7 @@ import { type CacheKey, cacheKey } from './cache-key.js';
 import type { Viewer } from './context.js';
 import { createStoreApi, type StoreResponse } from './execute.js';
 import { canonical, fingerprint } from './fingerprint.js';
+import { isRecord } from './guards.js';
 import { viewerFromHeader } from './http.js';
 import { createStore } from './store.js';
 
@@ -33,19 +34,29 @@ if (!discounted || !membersOnly)
 const PRODUCT = `query Product($sku: ID!) { product(sku: $sku) { sku price { min { amount } } } }`;
 
 interface ProductAnswer {
-    readonly price: { readonly min: { readonly amount: number } };
+    readonly sku: string;
+    readonly amount: number;
 }
 
+/** The product an answer holds, read field by field, or null when it holds none. */
 const product = (response: StoreResponse): ProductAnswer | null => {
     if (response.errors) throw new Error(JSON.stringify(response.errors));
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-    return (response.data as { product: ProductAnswer | null }).product;
+    const found = isRecord(response.data) ? response.data['product'] : undefined;
+    if (found === null) return null;
+    const price = isRecord(found) ? found['price'] : undefined;
+    const min = isRecord(price) ? price['min'] : undefined;
+    const amount = isRecord(min) ? min['amount'] : undefined;
+    const sku = isRecord(found) ? found['sku'] : undefined;
+    if (typeof sku !== 'string' || typeof amount !== 'number') {
+        throw new Error(`expected a product or null in ${JSON.stringify(response.data)}`);
+    }
+    return { sku, amount };
 };
 
 const price = (response: StoreResponse): number => {
     const answer = product(response);
     if (!answer) throw new Error('expected a product');
-    return answer.price.min.amount;
+    return answer.amount;
 };
 
 describe('the cache key', () => {
@@ -62,9 +73,10 @@ describe('the cache key', () => {
         expect(price(await safe.run(priced, guest, NOW))).toBeGreaterThan(memberPrice);
 
         const hidden = { query: PRODUCT, variables: { sku: membersOnly.sku } };
-        expect(product(await leaky.run(hidden, member, NOW))).not.toBeNull();
-        expect(product(await leaky.run(hidden, guest, NOW))).not.toBeNull();
-        expect(product(await safe.run(hidden, member, NOW))).not.toBeNull();
+        // Which product leaked, so a key that answers a guest with another hidden one fails too.
+        expect(product(await leaky.run(hidden, member, NOW))?.sku).toBe(membersOnly.sku);
+        expect(product(await leaky.run(hidden, guest, NOW))?.sku).toBe(membersOnly.sku);
+        expect(product(await safe.run(hidden, member, NOW))?.sku).toBe(membersOnly.sku);
         expect(product(await safe.run(hidden, guest, NOW))).toBeNull();
     });
 

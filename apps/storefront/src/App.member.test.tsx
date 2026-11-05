@@ -1,9 +1,11 @@
+import { isRecord } from '@shelflens/api';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { App } from './App.jsx';
 import { StoreDocument } from './generated/operations.js';
+import { at } from './test/answer.js';
 import { elementAs } from './test/dom.js';
 import { cards, catalog, open, settled, shopAs, shownPrice } from './test/store.jsx';
 
@@ -130,16 +132,17 @@ describe('as a member', () => {
         // The store's own answer, with the one fact a visitor's catalog differs in.
         const op = `op=${String(StoreDocument.__meta__?.['hash'])}`;
         const served = globalThis.fetch;
+        let changed = 0;
         vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
             // The address is read before the request is sent, so nothing is read twice.
             const asked = new Request(input, init).url;
             const response = await served(input, init);
             if (!asked.includes(op)) return response;
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the store's answer to its own document, which this test changes one field of
-            const body = (await response.json()) as {
-                data: { store: Record<string, unknown> };
-            };
-            body.data.store['membersOnlyProducts'] = false;
+            const body: unknown = await response.json();
+            const store = at(body, 'data', 'store');
+            if (!isRecord(store)) throw new Error('expected the store in its answer');
+            store['membersOnlyProducts'] = false;
+            changed += 1;
             const headers = new Headers(response.headers);
             headers.delete('content-length');
             return new Response(JSON.stringify(body), { status: response.status, headers });
@@ -156,6 +159,8 @@ describe('as a member', () => {
         const notice = await screen.findByRole('region', { name: /^There is no product NOPE-1/ });
         expect(notice).not.toHaveAccessibleDescription();
         expect(screen.queryByText(/for members only/)).toBeNull();
+        // What is left out says something only if the store's answer was the one changed.
+        expect(changed).toBeGreaterThan(0);
     });
 
     it('keeps the product and its rail on screen while a switch asks again', async () => {

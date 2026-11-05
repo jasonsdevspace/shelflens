@@ -148,9 +148,9 @@ export default defineConfig(
         rules: { 'max-params': 'off' },
     },
     {
-        // These two read GraphQL answers whole and assert their shape test by test, so the answer
-        // is loose until each test reads it.
-        files: ['packages/api/src/api.test.ts', 'apps/storefront/src/worker/handle.test.ts'],
+        // The API's own tests read its answers whole, each asserting the shape it reads, so the
+        // answer is loose until each test reads it.
+        files: ['packages/api/src/api.test.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',

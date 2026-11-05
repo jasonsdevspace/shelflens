@@ -8,6 +8,7 @@ import {
 } from '@shelflens/api';
 import { describe, expect, it } from 'vitest';
 
+import { at, listAt, numberAt } from '../test/answer.js';
 import { parseCsv } from './csv.js';
 import { guessMapping, type Mapping } from './mapping.js';
 import { SAMPLE_PRODUCTS, sampleCsv } from './sample.js';
@@ -51,14 +52,11 @@ describe('rows to a catalog', () => {
             NOW
         );
         expect(response.errors).toBeUndefined();
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a test reads the answer whose shape it asserts
-        const { search } = response.data as {
-            search: { total: number; facets: { attribute: string; buckets?: unknown[] }[] };
-        };
-        expect(search.total).toBeGreaterThan(0);
-        expect(
-            search.facets.find((facet) => facet.attribute === 'BRAND')?.buckets?.length
-        ).toBeGreaterThan(0);
+        expect(numberAt(response.data, 'search', 'total')).toBeGreaterThan(0);
+        const brand = listAt(response.data, 'search', 'facets').find(
+            (facet) => at(facet, 'attribute') === 'BRAND'
+        );
+        expect(listAt(brand, 'buckets').length).toBeGreaterThan(0);
         // The sample has member prices, so the store over it offers the viewer switch.
         const store = await api.run(
             { query: '{ store { memberPricing membersOnlyProducts } }' },
