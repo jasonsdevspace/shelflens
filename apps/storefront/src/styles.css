@@ -601,14 +601,14 @@ h4 {
 /*
  * The column scrolls with the page, so the page's one scrollbar reaches all of it, and stays in
  * view beside the results only while it fits on the screen, measured again as the window or the
- * column changes size. The room it keeps above it, there, is its scroll margin, which the page
- * reads to measure it. Always placed, so the way past it shows at its top.
+ * column changes size. The room it keeps above it while in view is its scroll margin, which the
+ * script reads to measure it. It is always positioned, so the way past it shows at its top.
  */
 .results-side {
     position: relative;
     --pinned-top: var(--space-4);
     scroll-margin-top: var(--pinned-top);
-    /* Never what the browser holds the page still by, since the page holds the column still. */
+    /* Not what the browser holds the page still by, since the page scrolls to hold the column. */
     overflow-anchor: none;
 }
 

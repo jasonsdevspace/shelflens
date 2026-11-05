@@ -40,7 +40,7 @@ const showEverything = async (page: Page) => {
 const columnHeight = (page: Page) =>
     page.getByRole('complementary', { name: 'Filters' }).evaluate((aside) => aside.clientHeight);
 
-/** How the filters column is drawn, and how far each facet reaches past it. */
+/** How the column named is drawn, and how far each facet reaches past it. */
 const column = (page: Page, name = 'Filters') =>
     page.evaluate((label) => {
         const aside = document.querySelector(`aside[aria-label="${label}"]`);
@@ -91,7 +91,7 @@ test('scrolls with the page when the column is taller than the screen', async ({
 
 test('stays in view beside the results when the column fits on the screen', async ({ page }) => {
     await openStore(page, 900);
-    // A screen taller than the column by more than the room above it.
+    // A screen taller than the column by more than the room it keeps above and below.
     await page.setViewportSize({ width: 1280, height: (await columnHeight(page)) + 200 });
     await expect.poll(async () => (await column(page)).pinned).toBe(true);
     expect((await column(page)).scrollsItself).toBe(false);
@@ -132,4 +132,6 @@ test('shows the way past the column at the top of the column, wherever the page 
     const [link, aside] = await Promise.all([skip.boundingBox(), filters.boundingBox()]);
     expect(link?.y ?? 0).toBeGreaterThanOrEqual(aside?.y ?? 0);
     expect(link?.x ?? 0).toBeGreaterThanOrEqual(aside?.x ?? 0);
+    // At the column's top, not anywhere in it.
+    expect((link?.y ?? 0) - (aside?.y ?? 0)).toBeLessThan(40);
 });

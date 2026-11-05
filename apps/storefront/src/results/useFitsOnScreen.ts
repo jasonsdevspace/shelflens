@@ -11,8 +11,8 @@ const roomAbove = (element: HTMLElement) =>
  * size, it does not fit, so a column scrolls with the page rather than staying in view with its
  * foot out of reach.
  *
- * When an element that fit grows past the screen, the page scrolls by as much as letting it go
- * moves it, so what the visitor just pressed stays where it was.
+ * When an element that fit stops fitting, the page scrolls by as much as letting it go moves it,
+ * so the element, and whatever the visitor just pressed in it, stays where it was on the screen.
  */
 export const useFitsOnScreen = (element: HTMLElement | null): boolean => {
     const [fits, setFits] = useState(false);
@@ -40,8 +40,8 @@ export const useFitsOnScreen = (element: HTMLElement | null): boolean => {
     }, [element]);
     useLayoutEffect(() => {
         if (element && fitted.current && !fits) {
-            // Let go, it is back in its place on the page. While it stayed in view it was drawn
-            // there or at its room from the top, whichever is lower, so that is where it was.
+            // Let go, it is back in its place on the page. While it stayed in view it was drawn at
+            // that place or at its room from the top, whichever is further down, so scroll it back.
             const now = element.getBoundingClientRect().top;
             window.scrollBy(0, now - Math.max(now, roomAbove(element)));
         }
