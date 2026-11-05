@@ -23,6 +23,11 @@ describe('routeOf', () => {
         expect(routeOf('/shelflens/', '/', STORE_ROUTES)).toBeUndefined();
     });
 
+    it('names nothing for a path that is not one, rather than throwing', () => {
+        expect(routeOf('//', '/', STORE_ROUTES)).toBeUndefined();
+        expect(routeOf('//graphql', '/', STORE_ROUTES)).toBeUndefined();
+    });
+
     it('names only the routes a host serves', () => {
         // Every host serves the store's routes, and only a visitor's catalog worker the catalog.
         expect(routeOf('/catalog', '/', STORE_ROUTES)).toBeUndefined();

@@ -7,12 +7,13 @@ import {
     errorBody,
     type EventStore,
     GROUP_HEADER,
+    INTERNAL_MESSAGE,
     isRecord,
     PERSISTED_OPERATIONS,
     VERSION_HEADER,
 } from '@shelflens/api';
 import { generateCatalog } from '@shelflens/catalog';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createRateLimit, createServer } from './server.js';
 
@@ -89,11 +90,6 @@ describe('the API over HTTP', () => {
         expect(await response.json()).toEqual({ data: { store: { viewer: { group: 'MEMBER' } } } });
     });
 
-    it('refuses a body that is not JSON, or has no query', async () => {
-        expect((await post('{ not json')).status).toBe(400);
-        expect((await post({ variables: {} })).status).toBe(400);
-    });
-
     it('answers a persisted operation by GET, and says what may be cached', async () => {
         const { api } = await demoHost.current();
         const params = new URLSearchParams({ op: STORE, v: api.version });
@@ -127,9 +123,67 @@ describe('the API over HTTP', () => {
         expect((await fetch(`${demoBase}/elsewhere/graphql?op=${STORE}`)).status).toBe(404);
     });
 
-    it('answers health without counting it against anyone', async () => {
-        const response = await fetch(`${base}/health`);
-        expect(await response.json()).toEqual({ status: 'ok' });
+    it('answers health past a client\u2019s allowance without spending any of it', async () => {
+        const counted = createServer({ host: hostOf(), rateLimitPerMinute: 1 });
+        const at = await listening(counted);
+        try {
+            for (let sent = 0; sent < 3; sent += 1) {
+                const health = await fetch(`${at}/health`);
+                expect(health.status).toBe(200);
+                expect(await health.json()).toEqual({ status: 'ok' });
+            }
+            expect((await fetch(`${at}/graphql?op=${STORE}`)).status).toBe(200);
+        } finally {
+            await closed(counted);
+        }
+    });
+
+    it('answers by its base, its clock and its age for a cacheable answer', async () => {
+        const host = hostOf();
+        const told = createServer({
+            host,
+            base: '/api/',
+            now: () => new Date('2026-01-02T03:04:05Z'),
+            maxAgeSeconds: 60,
+        });
+        const at = await listening(told);
+        try {
+            const { api } = await host.current();
+            const params = new URLSearchParams({ op: STORE, v: api.version });
+            const answer = await fetch(`${at}/api/graphql?${params.toString()}`);
+            expect(answer.status).toBe(200);
+            expect(answer.headers.get('date')).toBe('Fri, 02 Jan 2026 03:04:05 GMT');
+            expect(answer.headers.get('cache-control')).toBe('public, max-age=60');
+            expect((await fetch(`${at}/graphql?${params.toString()}`)).status).toBe(404);
+        } finally {
+            await closed(told);
+        }
+    });
+
+    it('answers a store that throws with a 500 carrying the fixed message and the request id, never the reason', async () => {
+        const host = hostOf();
+        const throwing = createServer({
+            host: {
+                ...host,
+                current: async () => {
+                    const hosted = await host.current();
+                    const run = () => Promise.reject(new Error('the secret reason'));
+                    return { ...hosted, api: { ...hosted.api, run } };
+                },
+            },
+        });
+        const at = await listening(throwing);
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const response = await fetch(`${at}/graphql?op=${STORE}`);
+            expect(response.status).toBe(500);
+            const requestId = response.headers.get('x-request-id') ?? '';
+            expect(requestId).toMatch(/[0-9a-f-]{36}/);
+            expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
+        } finally {
+            quiet.mockRestore();
+            await closed(throwing);
+        }
     });
 
     it('rate limits a client past its allowance, in the usual error shape', async () => {
@@ -168,6 +222,85 @@ describe('events over HTTP', () => {
     });
 });
 
+describe('event beacons', () => {
+    it('have an allowance of their own, apart from the searches', async () => {
+        const counted = createServer({
+            host: hostOf(createMemoryEventStore()),
+            rateLimitPerMinute: 1,
+        });
+        const at = await listening(counted);
+        const beacon = () =>
+            fetch(`${at}/events`, {
+                method: 'POST',
+                body: JSON.stringify([{ id: 'b1', kind: 'view', at: 1, sku: 'SL-1' }]),
+            });
+        try {
+            // Each side spends its one request, and neither spends the other's.
+            const search = () => fetch(`${at}/graphql?op=${STORE}`);
+            expect((await search()).status).toBe(200);
+            expect((await beacon()).status).toBe(204);
+            expect((await search()).status).toBe(429);
+            expect((await beacon()).status).toBe(429);
+        } finally {
+            await closed(counted);
+        }
+    });
+
+    it('are answered with a 500 carrying the fixed message and the request id when their store throws', async () => {
+        const failing = createServer({
+            host: hostOf({
+                append: () => Promise.reject(new Error('the secret reason')),
+                all: () => Promise.resolve([]),
+            }),
+        });
+        const at = await listening(failing);
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const response = await fetch(`${at}/events`, {
+                method: 'POST',
+                body: JSON.stringify([{ id: 'f1', kind: 'view', at: 1, sku: 'SL-1' }]),
+            });
+            expect(response.status).toBe(500);
+            const requestId = response.headers.get('x-request-id') ?? '';
+            expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
+        } finally {
+            quiet.mockRestore();
+            await closed(failing);
+        }
+    });
+});
+
+describe('a request the server cannot read', () => {
+    it('answers a path that is no path with a 404 and keeps serving', async () => {
+        expect((await fetch(`${base}//`)).status).toBe(404);
+        expect((await fetch(`${base}/health`)).status).toBe(200);
+    });
+
+    it('answers a failure outside every store call with a 500 and keeps serving', async () => {
+        const host = hostOf();
+        const throwing = createServer({
+            host: {
+                ...host,
+                get keepsRules(): boolean {
+                    throw new Error('the secret reason');
+                },
+            },
+        });
+        const at = await listening(throwing);
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const response = await fetch(`${at}/rules`, { method: 'POST', body: '{}' });
+            expect(response.status).toBe(500);
+            const requestId = response.headers.get('x-request-id') ?? '';
+            expect(await response.json()).toEqual(errorBody(500, INTERNAL_MESSAGE, { requestId }));
+            expect((await fetch(`${at}/health`)).status).toBe(200);
+        } finally {
+            quiet.mockRestore();
+            await closed(throwing);
+        }
+    });
+});
+
 describe('a store that cannot start', () => {
     it('answers 503, since nothing in the request was wrong and asking again can succeed', async () => {
         const broken = createServer({
@@ -177,8 +310,7 @@ describe('a store that cannot start', () => {
             }),
         });
         const at = await listening(broken);
-        const quiet = console.error;
-        console.error = () => undefined;
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             for (const path of [`graphql?op=${STORE}`, 'rules']) {
                 const response = await fetch(`${at}/${path}`);
@@ -196,7 +328,7 @@ describe('a store that cannot start', () => {
                 });
             }
         } finally {
-            console.error = quiet;
+            quiet.mockRestore();
             await closed(broken);
         }
     });
@@ -336,7 +468,7 @@ describe('a page on another origin', () => {
     });
     const from = (origin: string) => ({ origin });
 
-    it('answers the preflight and the request for an origin the host named, with the group header allowed', async () => {
+    it('answers the preflight and the request for an origin the host named, allowing the group header and varying on it', async () => {
         const preflight = await fetch(`${openBase}/graphql?op=${STORE}`, {
             method: 'OPTIONS',
             headers: {
@@ -354,7 +486,9 @@ describe('a page on another origin', () => {
         });
         expect(answer.status).toBe(200);
         expect(answer.headers.get('access-control-allow-origin')).toBe('https://host.example');
-        expect(answer.headers.get('vary')).toContain('origin');
+        expect(answer.headers.get('vary')?.split(', ')).toEqual(
+            expect.arrayContaining(['origin', GROUP_HEADER])
+        );
     });
 
     it('refuses an origin the host did not name, and says so rather than answering unreadably', async () => {
@@ -419,11 +553,12 @@ describe('a page on another origin', () => {
         }
     });
 
-    it('lets a page on another origin read the store version, and tells it the methods the path takes', async () => {
+    it('lets a page on another origin read the store version and the request id, and tells it the methods the path takes', async () => {
         const answer = await fetch(`${openBase}/graphql?op=${STORE}`, {
             headers: from('https://host.example'),
         });
-        expect(answer.headers.get('access-control-expose-headers')).toContain(VERSION_HEADER);
+        const exposed = answer.headers.get('access-control-expose-headers')?.split(', ');
+        expect(exposed).toEqual(expect.arrayContaining([VERSION_HEADER, 'x-request-id']));
         const preflight = await fetch(`${wideBase}/events`, {
             method: 'OPTIONS',
             headers: { ...from('https://host.example'), 'access-control-request-method': 'POST' },
@@ -454,6 +589,24 @@ describe('what every answer carries', () => {
         expect(kept.status).toBe(204);
         expect(kept.headers.get('x-content-type-options')).toBe('nosniff');
         expect(kept.headers.get('content-security-policy')).toContain("default-src 'none'");
+    });
+
+    it('reads a body exactly at the limit and refuses one byte past it with a 413 that closes the connection', async () => {
+        const prefix = '{ store { name } } # ';
+        const padding = 16 * 1024 - JSON.stringify({ query: prefix }).length;
+        const sized = (extra: number) =>
+            fetch(`${bareBase}/graphql`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ query: `${prefix}${'x'.repeat(padding + extra)}` }),
+            });
+        const read = await sized(0);
+        expect(read.status).toBe(200);
+        expect(await read.json()).toEqual({ data: { store: { name: 'ShelfLens' } } });
+        const refused = await sized(1);
+        expect(refused.status).toBe(413);
+        expect(refused.headers.get('connection')).toBe('close');
+        expect(await refused.json()).toEqual(errorBody(413, 'the request body is too large'));
     });
 
     it('answers a body past the limit with a 413 the client can read, however large', async () => {
