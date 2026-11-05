@@ -69,8 +69,8 @@ And the types of everything it takes and gives: `Engine`, `EngineConfig`, `Docum
   phrase with a word two typos off replaced by the nearest word in use, the phrase with the words
   nothing matched left out, or failing that without its rarest word, and a count of what the same
   phrase finds without its filters. Each is offered only if it finds something.
-- **Synonyms widen the query, not the index.** A rule can be one way or equivalent, and a
-  multi-word synonym counts only where every word is present.
+- **Synonyms widen the query, not the index.** A rule can be one way or equivalent, a
+  multi-word synonym counts only where every word is present, and rules on the same phrase add up.
 - **The last word can be a prefix**, for search as you type, when the request says so.
 
 Every hit carries its matches: which query word matched which indexed term, in which field, by

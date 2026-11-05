@@ -7,11 +7,12 @@ names the package on npm and how to install that version once it is promoted.
 
 ## 0.6.1
 
-Two synonym rules on the same phrase both apply.
+Every synonym rule on a phrase applies, not only the first.
 
-- **Every rule on a phrase is read.** Where two rules named the same phrase, only the first one
-  given was used, so a one-way rule from "tshirt" to "t-shirt" kept "t-shirt" from reaching "tee"
-  through a rule that made the two equivalent. A phrase now offers what every rule on it gives.
+- **Every rule on a phrase is read.** Where two rules named the same phrase, only the one given
+  first was used. A one-way rule from "tshirt" to "t-shirt", given before an equivalence of
+  "t-shirt" and "tee", kept a search for "tshirt" or "t-shirt" from finding a Tee. A phrase now
+  offers what every rule on it gives, whatever order the rules come in.
 
 ## 0.6.0
 

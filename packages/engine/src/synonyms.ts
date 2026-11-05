@@ -37,9 +37,12 @@ const startsWith = (terms: readonly string[], at: number, phrase: readonly strin
 
 export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
     // Entries by their first term, longest phrase first, so the most
-    // specific rule wins where two could apply at one position. Two rules
-    // on the same phrase share one entry, so the second is not shadowed by
-    // the first.
+    // specific rule wins where two could apply at one position. Every rule
+    // on a phrase adds to that phrase's one entry, because rewrite reads only
+    // the first entry that fits, and a one-way rule from "tshirt" would
+    // otherwise hide the "tee" an equivalence of "t-shirt" and "tee" gives
+    // it. An alternative the entry already has, or the phrase itself, is
+    // left out, so each reading is tried once.
     const entries = new Map<string, Entry[]>();
     const add = (phrase: readonly string[], alternatives: readonly (readonly string[])[]) => {
         const first = phrase[0];

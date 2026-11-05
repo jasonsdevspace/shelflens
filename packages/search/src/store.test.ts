@@ -122,6 +122,7 @@ describe('the words a shopper may use for one thing', () => {
         ['sneakers', 'trainers'],
         ['sweater', 'jumper'],
         ['sweater', 'pullover'],
+        ['jumper', 'pullover'],
         ['trousers', 'pants'],
         ['t-shirt', 'tee'],
         ['jacket', 'coat'],
