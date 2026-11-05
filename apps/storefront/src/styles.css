@@ -361,24 +361,28 @@ h4 {
     border-bottom: 0;
 }
 
-/* The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row. */
+/*
+ * The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row.
+ * They share the links' row, so the strip is one row tall, as every demo's strip is, and are a
+ * row as tall as the links' themselves, so a row of them that wraps keeps its room from the rule.
+ */
 .topbar-tools {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    padding-block: var(--space-1);
+    min-height: 2.5rem;
 }
 
 .topbar-tools:empty {
     display: none;
 }
 
-/* Whose demo this is, above the masthead: two links, one line, scrolls away. */
+/* Whose demo this is, above the masthead: three links together on the left, scrolls away. */
 .portfolio {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 0 var(--space-4);
     border-bottom: 1px solid var(--line);
@@ -439,14 +443,13 @@ h4 {
 }
 
 /*
- * A field's height and the padding around it, and the width of the two
- * switches, as they take once they arrive, so they wrap, or not, as they
- * will.
+ * A field's height, and the width of the two switches, as they take once
+ * they arrive, so they wrap, or not, as they will.
  */
 .topbar.is-waiting .topbar-tools:empty {
     display: flex;
     min-width: 15.65rem;
-    min-height: calc(var(--field-height) + var(--space-2));
+    min-height: var(--field-height);
 }
 
 .brand {
@@ -556,7 +559,10 @@ h4 {
         min-height: calc(var(--target) + var(--space-2));
     }
 
-    /* The three links on one line in small text, the switches on the line below them. */
+    /*
+     * The three links in smaller text, on one row where they fit and the last on a row of its own
+     * where they do not, and the switches on the line below them.
+     */
     .topbar .portfolio {
         gap: 0 var(--space-4);
         font-size: var(--text-caption);
