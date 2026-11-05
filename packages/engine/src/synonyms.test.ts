@@ -252,6 +252,12 @@ describe('rules that share a phrase', () => {
         ] as const;
         expect(alternativesOf(rules, ['tshirt'])).toContainEqual(['jersey']);
         expect(alternativesOf(rules, ['t', 'shirt'])).toContainEqual(['jersey']);
+        const apart = [
+            { kind: 'one-way', from: 't shirt', to: 'tee' },
+            { kind: 'one-way', from: 'tshirt', to: 'jersey' },
+        ] as const;
+        // A spelling no rule leads to is a place to start from, never something offered.
+        expect(alternativesOf(apart, ['t', 'shirt'])).toEqual([['tee'], ['jersey']]);
     });
 
     it('stop where rules lead back to where they began', () => {
@@ -263,7 +269,7 @@ describe('rules that share a phrase', () => {
         expect(alternativesOf(rules, ['hat'])).toEqual([['cap']]);
     });
 
-    it('offer what a phrase reaches whatever other rules the set holds', () => {
+    it('keep what a phrase offers when a rule is added on it', () => {
         const rules = [
             { kind: 'one-way', from: 't shirt', to: 'tee' },
             { kind: 'equivalent', terms: ['tee', 'tshirt'] },

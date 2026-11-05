@@ -19,8 +19,9 @@ Synonym rules chain through a phrase they share.
   rule leads to, and starts from every spelling of the phrase at once, so "t shirt" goes as far as
   "tshirt" does. With "t-shirt" and "tee", "tee" and "top", and "top" and "lid" equivalent,
   "t-shirt" reaches "top" but not "lid", though "tee" reaches "lid".
-- **Searches may find more.** A rule set whose rules share a phrase widens what its searches find,
-  and a document found along a chain scores as any synonym match does. A hyphenated word in an
+- **Searches may find more.** A rule set whose rules share a phrase, or name two spellings of
+  one, widens what its searches find, and a document found along a chain scores as any synonym
+  match does. A hyphenated word in an
   equivalence now also offers its other spelling through the rule's other words, so with "t-shirt"
   and "tee" equivalent, "t shirt" finds a product written "Tshirt". Apart from these, a search
   finds what it found before.
