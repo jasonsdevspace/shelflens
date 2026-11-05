@@ -1,13 +1,8 @@
 // @vitest-environment node
-import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { describe, expect, it } from 'vitest';
 
 import { proseProblems } from './check-prose.mjs';
+import { runCheckIn } from './test-repository.js';
 
 const DASH = String.fromCodePoint(0x2014);
 const rules = (path: string, source: string): string[] =>
@@ -171,6 +166,8 @@ describe('what the prose check reads', () => {
         ['a.html', '<p>One; two</p>\n'],
         ['a.sh', '# One; two\n'],
         ['Dockerfile', '# One; two\n'],
+        ['docker/Dockerfile.prod', '# One; two\n'],
+        ['api.Dockerfile', '# One; two\n'],
     ])('reads %s in its own comment style', (path, source) => {
         expect(rules(path, source)).toEqual([`${path}:1  semicolon in prose`]);
     });
@@ -197,37 +194,10 @@ describe('what the prose check reads', () => {
     });
 });
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-/**
- * The parent's environment, without anything that points git elsewhere or reads the user's
- * config.
- */
-const isolated = (): NodeJS.ProcessEnv => ({
-    ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_CONFIG_NOSYSTEM: '1',
-});
-
-/** The script run over a throwaway repository holding these files beside it. */
+/** The check's status and what it wrote to stderr, run over a throwaway repository. */
 const runIn = (files: Record<string, string>) => {
-    const root = mkdtempSync(join(tmpdir(), 'check-prose-'));
-    const options = { cwd: root, env: isolated(), timeout: 10_000 };
-    try {
-        execFileSync('git', ['init', '--quiet'], options);
-        mkdirSync(join(root, 'scripts'), { recursive: true });
-        for (const script of ['check-prose.mjs', 'repository.mjs']) {
-            copyFileSync(join(HERE, script), join(root, 'scripts', script));
-        }
-        for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
-        const result = spawnSync(process.execPath, ['scripts/check-prose.mjs'], {
-            ...options,
-            encoding: 'utf8',
-        });
-        return { status: result.status, stderr: result.stderr };
-    } finally {
-        rmSync(root, { recursive: true, force: true });
-    }
+    const { status, stderr } = runCheckIn('check-prose.mjs', files);
+    return { status, stderr };
 };
 
 describe('the prose check, run as a command', () => {

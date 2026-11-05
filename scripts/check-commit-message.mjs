@@ -43,8 +43,8 @@ const EM_DASH = String.fromCodePoint(0x2014);
  */
 export const storedMessage = (raw, commentChar) => {
     const lines = raw.split('\n');
-    const scissors = lines.findIndex((line) => /^\S -{24} >8 -{24}$/.test(line));
-    const comment = scissors === -1 ? commentChar : (lines[scissors]?.[0] ?? commentChar);
+    const scissors = lines.findIndex((line) => /^\S+ -{24} >8 -{24}$/.test(line));
+    const comment = scissors === -1 ? commentChar : (lines[scissors]?.split(' ')[0] ?? commentChar);
     return (scissors === -1 ? lines : lines.slice(0, scissors))
         .filter((line) => !line.startsWith(comment))
         .join('\n');
@@ -79,12 +79,18 @@ export const messageProblems = (message) => [
         : []),
 ];
 
-/** The comment character git uses for this repository, `#` unless set otherwise. */
+/**
+ * What git starts a comment line with in this repository, `#` unless set otherwise. Newer git
+ * reads `core.commentString` as well as `core.commentChar`, and whichever is set last wins.
+ */
 const commentCharacter = () => {
     try {
-        const set = execFileSync('git', ['config', 'core.commentChar'], {
-            encoding: 'utf8',
-        }).trim();
+        const settings = execFileSync(
+            'git',
+            ['config', '--get-regexp', '^core\\.comment(char|string)$'],
+            { encoding: 'utf8' }
+        ).trim();
+        const set = settings.split('\n').at(-1)?.split(' ').slice(1).join(' ') ?? '';
         return set === '' || set === 'auto' ? '#' : set;
     } catch {
         return '#';

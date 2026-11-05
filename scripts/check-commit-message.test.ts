@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { messageProblems, storedMessage, textToCheck, TOOLS } from './check-commit-message.mjs';
+import { isolated } from './test-repository.js';
 
 const DASH = String.fromCodePoint(0x2014);
 
@@ -100,26 +101,23 @@ describe('the tools the commit message check refuses', () => {
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-commit-message.mjs');
 
 /**
- * The parent's environment, without anything that points git elsewhere or reads the user's
- * config.
+ * The script's exit status on a message, and what it printed, run as the hook runs it in a
+ * repository of its own.
  */
-const isolated = (): NodeJS.ProcessEnv => ({
-    ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_CONFIG_NOSYSTEM: '1',
-});
-
-/** The script's exit status on a message, run as the hook runs it in a repository of its own. */
-const statusOn = (message: string, args: string[] = [], commentChar?: string) => {
+const ranOn = (message: string, args: string[] = [], config: Record<string, string> = {}) => {
     const root = mkdtempSync(join(tmpdir(), 'check-commit-message-'));
     const options = { cwd: root, env: isolated(), timeout: 10_000 };
     try {
         execFileSync('git', ['init', '--quiet'], options);
-        if (commentChar !== undefined) {
-            execFileSync('git', ['config', 'core.commentChar', commentChar], options);
+        for (const [key, value] of Object.entries(config)) {
+            execFileSync('git', ['config', key, value], options);
         }
         writeFileSync(join(root, 'MESSAGE'), message);
-        return spawnSync(process.execPath, [SCRIPT, ...args, 'MESSAGE'], options).status;
+        const ran = spawnSync(process.execPath, [SCRIPT, ...args, 'MESSAGE'], {
+            ...options,
+            encoding: 'utf8',
+        });
+        return { status: ran.status, stderr: ran.stderr };
     } finally {
         rmSync(root, { recursive: true, force: true });
     }
@@ -127,22 +125,34 @@ const statusOn = (message: string, args: string[] = [], commentChar?: string) =>
 
 describe('the commit message check, run as a command', () => {
     const commented = `Fix the check\n# Notes from ${'Co'}dex\n`;
+    const passed = { status: 0, stderr: '' };
+    // The reason, as well as the status, so a crash that also exits 1 is not taken for a refusal.
+    const expectRefused = ({ status, stderr }: { status: number | null; stderr: string }) => {
+        expect(status).toBe(1);
+        expect(stderr).toContain('names a tool');
+    };
 
     it('exits 0 on a plain message and 1 on one that names a tool', () => {
-        expect(statusOn('Fix the check\n')).toBe(0);
-        expect(statusOn(`Fix the check with ${'Co'}dex\n`)).toBe(1);
+        expect(ranOn('Fix the check\n')).toEqual(passed);
+        expectRefused(ranOn(`Fix the check with ${'Co'}dex\n`));
     });
 
     it('drops git comment lines, unless told to read the message as it is', () => {
-        expect(statusOn(commented)).toBe(0);
-        expect(statusOn(commented, ['--as-is'])).toBe(1);
+        expect(ranOn(commented)).toEqual(passed);
+        expectRefused(ranOn(commented, ['--as-is']));
     });
 
     it('drops the comment character the repository sets', () => {
-        expect(statusOn(`Fix the check\n; Notes from ${'Co'}dex\n`, [], ';')).toBe(0);
+        const message = `Fix the check\n; Notes from ${'Co'}dex\n`;
+        expect(ranOn(message, [], { 'core.commentChar': ';' })).toEqual(passed);
     });
 
     it('drops hash comment lines when the comment character is auto', () => {
-        expect(statusOn(commented, [], 'auto')).toBe(0);
+        expect(ranOn(commented, [], { 'core.commentChar': 'auto' })).toEqual(passed);
+    });
+
+    it('drops the comment string a newer git sets in place of the character', () => {
+        const message = `Fix the check\n// Notes from ${'Co'}dex\n`;
+        expect(ranOn(message, [], { 'core.commentString': '//' })).toEqual(passed);
     });
 });

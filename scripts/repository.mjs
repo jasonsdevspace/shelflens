@@ -1,6 +1,6 @@
 /**
- * What the repository checks share: the files to check, how they start, and
- * the workspace's packages.
+ * What the repository checks share: the files to check, how they start, what
+ * counts as a Dockerfile, and the workspace's packages.
  *
  * Each check runs from the top of the repository it belongs to, wherever it
  * is started, over tracked files and new ones not yet added, so whatever the
@@ -8,8 +8,16 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * A Dockerfile by any of the names Docker tooling uses for one, such as
+ * `Dockerfile`, `Dockerfile.prod` or `api.Dockerfile`.
+ *
+ * @param {string} path
+ */
+export const isDockerfile = (path) => /^Dockerfile(\..+)?$|\.Dockerfile$/.test(basename(path));
 
 /**
  * The repository's files a check reads, by path from its top, with their text.

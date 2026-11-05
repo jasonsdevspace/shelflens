@@ -1,13 +1,8 @@
 // @vitest-environment node
-import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { describe, expect, it } from 'vitest';
 
 import { nodeMismatches } from './check-node.mjs';
+import { runCheckIn } from './test-repository.js';
 
 const ROOT = JSON.stringify({
     private: true,
@@ -100,13 +95,35 @@ describe('the Node version check', () => {
                 repo({
                     'package.json': pkg({
                         private: true,
-                        engines: { node: '~24.1' },
+                        engines: { node: '~24' },
                         devDependencies: { '@types/node': '~24.19.2' },
                     }),
                 })
             )
         ).toEqual([]);
     });
+
+    it.each(['~24.1', '24.1.0', '24.1', '^24.1', '~24.0'])(
+        'refuses engines of %s on a private package, which leaves out part of the major',
+        (range) => {
+            expect(
+                nodeMismatches(
+                    repo({ 'package.json': pkg({ private: true, engines: { node: range } }) })
+                )
+            ).toEqual([`package.json: engines.node is "${range}", expected ">=24 <25"`]);
+        }
+    );
+
+    it.each(['>=24 <25', '^24', '~24', '24', '24.x', '^24.0.0', '>=24.0.0 <25.0.0'])(
+        'takes engines of %s on a private package, which is the whole major',
+        (range) => {
+            expect(
+                nodeMismatches(
+                    repo({ 'package.json': pkg({ private: true, engines: { node: range } }) })
+                )
+            ).toEqual([]);
+        }
+    );
 
     it('reports a manifest that is not JSON', () => {
         expect(nodeMismatches(repo({ 'demo/package.json': '{ "name": ' }))).toEqual([
@@ -181,47 +198,8 @@ describe('the Node version check', () => {
     });
 });
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-/** The parent's environment, without anything that points git elsewhere or reads the user's config. */
-const isolated = (): NodeJS.ProcessEnv => ({
-    ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))),
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_CONFIG_NOSYSTEM: '1',
-});
-
-/**
- * A throwaway repository with the tracked files added to git's index and the
- * rest left for git to find, and the script run from a folder below the top.
- */
-const runIn = (tracked: Record<string, string>, untracked: Record<string, string> = {}) => {
-    const root = mkdtempSync(join(tmpdir(), 'check-node-'));
-    const options = { cwd: root, env: isolated(), timeout: 10_000 };
-    const write = (files: Record<string, string>): void => {
-        for (const [path, text] of Object.entries(files)) {
-            mkdirSync(dirname(join(root, path)), { recursive: true });
-            writeFileSync(join(root, path), text);
-        }
-    };
-    try {
-        execFileSync('git', ['init', '--quiet'], options);
-        write(tracked);
-        execFileSync('git', ['add', '--all'], options);
-        write(untracked);
-        mkdirSync(join(root, 'scripts'), { recursive: true });
-        for (const script of ['check-node.mjs', 'repository.mjs']) {
-            copyFileSync(join(HERE, script), join(root, 'scripts', script));
-        }
-        const result = spawnSync(process.execPath, ['check-node.mjs'], {
-            ...options,
-            cwd: join(root, 'scripts'),
-            encoding: 'utf8',
-        });
-        return { status: result.status, stdout: result.stdout, stderr: result.stderr };
-    } finally {
-        rmSync(root, { recursive: true, force: true });
-    }
-};
+const runIn = (tracked: Record<string, string>, untracked: Record<string, string> = {}) =>
+    runCheckIn('check-node.mjs', tracked, untracked);
 
 describe('the Node version check, run as a command', () => {
     const clean = { '.nvmrc': '24\n', 'package.json': ROOT };
@@ -252,12 +230,17 @@ describe('the Node version check, run as a command', () => {
             'api.Dockerfile': 'FROM node:20\n',
             'docker/Dockerfile.prod': 'FROM node:20\n',
         });
-        expect(result.stderr.split('\n').slice(2, -1)).toEqual([
-            '.github/workflows/ci.yaml:1: names its own Node version, ' +
-                'read node-version-file: .nvmrc instead',
-            'api.Dockerfile:1: uses Node 20 (node:20)',
-            'docker/Dockerfile.prod:1: uses Node 20 (node:20)',
-        ]);
+        expect(result.stderr).toBe(
+            [
+                'Node version check failed.',
+                '',
+                '.github/workflows/ci.yaml:1: names its own Node version, ' +
+                    'read node-version-file: .nvmrc instead',
+                'api.Dockerfile:1: uses Node 20 (node:20)',
+                'docker/Dockerfile.prod:1: uses Node 20 (node:20)',
+                '',
+            ].join('\n')
+        );
         expect(result.status).toBe(1);
     });
 });
