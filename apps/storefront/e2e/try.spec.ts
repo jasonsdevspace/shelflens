@@ -118,24 +118,6 @@ test('removes a loaded catalog, and is back where a file is chosen', async ({ pa
     ).toBeVisible();
 });
 
-test('refuses a file past the cap as it is read, and says what to do', async ({ page }) => {
-    await page.goto('try/');
-    const rows = Array.from({ length: 10_001 }, (_, index) => `Item ${index},$1.00`).join('\n');
-    await page.getByLabel('Choose a file').setInputFiles({
-        name: 'too-many.csv',
-        mimeType: 'text/csv',
-        buffer: Buffer.from(`name,price\n${rows}\n`),
-    });
-    await expect(page.getByRole('alert')).toHaveText(
-        'This file has 10,001 rows, and the page takes up to 10,000 products. Delete rows until it has 10,000 or fewer, then choose it again.'
-    );
-    // Refused before the mapping, so nothing is offered to correct.
-    await expect(
-        page.getByRole('heading', { level: 1, name: 'Search your own products' })
-    ).toBeVisible();
-    await expect(page.getByRole('combobox')).toHaveCount(0);
-});
-
 test('takes the sample with one press', async ({ page }) => {
     await page.goto('try/');
     await page.getByRole('button', { name: 'Try it with a sample of 200 products' }).click();

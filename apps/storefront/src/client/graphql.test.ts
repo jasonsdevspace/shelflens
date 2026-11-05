@@ -127,6 +127,57 @@ describe('the client', () => {
         expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 
+    it('remembers no more answers than its memory holds', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond(SUGGEST, 'v1'),
+            memory: createClientMemory({ size: 2 }),
+        });
+        await client.query(SuggestDocument, { phrase: 'a', limit: 5 });
+        await client.query(SuggestDocument, { phrase: 'b', limit: 5 });
+        expect(client.remembered).toBe(2);
+        await client.query(SuggestDocument, { phrase: 'c', limit: 5 });
+        expect(client.remembered).toBe(2);
+    });
+
+    it('lets the least recently used answer go first when the memory is full', async () => {
+        const fetchImpl = respond(SUGGEST, 'v1');
+        const client = createClient({
+            url: '/graphql',
+            fetch: fetchImpl,
+            memory: createClientMemory({ size: 2 }),
+        });
+        await client.query(SuggestDocument, { phrase: 'a', limit: 5 });
+        await client.query(SuggestDocument, { phrase: 'b', limit: 5 });
+        // Asking for the first again makes the second the least recently used.
+        await client.query(SuggestDocument, { phrase: 'a', limit: 5 });
+        await client.query(SuggestDocument, { phrase: 'c', limit: 5 });
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+        await client.query(SuggestDocument, { phrase: 'a', limit: 5 });
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        await client.query(SuggestDocument, { phrase: 'b', limit: 5 });
+        expect(fetchImpl).toHaveBeenCalledTimes(4);
+    });
+
+    it('forgets every answer and the version it saw when asked', async () => {
+        const fetchImpl = respond(SUGGEST, 'v1');
+        const memory = createClientMemory();
+        const client = createClient({ url: '/graphql', fetch: fetchImpl, memory });
+        await client.query(SuggestDocument, { phrase: 'a', limit: 5 });
+        await client.query(StoreDocument, {});
+
+        memory.forget();
+        expect(client.remembered).toBe(0);
+        expect(client.version).toBeUndefined();
+
+        await client.query(StoreDocument, {});
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        expect(
+            new URL(urlOf(fetchImpl.mock.calls[2]?.[0]), 'http://local').searchParams.has('v')
+        ).toBe(false);
+    });
+
     it('shares a memory between viewers, keeping their answers apart', async () => {
         const fetchImpl = respond(SUGGEST, 'v1');
         const memory = createClientMemory();
