@@ -40,3 +40,15 @@ for (const [name, path] of [
         expect(await stripLayout(page)).toEqual({ height: 41, tops: [0, 0, 0], gaps: [24, 24] });
     });
 }
+
+test('draws the strip on a phone in one row where it fits, wrapping the last link where not', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 412, height: 800 });
+    await page.goto('/about/');
+    await page.getByRole('navigation', { name: 'Portfolio' }).waitFor();
+    expect(await stripLayout(page)).toMatchObject({ tops: [0, 0, 0], gaps: [16, 16] });
+    // Narrower still, the last link takes a row of its own below the first two.
+    await page.setViewportSize({ width: 360, height: 800 });
+    expect((await stripLayout(page)).tops).toEqual([0, 0, 40]);
+});

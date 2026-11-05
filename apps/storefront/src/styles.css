@@ -558,7 +558,10 @@ h4 {
         min-height: calc(var(--target) + var(--space-2));
     }
 
-    /* The three links on one line in small text, the switches on the line below them. */
+    /*
+     * The three links in small text, on one row where they fit and the last on a row of its own
+     * where they do not, and the switches on the line below them.
+     */
     .topbar .portfolio {
         gap: 0 var(--space-4);
         font-size: var(--text-caption);
