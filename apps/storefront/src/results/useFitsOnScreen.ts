@@ -1,28 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+/** The room an element keeps above it on the screen: its scroll margin, in pixels. */
+const roomAbove = (element: HTMLElement) =>
+    parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
 
 /**
- * Whether an element fits on the screen with room above and below it, measured again as the
- * window or the element changes size, as when a list is shown in full. Before it is measured, and
- * where the browser cannot watch an element's size, it does not fit, so a column scrolls with the
- * page rather than staying in view with its foot out of reach.
+ * Whether an element fits on the screen with its scroll margin above it and as much below,
+ * measured again, once a frame at most, as the window or the element changes size, as when a
+ * list is shown in full. Before it is measured, and where the browser cannot watch an element's
+ * size, it does not fit, so a column scrolls with the page rather than staying in view with its
+ * foot out of reach.
+ *
+ * When an element that fit grows past the screen, the page scrolls by as much as letting it go
+ * moves it, so what the visitor just pressed stays where it was.
  */
-export const useFitsOnScreen = (element: HTMLElement | null, room: string): boolean => {
+export const useFitsOnScreen = (element: HTMLElement | null): boolean => {
     const [fits, setFits] = useState(false);
+    // Whether it fit when last drawn, so the moment it stops fitting is known.
+    const fitted = useRef(false);
     useEffect(() => {
         if (!element || typeof ResizeObserver === 'undefined') return;
+        let frame = 0;
         const measure = () => {
-            const margin = parseFloat(getComputedStyle(element).getPropertyValue(room)) || 0;
-            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-            setFits(element.offsetHeight + 2 * margin * rem <= window.innerHeight);
+            frame = 0;
+            setFits(element.offsetHeight + 2 * roomAbove(element) <= window.innerHeight);
         };
-        const watcher = new ResizeObserver(measure);
+        const soon = () => {
+            if (frame === 0) frame = requestAnimationFrame(measure);
+        };
+        const watcher = new ResizeObserver(soon);
         watcher.observe(element);
-        window.addEventListener('resize', measure);
+        window.addEventListener('resize', soon);
         measure();
         return () => {
+            cancelAnimationFrame(frame);
             watcher.disconnect();
-            window.removeEventListener('resize', measure);
+            window.removeEventListener('resize', soon);
         };
-    }, [element, room]);
+    }, [element]);
+    useLayoutEffect(() => {
+        if (element && fitted.current && !fits) {
+            // Let go, it is back in its place on the page. While it stayed in view it was drawn
+            // there or at its room from the top, whichever is lower, so that is where it was.
+            const now = element.getBoundingClientRect().top;
+            window.scrollBy(0, now - Math.max(now, roomAbove(element)));
+        }
+        fitted.current = fits;
+    }, [element, fits]);
     return fits;
 };

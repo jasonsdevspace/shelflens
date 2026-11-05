@@ -305,7 +305,7 @@ const RatingFacet = ({ facet, state, onChange }: FacetsProps & { readonly facet:
                         onChange={() => choose(bucket.from)}
                     />
                     {/*
-                     * The stars a card shows at that rating, then "and up", seen. Heard, the
+                     * Seen, the stars a card shows at that rating, then "and up". Heard, the
                      * stars are their number in words, so the band is said in full once.
                      */}
                     <span className="facet-label facet-rating">

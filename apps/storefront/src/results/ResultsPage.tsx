@@ -130,7 +130,7 @@ const SideColumn = ({
     readonly children: ReactNode;
 }) => {
     const [element, setElement] = useState<HTMLElement | null>(null);
-    const fits = useFitsOnScreen(element, '--space-4');
+    const fits = useFitsOnScreen(element);
     return (
         <aside
             ref={setElement}
