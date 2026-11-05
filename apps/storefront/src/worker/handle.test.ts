@@ -291,6 +291,31 @@ describe('the answers the worker keeps', () => {
         }
     });
 
+    it('serves a kept answer still within its age without building the store', async () => {
+        const { store, seed } = createAnswerStore();
+        const url = persisted({ op: STORE, v: version }).url;
+        // A body the store would never make, so only the kept answer can be the one served.
+        seed(
+            url,
+            new Response('{"data":{"kept":true}}', {
+                headers: {
+                    'cache-control': 'public, max-age=300',
+                    date: new Date(Date.now() - 1000).toUTCString(),
+                },
+            })
+        );
+        const fetchImpl = servingCatalog();
+        const api = createWorkerApi({
+            catalogUrl: 'catalog.json',
+            base: BASE,
+            fetch: fetchImpl,
+            answers: () => Promise.resolve(store),
+        });
+        const answer = await api.handle(persisted({ op: STORE, v: version }));
+        expect(await answer?.json()).toEqual({ data: { kept: true } });
+        expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
     it('drops an answer past its age, and every answer for another version', async () => {
         const { store, has, seed } = createAnswerStore();
         const url = `https://example.test${BASE}graphql?${new URLSearchParams({ op: STORE, v: version })}`;

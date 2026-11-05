@@ -227,6 +227,9 @@ export const createWorkerApi = ({
 
     const receive = async (request: Request): Promise<Response> => {
         if (!events) return refuse(404, 'this store keeps no events');
+        // Clicks before a visitor's catalog is loaded name products it does not have yet, and
+        // loading one forgets them, so the batch is refused as every route is with nothing loaded.
+        if (catalogs) await catalogNow();
         const receipt = await receiveEvents(await asHttp(request), events, now());
         return write(answerOf(receipt));
     };

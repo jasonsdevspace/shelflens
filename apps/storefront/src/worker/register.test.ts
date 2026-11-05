@@ -163,6 +163,30 @@ describe('registering the worker', () => {
         await expect(start).rejects.toBeInstanceOf(StoreDidNotStart);
     });
 
+    it('gives up on a waiting worker once it is discarded, and not before', async () => {
+        const container = fakeContainer({ controlled: false, active: false });
+        const waiting = incoming('installed');
+        container.register.mockImplementation(() => Promise.resolve({ ...EMPTY, waiting }));
+        const { host } = hostWith(container);
+        let settled = false;
+        // What the start ended with, caught as it ends so a start that gives up early fails
+        // the check below rather than going unhandled.
+        const ended = controlledByWorker('/sw.js', '/', host, 60_000)
+            .then(
+                () => undefined,
+                (error: unknown) => error
+            )
+            .finally(() => {
+                settled = true;
+            });
+        await vi.waitFor(() => expect(container.register).toHaveBeenCalled());
+        // A turn of the event loop, so a start that gave up on the waiting worker has settled.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(settled).toBe(false);
+        waiting.become('redundant');
+        expect(await ended).toBeInstanceOf(StoreDidNotStart);
+    });
+
     it('counts a worker script that did not arrive as a start to try again', async () => {
         const container = fakeContainer({ controlled: false, active: false });
         container.register.mockImplementation(() =>

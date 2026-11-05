@@ -1,6 +1,7 @@
 // @vitest-environment node
 import type { Rule } from '@jasonsdevspace/shelflens';
 import {
+    createMemoryEventStore,
     createMemoryRuleStore,
     createStore,
     errorBody,
@@ -12,6 +13,7 @@ import { type Catalog, generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import { listAt, textAt } from '../test/answer.js';
+import { serving } from '../test/serving.js';
 import { parseCsv } from '../try/csv.js';
 import { guessMapping } from '../try/mapping.js';
 import { toCatalog } from '../try/to-catalog.js';
@@ -58,6 +60,7 @@ const LAMPS = fromCsv('name,price\nBrass Desk Lamp,$40.00\nPaper Floor Lamp,$65.
 const storeVersion = (catalog: Catalog) => createStore({ catalog }).version;
 
 const MUGS = fromCsv('name,price\nStoneware Mug,$12.00\nEnamel Camp Mug,$9.00\n');
+const ONE_MUG = fromCsv('name,price\nStoneware Mug,$12.00\n');
 
 const memoryAnswers = () => {
     const kept = new Map<string, Response>();
@@ -108,6 +111,54 @@ describe('the worker for a visitor’s own catalog', () => {
         const answer = await api.handle(get({ op: STORE }));
         expect(answer?.status).toBe(404);
         expect((await api.handle(catalogRequest('GET')))?.status).toBe(404);
+    });
+
+    it('answers a rules request 404 until a catalog is loaded', async () => {
+        const api = visitorApi(undefined, { rules: createMemoryRuleStore() });
+        const saving = { rules: [{ id: 'pin', pin: ['ROW-000001'] }] };
+        for (const [method, body] of [['GET'], ['POST', saving], ['DELETE']] as const) {
+            const answer = await api.handle(
+                new Request(`${ORIGIN}${BASE}rules`, {
+                    method,
+                    ...(body && { body: JSON.stringify(body) }),
+                })
+            );
+            expect(answer?.status).toBe(404);
+            expect(await answer?.json()).toEqual(
+                errorBody(404, 'no catalog is loaded, so there is nothing to search yet')
+            );
+        }
+    });
+
+    it('answers an event batch 404 until a catalog is loaded, and keeps none of it', async () => {
+        const events = createMemoryEventStore();
+        const api = createWorkerApi({ catalogs: createMemoryCatalogStore(), base: BASE, events });
+        const answer = await api.handle(
+            new Request(`${ORIGIN}${BASE}events`, {
+                method: 'POST',
+                body: JSON.stringify([{ id: 'e1', kind: 'view', at: 1, sku: 'ROW-000001' }]),
+            })
+        );
+        expect(answer?.status).toBe(404);
+        expect(await answer?.json()).toEqual(
+            errorBody(404, 'no catalog is loaded, so there is nothing to search yet')
+        );
+        expect(await events.all()).toEqual([]);
+    });
+
+    it('says a catalog saved before it started is loaded, and builds from it', async () => {
+        const catalogs = createMemoryCatalogStore();
+        await catalogs.replace(LAMPS);
+        const asked = createWorkerApi({ catalogs, base: BASE });
+        expect(await (await asked.handle(catalogRequest('GET')))?.json()).toEqual({
+            version: LAMPS.version,
+            products: 2,
+        });
+        // A worker whose first request is a search builds from the saved catalog too.
+        const searched = createWorkerApi({ catalogs, base: BASE });
+        expect(await versionOf(await searched.handle(get({ op: STORE })))).toBe(
+            storeVersion(LAMPS)
+        );
     });
 
     it('loads a catalog, answers from it, and says which version is served', async () => {
@@ -171,15 +222,18 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(await versionOf(await api.handle(get({ op: STORE })))).toBe(storeVersion(LAMPS));
     });
 
-    it('removes the catalog and everything answered from it', async () => {
+    it('removes the catalog and what was made from it, its rules and answers', async () => {
         const { answers, kept } = memoryAnswers();
-        const api = visitorApi(answers);
+        const rules = createMemoryRuleStore();
+        const api = visitorApi(answers, { rules });
         const version =
             (await api.handle(catalogRequest('PUT', LAMPS)))?.headers.get(VERSION_HEADER) ?? '';
         await api.handle(get({ op: STORE, v: version }));
         expect(kept.size).toBe(1);
-        expect((await api.handle(catalogRequest('DELETE')))?.status).toBe(204);
+        await rules.replace(pinFirst(LAMPS));
+        expect((await api.handle(catalogRequest('DELETE', undefined, true)))?.status).toBe(204);
         expect(kept.size).toBe(0);
+        expect(await rules.current()).toBeUndefined();
         expect((await api.handle(get({ op: STORE })))?.status).toBe(404);
         expect((await api.handle(catalogRequest('GET')))?.status).toBe(404);
     });
@@ -313,29 +367,26 @@ describe('the worker for a visitor’s own catalog', () => {
         expect(reads).not.toHaveBeenCalled();
     });
 
-    it('keeps the last catalog and its rules when a new one cannot be built', async () => {
-        // Rules that cannot be cleared, and that no store can be built with.
-        let saved: readonly Rule[] | undefined;
-        const stubborn: RuleStore = {
-            current: () => Promise.resolve(saved),
-            replace: (next) => {
-                saved = next;
-                return Promise.resolve();
-            },
-            reset: () => Promise.resolve(),
-        };
-        const api = visitorApi(undefined, { rules: stubborn });
-        await api.handle(catalogRequest('PUT', LAMPS));
-        saved = UNBUILDABLE;
-        const refused = await api.handle(catalogRequest('PUT', MUGS, true));
+    it('stores the last catalog and its rules again when a new one cannot be built', async () => {
+        const catalogs = createMemoryCatalogStore();
+        const rules = createMemoryRuleStore();
+        const api = createWorkerApi({
+            catalogs,
+            base: BASE,
+            rules,
+            // The rules the site ships, which stand in once the saved ones are cleared. They pin
+            // the second lamp, so a catalog of one mug cannot be built with them.
+            rulesUrl: 'rules.json',
+            fetch: serving(LAMPS, { rules: [{ id: 'odd', pin: [LAMPS.products[1]?.sku] }] }),
+        });
+        expect((await api.handle(catalogRequest('PUT', LAMPS)))?.status).toBe(204);
+        await rules.replace(pinFirst(LAMPS));
+        const refused = await api.handle(catalogRequest('PUT', ONE_MUG, true));
         expect(refused?.status).toBe(400);
         // The reason alone, which the page says after "since", with nothing wrapped around it.
         expect(textAt(await refused?.json(), 'errors', 0, 'message')).toMatch(/^rule odd /);
-        expect(await (await api.handle(catalogRequest('GET')))?.json()).toEqual({
-            version: LAMPS.version,
-            products: 2,
-        });
-        expect(saved).toEqual(UNBUILDABLE);
+        expect((await catalogs.current())?.version).toBe(LAMPS.version);
+        expect(await rules.current()).toEqual(pinFirst(LAMPS));
     });
 
     it('holds a removal until a load that is building lands, then removes it, so both paths agree', async () => {
