@@ -1,6 +1,6 @@
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { createMemoryRuleStore, receiveRules, VERSION_HEADER } from '@shelflens/api';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
@@ -269,18 +269,22 @@ describe('the rules panel', () => {
         expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeInTheDocument();
     });
 
-    it('repeats the host’s refusal and keeps the form open', async () => {
-        const { user, onStoreChanged } = open();
+    it('repeats the host’s words when it refuses a save, and keeps the form open', async () => {
+        // The panel refuses a SKU the page has not shown before it asks the host, so SL-404 is on
+        // the page.
+        const { user, onStoreChanged } = open({
+            products: [...products, { sku: 'SL-404', name: 'Lost Jacket' }],
+        });
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-404');
-        // The panel trusts its own list first, so the SKU has to be on the page.
-        expect(screen.getByRole('combobox', { name: 'Product' })).toHaveValue('SL-404');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        expect(screen.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription(
-            /The results have not shown a product with the SKU SL-404/
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'no product has the SKU SL-404'
         );
+        expect(posted).toHaveLength(1);
         expect(onStoreChanged).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
     });
 
     it('edits an existing rule in place and removes it', async () => {
@@ -464,6 +468,28 @@ describe('the rules panel', () => {
         expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeInTheDocument();
     });
 
+    it('repeats the host’s words when it refuses a discard', async () => {
+        await store.replace([nth(shipped, 1, 'a second shipped rule')]);
+        const { user, onStoreChanged } = open();
+        await user.click(await screen.findByRole('button', { name: 'Discard your rules' }));
+        vi.stubGlobal('fetch', () =>
+            Promise.resolve(
+                Response.json(
+                    { errors: [{ message: 'the rules are being saved elsewhere' }] },
+                    { status: 409 }
+                )
+            )
+        );
+        await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'the rules are being saved elsewhere'
+        );
+        expect(onStoreChanged).not.toHaveBeenCalled();
+        // The saved set is still the visitor's, and the discard is offered again.
+        expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeEnabled();
+        expect(await store.current()).toEqual([nth(shipped, 1, 'a second shipped rule')]);
+    });
+
     it('reads the rules again when the page, not the panel, built the store anew', async () => {
         await store.replace([nth(shipped, 1, 'a second shipped rule')]);
         const { storeBuiltAgain } = open();
@@ -569,6 +595,63 @@ describe('the rules panel', () => {
         expect(screen.queryByRole('alert')).toBeNull();
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    });
+
+    it('drops a read of the rules that lands after a newer one', async () => {
+        await store.replace([nth(shipped, 1, 'a second shipped rule')]);
+        // Each read waits until the test answers it and ignores its abort signal, so the older one
+        // still lands.
+        const answers: ((response: Response) => void)[] = [];
+        vi.stubGlobal(
+            'fetch',
+            () =>
+                new Promise<Response>((resolve) => {
+                    answers.push(resolve);
+                })
+        );
+        const { storeBuiltAgain } = open();
+        await waitFor(() => expect(answers).toHaveLength(1));
+        storeBuiltAgain(1);
+        await waitFor(() => expect(answers).toHaveLength(2));
+        nth(answers, 1, 'the newer read')(Response.json({ rules: shipped, edited: true }));
+        expect(
+            await screen.findByRole('button', { name: 'Discard your rules' })
+        ).toBeInTheDocument();
+        const older = Response.json({ rules: [], edited: false });
+        const read = vi.spyOn(older, 'json');
+        nth(answers, 0, 'the older read')(older);
+        await waitFor(() => expect(read).toHaveBeenCalled());
+        // The body is read in microtasks, so a timer runs once the answer has been handled.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeInTheDocument();
+        expect(screen.getByRole('list', { name: 'Rules that apply' })).toHaveTextContent(
+            'Featured jackets'
+        );
+        expect(screen.queryByText('Reading the rules.')).toBeNull();
+    });
+
+    it('says nothing on the next opening about a save that landed after the panel closed', async () => {
+        const { user, onStoreChanged, closePanel, reopenPanel } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        const live = fetch;
+        let land: (() => void) | undefined;
+        vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+            init?.method === 'POST'
+                ? new Promise<Response>((resolve) => {
+                      land = () => void live(input, init).then(resolve);
+                  })
+                : live(input, init)
+        );
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        await waitFor(() => expect(land).toBeDefined());
+        closePanel();
+        land?.();
+        await waitFor(() => expect(onStoreChanged).toHaveBeenCalledTimes(1));
+        reopenPanel();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        expect(screen.queryByRole('status')).toBeNull();
     });
 
     it('says nothing on the next opening of what was said before', async () => {

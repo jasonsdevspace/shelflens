@@ -45,6 +45,22 @@ describe('guessing the mapping', () => {
         expect(guessMapping(table)).toEqual({ name: 'col1', description: 'col2', price: 'col3' });
     });
 
+    it('finds the name and the description from the values in any column order', () => {
+        const table = parseCsv(
+            'col1,col2,col3\n' +
+                '"A waterproof boot with a grippy sole for long muddy walks in the hills",' +
+                '$120.00,Trail Boot\n' +
+                '"A warm knitted hat in soft merino that keeps its shape through a whole winter",' +
+                '$25.00,Wool Hat\n'
+        );
+        expect(guessMapping(table)).toEqual({ name: 'col3', description: 'col1', price: 'col2' });
+    });
+
+    it('does not take a column of plain whole numbers for the price', () => {
+        const table = parseCsv('col1,col2\nTrail Boot,12\nWool Hat,40\n');
+        expect(guessMapping(table)).toEqual({ name: 'col1' });
+    });
+
     it('leaves a sale price for everyone out of the member price', () => {
         expect(
             guessMapping(parseCsv('name,Price,Sale Price\nBoot,$10.00,$8.00\n')).memberPrice

@@ -36,8 +36,19 @@ describe('reading a CSV file', () => {
         ]);
     });
 
-    it('drops a byte order mark, so the first header is named as written', () => {
-        expect(parseCsv('﻿name,price\nBoot,1').headers).toEqual(['name', 'price']);
+    it('drops a byte order mark before a first header, quoted or not', () => {
+        expect(parseCsv('\uFEFF"name",price\nBoot,1').headers).toEqual(['name', 'price']);
+        expect(parseCsv('\uFEFFname,price\nBoot,1').headers).toEqual(['name', 'price']);
+    });
+
+    it('keeps a quote inside a field that does not start with one as written', () => {
+        expect(parseCsv('name,size\nBoot,12" tall\n').rows).toEqual([['Boot', '12" tall']]);
+    });
+
+    it('keeps a last row that ends in an empty cell with no final line break', () => {
+        const table = parseCsv('name,price,brand\nBoot,1,');
+        expect(table.rows).toEqual([['Boot', '1', '']]);
+        expect(table.labels).toEqual(['row 2']);
     });
 
     it('pads a short row and cuts a long one to the headers', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    activeFilterCount,
     EMPTY_STATE,
     hasFilters,
     parseSearchState,
@@ -9,6 +10,9 @@ import {
     sortKeyOf,
     toSearchInput,
     withoutFilters,
+    withoutPrice,
+    withoutRating,
+    withoutValue,
 } from './url.js';
 
 describe('the URL as the page state', () => {
@@ -49,6 +53,9 @@ describe('the URL as the page state', () => {
     it('ignores what it cannot read rather than failing on it', () => {
         expect(parseSearchState('?page=0&rating=9&sort=random&price=cheap')).toEqual(EMPTY_STATE);
         expect(parseSearchState('?page=abc&price=-')).toEqual(EMPTY_STATE);
+        // Names every object answers to are not sorts either.
+        expect(parseSearchState('?sort=constructor')).toEqual(EMPTY_STATE);
+        expect(parseSearchState('?sort=toString')).toEqual(EMPTY_STATE);
     });
 
     it('reads an open price band on either side', () => {
@@ -58,12 +65,16 @@ describe('the URL as the page state', () => {
 
     it('turns the state into the request the API takes', () => {
         const input = toSearchInput(
-            parseSearchState('?q=boot&brand=Ostara&price=50-&rating=3&page=2')
+            parseSearchState(
+                '?q=boot&brand=Ostara&color=Navy&size=M&size=L&price=50-&rating=3&page=2'
+            )
         );
         expect(input).toEqual({
             phrase: 'boot',
             filters: [
                 { attribute: 'BRAND', match: { in: ['Ostara'] } },
+                { attribute: 'COLOR', match: { in: ['Navy'] } },
+                { attribute: 'SIZE', match: { in: ['M', 'L'] } },
                 { attribute: 'PRICE', match: { range: { from: 5000, to: null } } },
                 { attribute: 'RATING', match: { range: { from: 3, to: null } } },
             ],
@@ -95,5 +106,28 @@ describe('the URL as the page state', () => {
             size: [],
             page: 1,
         });
+    });
+
+    it('counts each list, the price band and the rating once as a filter that is on', () => {
+        expect(activeFilterCount(EMPTY_STATE)).toBe(0);
+        expect(activeFilterCount(parseSearchState('?rating=4'))).toBe(1);
+        expect(
+            activeFilterCount(
+                parseSearchState('?brand=A&brand=B&color=Navy&size=M&price=-50&rating=4')
+            )
+        ).toBe(5);
+    });
+
+    it('goes back to the first page when one value, the price or the rating is dropped', () => {
+        const state = parseSearchState('?brand=Ostara&brand=Northwind&price=-50&rating=4&page=3');
+        expect(serializeSearchState(withoutValue(state, 'brand', 'Ostara'))).toBe(
+            '?brand=Northwind&price=-50&rating=4'
+        );
+        expect(serializeSearchState(withoutPrice(state))).toBe(
+            '?brand=Ostara&brand=Northwind&rating=4'
+        );
+        expect(serializeSearchState(withoutRating(state))).toBe(
+            '?brand=Ostara&brand=Northwind&price=-50'
+        );
     });
 });
