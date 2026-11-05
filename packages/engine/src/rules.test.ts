@@ -116,7 +116,7 @@ describe('rules on a query', () => {
         ]);
     });
 
-    it('leaves a product two rules pin with the first, at the first one\u2019s place', () => {
+    it('credits a product two rules pin to the first, in the place the first gave it', () => {
         const twice = engine.reconfigure({
             rules: [
                 { id: 'first', when: { queries: ['runner'] }, pin: ['p1'] },
@@ -281,7 +281,7 @@ describe('rules in time', () => {
         expect(engine.search({ query: 'parka' }).rules.applied).toEqual([]);
     });
 
-    it('applies a windowed rule from the instant its window starts, and stops at the instant it ends', () => {
+    it('applies a windowed rule from the instant it starts, and not at the instant it ends', () => {
         const at = (text: string) =>
             engine.search({ query: 'parka', now: new Date(text) }).rules.applied;
         expect(at('2026-10-31T23:59:59.999Z')).toEqual([]);
@@ -303,7 +303,7 @@ describe('checking rules at startup', () => {
         );
     });
 
-    it('refuses a boost or a bury that names no ids and no attribute, as adjusting nothing', () => {
+    it('refuses a boost or a bury that names neither ids nor an attribute', () => {
         expect(make({ id: 'r', boost: [{ weight: 2 }] })).toThrow(/adjusts nothing/);
         expect(make({ id: 'r', bury: [{ weight: 0.5 }] })).toThrow(/adjusts nothing/);
     });

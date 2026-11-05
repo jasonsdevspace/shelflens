@@ -193,8 +193,8 @@ describe('counts after a selection', () => {
     });
 });
 
-describe('counts beside the rules', () => {
-    it('count a product a rule pins without a match, and leave out one a rule hides', () => {
+describe('counts under rules', () => {
+    it('counts a product a rule pins without a match, and leaves out one a rule hides', () => {
         // "northwind" matches s1 and s2. The pin brings in s5, and the hide takes out s2.
         const ruled = engine.reconfigure({
             rules: [

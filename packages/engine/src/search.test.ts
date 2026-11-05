@@ -134,7 +134,7 @@ describe('ranking', () => {
     const ranked = (docs: Document[], query: string) =>
         createEngine(docs, config).search({ query }).hits;
 
-    it('weighs a field by its weight, a name above a description of the same length', () => {
+    it('counts a word in the name for more than the same word in a description as long', () => {
         const hits = ranked(
             [
                 product('in-description', 'Plain Bag', 'Canvas tote', {}),
@@ -157,7 +157,8 @@ describe('ranking', () => {
     });
 
     it('measures a field in words, so a hyphenated word does not make it longer', () => {
-        // "T-Shirt" is indexed as three terms, and it is still one word of two.
+        // "T-Shirt" is indexed as three terms, and it is still one word, so both names are two
+        // words long.
         const [first, second] = ranked(
             [
                 product('hyphenated', 'Classic T-Shirt', '', {}),
@@ -309,12 +310,12 @@ describe('typo tolerance', () => {
 
     it('gives up on two typos, and on very short words', () => {
         expect(engine.search({ query: 'snaekre' }).mode).toBe('none');
-        // "ca" is one letter short of the shortest word that is corrected, and one letter from
-        // "cap", so only its length keeps it from being corrected.
+        // "ca" is one letter shorter than the shortest word the typo pass corrects, and one
+        // letter from "cap", so only its length keeps it from being corrected.
         expect(engine.search({ query: 'ca' }).mode).toBe('none');
     });
 
-    it('ranks a word typed right above a correction of the same word', () => {
+    it('ranks a product with the word as typed above one with a correction of it', () => {
         // "blak" matches nothing as typed, so both products are found by the typo pass.
         const typos = createEngine(
             [
@@ -328,9 +329,9 @@ describe('typo tolerance', () => {
         expect(result.hits.map((h) => h.id)).toEqual(['typed-right', 'corrected']);
     });
 
-    it('scores each word as itself when the typo pass reads the words in another order', () => {
-        // As typed, "boot" is the narrower word. Read with its typos, "boot" or "boat" is
-        // wider than "red", so the typo pass starts from "red".
+    it('keeps each word to its own matches when the typo pass starts from another word', () => {
+        // As typed, "boot" is the narrower word. With its typo "boat" it matches more than
+        // "red" does, so the typo pass starts from "red".
         const typos = createEngine(
             [
                 product('p1', 'Boot', '', {}),
@@ -637,7 +638,7 @@ describe('pagination', () => {
 });
 
 describe('pagination under the default limits', () => {
-    // One more than the default cap on results, so the cap is the one thing that stops a page.
+    // One more than the default cap on results, so the cap and not the catalog ends the last page.
     const many = createEngine(
         Array.from({ length: 10_001 }, (_, i) =>
             product(`d${String(i).padStart(5, '0')}`, 'Widget', '', {})
@@ -672,7 +673,7 @@ describe('configuration', () => {
         );
     });
 
-    it('refuses a keyword list of anything but words, and a boolean that is neither', () => {
+    it('refuses a keyword list with a number in it, and a boolean given as text', () => {
         // A document read from JSON can carry what its type says it cannot.
         const listed = { id: 'x', text: {}, attributes: { color: ['Red', 5] } };
         // @ts-expect-error -- a number in a keyword list, which the type rules out

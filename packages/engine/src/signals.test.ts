@@ -42,7 +42,7 @@ describe('the weight of a signal', () => {
         expect(signalWeight(SIGNAL_SATURATION * 1000)).toBe(SIGNAL_CAP);
     });
 
-    it('rises with the log of the count, so each choice lifts a product less than the one before', () => {
+    it('rises with the log of the count, so each choice adds less than the one before', () => {
         const lift = (count: number) => signalWeight(count) - 1;
         // Ten choices of a hundred reach about half the lift, where a straight line gives a tenth.
         expect(lift(10) / lift(SIGNAL_SATURATION)).toBeGreaterThan(0.4);
@@ -50,9 +50,8 @@ describe('the weight of a signal', () => {
         expect(lift(50) - lift(10)).toBeLessThan(lift(10) - lift(1));
     });
 
-    it('is capped at the documented 1.25, too small to lift a bury of a half past one', () => {
+    it('caps a signal at the 1.25 the README gives', () => {
         expect(SIGNAL_CAP).toBe(1.25);
-        expect(0.5 * SIGNAL_CAP).toBeLessThan(1);
     });
 });
 

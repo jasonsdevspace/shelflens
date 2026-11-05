@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { withinEdits, withinOneEdit } from './edits.js';
 
 /**
- * Edits apart, with a swap of adjacent characters as one, by the full table and no shortcut, so
- * a limit is checked against a distance the code under test did not compute.
+ * How many edits apart two terms are, counting a swap of adjacent characters as one, from the
+ * full table with no early exit, so a limit is checked against a distance the code under test
+ * did not compute.
  */
 const distance = (a: string, b: string): number => {
     const table = Array.from({ length: a.length + 1 }, (_, i) =>
@@ -84,9 +85,11 @@ describe('within so many edits', () => {
             ['', 'a'],
             ['', 'ab'],
         ] as const) {
+            // A limit of one is handed to withinOneEdit, which the typo pass also calls
+            // directly, so both are held to the distance. A limit of two runs the table.
             expect(withinEdits(a, b, 1), `${a} ${b}`).toBe(distance(a, b) <= 1);
-            // The typo pass asks this one directly.
             expect(withinOneEdit(a, b), `${a} ${b}`).toBe(distance(a, b) <= 1);
+            expect(withinEdits(a, b, 2), `${a} ${b}`).toBe(distance(a, b) <= 2);
         }
     });
 });
