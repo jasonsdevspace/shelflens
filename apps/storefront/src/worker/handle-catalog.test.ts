@@ -185,8 +185,8 @@ describe('the worker for a visitor’s own catalog', () => {
                 ]),
             })
         );
-        // The removal is asked while the batch is being written, and given time to run before
-        // the write ends, as it would if it did not wait for the batch.
+        // The removal is asked while the batch is being written, and given time to finish before
+        // the write ends, as a removal that did not wait for the batch would.
         await beginning;
         const removed = api.handle(catalogRequest('DELETE'));
         await Promise.race([removed, new Promise((resolve) => setTimeout(resolve, 50))]);

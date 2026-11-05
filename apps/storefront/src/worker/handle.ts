@@ -180,9 +180,9 @@ export const createWorkerApi = ({
     let inHand: Catalog | undefined;
 
     /**
-     * The visitor's catalog in hand, read from where it is saved when there is none yet. Looked
-     * at again after the read, so a catalog loaded while the read was waiting is the one kept,
-     * not the older one the read found.
+     * The visitor's catalog in hand, read from where it is saved when there is none yet. The
+     * catalog in hand is looked at again after the read, so one loaded while the read was waiting
+     * is the one kept, not the older one the read found.
      */
     const savedInHand = async (held: CatalogStore): Promise<Catalog | undefined> => {
         if (!inHand) {
