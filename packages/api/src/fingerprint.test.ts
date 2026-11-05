@@ -71,6 +71,15 @@ describe('the canonical form', () => {
         ];
         for (const value of values) expect(canonical(value)).toBe(reference(value));
     });
+
+    it('writes an empty slot in an array as null, as undefined in one is', () => {
+        // eslint-disable-next-line no-sparse-arrays -- the empty slot is what this test writes
+        expect(canonical([1, , 3])).toBe('[1,null,3]');
+    });
+
+    it('writes a date as its ISO text', () => {
+        expect(canonical({ at: new Date(0) })).toBe('{"at":"1970-01-01T00:00:00.000Z"}');
+    });
 });
 
 describe('the fingerprint', () => {
@@ -99,6 +108,13 @@ describe('the fingerprint', () => {
 });
 
 describe('where the native form differs, and still means one thing', () => {
+    it('writes keys that read as whole numbers first, in numeric order, whatever order they came in', () => {
+        expect(canonical({ '10': 1, '2': 1, b: 1, a: 1 })).toBe('{"2":1,"10":1,"a":1,"b":1}');
+        expect(canonical({ a: 1, '2': 1, b: 1, '10': 1 })).toBe(
+            canonical({ '10': 1, b: 1, '2': 1, a: 1 })
+        );
+    });
+
     it('keeps a key named __proto__, so a product with that sku still moves the clicks fingerprint', () => {
         const signals = signalsOf([
             { id: 'a', kind: 'click', sku: '__proto__', at: 1, session: 's' },
@@ -109,7 +125,9 @@ describe('where the native form differs, and still means one thing', () => {
         expect(canonical(parsed)).toBe('{"__proto__":{"x":1},"a":1}');
     });
 
-    it('writes a bare function as null, which the serializer gives nothing for', () => {
+    it('leaves out a function, as JSON does, and writes a bare one as null', () => {
+        expect(canonical({ f: () => 1, a: 1 })).toBe('{"a":1}');
+        expect(canonical([() => 1])).toBe('[null]');
         expect(canonical(() => 1)).toBe('null');
     });
 });

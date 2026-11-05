@@ -209,6 +209,14 @@ describe('reading a catalog file', () => {
         expect(() => parseCatalogFile(catalog)).toThrow(reason);
     });
 
+    it('accepts a catalog of exactly as many products as the cap', () => {
+        const products = Array.from({ length: CATALOG_ROW_CAP }, (_, i) => ({
+            ...first,
+            sku: `SL-${String(i).padStart(5, '0')}`,
+        }));
+        expect(parseCatalogFile({ ...SAMPLE, products }).products).toHaveLength(CATALOG_ROW_CAP);
+    });
+
     it('refuses a sku on two products', () => {
         const repeated = { ...SAMPLE, products: [first, first] };
         expect(() => parseCatalogFile(repeated)).toThrow(

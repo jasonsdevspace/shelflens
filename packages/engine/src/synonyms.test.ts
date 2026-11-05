@@ -104,6 +104,24 @@ describe('a synonym never counts twice', () => {
         expect(engine.search({ query: 'tee' }).hits.map((h) => h.id)).toEqual(['tee', 'tshirt']);
     });
 
+    it('ranks the exact name above the synonym for a hyphenated query under two rules', () => {
+        // "t-shirt" is read as both "tshirt" and "t shirt", and a one-way rule on "tshirt" adds
+        // to the equivalence, so the Tee answers both readings and still ranks below the name.
+        const both = createEngine(
+            [product('tee', 'Coastal Tee'), product('tshirt', 'Everyday T-Shirt')],
+            {
+                fields: { name: { weight: 1 } },
+                attributes: {},
+                synonyms: [
+                    { kind: 'one-way', from: 'tshirt', to: 't-shirt' },
+                    { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+                ],
+            }
+        );
+        expect(both.search({ query: 't-shirt' }).hits.map((h) => h.id)).toEqual(['tshirt', 'tee']);
+        expect(both.search({ query: 'tshirt' }).hits.map((h) => h.id)).toEqual(['tshirt', 'tee']);
+    });
+
     it('explains the synonym reading by the phrase it stood in for', () => {
         const tee = engine.search({ query: 't shirt' }).hits.find((h) => h.id === 'tee');
         expect(tee?.matches.map((m) => [m.queryTerm, m.indexTerm, m.kind])).toEqual([

@@ -128,7 +128,11 @@ describe('the words a shopper may use for one thing', () => {
         ['jacket', 'coat'],
     ])('finds a product named with %s when the shopper types %s, and the other way', (one, two) => {
         const small = createStoreEngine(
-            storeOf([plain('p1', { name: `Plain ${one}` }), plain('p2', { name: `Plain ${two}` })])
+            // No category, so only the name and the synonym can match.
+            storeOf([
+                plain('p1', { name: `Plain ${one}`, categoryPath: [] }),
+                plain('p2', { name: `Plain ${two}`, categoryPath: [] }),
+            ])
         );
         for (const word of [one, two]) {
             const { hits } = searchStore(small, { group: 'guest', query: word });
