@@ -3,12 +3,19 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { type SizeResult, supportedCap } from '../bench/sizes.js';
+import { parseSizeRecord, type SizeResult, supportedCap } from '../bench/sizes.js';
 import { CATALOG_FILE_BYTES_CAP, CATALOG_ROW_CAP } from './limits.js';
 
-const record = JSON.parse(
-    readFileSync(new URL('../../../../docs/benchmarks/catalog-size.json', import.meta.url), 'utf8')
-) as { results: SizeResult[] };
+const record = {
+    results: parseSizeRecord(
+        JSON.parse(
+            readFileSync(
+                new URL('../../../../docs/benchmarks/catalog-size.json', import.meta.url),
+                'utf8'
+            )
+        )
+    ),
+};
 
 const timing = (p95Ms: number) => ({ samples: 1, p50Ms: p95Ms, p95Ms, maxMs: p95Ms });
 const measured = (products: number, p95Ms: number): SizeResult => ({

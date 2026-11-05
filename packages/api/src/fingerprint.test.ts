@@ -73,7 +73,7 @@ describe('the canonical form', () => {
     });
 
     it('writes an empty slot in an array as null, as undefined in one is', () => {
-        // eslint-disable-next-line no-sparse-arrays
+        // eslint-disable-next-line no-sparse-arrays -- the empty slot is what this test writes
         expect(canonical([1, , 3])).toBe('[1,null,3]');
     });
 

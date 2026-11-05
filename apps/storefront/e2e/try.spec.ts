@@ -233,9 +233,10 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await expect(page.getByRole('combobox', { name: 'Search the store' })).toBeVisible();
     const demoRules = await page.evaluate(async () => {
         const response = await fetch('rules');
-        return ((await response.json()) as { edited: boolean }).edited;
+        const body: unknown = await response.json();
+        return body;
     });
-    expect(demoRules).toBe(false);
+    expect(demoRules).toMatchObject({ edited: false });
 
     // Another file replaces these products and their rules, so the page asks
     // when it would load one, and keeping them goes back to them.

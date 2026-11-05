@@ -1,3 +1,5 @@
+import { isList, isRecord } from '@shelflens/api';
+
 /**
  * What a host said went wrong, read from an error's body, or nothing.
  *
@@ -11,8 +13,10 @@
 export const reasonOf = async (response: Response): Promise<string | undefined> => {
     if (response.status >= 500) return undefined;
     try {
-        const body = (await response.json()) as { errors?: { message?: unknown }[] } | null;
-        const message = body?.errors?.[0]?.message;
+        const body: unknown = await response.json();
+        const errors = isRecord(body) ? body['errors'] : undefined;
+        const first = isList(errors) ? errors[0] : undefined;
+        const message = isRecord(first) ? first['message'] : undefined;
         return typeof message === 'string' && message !== '' ? message : undefined;
     } catch {
         return undefined;

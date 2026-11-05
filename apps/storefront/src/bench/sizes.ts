@@ -1,3 +1,5 @@
+import { isList, isRecord } from '@shelflens/api';
+
 import { type PopoverBench, runPopoverBench } from './bench.js';
 import { round } from './record.js';
 
@@ -28,6 +30,47 @@ export type SizeResult = Pick<
     PopoverBench,
     'products' | 'catalogBytes' | 'parseMs' | 'buildMs' | 'suggest' | 'search'
 >;
+
+type Timing = SizeResult['suggest'];
+
+const numberIn = (record: Record<string, unknown>, field: string, where: string): number => {
+    const value = record[field];
+    if (typeof value !== 'number') throw new Error(`${where} has no number for ${field}`);
+    return value;
+};
+
+const timingIn = (record: Record<string, unknown>, field: string, where: string): Timing => {
+    const value = record[field];
+    if (!isRecord(value)) throw new Error(`${where} has no timing for ${field}`);
+    const at = `${where}'s ${field}`;
+    return {
+        samples: numberIn(value, 'samples', at),
+        p50Ms: numberIn(value, 'p50Ms', at),
+        p95Ms: numberIn(value, 'p95Ms', at),
+        maxMs: numberIn(value, 'maxMs', at),
+    };
+};
+
+/**
+ * The sizes a written record measured, each read field by field, so a record whose fields were
+ * renamed fails where it is read, naming the field, rather than further on as a wrong cap.
+ */
+export const parseSizeRecord = (value: unknown): SizeResult[] => {
+    const results = isRecord(value) ? value['results'] : undefined;
+    if (!isList(results)) throw new Error('the record holds no list of results');
+    return results.map((result, index) => {
+        const where = `result ${String(index + 1)}`;
+        if (!isRecord(result)) throw new Error(`${where} is not a measured size`);
+        return {
+            products: numberIn(result, 'products', where),
+            catalogBytes: numberIn(result, 'catalogBytes', where),
+            parseMs: numberIn(result, 'parseMs', where),
+            buildMs: numberIn(result, 'buildMs', where),
+            suggest: timingIn(result, 'suggest', where),
+            search: timingIn(result, 'search', where),
+        };
+    });
+};
 
 /** Whether a measured size answers within the budget on a phone. */
 export const fitsOnAPhone = (result: SizeResult): boolean =>

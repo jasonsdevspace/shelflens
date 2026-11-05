@@ -5,6 +5,7 @@ import { generateCatalog } from '@shelflens/catalog';
 import { createServer } from '@shelflens/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { at, listAt, textAt } from '../test/answer.js';
 import { serving } from '../test/serving.js';
 import { createWorkerApi } from '../worker/handle.js';
 
@@ -26,14 +27,9 @@ interface Ranked {
 }
 
 const rankedOf = async (response: Response | undefined): Promise<Ranked[]> => {
-    const answer = (await response?.json()) as {
-        data: {
-            search: { items: { product: { sku: string }; explanation: { popularity: unknown } }[] };
-        };
-    };
-    return answer.data.search.items.map((item) => ({
-        sku: item.product.sku,
-        popularity: item.explanation.popularity,
+    return listAt(await response?.json(), 'data', 'search', 'items').map((item) => ({
+        sku: textAt(item, 'product', 'sku'),
+        popularity: at(item, 'explanation', 'popularity'),
     }));
 };
 

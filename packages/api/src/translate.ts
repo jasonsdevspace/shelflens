@@ -24,6 +24,7 @@ import type {
     SortField,
     SortInput,
 } from './generated/schema.js';
+import { keysOf } from './guards.js';
 
 /**
  * The API's words and the engine's words, translated in one place.
@@ -44,14 +45,13 @@ const ATTRIBUTES: Readonly<Record<FilterAttribute, string>> = {
 };
 
 /**
- * A record over an enum, turned around. Object.entries types every key as
- * text, since an object may hold keys its type does not name. These records
- * are literals typed over the enum, so their keys are the enum's.
+ * A record over an enum, turned around to find a key by its value. Each record passed here is
+ * a literal over its enum, as keysOf needs, and no two keys share a value, or the later would
+ * win.
  */
 const inverted = <Enum extends string>(
     record: Readonly<Record<Enum, string>>
-): ReadonlyMap<string, Enum> =>
-    new Map(Object.entries<string>(record).map(([enumValue, name]) => [name, enumValue as Enum]));
+): ReadonlyMap<string, Enum> => new Map(keysOf(record).map((key) => [record[key], key]));
 
 const ATTRIBUTE_NAMES = inverted(ATTRIBUTES);
 

@@ -210,6 +210,7 @@ const productsProblem = ({ brands, categories, products }: Parts): string | unde
         const problem = productProblem(entry);
         if (problem) return `product ${index + 1} ${problem}`;
         // productProblem checked every field a Product has, its variants included.
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- checked field by field above
         const { sku, brandId, categoryId, categoryPath } = entry as unknown as Product;
         if (skus.has(sku)) return `the sku ${sku} is on more than one product`;
         skus.add(sku);
@@ -235,5 +236,6 @@ export const parseCatalogFile = (value: unknown): Catalog => {
     if (problem) throw new Error(problem);
     // headProblem, partsOf and productsProblem checked every field a Catalog has. The file
     // is returned as it came, since copying it would cost an object per product at the cap.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- checked field by field above
     return value as unknown as Catalog;
 };

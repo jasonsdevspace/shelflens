@@ -112,16 +112,19 @@ export const runPopoverBench = async ({
     seed = 20261027,
     iterations = 20,
 }: PopoverBenchOptions = {}): Promise<PopoverBench> => {
-    const json = JSON.stringify(generateCatalog({ seed, products }));
+    const catalog = generateCatalog({ seed, products });
+    const json = JSON.stringify(catalog);
 
+    // Parse the text a page fetches, then build from that parsed catalog as the worker does. The
+    // sizes go past the cap a visitor's file is held to, since the cap is set from where they stop
+    // fitting.
     const parseStarted = performance.now();
-    // The text was just written from a generated catalog, so it parses back as one, and the
-    // parse is all that is timed.
-    const catalog = JSON.parse(json) as Catalog;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the text was just written from a generated catalog
+    const parsed = JSON.parse(json) as Catalog;
     const parseMs = performance.now() - parseStarted;
 
     const buildStarted = performance.now();
-    const api = createStoreApi(createStore({ catalog }));
+    const api = createStoreApi(createStore({ catalog: parsed }));
     const buildMs = performance.now() - buildStarted;
 
     const phrases = GOLDEN_CASES.map((golden) => golden.query);

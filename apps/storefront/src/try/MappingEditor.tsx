@@ -1,4 +1,4 @@
-import { paysLess } from '@shelflens/api';
+import { keysOf, paysLess } from '@shelflens/api';
 import { type Catalog, categoryNames, type Product } from '@shelflens/catalog';
 import { useId, useMemo, useState } from 'react';
 
@@ -35,8 +35,7 @@ const FIELD_LABELS: Readonly<Record<MappedField, string>> = {
 /** The two parts a store cannot do without. Every other part has a default. */
 const REQUIRED = new Set<MappedField>(['name', 'price']);
 
-// Object.keys types every key as text, and this literal has exactly these keys.
-const FIELDS = Object.keys(FIELD_LABELS) as MappedField[];
+const FIELDS = keysOf(FIELD_LABELS);
 
 /**
  * The mapping with one field changed, or left out when no column is chosen.

@@ -60,7 +60,7 @@ export const createIndexedDbRuleStore = (name = DEFAULT_DB_NAME): RuleStore => {
     return {
         current: async () => {
             const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            // IndexedDB gives back what was put, typed as any, and only this module writes here.
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- IndexedDB types what it gives back as any, and nothing here checks it
             return (await request(store.get(KEY))) as readonly Rule[] | undefined;
         },
         replace: (rules) => write((store) => store.put(rules, KEY)),

@@ -1,7 +1,10 @@
 {
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
-        "types": [],
+        // The sources and their tests together, which the tests run in Node. The build's own
+        // config takes the sources alone with no environment's globals, so the engine still
+        // runs in a browser and in Node alike.
+        "types": ["node"],
         "noEmit": true,
         "customConditions": ["@shelflens/source"]
     },

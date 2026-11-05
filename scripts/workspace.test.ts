@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { lookup, lookupRecord, lookupText, readJson } from './json.js';
 import { workspacePackages } from './repository.mjs';
 
 /*
@@ -17,14 +17,7 @@ import { workspacePackages } from './repository.mjs';
  */
 
 const root = new URL('../', import.meta.url);
-const read = (path: string) =>
-    JSON.parse(readFileSync(new URL(path, root), 'utf8')) as {
-        version?: string;
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-        packages?: Record<string, { version?: string; resolved?: string }>;
-        workspaces?: string[];
-    };
+const read = (path: string) => readJson(new URL(path, root));
 
 const ENGINE = '@jasonsdevspace/shelflens';
 
@@ -36,9 +29,10 @@ describe('the engine in the workspace', () => {
         const takers = workspacePackages(fileURLToPath(root))
             .map((path) => [path, read(`${path}/package.json`)] as const)
             .flatMap(([name, manifest]) =>
-                [manifest.dependencies, manifest.devDependencies].flatMap((listed) =>
-                    listed?.[ENGINE] === undefined ? [] : [[name, listed[ENGINE]] as const]
-                )
+                ['dependencies', 'devDependencies'].flatMap((listed) => {
+                    const pin = lookup(manifest, listed, ENGINE);
+                    return pin === undefined ? [] : [[name, pin] as const];
+                })
             );
         // The packages known to take it, so a test that finds none fails rather than passing.
         expect(takers.map(([path]) => path)).toEqual(
@@ -51,10 +45,13 @@ describe('the engine in the workspace', () => {
 
     it('is the only copy the lockfile knows', () => {
         const lock = read('package-lock.json');
-        const copies = Object.entries(lock.packages ?? {}).filter(([path]) =>
+        const copies = Object.entries(lookupRecord(lock, 'packages') ?? {}).filter(([path]) =>
             path.endsWith(`node_modules/${ENGINE}`)
         );
         expect(copies.map(([path]) => path)).toEqual([`node_modules/${ENGINE}`]);
-        expect(lock.packages?.['packages/engine']?.version).toBe(engine.version);
+        // A version on each side, so the two cannot agree by both being missing.
+        const version = lookupText(engine, 'version');
+        expect(version).toMatch(/^\d+\.\d+\.\d+/);
+        expect(lookupText(lock, 'packages', 'packages/engine', 'version')).toBe(version);
     });
 });

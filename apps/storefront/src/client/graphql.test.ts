@@ -26,7 +26,7 @@ const SUGGEST = { data: { suggest: { queries: [], products: [] } } };
 const STORE = { data: { store: {} } };
 const variables = { phrase: 'tr', limit: 5 };
 const nameOf = (document: { __meta__?: Record<string, unknown> | undefined }) =>
-    document.__meta__?.['hash'] as string;
+    String(document.__meta__?.['hash']);
 
 /** The URL a fetch was given, as text. */
 const urlOf = (input: RequestInfo | URL | undefined): string => {
@@ -150,7 +150,7 @@ describe('the client', () => {
         const [url, init] = fetchImpl.mock.calls[0] ?? [];
         expect(url).toBe('/graphql');
         expect(init?.method).toBe('POST');
-        expect(JSON.parse(init?.body as string)).toEqual({
+        expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toEqual({
             query: '{ suggest(phrase: "tr") { queries } }',
             variables,
         });
@@ -188,6 +188,40 @@ describe('the client', () => {
         expect(failure.errors[0]?.extensions?.code).toBe('QUERY_TOO_DEEP');
         expect(failure.message).toBe('too deep');
         expect(client.remembered).toBe(0);
+    });
+
+    it('fails on an error it cannot read, rather than taking the data beside it, and remembers nothing', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: ['boom', { extensions: { code: 'X' } }] }),
+        });
+        const failure = await client
+            .query(SuggestDocument, variables)
+            .catch((error: unknown) => error);
+        if (!(failure instanceof GraphQLClientError))
+            throw new Error("expected the client's error");
+        expect(failure.errors).toEqual([]);
+        expect(client.remembered).toBe(0);
+    });
+
+    it('fails on an errors field that is not a list, rather than taking the data beside it', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: 'boom' }),
+        });
+        const failure = await client
+            .query(SuggestDocument, variables)
+            .catch((error: unknown) => error);
+        expect(failure).toBeInstanceOf(GraphQLClientError);
+        expect(client.remembered).toBe(0);
+    });
+
+    it('takes the data beside a null errors field, which says there were none', async () => {
+        const client = createClient({
+            url: '/graphql',
+            fetch: respond({ ...SUGGEST, errors: null }),
+        });
+        expect(await client.query(SuggestDocument, variables)).toEqual(SUGGEST.data);
     });
 
     it('throws on a response that is not an answer at all', async () => {

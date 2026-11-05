@@ -50,7 +50,10 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
-/** The workspace's packages, as paths from the root: the libraries in packages/ and what runs in apps/. */
+/**
+ * The workspace's packages, as paths from the root: the libraries in packages/ and what runs
+ * in apps/.
+ */
 const WORKSPACES = workspacePackages(fileURLToPath(new URL('./', import.meta.url)));
 
 /** Code that runs in the browser loads no Node module. */
@@ -58,8 +61,13 @@ const NO_NODE = { group: ['node:*'], message: 'Runs in the browser, so it cannot
 
 export default defineConfig(
     {
+        linterOptions: { reportUnusedDisableDirectives: 'error' },
+    },
+    {
+        // What the tools write is checked where it is written from: the builds in dist from the
+        // sources, and the generated operations from the schema and the documents. ESLint leaves
+        // node_modules out on its own.
         ignores: [
-            '**/node_modules',
             '**/dist',
             '**/generated',
             // Compiled in the floor job's empty project, against the installed
@@ -102,6 +110,7 @@ export default defineConfig(
         languageOptions: {
             parserOptions: {
                 projectService: {
+                    // The two files at the root, which no tsconfig includes.
                     allowDefaultProject: ['vitest.config.ts', 'source-condition.ts'],
                 },
                 tsconfigRootDir: import.meta.dirname,
@@ -131,21 +140,35 @@ export default defineConfig(
         files: ['apps/storefront/**/*.{ts,tsx}'],
         languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },
         plugins: { 'react-hooks': reactHooks },
-        rules: {
-            ...reactHooks.configs.flat.recommended.rules,
-        },
+        // What the plugin recommends, with every warning made an error and its options kept.
+        rules: Object.fromEntries(
+            Object.entries(reactHooks.configs.flat.recommended.rules).map(([rule, setting]) => [
+                rule,
+                setting === 'warn'
+                    ? 'error'
+                    : Array.isArray(setting) && setting[0] === 'warn'
+                      ? ['error', ...setting.slice(1)]
+                      : setting,
+            ])
+        ),
     },
     {
-        // Tests read whatever a result happens to contain.
-        files: ['**/*.test.{ts,tsx}', 'apps/storefront/vitest.setup.ts'],
+        // A fixture builder takes a record's fields in order, so a table of fixtures reads as one
+        // row per line, which an object of named fields would spread over several.
+        files: ['**/*.test.{ts,tsx}'],
+        rules: { 'max-params': 'off' },
+    },
+    {
+        // The API's own tests read each answer through the one any in that file, so a test can
+        // reach into an answer and let its assertion check the shape. The rules against using
+        // an any are off for that file only.
+        files: ['packages/api/src/api.test.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
-            'max-params': 'off',
-            'sonarjs/cognitive-complexity': 'off',
         },
     },
     {
@@ -159,12 +182,13 @@ export default defineConfig(
             'packages/api/src/**/*.ts',
             'apps/storefront/src/**/*.{ts,tsx}',
         ],
+        // What runs only in Node: the tests, the command lines, the benchmarks, and the storefront's
+        // dev server and benchmark harness.
         ignores: [
             '**/*.test.{ts,tsx}',
             '**/cli.ts',
             '**/bench.ts',
             '**/bench-cli.ts',
-            '**/bundle.test.ts',
             'apps/storefront/src/dev/**',
             'apps/storefront/src/bench/**',
         ],
@@ -178,16 +202,12 @@ export default defineConfig(
         },
     },
     {
-        // The engine and the packages that make its catalog and documents hold no type
-        // assertions, each value typed by how it is built or narrowed by a check, and this keeps
-        // them out, a non-null assertion among them. A const assertion claims nothing and is
+        // A type assertion claims a shape nothing checked, and a non-null assertion claims a
+        // value is there. Each value is typed by how it is built or narrowed by a check, and a
+        // cast that is still needed is allowed on its own line by a disable comment that says
+        // why. The engine, search and catalog need none. A const assertion claims nothing and is
         // still allowed.
-        files: [
-            'packages/engine/src/**/*.ts',
-            'packages/search/src/**/*.ts',
-            'packages/catalog/src/**/*.ts',
-        ],
-        ignores: ['**/*.test.ts'],
+        files: ['**/*.{ts,tsx}'],
         rules: {
             '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
             '@typescript-eslint/no-non-null-assertion': 'error',
@@ -196,8 +216,11 @@ export default defineConfig(
     {
         // The worker hosts the API for the pages, so it reads what the API packages
         // offer and never a page's own folder, which would make a page its dependency.
-        // Its own block replaces the one above for these files, so it names Node too.
+        // Its rule replaces the browser block's restricted imports for these files, so it names
+        // Node too.
         files: ['apps/storefront/src/worker/**/*.ts'],
+        // A test of the worker may build its input with the pages' code and the shared test
+        // helpers, which the worker itself never imports.
         ignores: ['**/*.test.ts'],
         rules: {
             '@typescript-eslint/no-restricted-imports': [

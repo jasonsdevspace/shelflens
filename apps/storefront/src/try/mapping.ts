@@ -1,3 +1,5 @@
+import { keysOf } from '@shelflens/api';
+
 import type { Table } from './csv.js';
 import { decimalMarkOf, parseMoney, parseRating, parseYesNo } from './values.js';
 
@@ -117,8 +119,7 @@ export const guessMapping = (table: Table): Mapping => {
     const sample: Table = { ...table, rows: table.rows.slice(0, SAMPLE_ROWS) };
     const taken = new Set<string>();
     const guess: { -readonly [Field in MappedField]?: string } = {};
-    // Object.keys types every key as text, and this literal has exactly these keys.
-    for (const field of Object.keys(NAMES) as MappedField[]) {
+    for (const field of keysOf(NAMES)) {
         const header = table.headers.find(
             (candidate) => !taken.has(candidate) && NAMES[field].includes(fold(candidate))
         );

@@ -1,3 +1,5 @@
+import { keysOf } from '@shelflens/api';
+
 import type { SearchInput, SortDirection, SortField, SortInput } from '../generated/operations.js';
 
 /**
@@ -57,8 +59,7 @@ export const SORTS = {
 >;
 
 /** Every sort, in the order the page offers them. */
-// Object.keys types every key as text, and this literal has exactly these keys.
-export const SORT_KEYS = Object.keys(SORTS) as readonly SortKey[];
+export const SORT_KEYS: readonly SortKey[] = keysOf(SORTS);
 
 /** Whether a value is one of the sorts, as a select or the address may give any text. */
 export const isSortKey = (value: string): value is SortKey => Object.hasOwn(SORTS, value);

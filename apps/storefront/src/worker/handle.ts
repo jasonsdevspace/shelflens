@@ -187,9 +187,9 @@ export const createWorkerApi = ({
             return inHand;
         }
         if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
-        // The site's own catalog, written by its build from the generator, so
-        // it is trusted rather than checked on every first visit. A test
-        // holds the generator's catalog to the check a visitor's file passes.
+        // Written by the site's build from the generator, so it is not checked on every first
+        // visit.
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the site's own catalog, which a test holds to the check
         return (await fetchJson(fetchImpl, catalogUrl, 'catalog')) as Catalog;
     };
 

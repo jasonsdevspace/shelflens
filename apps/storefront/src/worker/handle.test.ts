@@ -13,6 +13,7 @@ import {
 import { generateCatalog } from '@shelflens/catalog';
 import { describe, expect, it, vi } from 'vitest';
 
+import { at, listAt, textAt } from '../test/answer.js';
 import { serving } from '../test/serving.js';
 import { type AnswerStore, createWorkerApi } from './handle.js';
 
@@ -129,16 +130,9 @@ describe('the API inside the worker', () => {
                 query: '{ search(input: { phrase: "jacket" }) { items { product { sku } } merchandising { applied } } }',
             })
         );
-        const { data } = (await answer?.json()) as {
-            data: {
-                search: {
-                    items: { product: { sku: string } }[];
-                    merchandising: { applied: string[] };
-                };
-            };
-        };
-        expect(data.search.items[0]?.product.sku).toBe(jacket.sku);
-        expect(data.search.merchandising.applied).toEqual(['top']);
+        const body: unknown = await answer?.json();
+        expect(textAt(body, 'data', 'search', 'items', 0, 'product', 'sku')).toBe(jacket.sku);
+        expect(at(body, 'data', 'search', 'merchandising', 'applied')).toEqual(['top']);
 
         const bad = createWorkerApi({
             catalogUrl: 'catalog.json',
@@ -256,8 +250,7 @@ describe('the answers the worker keeps', () => {
         const { store, size, matches } = createAnswerStore();
         const api = withStore(store);
         const groupOf = async (response: Response | undefined) =>
-            ((await response?.json()) as { data: { store: { viewer: { group: string } } } }).data
-                .store.viewer.group;
+            textAt(await response?.json(), 'data', 'store', 'viewer', 'group');
         const first = await api.handle(persisted({ op: STORE, v: version }));
         expect(first?.headers.get('cache-control')).toBe('public, max-age=300');
         expect(size()).toBe(1);
@@ -345,14 +338,11 @@ describe('events inside the worker', () => {
         try {
             const answer = await api.handle(batch());
             expect(answer?.status).toBe(500);
-            const body = (await answer?.json()) as {
-                errors: { message: string; extensions: { requestId: string } }[];
-            };
-            const [error] = body.errors;
-            expect(error?.message).toBe(INTERNAL_MESSAGE);
+            const body: unknown = await answer?.json();
+            expect(textAt(body, 'errors', 0, 'message')).toBe(INTERNAL_MESSAGE);
             // The id in the answer is the one the console names, beside the path and the reason.
             expect(logged).toHaveBeenCalledWith(
-                `request ${error?.extensions.requestId ?? ''} to /shelflens/events failed`,
+                `request ${textAt(body, 'errors', 0, 'extensions', 'requestId')} to /shelflens/events failed`,
                 expect.objectContaining({ message: 'the database is gone' })
             );
         } finally {
@@ -393,13 +383,10 @@ describe('events inside the worker', () => {
             })
         );
         expect(response?.headers.get('cache-control')).toBe('no-store');
-        const answer = (await response?.json()) as {
-            data: { recommendations: { source: string; items: { sku: string }[] } };
-            extensions: unknown;
-        };
-        expect(answer.extensions).toEqual({ volatile: true });
-        expect(answer.data.recommendations.source).toBe('VIEWED_TOGETHER');
-        expect(answer.data.recommendations.items[0]?.sku).toBe(a.sku);
+        const answer: unknown = await response?.json();
+        expect(at(answer, 'extensions')).toEqual({ volatile: true });
+        expect(textAt(answer, 'data', 'recommendations', 'source')).toBe('VIEWED_TOGETHER');
+        expect(textAt(answer, 'data', 'recommendations', 'items', 0, 'sku')).toBe(a.sku);
     });
 
     it('refuses events when it has nowhere to keep them, and leaves other paths to the network', async () => {
@@ -421,12 +408,10 @@ describe('clicks in the worker', () => {
             query: `{ search(input: { phrase: "${phrase}", pageSize: 3 }) {
                 items { product { sku } explanation { popularity { clicks } } } } }`,
         });
-    const skus = async (response: Response | undefined) => {
-        const answer = (await response?.json()) as {
-            data: { search: { items: { product: { sku: string } }[] } };
-        };
-        return answer.data.search.items.map((item) => item.product.sku);
-    };
+    const skus = async (response: Response | undefined) =>
+        listAt(await response?.json(), 'data', 'search', 'items').map((item) =>
+            textAt(item, 'product', 'sku')
+        );
 
     it('folds the clicks collected so far into ranking when the store is built, and again on a visit after new ones', async () => {
         const events = createMemoryEventStore();
@@ -475,8 +460,10 @@ describe('rules in the worker', () => {
             method,
             ...(body !== undefined && { body: JSON.stringify(body) }),
         });
-    // A body reads once, so each answer is read into a loose shape and kept.
-    const body = async (response: Response | undefined) => await response?.json();
+    // A body reads once, so each answer is read and kept, then walked by the readers.
+    const body = async (response: Response | undefined): Promise<unknown> => await response?.json();
+    const applied = async (response: Response | undefined) =>
+        at(await body(response), 'data', 'search', 'merchandising', 'applied');
 
     const worker = (rules = createMemoryRuleStore()) =>
         createWorkerApi({
@@ -517,7 +504,7 @@ describe('rules in the worker', () => {
         expect(saved?.status).toBe(204);
         const after = await api.handle(search());
         expect(after?.headers.get(VERSION_HEADER)).toBe(saved?.headers.get(VERSION_HEADER));
-        expect((await body(after)).data.search.merchandising.applied).toEqual(['mine']);
+        expect(await applied(after)).toEqual(['mine']);
     });
 
     it('serves the shipped rules until a set is saved, and then that set as a new version', async () => {
@@ -525,8 +512,8 @@ describe('rules in the worker', () => {
         const before = await api.handle(search());
         const shippedVersion = before?.headers.get(VERSION_HEADER);
         const beforeBody = await body(before);
-        expect(beforeBody.data.search.merchandising.applied).toEqual(['shipped']);
-        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(false);
+        expect(at(beforeBody, 'data', 'search', 'merchandising', 'applied')).toEqual(['shipped']);
+        expect(at(await body(await api.handle(rulesRequest('GET'))), 'edited')).toBe(false);
 
         const third = jacket[2];
         if (!third) throw new Error('expected three jackets');
@@ -543,12 +530,18 @@ describe('rules in the worker', () => {
         expect(after?.headers.get(VERSION_HEADER)).toBe(saved?.headers.get(VERSION_HEADER));
         // The done line: what the preview showed is what the search returns once saved.
         const afterBody = await body(after);
-        expect(afterBody.data.search).toEqual(previewBody.data.preview);
-        expect(afterBody.data.search.items[0].product.sku).toBe(jacket[2]?.sku);
-        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(true);
+        expect(at(afterBody, 'data', 'search')).toEqual(at(previewBody, 'data', 'preview'));
+        expect(textAt(afterBody, 'data', 'search', 'items', 0, 'product', 'sku')).toBe(
+            jacket[2]?.sku
+        );
+        expect(at(await body(await api.handle(rulesRequest('GET'))), 'edited')).toBe(true);
         expect(
-            (await body(await api.handle(posted({ query: '{ store { rulesEdited } }' })))).data
-                .store.rulesEdited
+            at(
+                await body(await api.handle(posted({ query: '{ store { rulesEdited } }' }))),
+                'data',
+                'store',
+                'rulesEdited'
+            )
         ).toBe(true);
     });
 
@@ -560,25 +553,19 @@ describe('rules in the worker', () => {
             })
         );
         expect(refused?.status).toBe(400);
-        expect((await body(refused)).errors[0].message).toContain('SL-99999');
-        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
-            'shipped',
-        ]);
+        expect(textAt(await body(refused), 'errors', 0, 'message')).toContain('SL-99999');
+        expect(await applied(await api.handle(search()))).toEqual(['shipped']);
 
         await api.handle(
             rulesRequest('POST', {
                 rules: [{ id: 'mine', when: { queries: ['jacket'] }, hide: [jacket[0]?.sku] }],
             })
         );
-        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
-            'mine',
-        ]);
+        expect(await applied(await api.handle(search()))).toEqual(['mine']);
         const reset = await api.handle(rulesRequest('DELETE'));
         expect(reset?.status).toBe(204);
-        expect((await body(await api.handle(search()))).data.search.merchandising.applied).toEqual([
-            'shipped',
-        ]);
-        expect((await body(await api.handle(rulesRequest('GET')))).edited).toBe(false);
+        expect(await applied(await api.handle(search()))).toEqual(['shipped']);
+        expect(at(await body(await api.handle(rulesRequest('GET'))), 'edited')).toBe(false);
     });
 
     it('drops every answer kept under the old version when a set is saved', async () => {

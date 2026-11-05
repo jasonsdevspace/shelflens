@@ -1,3 +1,4 @@
+import { isRecord } from '@shelflens/api';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
@@ -59,11 +60,16 @@ const createNetwork = ({ late = false }: { readonly late?: boolean } = {}) => {
                 typeof url === 'string' ? url : url instanceof URL ? url.href : url.url,
                 'http://local'
             ).searchParams.get('variables');
-            const variables = JSON.parse(encoded ?? '{}') as { phrase: string };
+            // A search with no phrase matches no pending one, so a renamed variable still fails.
+            const variables: unknown = JSON.parse(encoded ?? '{}');
+            const phrase =
+                isRecord(variables) && typeof variables['phrase'] === 'string'
+                    ? variables['phrase']
+                    : '';
             const signal = init?.signal ?? undefined;
             if (!late) signal?.addEventListener('abort', () => reject(new Error('aborted')));
             pending.push({
-                phrase: variables.phrase,
+                phrase,
                 signal,
                 fail: (message) => reject(new Error(message)),
                 answer: (suggest) =>
