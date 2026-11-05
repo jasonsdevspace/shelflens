@@ -54,6 +54,16 @@ describe('rewriting a query', () => {
         ]);
     });
 
+    it('offers what every rule on one phrase gives, not only the first rule', () => {
+        const both = buildSynonyms([
+            { kind: 'one-way', from: 'tshirt', to: 't-shirt' },
+            { kind: 'equivalent', terms: ['t-shirt', 'tee'] },
+        ]);
+        expect(both.rewrite(['tshirt'])).toEqual([
+            { terms: ['tshirt'], alternatives: [['t', 'shirt'], ['tee']] },
+        ]);
+    });
+
     it('widens a one-way rule in its one direction only', () => {
         expect(synonyms.rewrite(['cap'])).toEqual([
             { terms: ['cap'], alternatives: [['baseball', 'cap']] },

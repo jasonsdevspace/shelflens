@@ -37,15 +37,22 @@ const startsWith = (terms: readonly string[], at: number, phrase: readonly strin
 
 export const buildSynonyms = (rules: readonly SynonymRule[]): SynonymTable => {
     // Entries by their first term, longest phrase first, so the most
-    // specific rule wins where two could apply at one position.
+    // specific rule wins where two could apply at one position. Two rules
+    // on the same phrase share one entry, so the second is not shadowed by
+    // the first.
     const entries = new Map<string, Entry[]>();
     const add = (phrase: readonly string[], alternatives: readonly (readonly string[])[]) => {
         const first = phrase[0];
         if (first === undefined) return;
-        const seen = new Set([key(phrase)]);
-        const kept = alternatives.filter((alt) => !seen.has(key(alt)) && seen.add(key(alt)));
         const list = entries.get(first) ?? [];
-        list.push({ phrase, alternatives: kept });
+        const same = list.findIndex((entry) => key(entry.phrase) === key(phrase));
+        const before = same === -1 ? [] : (list[same]?.alternatives ?? []);
+        const seen = new Set([key(phrase)]);
+        const kept = [...before, ...alternatives].filter(
+            (alt) => !seen.has(key(alt)) && seen.add(key(alt))
+        );
+        if (same === -1) list.push({ phrase, alternatives: kept });
+        else list[same] = { phrase, alternatives: kept };
         list.sort((a, b) => b.phrase.length - a.phrase.length);
         entries.set(first, list);
     };

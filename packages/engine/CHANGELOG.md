@@ -5,6 +5,14 @@ change the public types. Each version is published from a tag by the release wor
 provenance, and has a release on GitHub with the entry below as its notes, under a line that
 names the package on npm and how to install that version once it is promoted.
 
+## 0.6.1
+
+Two synonym rules on the same phrase both apply.
+
+- **Every rule on a phrase is read.** Where two rules named the same phrase, only the first one
+  given was used, so a one-way rule from "tshirt" to "t-shirt" kept "t-shirt" from reaching "tee"
+  through a rule that made the two equivalent. A phrase now offers what every rule on it gives.
+
 ## 0.6.0
 
 Searches do only the work their page needs, a filter its attribute cannot take is refused, and

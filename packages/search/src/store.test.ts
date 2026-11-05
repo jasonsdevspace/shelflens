@@ -117,6 +117,54 @@ describe('price bands', () => {
     });
 });
 
+describe('the words a shopper may use for one thing', () => {
+    it.each([
+        ['sneakers', 'trainers'],
+        ['sweater', 'jumper'],
+        ['sweater', 'pullover'],
+        ['trousers', 'pants'],
+        ['t-shirt', 'tee'],
+        ['jacket', 'coat'],
+    ])('finds a product named with %s when the shopper types %s, and the other way', (one, two) => {
+        const small = createStoreEngine(
+            storeOf([plain('p1', { name: `Plain ${one}` }), plain('p2', { name: `Plain ${two}` })])
+        );
+        for (const word of [one, two]) {
+            const { hits } = searchStore(small, { group: 'guest', query: word });
+            expect(hits.map((hit) => hit.id).sort()).toEqual(['p1', 'p2']);
+        }
+    });
+});
+
+describe('sorting by position', () => {
+    const category = catalog.products[0]?.categoryId ?? '';
+    const positionOf = new Map(catalog.products.map((product) => [product.sku, product.position]));
+
+    it('sorts a category browsed with no query by its position', () => {
+        const result = searchStore(engine, {
+            group: 'guest',
+            filters: [{ attribute: 'category', eq: category }],
+            pageSize: 100,
+        });
+        expect(result.sort).toEqual([{ by: 'position', direction: 'asc' }]);
+        const positions = result.hits.map((hit) => positionOf.get(hit.id) ?? Number.NaN);
+        expect(positions.length).toBeGreaterThan(1);
+        expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    });
+
+    it('sorts by position only while a category is browsed', () => {
+        const sort = [{ by: 'position', direction: 'asc' }] as const;
+        const browsing = searchStore(engine, {
+            group: 'guest',
+            filters: [{ attribute: 'category', eq: category }],
+            sort,
+        });
+        const everywhere = searchStore(engine, { group: 'guest', sort });
+        expect(browsing.sort).toEqual(sort);
+        expect(everywhere.sort).toEqual([{ by: 'relevance', direction: 'desc' }]);
+    });
+});
+
 describe('customer groups', () => {
     it('shows a members-only product to members and not to guests', () => {
         if (!membersOnly) throw new Error('the catalog should have one members-only product');
@@ -148,6 +196,17 @@ describe('customer groups', () => {
         expect(sorted.sort).toEqual([{ by: 'price', direction: 'asc' }]);
         const facetNames = sorted.facets.map((facet) => facet.name);
         expect(facetNames).toEqual([...SHOPPER_FACETS]);
+    });
+
+    it("names the price facets for the shopper, never by the group's own price attribute", () => {
+        const { facets } = searchStore(engine, {
+            group: 'member',
+            facets: ['price', 'priceStats'],
+        });
+        expect(facets.map(({ name, attribute, kind }) => ({ name, attribute, kind }))).toEqual([
+            { name: 'price', attribute: 'price', kind: 'range' },
+            { name: 'priceStats', attribute: 'price', kind: 'stats' },
+        ]);
     });
 
     it('counts facets within what the group may see', () => {
