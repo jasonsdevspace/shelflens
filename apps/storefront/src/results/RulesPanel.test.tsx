@@ -270,7 +270,8 @@ describe('the rules panel', () => {
     });
 
     it('repeats the host’s words when it refuses a save, and keeps the form open', async () => {
-        // The panel trusts its own list first, so the SKU has to be on the page.
+        // The panel refuses a SKU the page has not shown before it asks the host, so SL-404 is on
+        // the page.
         const { user, onStoreChanged } = open({
             products: [...products, { sku: 'SL-404', name: 'Lost Jacket' }],
         });
@@ -484,6 +485,9 @@ describe('the rules panel', () => {
             'the rules are being saved elsewhere'
         );
         expect(onStoreChanged).not.toHaveBeenCalled();
+        // The saved set is still the visitor's, and the discard is offered again.
+        expect(screen.getByRole('button', { name: 'Discard your rules' })).toBeEnabled();
+        expect(await store.current()).toEqual([nth(shipped, 1, 'a second shipped rule')]);
     });
 
     it('reads the rules again when the page, not the panel, built the store anew', async () => {
@@ -595,7 +599,8 @@ describe('the rules panel', () => {
 
     it('drops a read of the rules that lands after a newer one', async () => {
         await store.replace([nth(shipped, 1, 'a second shipped rule')]);
-        // Each read waits to be answered, and an answer already on its way is not stopped.
+        // Each read waits until the test answers it and ignores its abort signal, so the older one
+        // still lands.
         const answers: ((response: Response) => void)[] = [];
         vi.stubGlobal(
             'fetch',
@@ -625,7 +630,7 @@ describe('the rules panel', () => {
         expect(screen.queryByText('Reading the rules.')).toBeNull();
     });
 
-    it('says nothing on the next opening of a save that landed once it closed', async () => {
+    it('says nothing on the next opening about a save that landed after the panel closed', async () => {
         const { user, onStoreChanged, closePanel, reopenPanel } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));

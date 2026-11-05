@@ -114,13 +114,14 @@ describe('narrowing', () => {
     it('narrows to a ticked size, as many products as the size counted', async () => {
         const user = await open();
         const size = nth(within(facet('Size')).getAllByRole('checkbox'), 0, 'a size');
-        const counted = /, (\d+) results?$/.exec(size.closest('label')?.textContent ?? '')?.[1];
+        const counted = /, ([\d,]+) results?$/.exec(size.closest('label')?.textContent ?? '')?.[1];
+        if (counted === undefined) throw new Error('the size should say how many it counts');
         await user.click(size);
         await settled();
         expect(new URLSearchParams(window.location.search).getAll('size')).toEqual([
             size.getAttribute('value'),
         ]);
-        expect(heading()).toHaveTextContent(`All products, ${counted ?? '?'} products`);
+        expect(heading()).toHaveTextContent(new RegExp(`^All products, ${counted} products?$`));
     });
 
     it('keeps the category group at a category with no children, with the way up above it', async () => {

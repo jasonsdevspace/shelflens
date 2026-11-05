@@ -92,7 +92,7 @@ describe('the client', () => {
             .mockResolvedValueOnce(answer(SUGGEST, 'v1'))
             .mockResolvedValueOnce(answer(STORE, 'v2'))
             .mockResolvedValueOnce(answer(SUGGEST, 'v2'))
-            .mockResolvedValueOnce(answer(STORE, 'v1'));
+            .mockResolvedValueOnce(answer(SUGGEST, 'v1'));
         const client = createClient({ url: '/graphql', fetch: fetchImpl });
 
         await client.query(SuggestDocument, variables);
@@ -102,11 +102,14 @@ describe('the client', () => {
         expect(fetchImpl).toHaveBeenCalledTimes(3);
         expect(urlOf(fetchImpl.mock.calls[2]?.[0])).toContain('v=v2');
 
-        // An older instance answers next. Its answer is kept under its own
-        // version, and what was remembered under version two is still there.
-        await client.query(StoreDocument, { ...{} });
-        expect(fetchImpl).toHaveBeenCalledTimes(3);
-        expect(client.remembered).toBe(3);
+        // An older instance answers a new question, and the client follows it back to version
+        // one. What it remembered under each version is still there, so the question it first
+        // asked under version one is answered from memory rather than asked again.
+        await client.query(SuggestDocument, { ...variables, phrase: 'tra' });
+        expect(client.version).toBe('v1');
+        await client.query(SuggestDocument, variables);
+        expect(fetchImpl).toHaveBeenCalledTimes(4);
+        expect(client.remembered).toBe(4);
     });
 
     it('forgets an answer past its age', async () => {

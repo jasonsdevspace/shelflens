@@ -36,8 +36,9 @@ describe('reading a CSV file', () => {
         ]);
     });
 
-    it('drops a byte order mark, so a quoted first header is read without its quotes', () => {
+    it('drops a byte order mark before a first header, quoted or not', () => {
         expect(parseCsv('\uFEFF"name",price\nBoot,1').headers).toEqual(['name', 'price']);
+        expect(parseCsv('\uFEFFname,price\nBoot,1').headers).toEqual(['name', 'price']);
     });
 
     it('keeps a quote inside a field that does not start with one as written', () => {

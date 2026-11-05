@@ -125,11 +125,12 @@ describe('focus on the results', () => {
         expect(screen.getByRole('heading', { name: 'Jackets' })).toHaveFocus();
     });
 
-    it('leaves focus where it went after the control that had it is gone', () => {
+    it('leaves focus where the visitor moved it when a widget hid the move from the page', () => {
         const { rerender } = render(<Kept control />);
         focusOn(screen.getByRole('button', { name: 'Clear all filters' }));
-        // A widget that stops focusin keeps the move from the page, which still knows the last
-        // control it saw is gone, so only where focus is now can say the visitor moved it.
+        // A widget on the page can stop focusin, so the hook never hears of this move and still
+        // holds the removed button as the last control focused. Stopping it here shows that the
+        // hook asks where focus is now before it moves focus.
         const hide = (event: FocusEvent) => event.stopPropagation();
         window.addEventListener('focusin', hide, { capture: true });
         const box = screen.getByRole('checkbox', { name: 'Ridgeback' });
