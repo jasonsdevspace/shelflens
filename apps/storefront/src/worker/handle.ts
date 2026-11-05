@@ -179,12 +179,25 @@ export const createWorkerApi = ({
      */
     let inHand: Catalog | undefined;
 
+    /**
+     * The visitor's catalog in hand, read from where it is saved when there is none yet. The
+     * catalog in hand is looked at again after the read, so one loaded while the read was waiting
+     * is the one kept, not the older one the read found.
+     */
+    const savedInHand = async (held: CatalogStore): Promise<Catalog | undefined> => {
+        if (!inHand) {
+            const saved = await held.current();
+            inHand ??= saved;
+        }
+        return inHand;
+    };
+
     /** The catalog to build from: the visitor's, when there is a store of them, or the site's. */
     const catalogNow = async (): Promise<Catalog> => {
         if (catalogs) {
-            inHand ??= await catalogs.current();
-            if (!inHand) throw new NoCatalogError();
-            return inHand;
+            const kept = await savedInHand(catalogs);
+            if (!kept) throw new NoCatalogError();
+            return kept;
         }
         if (catalogUrl === undefined) throw new Error('the worker was given no catalog to serve');
         // Written by the site's build from the generator, so it is not checked on every first
@@ -227,8 +240,16 @@ export const createWorkerApi = ({
 
     const receive = async (request: Request): Promise<Response> => {
         if (!events) return refuse(404, 'this store keeps no events');
-        const receipt = await receiveEvents(await asHttp(request), events, now());
-        return write(answerOf(receipt));
+        const http = await asHttp(request);
+        // In the turn a catalog change takes, so a batch is never kept after a removal or a new
+        // catalog has forgotten the clicks before it.
+        return host.change(async () => {
+            // Clicks before a visitor's catalog is loaded name products it does not have yet,
+            // and loading one forgets them, so the batch is refused as a search or a rules
+            // request is.
+            if (catalogs) await catalogNow();
+            return write(answerOf(await receiveEvents(http, events, now())));
+        });
     };
 
     /** The rules path: read, replace or reset the saved set, building again on a change. */
@@ -316,8 +337,7 @@ export const createWorkerApi = ({
     const receiveCatalog = async (held: CatalogStore, request: Request): Promise<Response> => {
         if (request.method === 'GET') {
             // The catalog in hand, so what this says is loaded is what the store is built from.
-            inHand ??= await held.current();
-            const kept = inHand;
+            const kept = await savedInHand(held);
             if (!kept) return noCatalog();
             return json(200, { version: kept.version, products: kept.products.length });
         }
@@ -436,7 +456,8 @@ export const createWorkerApi = ({
             try {
                 return await answerRoute(request);
             } catch (error) {
-                // A visitor's page with nothing loaded has nothing to answer from, on any route.
+                // Whatever route needed a visitor's catalog before one was loaded has nothing to
+                // answer from.
                 if (error instanceof NoCatalogError) return noCatalog();
                 // As the Node server does: a failure that is ours, in the API's shape, with an id
                 // to quote, and the reason kept to the console. The path is logged, never the
