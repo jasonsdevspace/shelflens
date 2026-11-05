@@ -62,12 +62,13 @@ export const createIndexedDbRuleStore = (name = DEFAULT_DB_NAME): RuleStore => {
             const stored: unknown = await request(store.get(KEY));
             if (stored === undefined) return undefined;
             // A saved set outlives the page that wrote it, so it is checked as it is read, as a
-            // rules file is. One an older page wrote that the check now refuses is let go, and the
-            // store goes back to the rules the site ships.
+            // rules file is. One an older page wrote that the check now refuses reads as nothing,
+            // so the store goes back to the rules the site ships until a save takes its place. It
+            // is not deleted here, outside a change's turn, where a save in that turn could be
+            // deleted instead.
             try {
                 return parseRulesFile({ rules: stored });
             } catch {
-                await write((kept) => kept.delete(KEY));
                 return undefined;
             }
         },

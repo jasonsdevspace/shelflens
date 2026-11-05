@@ -278,7 +278,9 @@ export const createWorkerApi = ({
             ]);
             // The same file again names the same products, so its rules and clicks still hold.
             const same = previous?.version === catalog.version;
-            if (!same && (await discardsRules(options.discard))) return KEEPS_RULES;
+            // Rules with no catalog in hand were made for one that is gone, as when a catalog an
+            // older page kept no longer passes its check, so they name nothing to lose.
+            if (!same && previous && (await discardsRules(options.discard))) return KEEPS_RULES;
             const began = performance.now();
             await held.replace(catalog);
             inHand = catalog;

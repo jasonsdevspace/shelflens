@@ -68,6 +68,26 @@ describe('a store host', () => {
         expect(await host.current()).toBe(first);
     });
 
+    it('lets go a saved set this engine refuses, as one an older engine let through, and serves the shipped rules', async () => {
+        const { host, rules } = hostWith();
+        await rules.replace([{ id: 'ghost', pin: ['SL-99999'] }]);
+        const served = await host.current();
+        expect(served.model.rulesEdited).toBe(false);
+        expect(await rules.current()).toBeUndefined();
+    });
+
+    it('keeps a saved set when the build fails on the shipped rules too', async () => {
+        const saved = [{ id: 'ghost', pin: ['SL-99999'] }];
+        const rules = createMemoryRuleStore();
+        await rules.replace(saved);
+        const host = createStoreHost({
+            source: () => Promise.resolve({ catalog, rules: [{ id: 'gone', pin: ['SL-88888'] }] }),
+            rules,
+        });
+        await expect(host.current()).rejects.toThrow('SL-99999');
+        expect(await rules.current()).toEqual(saved);
+    });
+
     it('refuses a set of the wrong shape, and keeps the store it has', async () => {
         const { host } = hostWith();
         const first = await host.current();

@@ -184,6 +184,30 @@ export const createStoreHost = ({
         return { api: withResponseCache(createStoreApi(model, { events })), model };
     };
 
+    /**
+     * The first store, from these inputs, or from the shipped rules when a saved set cannot be
+     * built. A saved set outlives the engine that checked it, so one this engine refuses is let
+     * go, in the turn the build runs in, rather than failing every request after it. A build that
+     * fails on the shipped rules too fails for another reason, and the saved set is kept. Later
+     * builds run in a change that checks or resets the rules itself.
+     */
+    const buildFrom = async (now: Inputs): Promise<{ hosted: HostedStore; used: Inputs }> => {
+        try {
+            return { hosted: build(now), used: now };
+        } catch (error) {
+            if (now.saved === undefined || !rules) throw error;
+            const shippedOnly: Inputs = { ...now, saved: undefined };
+            let hosted: HostedStore;
+            try {
+                hosted = build(shippedOnly);
+            } catch {
+                throw error;
+            }
+            await rules.reset();
+            return { hosted, used: shippedOnly };
+        }
+    };
+
     /** Makes a store the one served, remembered with what it was made from, and tells `onServed`. */
     const serve = async (hosted: HostedStore, from: MadeFrom): Promise<HostedStore> => {
         last = { hosted, from };
@@ -217,9 +241,9 @@ export const createStoreHost = ({
         const began = performance.now();
         const now = await inputs();
         const downloaded = performance.now();
-        const built = build(now);
+        const { hosted, used } = await buildFrom(now);
         timing = { downloadMs: downloaded - began, buildMs: performance.now() - downloaded };
-        return serve(built, fromOf(now));
+        return serve(hosted, fromOf(used));
     };
 
     const current = (): Promise<HostedStore> => {

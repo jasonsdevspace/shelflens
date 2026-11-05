@@ -118,7 +118,7 @@ const parseOptional = (value: Record<string, unknown>, event: Mutable): boolean 
     return true;
 };
 
-const parseEvent = (value: unknown): StoreEvent | undefined => {
+export const parseEvent = (value: unknown): StoreEvent | undefined => {
     if (!isRecord(value)) return undefined;
     if (Object.keys(value).some((key) => !FIELDS.has(key))) return undefined;
     const event = parseRequired(value);

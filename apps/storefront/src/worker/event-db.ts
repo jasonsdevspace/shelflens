@@ -1,4 +1,4 @@
-import { EVENT_LIMIT, type EventStore, parseEventBatch } from '@shelflens/api';
+import { EVENT_LIMIT, type EventStore, parseEvent, type StoreEvent } from '@shelflens/api';
 
 /**
  * Events kept in IndexedDB, which is what a service worker has.
@@ -111,11 +111,27 @@ export const createIndexedDbEventStore = ({
             await done(transaction);
         },
         all: async () => {
-            const store = (await database()).transaction(STORE_NAME).objectStore(STORE_NAME);
-            const stored: unknown[] = await request(store.index(BY_TIME).getAll());
+            const transaction = (await database()).transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            // Read from the store itself rather than its index by time, which leaves out a
+            // record whose time is not one, and in key order, so each record has its key.
+            const [stored, keys] = await Promise.all([
+                request<unknown[]>(store.getAll()),
+                request(store.getAllKeys()),
+            ]);
             // An event outlives the page that wrote it, so each is checked as it is read, as one a
-            // page sends is. One the check now refuses is left out, and goes with the oldest.
-            return stored.flatMap((event) => parseEventBatch([event]) ?? []);
+            // page sends is, and none can be later than now, since the store takes each at the
+            // time it arrives at the latest. One the check refuses is let go in the same turn.
+            const now = Date.now();
+            const kept: StoreEvent[] = [];
+            stored.forEach((record, index) => {
+                const event = parseEvent(record);
+                const key = keys[index];
+                if (event && event.at <= now) kept.push(event);
+                else if (key !== undefined) store.delete(key);
+            });
+            await done(transaction);
+            return kept.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
         },
     };
 };

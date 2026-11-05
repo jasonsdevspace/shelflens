@@ -13,6 +13,7 @@ export {
     type EventKind,
     type EventStore,
     GPC_HEADER,
+    parseEvent,
     parseEventBatch,
     receiveEvents,
     type StoreEvent,

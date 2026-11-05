@@ -61,12 +61,12 @@ export const createIndexedDbCatalogStore = (name = CATALOG_DB_NAME): CatalogStor
             const stored: unknown = await request(store.get(KEY));
             if (stored === undefined) return undefined;
             // A catalog outlives the page that wrote it, so it is checked as it is read, as a
-            // visitor's file is. One an older page wrote that the check now refuses is let go, and
-            // the page asks for a file again.
+            // visitor's file is. One an older page wrote that the check now refuses reads as
+            // nothing, so the page asks for a file, whose load takes its place. It is not deleted
+            // here, outside a change's turn, where a load in that turn could be deleted instead.
             try {
                 return parseCatalogFile(stored);
             } catch {
-                await write((kept) => kept.delete(KEY));
                 return undefined;
             }
         },

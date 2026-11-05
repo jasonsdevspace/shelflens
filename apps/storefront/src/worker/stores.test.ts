@@ -146,34 +146,41 @@ const rawAt = async (name: string, store: string, key: string): Promise<unknown>
 };
 
 describe('what a store kept from an older page', () => {
-    it('lets a rule set go that the rules check now refuses, so the shipped rules apply', async () => {
+    it('reads a rule set the rules check now refuses as nothing, until a save takes its place', async () => {
         const name = fresh();
         const store = createIndexedDbRuleStore(name);
         await store.replace(rules);
-        // Its queries as one text rather than a list, which every search failed on.
+        // Its search words as one string rather than a list, which failed every search.
         await putRaw(name, 'rules', [{ id: 'old', when: { queries: 'jacket' } }], 'saved');
         expect(await store.current()).toBeUndefined();
-        expect(await rawAt(name, 'rules', 'saved')).toBeUndefined();
+        await store.replace(rules);
+        expect(await store.current()).toEqual(rules);
     });
 
-    it('lets a catalog go that the catalog check now refuses, so the page asks for a file', async () => {
+    it('reads a catalog the catalog check now refuses as nothing, until a load takes its place', async () => {
         const name = fresh();
         const store = createIndexedDbCatalogStore(name);
         const catalog = generateCatalog({ seed: 7, products: 5 });
         await store.replace(catalog);
         expect(await store.current()).toEqual(catalog);
-        // Without its locale, which the store's locale query failed on.
+        // Without its locale, which the store query failed on, since the field cannot be empty.
         const { locale: _, ...withoutLocale } = catalog;
         await putRaw(name, 'catalog', withoutLocale, 'loaded');
         expect(await store.current()).toBeUndefined();
-        expect(await rawAt(name, 'catalog', 'loaded')).toBeUndefined();
+        await store.replace(catalog);
+        expect(await store.current()).toEqual(catalog);
     });
 
-    it('leaves out an event the events check now refuses, and keeps the rest', async () => {
+    it('lets go an event the batch check now refuses, one with no time, and one later than now', async () => {
         const name = fresh();
         const store = createIndexedDbEventStore({ name });
         await store.append([view('a', 1)]);
         await putRaw(name, 'events', { ...view('b', 2), email: 'someone@example.test' });
+        const { at: _, ...timeless } = view('c', 3);
+        await putRaw(name, 'events', timeless);
+        await putRaw(name, 'events', view('d', Date.now() + 60_000));
         expect((await store.all()).map((event) => event.id)).toEqual(['a']);
+        // Let go, so none keeps a place under the limit.
+        for (const id of ['b', 'c', 'd']) expect(await rawAt(name, 'events', id)).toBeUndefined();
     });
 });
