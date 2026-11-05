@@ -44,7 +44,11 @@ const ATTRIBUTES: Readonly<Record<FilterAttribute, string>> = {
     IN_STOCK: 'inStock',
 };
 
-/** A record over an enum, turned around. Each record is a literal over the enum. */
+/**
+ * A record over an enum, turned around to find a key by its value. Each record passed here is
+ * a literal over its enum, as keysOf needs, and no two keys share a value, or the later would
+ * win.
+ */
 const inverted = <Enum extends string>(
     record: Readonly<Record<Enum, string>>
 ): ReadonlyMap<string, Enum> => new Map(keysOf(record).map((key) => [record[key], key]));

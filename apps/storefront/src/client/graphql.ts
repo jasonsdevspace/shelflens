@@ -112,7 +112,10 @@ export interface GraphQLClient {
     ): Promise<Result>;
 }
 
-/** An error as the API sends one, or nothing for an entry that is not one. */
+/**
+ * An entry of an answer's errors, kept to its message, path and code, or nothing when it has
+ * no message to show.
+ */
 const errorOf = (value: unknown): GraphQLErrorShape | undefined => {
     if (!isRecord(value) || typeof value['message'] !== 'string') return undefined;
     const { path, extensions } = value;
@@ -127,10 +130,9 @@ const errorOf = (value: unknown): GraphQLErrorShape | undefined => {
 };
 
 /**
- * An answer's data, as the result of the document it answers. The API at this
- * address answers by the schema each document was generated from, and an
- * answer is kept under its own document, so the data is that document's result,
- * which nothing in the page could check without the schema beside it.
+ * An answer's data, typed as the result of the document it answers. A remembered answer is
+ * kept under its own document, so it answers that document too, and checking the data would
+ * take the schema, which the page does not carry. The document is taken only for its type.
  */
 const resultOf = <Result, Variables>(
     _document: TypedDocumentString<Result, Variables>,
@@ -230,12 +232,14 @@ export const createClient = ({
             const response = await send(document, name, variables, signal);
             const answered = response.headers.get(VERSION_HEADER);
             if (answered !== null) memory.version = answered;
-            // A body that is not JSON reads as an empty envelope, which fails below. The errors
-            // are read entry by entry, since their messages reach the page.
+            // A body that is not a JSON object reads as an empty envelope, which has no data and
+            // fails below.
             const body: unknown = await response.json().catch(() => undefined);
             const envelope = isRecord(body) ? body : {};
             const { data, errors, extensions } = envelope;
-            // Any error fails the query, one that cannot be read among them, with what can be.
+            // Any error fails the query, even one that cannot be read. Each entry is read on its
+            // own, since its message reaches the page, and the thrown error keeps those that can
+            // be read, or the status alone when none can.
             if (isList(errors) && errors.length > 0) {
                 const readable = errors.flatMap((error) => errorOf(error) ?? []);
                 throw new GraphQLClientError(readable, response.status);

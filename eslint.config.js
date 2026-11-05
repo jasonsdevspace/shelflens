@@ -50,7 +50,10 @@ const sizeBudgets = {
     'max-params': ['error', 4],
 };
 
-/** The workspace's packages, as paths from the root: the libraries in packages/ and what runs in apps/. */
+/**
+ * The workspace's packages, as paths from the root: the libraries in packages/ and what runs
+ * in apps/.
+ */
 const WORKSPACES = workspacePackages(fileURLToPath(new URL('./', import.meta.url)));
 
 /** Code that runs in the browser loads no Node module. */
@@ -156,8 +159,9 @@ export default defineConfig(
         rules: { 'max-params': 'off' },
     },
     {
-        // The API's own tests read its answers whole, each asserting the shape it reads, so the
-        // answer is loose until each test reads it.
+        // The API's own tests read each answer through the one any in that file, so a test can
+        // reach into an answer and let its assertion check the shape. The rules against using
+        // an any are off for that file only.
         files: ['packages/api/src/api.test.ts'],
         rules: {
             '@typescript-eslint/no-unsafe-assignment': 'off',

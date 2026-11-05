@@ -115,9 +115,9 @@ export const runPopoverBench = async ({
     const catalog = generateCatalog({ seed, products });
     const json = JSON.stringify(catalog);
 
-    // The parse of the text a page fetches is what is timed, and the store is built from the
-    // catalog it came from, which holds the same products. The sizes go past the cap a
-    // visitor's file is held to, since that is how the cap is found.
+    // Only the parse of the text a page fetches is timed. The store is built from the catalog
+    // that text was written from, which holds the same products. The sizes go past the cap a
+    // visitor's file is held to, since the cap is set from where they stop fitting.
     const parseStarted = performance.now();
     JSON.parse(json);
     const parseMs = performance.now() - parseStarted;

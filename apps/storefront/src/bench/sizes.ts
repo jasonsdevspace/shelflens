@@ -52,9 +52,8 @@ const timingIn = (record: Record<string, unknown>, field: string, where: string)
 };
 
 /**
- * The sizes a written record measured, each read field by field, so a record
- * whose fields were renamed fails where it is read rather than as a cap of
- * nothing further on.
+ * The sizes a written record measured, each read field by field, so a record whose fields were
+ * renamed fails where it is read, naming the field, rather than further on as a wrong cap.
  */
 export const parseSizeRecord = (value: unknown): SizeResult[] => {
     const results = isRecord(value) ? value['results'] : undefined;

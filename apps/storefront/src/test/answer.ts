@@ -1,10 +1,10 @@
 import { isList, isRecord } from '@shelflens/api';
 
 /*
- * Reading a JSON answer in a test. Each reader walks a path and checks each
- * step, so a test that meets an answer of another shape fails naming the path
- * and showing the whole answer, a GraphQL error among it, rather than reading
- * a property of nothing.
+ * Reading a JSON answer in a test. Each reader walks a path and checks each step, so a test
+ * that meets an answer of another shape fails naming the path and showing the whole answer,
+ * any GraphQL errors included, rather than with a TypeError from reading a property of
+ * undefined.
  */
 
 type Step = string | number;
@@ -13,12 +13,16 @@ const fail = (answer: unknown, path: readonly Step[], expected: string): never =
     throw new Error(`expected ${expected} at ${path.join('.')} in ${JSON.stringify(answer)}`);
 };
 
-/** What an answer holds at a path, null included. */
+/**
+ * What an answer holds at a path, null included. A step the answer does not hold fails the
+ * test, naming the path up to that step.
+ */
 export const at = (answer: unknown, ...path: readonly Step[]): unknown => {
     let value = answer;
     for (const [index, step] of path.entries()) {
-        // A number steps into a list and text into a record's own fields, never into what
-        // either inherits, such as a list's length or a record's constructor.
+        // A number steps only to an index a list holds, and text only to a field a record
+        // holds itself, so no step lands on a list's length or on what a record inherits, such
+        // as its constructor.
         const here = value;
         if (
             typeof step === 'number' &&

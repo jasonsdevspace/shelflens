@@ -2,8 +2,8 @@
  * Checks the API's boundaries share, written once so they agree on what an
  * object is. A request's body and its variables, an event batch, a rules file,
  * a visitor's catalog and the canonical form each check objects here, and a
- * request, its variables and an event batch are each read as JSON here. The storefront
- * checks what its pages read with the same two.
+ * request, its variables and an event batch are each read as JSON here. The
+ * storefront checks what its pages read with isList and isRecord.
  */
 
 /** Whether a value is text. */
@@ -25,9 +25,9 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * A record's keys, as the keys its type names. Object.keys types every key as
- * text, since an object may hold keys its type does not name, so this is for a
- * record written as a literal over its keys, which holds no others.
+ * A record's keys, typed as the keys its type names. Object.keys types them as text because an
+ * object may hold keys its type does not name, so pass only a record written as a literal over
+ * its keys.
  */
 export const keysOf = <Key extends string>(record: Readonly<Record<Key, unknown>>): Key[] =>
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a literal over its keys holds no others
