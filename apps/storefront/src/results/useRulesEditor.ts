@@ -163,9 +163,9 @@ export const useRulesEditor = ({
     const [message, setMessage] = useState('');
     const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
-    // A closed panel holds no rule being typed and previews nothing.
     // Counts the times the visitor moved on from a discard: took up a rule or closed the panel.
     const [movedOn, setMovedOn] = useState(0);
+    // A closed panel holds no rule being typed and previews nothing.
     const [wasEnabled, setWasEnabled] = useState(enabled);
     if (wasEnabled !== enabled) {
         setWasEnabled(enabled);

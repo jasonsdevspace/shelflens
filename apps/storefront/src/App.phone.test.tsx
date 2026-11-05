@@ -179,7 +179,7 @@ describe('on a phone', () => {
         expect(within(await drawer()).getByRole('status')).toHaveTextContent(/Rule saved\./);
     });
 
-    it('keeps the host’s refusal of a discard across the breakpoint', async () => {
+    it('keeps a discard’s step and the host’s refusal across the breakpoint, until a rule is taken up', async () => {
         const turn = turnableViewport();
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
