@@ -1,10 +1,10 @@
 /**
- * What the repository checks share: the files to check, how they start, what
- * counts as a Dockerfile, and the workspace's packages.
+ * What the repository checks share: the files they read, whether a check was
+ * run directly, what counts as a Dockerfile, and the workspace's packages.
  *
- * Each check runs from the top of the repository it belongs to, wherever it
- * is started, over tracked files and new ones not yet added, so whatever the
- * repository ignores is skipped too.
+ * A check reads the repository its own file sits in, from the top, wherever
+ * it is started. It reads tracked files and new ones not yet added, and skips
+ * whatever the repository ignores.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -12,8 +12,8 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * A Dockerfile by any of the names Docker tooling uses for one, such as
- * `Dockerfile`, `Dockerfile.prod` or `api.Dockerfile`.
+ * A Dockerfile by its usual names: `Dockerfile` alone, with a suffix as in
+ * `Dockerfile.prod`, or as the extension in `api.Dockerfile`.
  *
  * @param {string} path
  */

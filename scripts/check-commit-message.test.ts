@@ -14,7 +14,7 @@ const DASH = String.fromCodePoint(0x2014);
 
 describe('the commit message check', () => {
     it('reads a pull request body as GitHub keeps it, headings included', () => {
-        // The tool's name is put together here, so this file does not trip the check itself.
+        // The tool's name is put together here, as in the messages below.
         const body = `Fix the check\n\n## Notes from ${'Co'}dex`;
         expect(messageProblems(textToCheck(body, '#', false))).toEqual([]);
         expect(messageProblems(textToCheck(body, '#', true))).not.toEqual([]);
@@ -63,9 +63,9 @@ describe('the commit message check', () => {
     });
 });
 
-/*
- * One message for each way of naming a tool. The names are put together here, as above, so
- * this file does not trip the check itself.
+/**
+ * One message for each way of naming a tool. Each must be refused by exactly one pattern, and
+ * each pattern must refuse one of them, so an overlap or a pattern added without a sample fails.
  */
 const NAMING_A_TOOL = [
     `Asked ${'Clau'}de about the cache`,
@@ -101,8 +101,8 @@ describe('the tools the commit message check refuses', () => {
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-commit-message.mjs');
 
 /**
- * The script's exit status on a message, and what it printed, run as the hook runs it in a
- * repository of its own.
+ * The script's exit status on a message, and what it wrote to stderr, run as the hook runs it
+ * in a repository of its own.
  */
 const ranOn = (message: string, args: string[] = [], config: Record<string, string> = {}) => {
     const root = mkdtempSync(join(tmpdir(), 'check-commit-message-'));

@@ -34,8 +34,10 @@ const EM_DASH = String.fromCodePoint(0x2014);
 /**
  * The message git will store: everything above the scissors line that
  * `git commit -v` adds before the diff, without git's own comment lines.
- * The scissors line is found by its shape, whatever comment character git
- * chose, since with `core.commentChar` set to `auto` it picks one per commit.
+ * The scissors line is found by its shape, whatever comment prefix git wrote
+ * on it, since with `core.commentChar` set to `auto` git picks one per commit.
+ * When there is one, its prefix marks the comment lines in place of the one
+ * passed in.
  *
  * @param {string} raw
  * @param {string} commentChar
@@ -80,8 +82,10 @@ export const messageProblems = (message) => [
 ];
 
 /**
- * What git starts a comment line with in this repository, `#` unless set otherwise. Newer git
- * reads `core.commentString` as well as `core.commentChar`, and whichever is set last wins.
+ * What git starts a comment line with in this repository, `#` when unset.
+ * Newer git reads `core.commentString` as well as `core.commentChar`, and
+ * whichever comes last in its config wins. `auto` is read as `#`, the one git
+ * picks unless the message already has a line starting with it.
  */
 const commentCharacter = () => {
     try {

@@ -34,12 +34,12 @@ import { isDockerfile, isRunDirectly, repositoryFiles } from './repository.mjs';
  */
 
 /**
- * The majors a range admits, as the first and the first one past it, and
- * whether it admits every version of its first major. Only the forms written
- * here are understood: `>=N`, `>=N <M`, `^N`, `~N`, `N` and `N.x`, each with
- * or without minor and patch numbers. A minor narrows `~N.M` and `N.M` to that
- * minor, and a minor or patch past zero starts `^N.M` and `>=N.M` past the
- * major's first release.
+ * The majors a range admits, as the first and, if the range has an upper
+ * bound, the first one past it, and whether it admits every version of its
+ * first major. Only the forms written here are understood: `>=N`, `>=N <M`,
+ * `^N`, `~N`, `N` and `N.x`, each with or without minor and patch numbers. A
+ * minor, zero included, narrows `~N.M` and `N.M` to that minor, and a minor or
+ * patch past zero starts `^N.M` and `>=N.M` past the major's first release.
  *
  * @param {unknown} range
  * @returns {{ from: number, below: number | undefined, whole: boolean } | undefined}
