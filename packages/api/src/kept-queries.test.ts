@@ -68,11 +68,20 @@ describe('a query the API has seen', () => {
         expect(parsed).toHaveBeenCalledOnce();
     });
 
-    it('is not kept when it is longer than any the page sends', async () => {
+    it('is kept at exactly its longest length and not kept one character longer', async () => {
         const api = createStoreApi(store);
-        const query = `${fresh()}${' '.repeat(KEPT_QUERY_LENGTH)}`;
-        await api.run({ query }, guest, NOW);
-        await api.run({ query }, guest, NOW);
+        const padded = (length: number) => {
+            const query = fresh();
+            return `${query}${' '.repeat(length - query.length)}`;
+        };
+        const longest = padded(KEPT_QUERY_LENGTH);
+        await api.run({ query: longest }, guest, NOW);
+        await api.run({ query: longest }, guest, NOW);
+        expect(parsed).toHaveBeenCalledOnce();
+        parsed.mockClear();
+        const longer = padded(KEPT_QUERY_LENGTH + 1);
+        await api.run({ query: longer }, guest, NOW);
+        await api.run({ query: longer }, guest, NOW);
         expect(parsed).toHaveBeenCalledTimes(2);
     });
 
@@ -84,13 +93,36 @@ describe('a query the API has seen', () => {
         expect(refused.errors?.[0]?.extensions?.['code']).toBe('QUERY_TOO_DEEP');
     });
 
-    it('is forgotten once enough newer ones have been kept, and read again', async () => {
+    it('is still refused by a tighter field limit than the one it passed', async () => {
+        const query = `query Wide${String(serial)} { store { name currency } }`;
+        expect((await createStoreApi(store).run({ query }, guest, NOW)).errors).toBeUndefined();
+        const tight = createStoreApi(store, { limits: { maxDepth: 8, maxFields: 2 } });
+        const refused = await tight.run({ query }, guest, NOW);
+        expect(refused.errors?.[0]?.extensions?.['code']).toBe('QUERY_TOO_WIDE');
+    });
+
+    it('holds exactly its bound, and forgets the oldest when one more is kept', async () => {
         const api = createStoreApi(store);
-        const first = fresh();
+        const queries = Array.from({ length: KEPT_QUERIES + 1 }, fresh);
+        for (const query of queries) await api.run({ query }, guest, NOW);
+        parsed.mockClear();
+        await api.run({ query: queries[1] ?? '' }, guest, NOW);
+        expect(parsed).not.toHaveBeenCalled();
+        await api.run({ query: queries[0] ?? '' }, guest, NOW);
+        expect(parsed).toHaveBeenCalledOnce();
+    });
+
+    it('moves to the newest end when used, so the oldest unused is forgotten first', async () => {
+        const api = createStoreApi(store);
+        const queries = Array.from({ length: KEPT_QUERIES }, fresh);
+        for (const query of queries) await api.run({ query }, guest, NOW);
+        const [first = '', second = ''] = queries;
         await api.run({ query: first }, guest, NOW);
-        for (let i = 0; i < KEPT_QUERIES; i += 1) await api.run({ query: fresh() }, guest, NOW);
+        await api.run({ query: fresh() }, guest, NOW);
         parsed.mockClear();
         await api.run({ query: first }, guest, NOW);
+        expect(parsed).not.toHaveBeenCalled();
+        await api.run({ query: second }, guest, NOW);
         expect(parsed).toHaveBeenCalledOnce();
     });
 });

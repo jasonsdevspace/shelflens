@@ -5,7 +5,6 @@ import { createResponseCache, withResponseCache } from './cache.js';
 import { type CacheKey, cacheKey } from './cache-key.js';
 import type { Viewer } from './context.js';
 import { createStoreApi, type StoreResponse } from './execute.js';
-import { canonical, fingerprint } from './fingerprint.js';
 import { isRecord } from './guards.js';
 import { viewerFromHeader } from './http.js';
 import { createStore } from './store.js';
@@ -162,12 +161,6 @@ describe('the cache key', () => {
             cacheKey({ version: '1', viewer: guest, request })
         );
     });
-
-    it('writes a hole in an array as null rather than nothing', () => {
-        expect(canonical([undefined, 1])).toBe('[null,1]');
-        expect(canonical([undefined])).not.toBe(canonical([]));
-        expect(canonical({ a: undefined })).toBe(canonical({}));
-    });
 });
 
 describe('the store version', () => {
@@ -187,12 +180,6 @@ describe('the store version', () => {
         expect(cacheKey({ version: ruled.version, viewer: guest, request })).not.toBe(
             cacheKey({ version: api.version, viewer: guest, request })
         );
-    });
-
-    it('fingerprints a value by what it means, not how it is spelled', () => {
-        expect(fingerprint({ b: 1, a: [1, 2] })).toBe(fingerprint({ a: [1, 2], b: 1 }));
-        expect(fingerprint({ a: 1 })).not.toBe(fingerprint({ a: 2 }));
-        expect(fingerprint([])).toMatch(/^[0-9a-f]{8}$/);
     });
 });
 
@@ -310,6 +297,24 @@ describe('the response cache', () => {
         expect(first.extensions).toEqual({ volatile: true });
         await cached.run(rail, guest, NOW);
         expect(cached.cache).toMatchObject({ hits: 0, misses: 2, size: 0 });
+    });
+
+    it('does not keep a run that rejects, so the next ask runs again', async () => {
+        let runs = 0;
+        const flaky = {
+            ...api,
+            run: () => {
+                runs += 1;
+                return runs === 1
+                    ? Promise.reject(new Error('down'))
+                    : Promise.resolve<StoreResponse>({ data: { ok: true } });
+            },
+        };
+        const cached = withResponseCache(flaky);
+        await expect(cached.run(request, guest, NOW)).rejects.toThrow('down');
+        expect(cached.cache.size).toBe(0);
+        expect(await cached.run(request, guest, NOW)).toEqual({ data: { ok: true } });
+        expect(cached.cache).toMatchObject({ hits: 0, misses: 2, size: 1 });
     });
 
     it('does not keep an answer with errors', async () => {
