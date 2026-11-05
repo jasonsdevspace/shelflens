@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 
 import { isRunDirectly } from './repository.mjs';
 
-const TOOLS = [
+export const TOOLS = [
     /\bclaude\b/i,
     /\banthropic\b/i,
     /\bchatgpt\b/i,

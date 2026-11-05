@@ -80,6 +80,40 @@ describe('the Node version check', () => {
         ).toHaveLength(1);
     });
 
+    it('reads the Node types from dependencies too', () => {
+        expect(
+            nodeMismatches(
+                repo({ 'demo/package.json': pkg({ dependencies: { '@types/node': '22.0.0' } }) })
+            )
+        ).toEqual(['demo/package.json: @types/node is "22.0.0", expected Node 24']);
+    });
+
+    it('takes a published package that starts at the current major', () => {
+        expect(
+            nodeMismatches(repo({ 'engine/package.json': pkg({ engines: { node: '>=24' } }) }))
+        ).toEqual([]);
+    });
+
+    it('takes a tilde range on the current major for engines and for the Node types', () => {
+        expect(
+            nodeMismatches(
+                repo({
+                    'package.json': pkg({
+                        private: true,
+                        engines: { node: '~24.1' },
+                        devDependencies: { '@types/node': '~24.19.2' },
+                    }),
+                })
+            )
+        ).toEqual([]);
+    });
+
+    it('reports a manifest that is not JSON', () => {
+        expect(nodeMismatches(repo({ 'demo/package.json': '{ "name": ' }))).toEqual([
+            'demo/package.json: is not valid JSON',
+        ]);
+    });
+
     it('refuses a workflow that names its own version, but not a comment about one', () => {
         expect(
             nodeMismatches(
@@ -208,6 +242,22 @@ describe('the Node version check, run as a command', () => {
         expect(result.stderr).toBe(
             'Node version check failed.\n\nDockerfile:1: uses Node 20 (node:20)\nREADME.md:1: tells a reader Node 22\n'
         );
+        expect(result.status).toBe(1);
+    });
+
+    it('reads a workflow ending in .yaml and a Dockerfile by its other names', () => {
+        const result = runIn({
+            ...clean,
+            '.github/workflows/ci.yaml': "    with: { node-version: '20' }\n",
+            'api.Dockerfile': 'FROM node:20\n',
+            'docker/Dockerfile.prod': 'FROM node:20\n',
+        });
+        expect(result.stderr.split('\n').slice(2, -1)).toEqual([
+            '.github/workflows/ci.yaml:1: names its own Node version, ' +
+                'read node-version-file: .nvmrc instead',
+            'api.Dockerfile:1: uses Node 20 (node:20)',
+            'docker/Dockerfile.prod:1: uses Node 20 (node:20)',
+        ]);
         expect(result.status).toBe(1);
     });
 });
