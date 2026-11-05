@@ -1,10 +1,29 @@
 import { act, screen, within } from '@testing-library/react';
 import axe from 'axe-core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { cards, open, settled } from './test/store.jsx';
 
 /* The store on a phone: the facets and the rules in drawers. */
+
+/** A viewport the test can turn across the phone breakpoint, telling the page each time it turns. */
+const turnableViewport = () => {
+    let phone = false;
+    const listeners = new Set<() => void>();
+    vi.stubGlobal('matchMedia', (query: string) => ({
+        get matches() {
+            return phone && query.includes('max-width');
+        },
+        media: query,
+        addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    }));
+    return (toPhone: boolean) =>
+        act(() => {
+            phone = toPhone;
+            for (const listener of listeners) listener();
+        });
+};
 
 describe('on a phone', () => {
     const narrow = () => {
@@ -98,22 +117,7 @@ describe('on a phone', () => {
         ).toHaveValue('Last first');
     });
     it('keeps a half typed rule when the layout crosses the phone breakpoint', async () => {
-        // A viewport the test can turn, with the listeners the page attached.
-        let phone = false;
-        const listeners = new Set<() => void>();
-        vi.stubGlobal('matchMedia', (query: string) => ({
-            get matches() {
-                return phone && query.includes('max-width');
-            },
-            media: query,
-            addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-            removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
-        }));
-        const turn = (toPhone: boolean) =>
-            act(() => {
-                phone = toPhone;
-                for (const listener of listeners) listener();
-            });
+        const turn = turnableViewport();
         const user = await open('?q=jacket&explain=1&rules=1');
         await settled();
         const panel = await screen.findByRole('complementary', { name: 'Rules' });
@@ -128,5 +132,108 @@ describe('on a phone', () => {
         const again = screen.getByRole('complementary', { name: 'Rules' });
         expect(within(again).getByRole('textbox', { name: 'Name' })).toHaveValue('Last first');
         expect(within(again).getByRole('combobox', { name: 'Product' })).toHaveValue('SL-');
+    });
+
+    it('keeps a rule’s problems, its preview and the message after a save across the breakpoint', async () => {
+        const turn = turnableViewport();
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = cards().at(-1)?.getAttribute('data-sku') ?? '';
+        const panel = () => screen.getByRole('complementary', { name: 'Rules' });
+        const drawer = async () => {
+            await user.click(screen.getByRole('button', { name: 'Edit rules' }));
+            return screen.getByRole('dialog', { name: 'Rules' });
+        };
+        const missing = /The results have not shown a product with the SKU SL-9\./;
+
+        // A rule naming a product the results have not shown keeps saying so on a phone.
+        await user.click(
+            within(await screen.findByRole('complementary', { name: 'Rules' })).getByRole(
+                'button',
+                { name: 'Add a rule' }
+            )
+        );
+        await user.type(within(panel()).getByRole('combobox', { name: 'Product' }), 'SL-9');
+        await user.click(within(panel()).getByRole('button', { name: 'Save rule' }));
+        expect(
+            within(panel()).getByRole('combobox', { name: 'Product' })
+        ).toHaveAccessibleDescription(missing);
+        turn(true);
+        const onPhone = await drawer();
+        const product = within(onPhone).getByRole('combobox', { name: 'Product' });
+        expect(product).toHaveAccessibleDescription(missing);
+
+        // A sound rule previews on the page, and still does once the screen is wide again.
+        await user.clear(product);
+        await user.type(product, last);
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+        turn(false);
+        await settled();
+        expect(screen.getByText(/Previewing a draft/)).toBeVisible();
+
+        // The message after a save is still there on a phone.
+        await user.click(within(panel()).getByRole('button', { name: 'Save rule' }));
+        expect(await within(panel()).findByRole('status')).toHaveTextContent(/Rule saved\./);
+        turn(true);
+        expect(within(await drawer()).getByRole('status')).toHaveTextContent(/Rule saved\./);
+    });
+
+    it('keeps a discard’s step and the host’s refusal across the breakpoint, until a rule is taken up', async () => {
+        const turn = turnableViewport();
+        const user = await open('?q=jacket&explain=1&rules=1');
+        await settled();
+        const last = cards().at(-1)?.getAttribute('data-sku') ?? '';
+        const panel = await screen.findByRole('complementary', { name: 'Rules' });
+        await user.click(within(panel).getByRole('button', { name: 'Add a rule' }));
+        await user.type(within(panel).getByRole('combobox', { name: 'Product' }), last);
+        await user.click(within(panel).getByRole('button', { name: 'Save rule' }));
+        await within(panel).findByRole('status');
+        // The host refuses the discard, in its own words, for the rest of this test only.
+        const real = globalThis.fetch;
+        onTestFinished(() => {
+            vi.stubGlobal('fetch', real);
+        });
+        vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+            init?.method === 'DELETE'
+                ? Promise.resolve(
+                      Response.json(
+                          { errors: [{ message: 'the rules are being saved elsewhere' }] },
+                          { status: 409 }
+                      )
+                  )
+                : real(input, init)
+        );
+        const column = screen.getByRole('complementary', { name: 'Rules' });
+        await user.click(within(column).getByRole('button', { name: 'Discard your rules' }));
+        // The step the visitor is on survives the screen turning too.
+        turn(true);
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
+        expect(
+            within(screen.getByRole('dialog', { name: 'Rules' })).getByRole('button', {
+                name: 'Yes, discard',
+            })
+        ).toBeVisible();
+        turn(false);
+        await user.click(
+            within(screen.getByRole('complementary', { name: 'Rules' })).getByRole('button', {
+                name: 'Yes, discard',
+            })
+        );
+        expect(
+            await within(screen.getByRole('complementary', { name: 'Rules' })).findByRole('alert')
+        ).toHaveTextContent('the rules are being saved elsewhere');
+        turn(true);
+        await user.click(screen.getByRole('button', { name: 'Edit rules' }));
+        const drawer = screen.getByRole('dialog', { name: 'Rules' });
+        expect(within(drawer).getByRole('alert')).toHaveTextContent(
+            'the rules are being saved elsewhere'
+        );
+        // Taking up a rule lets the refusal go, so it is not said again beside the saved set, even
+        // when the rule is put down unsaved.
+        await user.click(within(drawer).getByRole('button', { name: 'Add a rule' }));
+        await user.click(within(drawer).getByRole('button', { name: 'Cancel' }));
+        expect(within(drawer).getByRole('button', { name: 'Discard your rules' })).toBeVisible();
+        expect(within(drawer).queryByRole('alert')).toBeNull();
     });
 });

@@ -654,6 +654,54 @@ describe('the rules panel', () => {
         expect(screen.queryByRole('status')).toBeNull();
     });
 
+    it('says nothing on the next opening about a discard refused after the panel closed', async () => {
+        await store.replace([nth(shipped, 1, 'a second shipped rule')]);
+        const { user, closePanel, reopenPanel } = open();
+        await user.click(await screen.findByRole('button', { name: 'Discard your rules' }));
+        let refuse: (() => void) | undefined;
+        const live = fetch;
+        vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+            init?.method === 'DELETE'
+                ? new Promise<Response>((resolve) => {
+                      refuse = () =>
+                          resolve(
+                              Response.json(
+                                  { errors: [{ message: 'the rules are being saved elsewhere' }] },
+                                  { status: 409 }
+                              )
+                          );
+                  })
+                : live(input, init)
+        );
+        await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
+        await waitFor(() => expect(refuse).toBeDefined());
+        closePanel();
+        refuse?.();
+        reopenPanel();
+        expect(await screen.findByRole('button', { name: 'Discard your rules' })).toBeVisible();
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('tells the page of a discard the host accepted after the panel closed', async () => {
+        await store.replace([nth(shipped, 1, 'a second shipped rule')]);
+        const { user, onStoreChanged, closePanel } = open();
+        await user.click(await screen.findByRole('button', { name: 'Discard your rules' }));
+        let accept: (() => void) | undefined;
+        const live = fetch;
+        vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+            init?.method === 'DELETE'
+                ? new Promise<Response>((resolve) => {
+                      accept = () => void live(input, init).then(resolve);
+                  })
+                : live(input, init)
+        );
+        await user.click(screen.getByRole('button', { name: 'Yes, discard' }));
+        await waitFor(() => expect(accept).toBeDefined());
+        closePanel();
+        accept?.();
+        await waitFor(() => expect(onStoreChanged).toHaveBeenCalledTimes(1));
+    });
+
     it('says nothing on the next opening of what was said before', async () => {
         const { user, closePanel, reopenPanel } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });

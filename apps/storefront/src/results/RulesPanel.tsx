@@ -3,9 +3,9 @@ import { useRef, useState } from 'react';
 
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
-import { discardRules } from '../client/rules.js';
 import { type Form, formOf, fresh, type Named, summary } from './rule-form.js';
 import { RuleForm } from './RuleForm.jsx';
+import type { Discard } from './useDiscard.js';
 import type { RulesEditor } from './useRulesEditor.js';
 
 export interface RulesPanelProps {
@@ -29,7 +29,6 @@ export interface RulesPanelProps {
     readonly setAside: readonly string[];
 }
 
-const NOT_RESTORED = 'Your rules could not be discarded. Try again.';
 // For a developer: the read either never reached the host or came back as something else.
 const READ_FAILED = 'the rules path did not answer with a set of rules';
 
@@ -90,29 +89,13 @@ const RuleList = ({
     );
 };
 
-/** Two steps to give up a saved set, since there is no undo for it. */
-export const DiscardRules = ({
-    rulesUrl,
-    onReset,
-}: {
-    readonly rulesUrl: string;
-    /** The host has its own rules back. */
-    readonly onReset: () => void;
-}) => {
-    const [asking, setAsking] = useState(false);
-    const [failure, setFailure] = useState<string>();
-    const discard = async () => {
-        const discarded = await discardRules(rulesUrl);
-        const failed = discarded.ok ? undefined : (discarded.reason ?? NOT_RESTORED);
-        setFailure(failed);
-        setAsking(false);
-        if (failed === undefined) onReset();
-    };
-    if (!asking) {
+/** Two steps to give up a saved set, since there is no undo for it, drawn from where it is held. */
+export const DiscardRules = ({ held }: { readonly held: Discard }) => {
+    if (!held.asking) {
         return (
             <>
-                {failure !== undefined && <span role="alert">{failure} </span>}
-                <button type="button" className="text-button" onClick={() => setAsking(true)}>
+                {held.failure !== undefined && <span role="alert">{held.failure} </span>}
+                <button type="button" className="text-button" onClick={() => held.ask(true)}>
                     Discard your rules
                 </button>
             </>
@@ -121,10 +104,10 @@ export const DiscardRules = ({
     return (
         <p className="notice">
             Discard your rules? They cannot be brought back.{' '}
-            <button type="button" className="text-button" onClick={() => void discard()}>
+            <button type="button" className="text-button" onClick={() => void held.discard()}>
                 Yes, discard
             </button>{' '}
-            <button type="button" className="text-button" onClick={() => setAsking(false)}>
+            <button type="button" className="text-button" onClick={() => held.ask(false)}>
                 Keep them
             </button>
         </p>
@@ -152,8 +135,7 @@ export const RulesPanel = ({
     brands,
     setAside,
 }: RulesPanelProps) => {
-    const { rulesUrl, rules, edited, editable, failed, form, tried, problems, message, fields } =
-        editor;
+    const { rules, edited, editable, failed, form, tried, problems, message, fields } = editor;
     const edit = (next: Form) => editor.edit(next, products);
     const title = useRef<HTMLHeadingElement>(null);
     return (
@@ -211,7 +193,7 @@ export const RulesPanel = ({
                                 Add a rule
                             </button>
                         </div>
-                        {edited && <DiscardRules rulesUrl={rulesUrl} onReset={editor.reset} />}
+                        {edited && <DiscardRules held={editor.discarding} />}
                     </>
                 )
             )}

@@ -5,6 +5,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import { createLatest } from '../client/latest.js';
 import { readRules, type RulesBody, saveRules } from '../client/rules.js';
 import { type Form, type Named, type Problems, problemsOf, ruleOf } from './rule-form.js';
+import { type Discard, useDiscard } from './useDiscard.js';
 
 export interface RulesEditorOptions {
     /** Where the rules are read and saved. */
@@ -35,6 +36,11 @@ export interface RulesEditor {
     readonly tried: boolean;
     readonly problems: Problems;
     readonly message: string;
+    /**
+     * Giving up the saved set: the step the visitor is on and what the host said if it refused,
+     * let go when a rule is taken up, when the store changes and when the panel closes.
+     */
+    readonly discarding: Discard;
     readonly fields: RefObject<HTMLFormElement | null>;
     /** The whole set with the rule being typed in it, once that rule is sound, for the preview. */
     readonly draft: readonly Rule[] | undefined;
@@ -138,7 +144,8 @@ const namedBy = (rules: readonly Rule[]): readonly string[] =>
  * The editor behind the panel. It lives in the page rather than in the
  * panel, so the panel can be a drawer on a phone and a column beside the
  * results on a wider screen, and crossing from one to the other draws the
- * panel anew without losing the rule being typed.
+ * panel anew without losing the rule being typed, its problems, its preview,
+ * the message after a save, or the step of a discard and the host's refusal.
  */
 export const useRulesEditor = ({
     rulesUrl,
@@ -156,6 +163,8 @@ export const useRulesEditor = ({
     const [message, setMessage] = useState('');
     const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
+    // Counts the times the visitor moved on from a discard: took up a rule or closed the panel.
+    const [movedOn, setMovedOn] = useState(0);
     // A closed panel holds no rule being typed and previews nothing.
     const [wasEnabled, setWasEnabled] = useState(enabled);
     if (wasEnabled !== enabled) {
@@ -165,6 +174,7 @@ export const useRulesEditor = ({
             setTried(false);
             setDraft(undefined);
             setMessage('');
+            setMovedOn((n) => n + 1);
         }
     }
     // Whether the panel is open now, for a request that lands after it closed.
@@ -195,6 +205,7 @@ export const useRulesEditor = ({
         const merged = { ...next, seen };
         setForm(merged);
         setMessage('');
+        if (!form) setMovedOn((n) => n + 1);
         const sound = Object.keys(problemsOf(merged, knownFor(seen))).length === 0;
         setDraft(sound ? setWith(ruleOf(merged)) : undefined);
     };
@@ -264,6 +275,13 @@ export const useRulesEditor = ({
         changed('The store\u2019s own rules are back.');
     };
 
+    // Let go when a rule is taken up, the panel closes or the store changes.
+    const discarding = useDiscard(
+        rulesUrl,
+        () => reset(),
+        `${String(storeRevision)}:${String(movedOn)}`
+    );
+
     return {
         rulesUrl,
         rules,
@@ -274,6 +292,7 @@ export const useRulesEditor = ({
         tried,
         problems,
         message,
+        discarding,
         fields,
         draft,
         retry,
