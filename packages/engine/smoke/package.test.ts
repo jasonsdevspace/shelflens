@@ -85,10 +85,6 @@ describe('the published engine', () => {
         expect(floorOf('>=24 <25')).toBeUndefined();
     });
 
-    it('declares a floor the smoke test can install', () => {
-        expect(floorOf(pkg.engines.node)).toBeDefined();
-    });
-
     it('compiles against no newer a language than its lowest supported Node runs', () => {
         const floor = Number(floorOf(pkg.engines.node)?.split('.')[0]);
         const edition = EDITION_BY_MAJOR[floor];

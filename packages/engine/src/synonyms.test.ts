@@ -43,6 +43,17 @@ describe('rewriting a query', () => {
         ]);
     });
 
+    it('reads the longer of two phrases that start on the same word', () => {
+        // The shorter rule comes first, so the table has to order them.
+        const overlapping = buildSynonyms([
+            { kind: 'one-way', from: 'trail', to: 'hiking' },
+            { kind: 'one-way', from: 'trail shoe', to: 'trail runner' },
+        ]);
+        expect(overlapping.rewrite(['trail', 'shoe'])).toEqual([
+            { terms: ['trail', 'shoe'], alternatives: [['trail', 'runner']] },
+        ]);
+    });
+
     it('widens a one-way rule in its one direction only', () => {
         expect(synonyms.rewrite(['cap'])).toEqual([
             { terms: ['cap'], alternatives: [['baseball', 'cap']] },
@@ -88,5 +99,55 @@ describe('a synonym never counts twice', () => {
         expect(tee?.matches.map((m) => [m.queryTerm, m.indexTerm, m.kind])).toEqual([
             ['t shirt', 'tee', 'synonym'],
         ]);
+    });
+});
+
+/*
+ * A phrase a rule recognized is matched whole. Read by a prefix or a typo of
+ * its first word, "rain coat" would find an umbrella or a tote.
+ */
+describe('a phrase a rule recognized', () => {
+    const engine = createEngine(
+        [
+            { id: 'umbrella', text: { name: 'Rainy Day Umbrella' }, attributes: {} },
+            { id: 'tote', text: { name: 'Main Street Tote' }, attributes: {} },
+        ],
+        {
+            fields: { name: { weight: 1 } },
+            attributes: {},
+            synonyms: [{ kind: 'equivalent', terms: ['rain coat', 'slicker'] }],
+        }
+    );
+    const ids = (request: Parameters<typeof engine.search>[0]) =>
+        engine.search(request).hits.map((h) => h.id);
+
+    it('takes no prefix reading, though its first word alone would', () => {
+        expect(ids({ query: 'rain', prefixLastTerm: true })).toEqual(['umbrella']);
+        expect(ids({ query: 'rain coat', prefixLastTerm: true })).toEqual([]);
+    });
+
+    it('takes no typo reading, though its first word alone would', () => {
+        expect(ids({ query: 'rain' })).toContain('tote');
+        expect(engine.search({ query: 'rain coat' }).mode).toBe('none');
+    });
+});
+
+describe('changing synonyms without reindexing', () => {
+    const engine = createEngine(
+        [
+            { id: 'tee', text: { name: 'Coastal Tee' }, attributes: {} },
+            { id: 'tshirt', text: { name: 'Everyday T-Shirt' }, attributes: {} },
+        ],
+        { fields: { name: { weight: 1 } }, attributes: {} }
+    );
+    const ids = (from: typeof engine) => from.search({ query: 'tee' }).hits.map((h) => h.id);
+
+    it('finds by the synonyms it is given, and stops when they are taken away', () => {
+        const widened = engine.reconfigure({
+            synonyms: [{ kind: 'equivalent', terms: ['t-shirt', 'tee'] }],
+        });
+        expect(ids(engine)).toEqual(['tee']);
+        expect(ids(widened)).toEqual(['tee', 'tshirt']);
+        expect(ids(widened.reconfigure({ synonyms: [] }))).toEqual(['tee']);
     });
 });

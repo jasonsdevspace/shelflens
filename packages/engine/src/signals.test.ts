@@ -42,8 +42,19 @@ describe('the weight of a signal', () => {
         expect(signalWeight(SIGNAL_SATURATION * 1000)).toBe(SIGNAL_CAP);
     });
 
-    it('stays below the smallest boost a merchandiser writes, and leaves a bury buried', () => {
-        expect(SIGNAL_CAP).toBeLessThan(1.4);
+    it('gives each count the share of the cap that the log of the count is of saturation', () => {
+        // Ten choices of a hundred reach about half the lift, where a straight line gives a tenth.
+        for (const count of [1, 10, 50]) {
+            const share = Math.log(1 + count) / Math.log(1 + SIGNAL_SATURATION);
+            expect(signalWeight(count), String(count)).toBeCloseTo(
+                1 + (SIGNAL_CAP - 1) * share,
+                10
+            );
+        }
+    });
+
+    it('is capped at the documented 1.25, too small to lift a bury of a half past one', () => {
+        expect(SIGNAL_CAP).toBe(1.25);
         expect(0.5 * SIGNAL_CAP).toBeLessThan(1);
     });
 });
@@ -64,6 +75,17 @@ describe('signals in ranking', () => {
         const rules: Rule[] = [{ id: 'promo', when: { queries: ['trail runner'] }, pin: ['b'] }];
         const engine = createEngine(documents, { ...config, rules, signals: { c: 100_000 } });
         expect(ids(engine, 'trail runner')).toEqual(['b', 'c', 'a', 'd']);
+    });
+
+    it('gives a pinned product no signal and leaves its score as its match made it', () => {
+        const rules: Rule[] = [{ id: 'promo', when: { queries: ['trail runner'] }, pin: ['b'] }];
+        const pinnedOnly = createEngine(documents, { ...config, rules });
+        const chosen = pinnedOnly.reconfigure({ signals: { b: 50 } });
+        const [pinned] = chosen.search({ query: 'trail runner' }).hits;
+        const [plain] = pinnedOnly.search({ query: 'trail runner' }).hits;
+        expect(pinned).toMatchObject({ id: 'b', rules: [{ ruleId: 'promo', action: 'pin' }] });
+        expect(pinned?.signal).toBeUndefined();
+        expect(pinned?.score).toBe(plain?.score);
     });
 
     it('lifts a score by the cap and no further, however often the product was chosen', () => {
