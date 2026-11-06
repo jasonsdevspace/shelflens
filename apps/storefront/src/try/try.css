@@ -107,7 +107,7 @@
 }
 
 /* A long column name in a visitor's file stops at its column's edge rather than widening the page. */
-.try-field .select {
+.try-field .dk-select {
     width: 100%;
 }
 

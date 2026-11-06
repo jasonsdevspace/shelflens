@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fresh, summary } from './rule-form.js';
+import { fresh, problemsOf, summary } from './rule-form.js';
 
 describe('a rule in a few words', () => {
     it('says a boost and a bury by their factor, as the cards do', () => {
@@ -14,6 +14,26 @@ describe('a rule in a few words', () => {
                 'en-US'
             )
         ).toBe('Boosts Ridgeback 1.5×. Buries 2 products 0.5×');
+    });
+});
+
+describe('what is wrong with a rule', () => {
+    const pin = (skus: string[]) => ({ ...fresh('jacket'), action: 'pin' as const, skus });
+
+    it('says which product field a product the results have not shown is in', () => {
+        const problems = problemsOf(pin(['SL-2', ' SL-9 ']), new Set(['SL-2']));
+        expect(problems.skus).toMatch(/SKU SL-9\./);
+        expect(problems.skuAt).toBe(1);
+    });
+
+    it('puts a rule that names no product on its first product field', () => {
+        const problems = problemsOf(pin(['', '']), new Set(['SL-2']));
+        expect(problems.skus).toBe('Name at least one product.');
+        expect(problems.skuAt).toBe(0);
+    });
+
+    it('says nothing of a product field when the products are sound', () => {
+        expect(problemsOf(pin(['SL-2']), new Set(['SL-2']))).toEqual({});
     });
 });
 

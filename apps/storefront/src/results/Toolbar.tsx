@@ -62,7 +62,7 @@ const SortField = ({
         <span className="sort-label">Sort by</span>
         <select
             id={id}
-            className="select"
+            className="dk-select"
             value={sortKey}
             onChange={(event) => {
                 // The options are the sort keys, so any value they give is one.

@@ -179,7 +179,7 @@ export const MappingEditor = ({
                             )}
                         </span>
                         <select
-                            className="select"
+                            className="dk-select"
                             id={`${id}-${field}`}
                             aria-required={REQUIRED.has(field) ? true : undefined}
                             aria-describedby={describedBy(field)}

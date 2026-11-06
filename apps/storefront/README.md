@@ -64,11 +64,14 @@ the page.
   `Button`, or its `.dk-button` on a link, a label or a button the page moves focus to. The one
   action a view asks for is its accent, and a step that goes nowhere is off rather than disabled, so
   a keyboard keeps its place on it. An action that reads as text is the store's own `.text-button`,
-  always underlined. Each component otherwise wears classes of its own. The page picks each color by
-  the saved theme and the widget by its host's color scheme. A test holds every sheet to the tokens,
-  the store's palette to every pairing the kit measures, and the widget's frame to every name it
-  reads, and a browser test holds every control on every page that is not off to an edge of 3 to 1,
-  the one focus ring and, for a select, its caret, in both themes and on a phone.
+  always underlined. Every select is the kit's `.dk-select`, and the rule form draws its fields from
+  the kit's `InputField` and `SelectField`, each problem said above its field under the hint, which
+  stays. The search box keeps a look of its own. Each component otherwise wears classes of its own.
+  The page picks each color by the saved theme and the widget by its host's color scheme. A test
+  holds every sheet to the tokens, the store's palette to every pairing the kit measures, and the
+  widget's frame to every name it reads, and a browser test holds every control on every page that
+  is not off to an edge of 3 to 1, the one focus ring and, for a select, its caret, in both themes
+  and on a phone.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

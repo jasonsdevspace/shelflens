@@ -231,7 +231,7 @@ describe('the rules panel', () => {
         ]);
     });
 
-    it('says what is missing under the field, once a save is tried, and puts focus there', async () => {
+    it('says what is missing above the field, once a save is tried, and puts focus there', async () => {
         const { user, onDraft } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
@@ -240,14 +240,49 @@ describe('the rules panel', () => {
         expect(screen.queryByText(/No product on this page/)).toBeNull();
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
         expect(screen.getByRole('textbox', { name: 'Search words' })).toHaveFocus();
-        expect(screen.getByRole('textbox', { name: 'Search words' })).toHaveAccessibleDescription(
-            'Say which searches this rule applies to, like jacket, jackets.'
+        // The hint stays while the problem shows, since it says how to put the problem right. The
+        // test's DOM drops the space after the hidden "Error:", which a browser reads.
+        const words = screen.getByRole('textbox', { name: 'Search words' });
+        expect(words).toHaveAccessibleDescription(
+            /^Separate alternatives with commas, like jacket, jackets Error: ?Say which searches this rule applies to, like jacket, jackets\.$/
         );
+        expect(words).toHaveAttribute('aria-invalid', 'true');
+        // Above the field, so a phone's keyboard never covers it.
+        const problem = screen.getByText(/^Say which searches this rule applies to/);
+        expect(problem.compareDocumentPosition(words)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
         expect(screen.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription(
-            /The results have not shown a product with the SKU SL-9\. Choose one from the list\./
+            /Error: ?The results have not shown a product with the SKU SL-9\. Choose one from the list\./
         );
         expect(posted).toEqual([]);
         expect(onDraft).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('says a product the results have not shown on the field that names it, and on no other', async () => {
+        const { user } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
+        await user.click(screen.getByRole('button', { name: 'Add another product' }));
+        await user.type(screen.getByRole('combobox', { name: 'Another product' }), 'SL-9');
+        await user.click(screen.getByRole('button', { name: 'Save rule' }));
+        const first = screen.getByRole('combobox', { name: 'Product' });
+        const another = screen.getByRole('combobox', { name: 'Another product' });
+        expect(another).toHaveAttribute('aria-invalid', 'true');
+        expect(another).toHaveAccessibleDescription(/Error: ?The results have not shown a product/);
+        expect(another).toHaveFocus();
+        expect(first).not.toHaveAttribute('aria-invalid');
+        expect(first).not.toHaveAccessibleDescription(/Error:/);
+        // The name of the product a field holds stays below it, so the field never moves as it is typed.
+        expect(first).toHaveAccessibleDescription(/Trail Jacket/);
+    });
+
+    it('draws its fields as the kit draws a field', async () => {
+        const { user } = open();
+        await screen.findByRole('list', { name: 'Rules that apply' });
+        await user.click(screen.getByRole('button', { name: 'Add a rule' }));
+        expect(screen.getByRole('textbox', { name: 'Name' })).toHaveClass('dk-input');
+        expect(screen.getByRole('combobox', { name: 'Product' })).toHaveClass('dk-input');
+        expect(screen.getByText('Name', { selector: 'label' })).toHaveClass('dk-field-label');
     });
 
     it('saves the set, says the new store version, and lists the saved rule', async () => {

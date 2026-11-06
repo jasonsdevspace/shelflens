@@ -1,5 +1,5 @@
-import { Button } from '@jasonsdevspace/design-kit/react';
-import { type FormEvent, type ReactNode, type RefObject, useId } from 'react';
+import { Button, InputField, SelectField } from '@jasonsdevspace/design-kit/react';
+import { type FormEvent, type RefObject, useId } from 'react';
 
 import {
     ACTIONS,
@@ -19,10 +19,11 @@ import { onlyUnderRelevance } from './setAside.js';
 const TARGET_LABELS: Readonly<Record<Target, string>> = { product: 'A product', brand: 'A brand' };
 
 /**
- * One rule, as a form. Every change goes up at once, so the results beside
- * the panel preview the draft while it is typed. A problem is said under
- * its field, and only once the merchandiser has tried to save, so a half
- * typed rule is not told off.
+ * One rule, as a form of the design kit's fields. Every change goes up at
+ * once, so the results beside the panel preview the draft while it is
+ * typed. A problem is said above its field, under the field's hint, which
+ * stays, and only once the merchandiser has tried to save, so a half typed
+ * rule is not told off.
  */
 
 export interface RuleFormProps {
@@ -41,32 +42,9 @@ export interface RuleFormProps {
     readonly onRemove: () => void;
 }
 
-/** The line under a field: its problem once a save was tried, otherwise its hint. */
-const under = (tried: boolean, problem: string | undefined, hint: string): string =>
-    tried && problem !== undefined ? problem : hint;
-
-/** A labeled control with a line under it. The label names the control, and the line describes it. */
-const Field = ({
-    id,
-    label,
-    line,
-    children,
-}: {
-    readonly id: string;
-    readonly label: string;
-    readonly line?: string | undefined;
-    readonly children: ReactNode;
-}) => (
-    <div className="rules-field">
-        <label htmlFor={id}>{label}</label>
-        {children}
-        {line !== undefined && (
-            <span id={`${id}-line`} className="hint">
-                {line}
-            </span>
-        )}
-    </div>
-);
+/** A field's problem, once a save was tried. */
+const shown = (tried: boolean, problem: string | undefined): string | undefined =>
+    tried ? problem : undefined;
 
 /** The name the page or the rule has shown for a SKU, which outlives the product's place on the page. */
 const nameOf = (named: readonly Named[], sku: string): string =>
@@ -84,18 +62,15 @@ const ProductFields = ({
 }) => (
     <>
         {form.skus.map((sku, index) => (
-            <Field
-                key={index}
-                id={`${id}-sku-${index}`}
-                label={index === 0 ? 'Product' : 'Another product'}
-                line={nameOf([...products, ...form.seen], sku)}
-            >
-                <input
+            // The name of the product the field holds is below it, rather than the kit's hint
+            // above it, so the field never moves as a SKU is typed.
+            <div key={index} className="rules-product">
+                <InputField
                     id={`${id}-sku-${index}`}
-                    className="rules-input"
+                    label={index === 0 ? 'Product' : 'Another product'}
+                    error={problems.skuAt === index ? shown(tried, problems.skus) : undefined}
                     list={`${id}-products`}
                     value={sku}
-                    aria-invalid={tried && problems.skus ? true : undefined}
                     aria-describedby={`${id}-skus ${id}-sku-${index}-line`}
                     onChange={(event) =>
                         onChange({
@@ -106,7 +81,10 @@ const ProductFields = ({
                         })
                     }
                 />
-            </Field>
+                <span id={`${id}-sku-${index}-line`} className="hint">
+                    {nameOf([...products, ...form.seen], sku)}
+                </span>
+            </div>
         ))}
         <datalist id={`${id}-products`}>
             {products.map((product) => (
@@ -116,11 +94,7 @@ const ProductFields = ({
             ))}
         </datalist>
         <span id={`${id}-skus`} className="hint">
-            {under(
-                tried,
-                problems.skus,
-                'A product the results have shown, or one a saved rule names'
-            )}
+            A product the results have shown, or one a saved rule names
         </span>
         {(form.action === 'pin' || form.action === 'hide') && (
             <button
@@ -144,23 +118,20 @@ const BrandField = ({
 }: Pick<RuleFormProps, 'form' | 'problems' | 'tried' | 'brands' | 'onChange'> & {
     readonly id: string;
 }) => (
-    <Field id={`${id}-brand`} label="Brand" line={under(tried, problems.brand, '')}>
-        <select
-            id={`${id}-brand`}
-            className="select"
-            value={form.brand}
-            aria-invalid={tried && problems.brand ? true : undefined}
-            aria-describedby={`${id}-brand-line`}
-            onChange={(event) => onChange({ ...form, brand: event.target.value })}
-        >
-            <option value="">Choose a brand</option>
-            {brands.map((brand) => (
-                <option key={brand} value={brand}>
-                    {brand}
-                </option>
-            ))}
-        </select>
-    </Field>
+    <SelectField
+        id={`${id}-brand`}
+        label="Brand"
+        error={shown(tried, problems.brand)}
+        value={form.brand}
+        onChange={(event) => onChange({ ...form, brand: event.target.value })}
+    >
+        <option value="">Choose a brand</option>
+        {brands.map((brand) => (
+            <option key={brand} value={brand}>
+                {brand}
+            </option>
+        ))}
+    </SelectField>
 );
 
 const WeightField = ({
@@ -170,21 +141,19 @@ const WeightField = ({
 }: Pick<RuleFormProps, 'form' | 'onChange'> & { readonly id: string }) => {
     if (form.action !== 'boost' && form.action !== 'bury') return null;
     return (
-        <Field id={`${id}-step`} label="How much" line={onlyUnderRelevance(form.action)}>
-            <select
-                id={`${id}-step`}
-                className="select"
-                aria-describedby={`${id}-step-line`}
-                value={form.step}
-                onChange={(event) => onChange({ ...form, step: Number(event.target.value) })}
-            >
-                {STEPS[form.action].map((step, index) => (
-                    <option key={step.label} value={index}>
-                        {step.label}
-                    </option>
-                ))}
-            </select>
-        </Field>
+        <SelectField
+            id={`${id}-step`}
+            label="How much"
+            hint={onlyUnderRelevance(form.action)}
+            value={form.step}
+            onChange={(event) => onChange({ ...form, step: Number(event.target.value) })}
+        >
+            {STEPS[form.action].map((step, index) => (
+                <option key={step.label} value={index}>
+                    {step.label}
+                </option>
+            ))}
+        </SelectField>
     );
 };
 
@@ -198,37 +167,21 @@ export const RuleForm = (props: RuleFormProps) => {
     };
     return (
         <form ref={fields} className="rules-form" onSubmit={submit}>
-            <Field
+            <InputField
                 id={`${id}-name`}
                 label="Name"
-                line={`Under each card it appears as rule ${form.id}`}
-            >
-                <input
-                    id={`${id}-name`}
-                    className="rules-input"
-                    value={form.name}
-                    aria-describedby={`${id}-name-line`}
-                    onChange={(event) => onChange({ ...form, name: event.target.value })}
-                />
-            </Field>
-            <Field
+                hint={`Under each card it appears as rule ${form.id}`}
+                value={form.name}
+                onChange={(event) => onChange({ ...form, name: event.target.value })}
+            />
+            <InputField
                 id={`${id}-words`}
                 label="Search words"
-                line={under(
-                    tried,
-                    problems.words,
-                    'Separate alternatives with commas, like jacket, jackets'
-                )}
-            >
-                <input
-                    id={`${id}-words`}
-                    className="rules-input"
-                    value={form.words}
-                    aria-invalid={tried && problems.words ? true : undefined}
-                    aria-describedby={`${id}-words-line`}
-                    onChange={(event) => onChange({ ...form, words: event.target.value })}
-                />
-            </Field>
+                hint="Separate alternatives with commas, like jacket, jackets"
+                error={shown(tried, problems.words)}
+                value={form.words}
+                onChange={(event) => onChange({ ...form, words: event.target.value })}
+            />
             {keptLine(form.kept) !== undefined && <p className="notice">{keptLine(form.kept)}</p>}
             <fieldset className="rules-field">
                 <legend>What the rule does</legend>
@@ -247,24 +200,22 @@ export const RuleForm = (props: RuleFormProps) => {
                 ))}
             </fieldset>
             {adjusts && (
-                <Field id={`${id}-target`} label="On">
-                    <select
-                        id={`${id}-target`}
-                        className="select"
-                        value={form.target}
-                        onChange={(event) => {
-                            const { value } = event.target;
-                            if (!isTarget(value)) return;
-                            onChange({ ...form, target: value });
-                        }}
-                    >
-                        {TARGETS.map((target) => (
-                            <option key={target} value={target}>
-                                {TARGET_LABELS[target]}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
+                <SelectField
+                    id={`${id}-target`}
+                    label="On"
+                    value={form.target}
+                    onChange={(event) => {
+                        const { value } = event.target;
+                        if (!isTarget(value)) return;
+                        onChange({ ...form, target: value });
+                    }}
+                >
+                    {TARGETS.map((target) => (
+                        <option key={target} value={target}>
+                            {TARGET_LABELS[target]}
+                        </option>
+                    ))}
+                </SelectField>
             )}
             {namesProducts(form) ? (
                 <ProductFields id={id} {...props} />

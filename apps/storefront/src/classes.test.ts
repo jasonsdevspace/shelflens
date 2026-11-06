@@ -16,7 +16,6 @@ const SHARED = new Set([
     'button-large',
     'text-button',
     'option-button',
-    'select',
     'notice',
     'callout',
     'hint',

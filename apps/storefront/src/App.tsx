@@ -131,7 +131,7 @@ const ViewerSwitch = ({
     <label className="viewer">
         Shopping as
         <select
-            className="select"
+            className="dk-select"
             value={group}
             onChange={(event) => onChange(event.target.value === 'member' ? 'member' : 'guest')}
         >

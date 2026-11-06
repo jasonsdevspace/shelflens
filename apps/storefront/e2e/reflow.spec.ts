@@ -39,7 +39,7 @@ const SHELLS = [
  * reader alone is drawn a pixel wide, and is passed over by its size, as is
  * a control drawn unseen over another to take its clicks.
  */
-const CLIPPED_ON_PURPOSE = ['stars-fill', 'select'];
+const CLIPPED_ON_PURPOSE = ['stars-fill', 'dk-select'];
 
 /**
  * What reaches past the screen as the page is drawn: the page itself, any

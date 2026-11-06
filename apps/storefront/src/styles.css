@@ -53,62 +53,12 @@ summary,
 }
 
 /*
- * A field a visitor types into or picks from, a text field and a select
- * alike: one height, one inset for its text, one edge and one set of
- * corners, so fields stacked in a form line up. On a phone each is a
- * thumb's size, with text large enough that a tap does not zoom the page.
+ * The fields are the kit's: a .dk-input and a .dk-select share one height,
+ * one inset for their text, one edge and one set of corners, so fields
+ * stacked in a form line up, and on a phone each is a thumb's size. A
+ * select's caret is drawn in the muted text, and the browser's own comes
+ * back in forced colors.
  */
-.select,
-.rules-input {
-    min-height: var(--dk-field-height);
-    padding: var(--dk-space-1) var(--dk-field-inline);
-    font: inherit;
-    border: 1px solid var(--dk-control);
-    border-radius: var(--dk-radius);
-    background-color: var(--dk-bg);
-    color: var(--dk-fg);
-}
-
-@media (max-width: 48rem) {
-    .select,
-    .rules-input {
-        min-height: var(--dk-target);
-        font-size: max(var(--dk-text-body), 16px);
-    }
-}
-
-/*
- * Every select on every page. The browser's own list opens, but the closed
- * control is drawn here, so its caret is the muted text color and sits as
- * far from the right edge as the text does from the left, and the padding
- * keeps a long value short of it, cut off with an ellipsis where the
- * browser draws one. In forced colors the caret image would be lost, so the
- * browser draws its own again.
- */
-.select {
-    appearance: none;
-    max-width: 100%;
-    /* The text's inset, then room for the caret and the same inset again beyond it. */
-    padding-inline-end: calc(var(--dk-field-inline) * 2 + var(--dk-space-3));
-    text-overflow: ellipsis;
-    /* The caret, two halves of a triangle in the muted text color, its right point the text's inset from the edge. */
-    background-image:
-        linear-gradient(45deg, transparent 50%, var(--dk-muted) 50%),
-        linear-gradient(135deg, var(--dk-muted) 50%, transparent 50%);
-    background-repeat: no-repeat;
-    background-position:
-        right calc(var(--dk-field-inline) + 0.375rem) center,
-        right var(--dk-field-inline) center;
-    background-size: 0.375rem 0.375rem;
-}
-
-@media (forced-colors: active) {
-    .select {
-        appearance: auto;
-        padding-inline-end: var(--dk-field-inline);
-        background-image: none;
-    }
-}
 
 /*
  * The page's buttons are the kit's: a .dk-button has an edge in the
@@ -637,7 +587,7 @@ summary,
 }
 
 /* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
-.sort .select {
+.sort .dk-select {
     min-width: 0;
 }
 
@@ -976,15 +926,15 @@ summary,
     font-size: var(--dk-text-small);
 }
 
-.rules-field > label,
 .rules-field > legend {
     font-weight: var(--dk-weight-strong);
     padding: 0;
 }
 
-.rules-input[aria-invalid='true'],
-.select[aria-invalid='true'] {
-    border-color: var(--dk-danger);
+/* A product field, with the name of the product it holds below it. */
+.rules-product {
+    display: grid;
+    gap: var(--dk-space-1);
 }
 
 .rules-choice {
