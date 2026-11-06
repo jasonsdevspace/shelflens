@@ -1,12 +1,13 @@
 import { fileURLToPath } from 'node:url';
 
+import { themeScriptPlugin } from '@jasonsdevspace/design-kit/vite';
 import react from '@vitejs/plugin-react';
 import { defaultClientConditions, defineConfig } from 'vite';
 
 import { SOURCE_CONDITION } from '../../source-condition.js';
 import { storeApi } from './src/dev/api-plugin.js';
+import { pagePolicy } from './src/dev/page-policy-plugin.js';
 import { pageShell } from './src/dev/shell-plugin.js';
-import { themeScript } from './src/dev/theme-plugin.js';
 
 /**
  * The page, the explainer beside it at about/, the widget's host page, the
@@ -20,7 +21,7 @@ import { themeScript } from './src/dev/theme-plugin.js';
  */
 export default defineConfig({
     base: process.env['BASE_PATH'] ?? '/',
-    plugins: [react(), storeApi(), themeScript(), pageShell()],
+    plugins: [react(), storeApi(), themeScriptPlugin(), pagePolicy(), pageShell()],
     // Each workspace package's source, by the condition its exports name.
     resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
     // The preview serves the built files as GitHub Pages does, to any origin, so a page

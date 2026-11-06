@@ -284,7 +284,7 @@ packages/
                  cache key, the shape over HTTP, and the events and rules receivers
 apps/
 ├── server/      the API behind HTTP, with a rate limit and a request id
-└── storefront/  the demo page, and theme.js, the script both pages run before their first paint
+└── storefront/  the demo page and the widget's hosts, with the design kit's theme script
     ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
     └── src/     tokens.css (the design's named values), styles.css, app (the URL as state,
@@ -295,8 +295,8 @@ apps/
                  counts in the store's locale), events (the collector), tour, try (a visitor's
                  own catalog), widget (the search box for other pages), worker (the API as a
                  service worker, and the events, rules and catalog it keeps), dev (the API
-                 inside the dev server), bench (the measurements and the audit), operations,
-                 generated
+                 inside the dev server, the first screen and each built page's policy), bench
+                 (the measurements and the audit), operations, generated
 docs/
 ├── benchmarks/  the recorded measurements
 └── decisions/   the decision records
