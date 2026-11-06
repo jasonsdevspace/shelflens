@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
+import { ProblemAlert } from '../app/ProblemAlert.jsx';
 import { SetApart } from '../app/SetApart.jsx';
 import type { Loaded } from '../client/catalog.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
-import { Ask, ProblemAlert } from './notices.jsx';
+import { Ask } from './notices.jsx';
 
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 export const CatalogBar = ({

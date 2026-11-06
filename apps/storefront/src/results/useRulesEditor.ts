@@ -31,6 +31,7 @@ export interface RulesEditor {
     readonly rules: readonly Rule[];
     readonly edited: boolean;
     readonly editable: boolean;
+    /** Whether the rules could not be read for the store as it is now. */
     readonly failed: boolean;
     readonly form: Form | undefined;
     readonly tried: boolean;
@@ -54,10 +55,15 @@ export interface RulesEditor {
     readonly reset: () => void;
 }
 
-/** A line the panel says after a save, which is news, or something that went wrong. */
+/**
+ * A line the panel says after a change it was asked for, which is news, or something that went
+ * wrong.
+ */
 interface Said {
     readonly text: string;
     readonly failed: boolean;
+    /** Which line this is, new each time, so the same words said again are a new line. */
+    readonly at: number;
 }
 
 const NOT_SAVED = 'The rules could not be saved. Try again.';
@@ -168,6 +174,7 @@ export const useRulesEditor = ({
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
     const [message, setMessage] = useState<Said>();
+    const lines = useRef(0);
     const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
     // Counts the times the visitor moved on from a discard: took up a rule or closed the panel.
@@ -189,6 +196,13 @@ export const useRulesEditor = ({
     useEffect(() => {
         isOpen.current = enabled;
     }, [enabled]);
+    // Said only while the panel is open: an answer that lands after it closed is not news on the
+    // next open.
+    const say = (text: string, failed: boolean) => {
+        if (!isOpen.current) return;
+        lines.current += 1;
+        setMessage({ text, failed, at: lines.current });
+    };
 
     const rules = loaded?.rules ?? [];
     const editable = loaded !== undefined && current && !failed;
@@ -225,9 +239,7 @@ export const useRulesEditor = ({
     /** The store is new: the page forgets first, so nothing it shows next is from before. */
     const changed = (said: string): number => {
         const revision = onStoreChanged();
-        // Said only while the panel is open: a save that lands after it closed is not news on the
-        // next open.
-        if (isOpen.current) setMessage({ text: said, failed: false });
+        say(said, false);
         close();
         return revision;
     };
@@ -235,19 +247,19 @@ export const useRulesEditor = ({
     const commit = async (set: readonly Rule[], said: string) => {
         // A set built on rules the panel could not read is not one to post.
         if (!editable) {
-            setMessage({ text: failed ? NOT_READ : NOT_YET, failed: true });
+            say(failed ? NOT_READ : NOT_YET, true);
             return;
         }
         const saved = await saveRules(rulesUrl, set);
         if (!saved.ok) {
-            setMessage({ text: saved.reason ?? NOT_SAVED, failed: true });
+            say(saved.reason ?? NOT_SAVED, true);
             return;
         }
         // The host has the set, so the panel does too, without reading it back.
         accept(set, changed(versionLine(saved.response, said)));
     };
 
-    // A failed save puts focus on the first field with a problem, once the
+    // A save the form's problems stop puts focus on the first field with a problem, once the
     // problems are on the page, which is a render after the attempt.
     const [attempt, setAttempt] = useState(0);
     useEffect(() => {
