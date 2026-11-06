@@ -61,9 +61,14 @@ test('keeps its look, its place over the host and its own React, and sends a sea
             { x: box.x + box.width / 2, y: box.y + box.height / 2 }
         );
         expect(atCenter).toBe('shelflens-search');
+        // Out past the clipping box's edge, below it or, where the box sits low on a phone and
+        // the list opens upward, above it.
         const clip = await page.locator('.host-clip').boundingBox();
         expect(clip).not.toBeNull();
-        if (clip) expect(box.y + box.height).toBeGreaterThan(clip.y + clip.height);
+        if (clip) {
+            const past = box.y < clip.y || box.y + box.height > clip.y + clip.height;
+            expect(past, JSON.stringify({ box, clip })).toBe(true);
+        }
     }
     // The list is a scrolling region here, since the box sits low on this page, and
     // the rule for those wants a tab stop. The combobox contract keeps focus in the
