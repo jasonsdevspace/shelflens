@@ -145,7 +145,15 @@ export const RulesPanel = ({
             <h2 className="rules-title" tabIndex={-1} ref={title}>
                 {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
             </h2>
-            {message && <SetApart live="status">{message}</SetApart>}
+            {/* News is said politely, and something that went wrong at once, in its own tone. */}
+            {message &&
+                (message.failed ? (
+                    <SetApart tone="danger" live="alert">
+                        {message.text}
+                    </SetApart>
+                ) : (
+                    <SetApart live="status">{message.text}</SetApart>
+                ))}
             {failed && (
                 <LoadFailure
                     what="The rules"

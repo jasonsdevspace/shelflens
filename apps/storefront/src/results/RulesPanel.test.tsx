@@ -292,9 +292,10 @@ describe('the rules panel', () => {
         await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Trail first');
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        expect(await screen.findByRole('status')).toHaveTextContent(
-            'Rule saved. The store is now version rules.abcd.'
-        );
+        const saved = await screen.findByRole('status');
+        expect(saved).toHaveTextContent('Rule saved. The store is now version rules.abcd.');
+        // News, said politely in the kit's callout for it.
+        expect(saved.closest('.dk-callout')).not.toHaveClass('dk-callout-danger');
         expect(onStoreChanged).toHaveBeenCalledTimes(1);
         expect(posted).toHaveLength(1);
         expect(await store.current()).toHaveLength(3);
@@ -314,9 +315,9 @@ describe('the rules panel', () => {
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-404');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        expect(await screen.findByRole('status')).toHaveTextContent(
-            'no product has the SKU SL-404'
-        );
+        const refused = await screen.findByRole('alert');
+        expect(refused).toHaveTextContent('no product has the SKU SL-404');
+        expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(posted).toHaveLength(1);
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
@@ -446,16 +447,16 @@ describe('the rules panel', () => {
         expect(screen.queryByRole('button', { name: 'Add a rule' })).toBeNull();
     });
 
-    it('says when a save does not reach the host', async () => {
+    it('says when a save does not reach the host, as something that went wrong', async () => {
         const { user, onStoreChanged } = open();
         await screen.findByRole('list', { name: 'Rules that apply' });
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        expect(await screen.findByRole('status')).toHaveTextContent(
-            'The rules could not be saved. Try again.'
-        );
+        const failed = await screen.findByRole('alert');
+        expect(failed).toHaveTextContent(/^Error: ?The rules could not be saved\. Try again\.$/);
+        expect(failed.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
     });
@@ -609,9 +610,9 @@ describe('the rules panel', () => {
         vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
         storeBuiltAgain(1);
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        expect(await screen.findByRole('status')).toHaveTextContent(
-            'The rules are being read again. Try again in a moment.'
-        );
+        const refused = await screen.findByRole('alert');
+        expect(refused).toHaveTextContent('The rules are being read again. Try again in a moment.');
+        expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(await store.current()).toBeUndefined();
     });

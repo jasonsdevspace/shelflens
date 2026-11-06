@@ -35,7 +35,8 @@ export interface RulesEditor {
     readonly form: Form | undefined;
     readonly tried: boolean;
     readonly problems: Problems;
-    readonly message: string;
+    /** What the panel last said, and whether it says something went wrong. */
+    readonly message: Said | undefined;
     /**
      * Giving up the saved set: the step the visitor is on and what the host said if it refused,
      * let go when a rule is taken up, when the store changes and when the panel closes.
@@ -51,6 +52,12 @@ export interface RulesEditor {
     readonly save: () => void;
     readonly remove: () => void;
     readonly reset: () => void;
+}
+
+/** A line the panel says after a save, which is news, or something that went wrong. */
+interface Said {
+    readonly text: string;
+    readonly failed: boolean;
 }
 
 const NOT_SAVED = 'The rules could not be saved. Try again.';
@@ -160,7 +167,7 @@ export const useRulesEditor = ({
     );
     const [form, setForm] = useState<Form>();
     const [tried, setTried] = useState(false);
-    const [message, setMessage] = useState('');
+    const [message, setMessage] = useState<Said>();
     const [draft, setDraft] = useState<readonly Rule[]>();
     const fields = useRef<HTMLFormElement>(null);
     // Counts the times the visitor moved on from a discard: took up a rule or closed the panel.
@@ -173,7 +180,7 @@ export const useRulesEditor = ({
             setForm(undefined);
             setTried(false);
             setDraft(undefined);
-            setMessage('');
+            setMessage(undefined);
             setMovedOn((n) => n + 1);
         }
     }
@@ -204,7 +211,7 @@ export const useRulesEditor = ({
         const seen = [...next.seen, ...products.filter((product) => !shown.has(product.sku))];
         const merged = { ...next, seen };
         setForm(merged);
-        setMessage('');
+        setMessage(undefined);
         if (!form) setMovedOn((n) => n + 1);
         const sound = Object.keys(problemsOf(merged, knownFor(seen))).length === 0;
         setDraft(sound ? setWith(ruleOf(merged)) : undefined);
@@ -220,7 +227,7 @@ export const useRulesEditor = ({
         const revision = onStoreChanged();
         // Said only while the panel is open: a save that lands after it closed is not news on the
         // next open.
-        if (isOpen.current) setMessage(said);
+        if (isOpen.current) setMessage({ text: said, failed: false });
         close();
         return revision;
     };
@@ -228,12 +235,12 @@ export const useRulesEditor = ({
     const commit = async (set: readonly Rule[], said: string) => {
         // A set built on rules the panel could not read is not one to post.
         if (!editable) {
-            setMessage(failed ? NOT_READ : NOT_YET);
+            setMessage({ text: failed ? NOT_READ : NOT_YET, failed: true });
             return;
         }
         const saved = await saveRules(rulesUrl, set);
         if (!saved.ok) {
-            setMessage(saved.reason ?? NOT_SAVED);
+            setMessage({ text: saved.reason ?? NOT_SAVED, failed: true });
             return;
         }
         // The host has the set, so the panel does too, without reading it back.
