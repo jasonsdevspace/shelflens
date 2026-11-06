@@ -1,3 +1,4 @@
+import { Callout } from '@jasonsdevspace/design-kit/react';
 import { type ReactNode, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
@@ -323,10 +324,12 @@ const Notices = ({
 }) => (
     <>
         {previewing && (
-            <p className="callout" role="status">
-                Previewing a draft rule. Shoppers see the saved rules until you press &ldquo;Save
-                rule&rdquo;.
-            </p>
+            <div className="callout">
+                <Callout live="status">
+                    Previewing a draft rule. Shoppers see the saved rules until you press
+                    &ldquo;Save rule&rdquo;.
+                </Callout>
+            </div>
         )}
         <SetAside
             said={setAsideBySort(sortKey, setAside)}

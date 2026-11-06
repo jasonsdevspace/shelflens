@@ -178,6 +178,30 @@ const loadBenches = async (page: Page) => {
     await expect(page.getByText('the 4 products you loaded')).toBeVisible();
 };
 
+test('keeps the way past the filters out of sight until it takes focus, wherever the column starts', async ({
+    page,
+}) => {
+    // The bar about the visitor's products sets the column high on the page, where a link put
+    // out of sight above the column would still be on it.
+    await loadBenches(page);
+    await page.goto('try/?q=bench');
+    const skip = page.getByRole('link', { name: 'Skip to results' });
+    await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
+    const drawnAt = () =>
+        skip.evaluate((link) => {
+            const box = link.getBoundingClientRect();
+            const atCenter = document.elementFromPoint(
+                box.x + box.width / 2,
+                box.y + box.height / 2
+            );
+            return atCenter === link || link.contains(atCenter);
+        });
+    expect(await drawnAt()).toBe(false);
+    await page.getByRole('button', { name: 'Choose another file' }).click({ trial: true });
+    await skip.focus();
+    expect(await drawnAt()).toBe(true);
+});
+
 test('a visitor pins their own product, sees why it ranked, keeps it across a visit, and is asked before a new file takes it', async ({
     page,
 }) => {
@@ -241,7 +265,9 @@ test('a visitor pins their own product, sees why it ranked, keeps it across a vi
     await page.goto('try/?q=bench');
     await expect.poll(order).toHaveLength(5);
     expect((await order())[0]).not.toBe(last);
-    await expect(page.locator('.rules-notice')).toBeHidden();
+    await expect(
+        page.locator('.dk-callout', { hasText: 'Your edited rules are in effect' })
+    ).toBeHidden();
 });
 
 test('discarding a visitor’s rules gives back the order the engine chose', async ({ page }) => {
@@ -265,7 +291,7 @@ test('discarding a visitor’s rules gives back the order the engine chose', asy
     await expect(panel.getByRole('status')).toContainText('Rule saved');
     // The rule moved the last bench first, so getting the order back proves something.
     await expect.poll(async () => (await order())[0]).toBe(last);
-    const notice = page.locator('.rules-notice');
+    const notice = page.locator('.dk-callout', { hasText: 'Your edited rules are in effect' });
     await notice.getByRole('button', { name: 'Discard your rules' }).click();
     await notice.getByRole('button', { name: 'Yes, discard' }).click();
     await expect(notice).toBeHidden();

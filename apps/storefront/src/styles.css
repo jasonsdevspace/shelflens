@@ -38,13 +38,13 @@ summary,
     color: var(--dk-muted);
 }
 
-/* A line the page wants seen, such as who is shopping or whose catalog this is, on the highlight. */
+/*
+ * The room below a line the page wants seen, such as who is shopping or
+ * whose catalog this is, which is the kit's callout. The callout takes no
+ * class of the page's, so the room is its holder's.
+ */
 .callout {
     margin: 0 0 var(--dk-space-4);
-    padding: var(--dk-space-2) var(--dk-space-3);
-    font-size: var(--dk-text-small);
-    background: var(--dk-highlight);
-    border-radius: var(--dk-radius);
 }
 
 .hint {
@@ -119,19 +119,6 @@ summary,
 .option-button:hover,
 .option-button:focus-visible {
     text-decoration: underline;
-}
-
-/* What did not load, in the text's own color since it asks for something to be done. */
-.load-failure {
-    color: var(--dk-fg);
-}
-
-/* What did not load, with the way to ask again and any other way on beside it. */
-.load-failure-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--dk-space-3);
 }
 
 /* The page frame between the kit's strip and footer: the masthead and the categories. */
@@ -324,6 +311,20 @@ summary,
     scroll-margin-top: var(--pinned-top);
     /* Not what the browser holds the page still by, since the page scrolls to hold the column. */
     overflow-anchor: none;
+}
+
+/*
+ * The way past the filters waits clipped to nothing at the column's top,
+ * rather than above it as the kit's skip link waits above the page, since
+ * the column can start high enough that the room above it is on the page,
+ * where the link would cover the masthead and take its clicks.
+ */
+.results-side .dk-skip {
+    top: var(--dk-space-4);
+}
+
+.results-side .dk-skip:not(:focus) {
+    clip-path: inset(50%);
 }
 
 .results-side.is-pinned {
@@ -945,10 +946,6 @@ summary,
     flex-wrap: wrap;
     gap: var(--dk-space-2) var(--dk-space-4);
     align-items: center;
-}
-
-.rules-notice {
-    margin: 0 0 var(--dk-space-4);
 }
 
 /* One product. */

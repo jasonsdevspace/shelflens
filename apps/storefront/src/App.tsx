@@ -1,3 +1,4 @@
+import { Callout } from '@jasonsdevspace/design-kit/react';
 import {
     type ReactNode,
     type RefObject,
@@ -89,8 +90,10 @@ const EditedRulesNotice = ({
     // Drawn once above the page, so it holds its own discard.
     const discarding = useDiscard(rulesUrl, onReset, 0);
     return (
-        <div className="callout rules-notice">
-            Your edited rules are in effect. <DiscardRules held={discarding} />
+        <div className="callout">
+            <Callout actions={<DiscardRules held={discarding} />}>
+                Your edited rules are in effect.
+            </Callout>
         </div>
     );
 };

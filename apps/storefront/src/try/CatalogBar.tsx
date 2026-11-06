@@ -1,3 +1,4 @@
+import { Callout } from '@jasonsdevspace/design-kit/react';
 import { useLayoutEffect, useRef } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
@@ -47,37 +48,40 @@ export const CatalogBar = ({
     return (
         <>
             <div className="callout try-bar">
-                <span>
+                <Callout
+                    actions={
+                        confirm === true ? (
+                            <Ask
+                                question="Removing your products also discards the rules you saved for them. Remove them anyway?"
+                                yes="Yes, remove them"
+                                no="Keep my products"
+                                onYes={onConfirm}
+                                onNo={onKeep}
+                            />
+                        ) : (
+                            <>
+                                <button type="button" className="text-button" onClick={onAnother}>
+                                    Choose another file
+                                </button>
+                                <button
+                                    ref={remove}
+                                    type="button"
+                                    className="text-button"
+                                    onClick={onRemove}
+                                >
+                                    Remove your products
+                                </button>
+                                <a className="text-button" href={widgetUrl}>
+                                    See your products on a store&rsquo;s page
+                                </a>
+                            </>
+                        )
+                    }
+                >
                     You are searching the{' '}
                     {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept
                     in this browser.
-                </span>{' '}
-                {confirm === true ? (
-                    <Ask
-                        question="Removing your products also discards the rules you saved for them. Remove them anyway?"
-                        yes="Yes, remove them"
-                        no="Keep my products"
-                        onYes={onConfirm}
-                        onNo={onKeep}
-                    />
-                ) : (
-                    <>
-                        <button type="button" className="text-button" onClick={onAnother}>
-                            Choose another file
-                        </button>{' '}
-                        <button
-                            ref={remove}
-                            type="button"
-                            className="text-button"
-                            onClick={onRemove}
-                        >
-                            Remove your products
-                        </button>{' '}
-                        <a className="text-button" href={widgetUrl}>
-                            See your products on a store&rsquo;s page
-                        </a>
-                    </>
-                )}
+                </Callout>
             </div>
             {/* Under the bar rather than in it, so an empty alert takes no room among its actions. */}
             {notice !== undefined && (

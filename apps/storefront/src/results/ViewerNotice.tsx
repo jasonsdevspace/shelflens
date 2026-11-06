@@ -1,3 +1,4 @@
+import { Callout } from '@jasonsdevspace/design-kit/react';
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { StatusRegion } from '../app/LiveStatus.jsx';
@@ -64,7 +65,11 @@ export const ViewerNotice = ({
     return (
         <>
             <StatusRegion>{said}</StatusRegion>
-            {text !== '' && <p className="callout">{text}</p>}
+            {text !== '' && (
+                <div className="callout">
+                    <Callout>{text}</Callout>
+                </div>
+            )}
         </>
     );
 };

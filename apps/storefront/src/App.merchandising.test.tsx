@@ -151,7 +151,7 @@ describe('as a merchandiser', () => {
         await within(panel).findByRole('status');
         const banner = enclosing(
             screen.getByText(/Your edited rules are in effect/),
-            'div',
+            '.dk-callout',
             'the banner'
         );
         await user.click(within(banner).getByRole('button', { name: 'Discard your rules' }));

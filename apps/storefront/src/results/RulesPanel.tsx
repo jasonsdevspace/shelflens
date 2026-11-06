@@ -1,3 +1,4 @@
+import { Callout } from '@jasonsdevspace/design-kit/react';
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { useRef, useState } from 'react';
 
@@ -145,9 +146,9 @@ export const RulesPanel = ({
                 {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
             </h2>
             {message && (
-                <p className="callout" role="status">
-                    {message}
-                </p>
+                <div className="callout">
+                    <Callout live="status">{message}</Callout>
+                </div>
             )}
             {failed && (
                 <LoadFailure
