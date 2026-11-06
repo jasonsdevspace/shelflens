@@ -7,7 +7,7 @@ import { createClient, type CustomerGroup } from '../client/graphql.js';
 import { StoreDocument } from '../generated/operations.js';
 import searchbox from '../search/searchbox.css?inline';
 import { SearchBox } from '../search/SearchBox.jsx';
-import tokens from '../tokens.css?inline';
+import tokens from './frame-tokens.css?inline';
 import frame from './widget.css?inline';
 
 /**

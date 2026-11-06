@@ -2,7 +2,7 @@
 @import './tokens.css';
 @import './search/searchbox.css';
 
-/* The base: the theme and what every element takes. */
+/* The base: what every element takes. */
 
 :root {
     font-family:

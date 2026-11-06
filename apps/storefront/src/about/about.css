@@ -1,6 +1,6 @@
 /*
  * The explainer at about/: prose at a reading measure, sharing the
- * wordmark's left edge, with the demo's own steps for type and space.
+ * wordmark's left edge, with the design kit's steps for type and space.
  */
 .about {
     max-width: var(--dk-measure);

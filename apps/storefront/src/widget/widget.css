@@ -6,7 +6,8 @@
  * The colors follow the host's color-scheme, which is the one standard
  * property a host sets to theme the widget, and on the demo's host page
  * the design kit's tokens set it by the theme its script puts on the root.
- * Each role takes its color from the tokens, through light-dark().
+ * Each role takes its color from the frame in frame-tokens.css, through
+ * light-dark() where the browser knows it and its light value where not.
  */
 .shelflens {
     display: block;

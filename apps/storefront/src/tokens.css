@@ -1,24 +1,16 @@
 /*
- * The store's palette on the design kit's color roles, and its own names
- * beside them. The kit's tokens.css, which styles.css loads first, gives the
- * page every role and the whole scale, and the store sets again only the
- * roles it draws in colors of its own, in rules outside a layer, which win
- * over the kit's. Each role holds its light and its dark value in one
- * light-dark(), which picks by the color scheme of what it is drawn on: the
- * page's, which the kit sets from the theme the portfolio saved, or for the
- * widget, its host's. Every pairing the kit measures passes in both themes.
+ * The store's palette on the design kit's color roles, and what else the
+ * store sets its own way. The kit's tokens.css, which styles.css loads
+ * first, gives the page every role and the whole scale, and the store sets
+ * again only the roles it draws in colors of its own, and a wider measure,
+ * in rules outside a layer, which win over the kit's. Each color holds its
+ * light and its dark value in one light-dark(), which picks by the page's
+ * color scheme, which the kit sets from the theme the portfolio saved or
+ * else the system's. Every pairing the kit measures passes in both themes.
+ * The widget's frame takes the same colors in widget/frame-tokens.css,
+ * since the widget lives in a shadow root.
  *
- * The widget lives in a shadow root on other people's pages, where the kit's
- * sheets would match nothing, so its frame, .shelflens, takes every role and
- * scale step the widget reads, set to the same values the page has. Its
- * colors are the light values first, then by the host's scheme behind a
- * feature check, the one place the page's build leaves light-dark() as it is
- * written. Rewritten for the page, it would rest on switches set on the
- * page's root, which no other host has, and draw no color at all. A test
- * holds the frame to every name the widget reads, so a host page's own
- * --dk- values never reach it, and holds each value it repeats to the kit's.
- *
- * Which unit goes where:
+ * Which unit goes where, here and in every store sheet:
  *
  * - rem for anything that should grow with the visitor's own text size:
  *   type, space, fields, corners, the column and the breakpoints.
@@ -40,13 +32,14 @@
  *   its buttons in view while a long stop scrolls under them. A shorter screen,
  *   or larger text, leaves the stop the room instead.
  */
-/* The roles the store draws in its own colors on its pages, and its own names beside them. */
+
+/* The roles the store draws its own way on its pages, and its own names beside them. */
 :root {
-    /* What a card or a choice under the pointer sits on, a little cooler than the kit's. */
+    /* What a card or a choice under the pointer sits on, a step nearer the page than the kit's. */
     --dk-highlight: light-dark(#eef2fd, #1e2a4a);
     /* What floats over the page, a step above it in the dark theme where a shadow cannot show. */
     --dk-raised: light-dark(#ffffff, #1c1c1c);
-    /* What a visitor has to act on, warmer than the kit's red. */
+    /* What needs a visitor's attention, a field to fix or stock running low, more orange. */
     --dk-danger: light-dark(#b7472a, #e8795a);
     /* The stars of a rating, solid and outlined alike, 3 to 1 against a card and its hover in both themes. */
     --rating: light-dark(#b45309, #f2b544);
@@ -54,51 +47,6 @@
     --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
     /* The width a page of reading holds to, the explainer and the page for a visitor's products alike. */
     --dk-measure: 42rem;
-}
-
-/* The store's name, which is a mark rather than a heading. */
-:root,
-.shelflens {
+    /* The store's name, which is a mark rather than a heading. */
     --weight-mark: 700;
-}
-
-/* Everything the widget reads, its colors in the light theme for a browser without light-dark(). */
-.shelflens {
-    --dk-bg: #ffffff;
-    --dk-fg: #1a1a1a;
-    --dk-muted: #5c5c5c;
-    --dk-line: #d9d9d9;
-    --dk-control: #858585;
-    --dk-accent: #1f4fd8;
-    --dk-on-accent: #ffffff;
-    --dk-highlight: #eef2fd;
-    --dk-raised: #ffffff;
-    --dk-danger: #b7472a;
-    --rating: #b45309;
-    --swatch-edge: rgba(0, 0, 0, 0.12);
-    --dk-leading-tight: 1.2;
-    --dk-leading-body: 1.5;
-    --dk-weight-medium: 500;
-    --dk-weight-strong: 600;
-    --dk-ring-width: 2px;
-    --dk-ring-offset: 2px;
-    --dk-shadow-raised: 0 6px 24px rgb(0 0 0 / 0.18);
-}
-
-/* And by the host's color scheme, where the browser knows light-dark(). */
-@supports (color: light-dark(#000, #fff)) {
-    .shelflens {
-        --dk-bg: light-dark(#ffffff, #121212);
-        --dk-fg: light-dark(#1a1a1a, #f0f0f0);
-        --dk-muted: light-dark(#5c5c5c, #a5a5a5);
-        --dk-line: light-dark(#d9d9d9, #3a3a3a);
-        --dk-control: light-dark(#858585, #7d7d7d);
-        --dk-accent: light-dark(#1f4fd8, #8fb0ff);
-        --dk-on-accent: light-dark(#ffffff, #121212);
-        --dk-highlight: light-dark(#eef2fd, #1e2a4a);
-        --dk-raised: light-dark(#ffffff, #1c1c1c);
-        --dk-danger: light-dark(#b7472a, #e8795a);
-        --rating: light-dark(#b45309, #f2b544);
-        --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
-    }
 }

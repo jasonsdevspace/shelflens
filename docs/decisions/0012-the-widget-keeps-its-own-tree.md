@@ -38,11 +38,13 @@ inheritance, so the widget's container pins the font at 16px, the color, the lin
 spacing, the text transform and the cursor. It takes its colors from the one standard property a
 host sets to theme it, `color-scheme`, through `light-dark()`, with the same colors the store's
 pages draw, set on the frame in `tokens.css`, and the light values alone for a browser that does not
-know it. The design kit's theme script sets the page's theme and the kit's tokens set that property
-from it, so on the demo's host page the widget switches with the portfolio and the store. Layout and
-the stacking context sit on that inner container rather than on `:host`, where a host rule on the
-element would win, and the element is given `display: block` as an inline style at mount, which only
-an `!important` could beat.
+know it. Those values sit behind a feature check for `light-dark()`, since the build otherwise
+rewrites it into switches set on the page's root, which no host's page has. The design kit's theme
+script sets the page's theme and the kit's tokens set that property from it, so on the demo's host
+page the widget switches with the portfolio and the store. Layout and the stacking context sit on
+that inner container rather than on `:host`, where a host rule on the element would win, and the
+element is given `display: block` as an inline style at mount, which only an `!important` could
+beat.
 
 **The top layer.** A stacking context of its own makes the popover's order private but leaves the
 widget in the host's order at `auto`, so a fixed banner at a high z-index paints over the list
@@ -105,4 +107,5 @@ either passes a callback instead.
 - From another origin: a page served from an origin of its own loads the widget's file from the
   demo, the Node server answers its preflight and its requests, and a search lands on the store.
   The server's own tests cover the preflight, an origin the host did not name, and the events and
-  rules paths kept closed.
+  rules paths kept closed. Under a light and a dark scheme the host sets on its root, with nothing
+  of the store's on the page, the widget draws its text and its field in that scheme's colors.

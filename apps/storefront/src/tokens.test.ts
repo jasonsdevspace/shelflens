@@ -5,15 +5,16 @@ import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /*
- * The design's values are named once, in the design kit's tokens and in the
- * store's tokens.css over them, and every sheet the store's pages and the
- * widget use refers to them by name. The widget's host pages have a sheet of
+ * The design's values are named in the design kit's tokens and in the
+ * store's tokens.css over them, where the widget's frame repeats the ones it
+ * reads, and every sheet the store's pages and the widget use refers to them
+ * by name. The widget's host pages have a sheet of
  * their own, written to look like someone else's site, which is why it is
  * not one of these.
  */
 
 /** The sheets that hold the values, and the host pages' own, which are no store sheet. */
-const NOT_STORE_SHEETS = new Set(['tokens.css', 'widget/host.css']);
+const NOT_STORE_SHEETS = new Set(['tokens.css', 'widget/frame-tokens.css', 'widget/host.css']);
 
 /** Every other sheet under src, so a sheet split off is read without being listed. */
 const SHEETS = readdirSync(__dirname, { recursive: true, encoding: 'utf8' })
@@ -75,17 +76,20 @@ const COLORED = [
     'caret-color',
 ];
 
-/** The store's tokens, and the kit's, as the installed package ships them. */
-const STORE_TOKENS = readFileSync(join(__dirname, 'tokens.css'), 'utf8').replace(
-    /\/\*[\s\S]*?\*\//g,
-    ''
-);
-const KIT_TOKENS = readFileSync(
-    createRequire(import.meta.url).resolve('@jasonsdevspace/design-kit/tokens.css'),
-    'utf8'
-).replace(/\/\*[\s\S]*?\*\//g, '');
+/** A sheet of values with its comments left out. */
+const values = (path: string) => readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** The declarations in each rule whose selector is the one given, at the top level of a sheet. */
+/** The store's tokens for its pages, the widget's frame, and the kit's, as the package ships them. */
+const STORE_TOKENS = values(join(__dirname, 'tokens.css'));
+const FRAME_TOKENS = values(join(__dirname, 'widget', 'frame-tokens.css'));
+const KIT_TOKENS = values(
+    createRequire(import.meta.url).resolve('@jasonsdevspace/design-kit/tokens.css')
+);
+
+/**
+ * The declarations in each innermost rule whose selector is the one given, at whatever depth it
+ * sits, inside a layer or a feature check included.
+ */
 const rulesFor = (css: string, selector: string): Map<string, string> =>
     new Map(
         [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -98,20 +102,13 @@ const rulesFor = (css: string, selector: string): Map<string, string> =>
             )
     );
 
-/** The store's tokens outside the feature check, and the widget's colors by scheme inside it. */
-const AT_SUPPORTS = STORE_TOKENS.indexOf('@supports (color: light-dark(');
-const OUTSIDE = STORE_TOKENS.slice(0, AT_SUPPORTS);
-const BY_SCHEME = rulesFor(
-    STORE_TOKENS.slice(STORE_TOKENS.indexOf('{', AT_SUPPORTS) + 1),
-    '.shelflens'
-);
+/** The widget's frame outside the feature check, and its colors by scheme inside it. */
+const AT_SUPPORTS = FRAME_TOKENS.indexOf('@supports (color: light-dark(');
+const FRAME = rulesFor(FRAME_TOKENS.slice(0, AT_SUPPORTS), '.shelflens');
+const BY_SCHEME = rulesFor(FRAME_TOKENS.slice(AT_SUPPORTS), '.shelflens');
 
-/** The roles the store sets on its pages, and everything the widget's frame holds. */
-const PAGE = rulesFor(OUTSIDE, ':root');
-const FRAME = new Map([
-    ...rulesFor(OUTSIDE, ':root, .shelflens'),
-    ...rulesFor(OUTSIDE, '.shelflens'),
-]);
+/** The roles and names the store sets on its pages. */
+const PAGE = rulesFor(STORE_TOKENS, ':root');
 
 /** Every custom property a sheet reads. */
 const reads = (css: string) =>
@@ -137,13 +134,10 @@ const contrast = (a: string, b: string) => {
     return ((high ?? 0) + 0.05) / ((low ?? 0) + 0.05);
 };
 
-/** The palette the store's pages draw: the kit's roles, with the store's own set over them. */
 /** The kit's own roles and scale, as its tokens declare them on the root. */
-const PALETTE_KIT = rulesFor(
-    KIT_TOKENS.replace(/@layer[^{;]*;/g, '').replace(/@layer[^{]*\{/, ''),
-    ':where(:root)'
-);
+const PALETTE_KIT = rulesFor(KIT_TOKENS, ':where(:root)');
 
+/** The palette the store's pages draw: the kit's roles, with the store's own set over them. */
 const PALETTE = new Map([...PALETTE_KIT, ...PAGE]);
 
 const GROUNDS = ['bg', 'surface', 'raised'];
@@ -173,8 +167,9 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
     ...['bg', 'raised', 'highlight'].map((ground) => ['rating', ground, 3] as const),
 ];
 
-const valueOf = (role: string) =>
-    PALETTE.get(role.startsWith('rating') ? '--rating' : `--dk-${role}`) ?? '';
+/** The property each role in the pairings is read from, the kit's own roles under its prefix. */
+const OWN_NAMES: Readonly<Record<string, string>> = { rating: '--rating' };
+const valueOf = (role: string) => PALETTE.get(OWN_NAMES[role] ?? `--dk-${role}`) ?? '';
 
 describe('the design tokens', () => {
     it('read every store sheet, the ones split off included', () => {
@@ -196,7 +191,7 @@ describe('the design tokens', () => {
         expect([...byValue, ...named]).toEqual([]);
     });
 
-    it("sets the widget's colors by its host's scheme, with each light value for a browser without it", () => {
+    it("sets the widget's colors by its host's scheme, light first for a browser without it", () => {
         expect(BY_SCHEME.size).toBeGreaterThan(0);
         for (const [name, value] of BY_SCHEME) {
             const light = /^light-dark\((.+), [^,]+\)$/.exec(value)?.[1];
@@ -212,7 +207,7 @@ describe('the design tokens', () => {
         for (const [name, value] of own) expect(BY_SCHEME.get(name), name).toBe(value);
     });
 
-    it("gives the widget's frame every name the widget reads, so a host page's never reach it", () => {
+    it("gives the widget's frame every name the widget reads, so a host's never reach it", () => {
         const read = [
             ...reads(sheet('search/searchbox.css')),
             ...reads(sheet('widget/widget.css')),
