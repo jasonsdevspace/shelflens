@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 
-import { PortfolioStrip } from './Portfolio.jsx';
+import { Strip } from './Portfolio.jsx';
 
 /**
  * The top of the store's pages: the portfolio strip, with the demo's own
@@ -32,13 +32,11 @@ export const PageTop = ({
     readonly children?: ReactNode;
 }) => (
     <>
+        {/* The strip draws the switches in a landmark of their own, named for them, so a screen
+        reader finds them. While it only keeps their room, the room is the sheet's, with no
+        landmark for it. */}
         <div className={waiting ? 'topbar is-waiting' : 'topbar'}>
-            <PortfolioStrip />
-            {/* A landmark of its own once it holds the switches, named for them, so a screen reader
-            finds them, and no landmark while it only keeps their room. */}
-            <section className="topbar-tools" aria-label={tools ? 'Demo' : undefined}>
-                {tools}
-            </section>
+            <Strip tools={tools} />
         </div>
         <header className={waiting ? 'masthead is-waiting' : 'masthead'}>
             <div className="masthead-row">

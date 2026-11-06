@@ -1,5 +1,6 @@
 @import '@jasonsdevspace/design-kit/tokens.css';
 @import '@jasonsdevspace/design-kit/base.css';
+@import '@jasonsdevspace/design-kit/components.css';
 @import './tokens.css';
 @import './search/searchbox.css';
 
@@ -9,7 +10,8 @@
  * and none on a heading or section the page moves focus to, the accent on a
  * box or a dot a visitor ticks, a heading's weight and line, code in running
  * text, a table's shared borders, and motion cut short for a visitor who
- * asks for less. What follows is the store's own.
+ * asks for less. The skip link, the strip and the footer are the kit's
+ * too, from its components. What follows is the store's own.
  */
 
 /*
@@ -29,7 +31,7 @@ summary,
     cursor: pointer;
 }
 
-/* The shared look: notices, fields, buttons, a failure to load and the skip link. */
+/* The shared look: notices, fields, buttons, a failure to load and the way past the filters. */
 
 .notice {
     color: var(--dk-muted);
@@ -235,7 +237,11 @@ summary,
     gap: var(--dk-space-3);
 }
 
-/* Skip to content, out of sight until it takes focus. */
+/*
+ * The way past the filters to the results, out of sight until it takes
+ * focus. It sits in the filters' column, so it lines up with the column
+ * rather than the page, as the kit's skip link does.
+ */
 .skip {
     position: absolute;
     left: var(--dk-space-4);
@@ -254,104 +260,17 @@ summary,
 /* The page frame: the strip, the masthead, the categories and the footer. */
 
 /*
- * The strip and the masthead keep their borders across the whole viewport
- * and line their content up with the column below, so the page reads as
- * one column from the first line to the footer.
+ * The masthead keeps its rule across the whole viewport and lines its
+ * content up with the column below, as the kit's strip and footer do, so
+ * the page reads as one column from the first line to the footer.
  */
-.portfolio,
-.topbar,
-.masthead,
-.colophon {
-    padding-inline: calc(max(0px, (100% - var(--dk-column)) / 2) + var(--dk-space-4));
-}
-
-/*
- * The strip and the demo's own switches, one row on a wide screen: whose
- * demo it is on the left, who the visitor shops as and the tour on the
- * right, apart from the masthead a shopper uses.
- */
-.topbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0 var(--dk-space-5);
-    border-bottom: 1px solid var(--dk-line);
-}
-
-.topbar .portfolio {
-    justify-content: flex-start;
-    gap: 0 var(--dk-space-5);
-    padding-inline: 0;
-    border-bottom: 0;
-}
-
-/*
- * The tools wrap, Tour after the viewer switch, where larger text leaves no room for one row.
- * They share the links' row, so the strip is one row tall, as every demo's strip is, and are a
- * row as tall as the links' themselves, so a row of them that wraps keeps its room from the rule.
- */
-.topbar-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--dk-space-3);
-    min-height: 2.5rem;
-}
-
-.topbar-tools:empty {
-    display: none;
-}
-
-/* Whose demo this is, above the masthead: three links together on the left, scrolls away. */
-.portfolio {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 0 var(--dk-space-4);
-    border-bottom: 1px solid var(--dk-line);
-    font-size: var(--dk-text-small);
-}
-
-/* The whole row height is the target, not the one line of small text. */
-.portfolio a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.5rem;
-}
-
-.portfolio a,
-.colophon a {
-    color: var(--dk-muted);
-}
-
-.portfolio a:hover,
-.portfolio a:focus-visible,
-.colophon a:hover,
-.colophon a:focus-visible {
-    color: var(--dk-fg);
-}
-
-/* The footer's rule runs the width of the page, as the header's do, with its text in the column. */
-.colophon {
-    margin-top: var(--dk-space-6);
-    padding-block: var(--dk-space-4);
-    border-top: 1px solid var(--dk-line);
-    color: var(--dk-muted);
-    font-size: var(--dk-text-small);
-}
-
-.colophon p {
-    margin: 0;
-}
-
 .masthead {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--dk-space-4);
     padding-block: var(--dk-space-3);
+    padding-inline: calc(max(0px, (100% - var(--dk-column)) / 2) + var(--dk-space-4));
     border-bottom: 1px solid var(--dk-line);
 }
 
@@ -369,10 +288,12 @@ summary,
 
 /*
  * A field's height, and the width of the two switches, as they take once
- * they arrive, so they wrap, or not, as they will.
+ * they arrive, so they wrap, or not, as they will. The strip draws no
+ * section for them until they come, so the room is kept by a box of the
+ * sheet's, which no screen reader reads.
  */
-.topbar.is-waiting .topbar-tools:empty {
-    display: flex;
+.topbar.is-waiting .dk-strip::after {
+    content: '';
     min-width: 15.65rem;
     min-height: var(--dk-field-height);
 }
@@ -471,30 +392,15 @@ summary,
         min-height: 7.35rem;
     }
 
-    .topbar-tools {
-        flex-basis: 100%;
-    }
-
     /*
-     * A field is a thumb's height on a phone, so the room kept is too. Its
-     * width is the row's already, so it never asks for more than the screen.
+     * A field is a thumb's height on a phone, so the room kept is too, on a
+     * row of its own below the links, as the switches take it, with the gap
+     * they keep below them.
      */
-    .topbar.is-waiting .topbar-tools:empty {
+    .topbar.is-waiting .dk-strip::after {
+        flex-basis: 100%;
         min-width: 0;
         min-height: calc(var(--dk-target) + var(--dk-space-2));
-    }
-
-    /*
-     * The three links in smaller text, on one row where they fit and the last on a row of its own
-     * where they do not, and the switches on the line below them.
-     */
-    .topbar .portfolio {
-        gap: 0 var(--dk-space-4);
-        font-size: var(--dk-text-caption);
-    }
-
-    .topbar-tools {
-        padding-block: 0 var(--dk-space-2);
     }
 
     /* The brand and the search box on one row, the categories below, as focus takes them. */

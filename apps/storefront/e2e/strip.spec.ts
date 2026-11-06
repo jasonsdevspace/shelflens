@@ -21,7 +21,7 @@ const stripLayout = async (page: Page) => {
     const first = links[0];
     if (!first) throw new Error('expected the strip to have links');
     return {
-        height: Math.round((await box(page.locator('.topbar'), 'the strip')).height),
+        height: Math.round((await box(page.locator('.dk-strip'), 'the strip')).height),
         inset: Math.round(first.x),
         starts: links.map((link) => Math.round(link.x)),
         tops: links.map((link) => Math.round(link.y)),
@@ -77,6 +77,6 @@ for (const [name, path] of [
 test('puts the switches on a row below the links on a phone', async ({ page }) => {
     await openAt(page, '/', 412);
     const links = await page.getByRole('navigation', { name: 'Portfolio' }).boundingBox();
-    const tools = await page.locator('.topbar-tools').boundingBox();
+    const tools = await page.locator('.dk-strip-tools').boundingBox();
     expect(tools?.y ?? 0).toBeGreaterThanOrEqual((links?.y ?? 0) + (links?.height ?? 0));
 });

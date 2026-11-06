@@ -11,7 +11,7 @@ import {
 import type { CategoryTree } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { PageTop } from './app/PageTop.jsx';
-import { DemoFooter } from './app/Portfolio.jsx';
+import { Footer } from './app/Portfolio.jsx';
 import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
@@ -384,7 +384,7 @@ export const App = ({
                         />
                     )}
                 </main>
-                {readiness !== 'waiting' && <DemoFooter />}
+                {readiness !== 'waiting' && <Footer />}
             </StoreProvider>
         </EventsProvider>
     );
