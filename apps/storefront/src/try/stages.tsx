@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type ChangeEvent, useState } from 'react';
 
 import { useHeadingFocus } from '../app/focus.js';
@@ -145,9 +146,7 @@ const Chooser = ({
             )}
             {back === true && (
                 <p>
-                    <button type="button" className="button" onClick={onBack}>
-                        {BACK_LABEL}
-                    </button>
+                    <Button onClick={onBack}>{BACK_LABEL}</Button>
                 </p>
             )}
             <div
@@ -158,7 +157,7 @@ const Chooser = ({
                 onDrop={() => setOver(false)}
             >
                 <p>Drop a file here, or</p>
-                <label className="button button-primary button-large try-pick">
+                <label className="dk-button dk-button-accent button-large try-pick">
                     Choose a file
                     <input
                         type="file"
@@ -291,15 +290,11 @@ const Review = ({
                         />
                     ) : (
                         <div className="try-actions">
-                            <button
-                                type="button"
-                                className="button button-primary button-large"
-                                onClick={onSearch}
-                            >
+                            <Button accent className="button-large" onClick={onSearch}>
                                 {partial
                                     ? 'Search these products'
                                     : searchLabel(result.catalog.products.length)}
-                            </button>
+                            </Button>
                             <OtherWays back={back} onAnother={onAnother} onBack={onKeepProducts} />
                         </div>
                     )}
@@ -325,14 +320,8 @@ const OtherWays = ({
     readonly onBack: () => void;
 }) => (
     <>
-        <button type="button" className="button" onClick={onAnother}>
-            Choose another file
-        </button>
-        {back === true && (
-            <button type="button" className="button" onClick={onBack}>
-                {BACK_LABEL}
-            </button>
-        )}
+        <Button onClick={onAnother}>Choose another file</Button>
+        {back === true && <Button onClick={onBack}>{BACK_LABEL}</Button>}
     </>
 );
 

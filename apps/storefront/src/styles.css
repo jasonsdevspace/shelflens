@@ -18,7 +18,7 @@
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
  * keeps the plain arrow, so no control has to remember its own. One that is
- * off but keeps focus, as the tour's Previous does at the first stop, says so
+ * off but keeps focus, as Previous and Next do where they go nowhere, says so
  * with aria-disabled and counts as off. The labels around a checkbox or a
  * radio are named by class, since :has() is newer than some of the browsers
  * the build supports.
@@ -111,81 +111,27 @@ summary,
 }
 
 /*
- * The page's buttons, one look for each kind.
+ * The page's buttons are the kit's: a .dk-button has an edge in the
+ * control color and the field's height, so it sits level with a select
+ * beside it, a pressed or open one says so in the accent, and a
+ * .dk-button-accent is the one action a view asks for. What follows are
+ * the store's own kinds.
  *
- * A .button has an edge in the control color, the field's height and
- * corners, so it sits level with a select beside it, and a pressed or
- * open one says so in the accent. A .button-primary is the one action a
- * view asks for, filled with the accent. A .button-large is for the
- * action that ends a step, such as showing what a drawer has filtered.
+ * A .button-large is a kit button for the action that ends a step, such as
+ * showing what a drawer has filtered.
  *
  * A .text-button is an action that reads as text, in a sentence or under
  * a list, in the accent and always underlined, since the accent alone is
  * too close to the text to mark it.
+ *
+ * An .option-button is a choice in a list, a full row in the accent,
+ * underlined when it is pointed at or focused.
  */
-.button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--dk-space-2);
-    min-height: var(--dk-field-height);
-    padding: 0 var(--dk-space-3);
-    font: inherit;
-    font-size: var(--dk-text-small);
-    line-height: var(--dk-leading-tight);
-    text-decoration: none;
-    color: var(--dk-fg);
-    background: var(--dk-bg);
-    border: 1px solid var(--dk-control);
-    border-radius: var(--dk-radius);
-}
-
-.button:hover {
-    border-color: var(--dk-accent);
-}
-
-.button[aria-pressed='true'],
-.button[aria-expanded='true'] {
-    background: var(--dk-highlight);
-    border-color: var(--dk-accent);
-}
-
-.button:disabled,
-.button[aria-disabled='true'] {
-    color: var(--dk-muted);
-    background: var(--dk-bg);
-    border-color: var(--dk-line);
-}
-
-.button-primary {
-    font-weight: var(--dk-weight-strong);
-    color: var(--dk-on-accent);
-    background: var(--dk-accent);
-    border-color: var(--dk-accent);
-}
-
-/* Its edge is the accent already, so a primary button shows the pointer over it by its label. */
-.button-primary:hover:not(:disabled) {
-    text-decoration: underline;
-}
-
-/* A disabled button of either kind looks the same, so a muted label never sits on the accent. */
-.button-primary:disabled {
-    font-weight: var(--dk-weight-normal);
-}
-
 .button-large {
     min-height: var(--dk-target);
     padding-inline: var(--dk-space-4);
     font-size: var(--dk-text-body);
     border-radius: var(--dk-radius-large);
-}
-
-/* A thumb's size on a phone, as the fields are. */
-@media (max-width: 48rem) {
-    .button {
-        min-height: var(--dk-target);
-    }
 }
 
 .text-button {
@@ -1180,7 +1126,7 @@ summary,
 }
 
 /* Close is there when wanted and quiet otherwise, so Try it is the panel's one strong action. */
-.button.tour-close {
+.tour-close {
     margin-right: calc(var(--dk-space-2) * -1);
     padding-inline: var(--dk-space-2);
     color: var(--dk-muted);
@@ -1188,14 +1134,8 @@ summary,
     border-color: transparent;
 }
 
-.button.tour-close:hover {
+.tour-close:hover {
     color: var(--dk-fg);
-    border-color: transparent;
-}
-
-/* The panel's buttons sit on its raised surface, not in wells of the page's. */
-.tour .button:not(.button-primary) {
-    background: var(--dk-raised);
 }
 
 /* How far through the tour the visitor is, drawn under the count it repeats. */

@@ -5,15 +5,14 @@ import { describe, expect, it } from 'vitest';
 
 /*
  * Each component wears classes of its own, named for it, and the few that
- * every component may wear are the shared look: the buttons, the fields,
- * a notice and a callout, a hint beside a choice, a grid of cards, and the
- * page's own frame. A component that wore another's class would change
- * when that one did.
+ * every component may wear are the shared look: the design kit's, under
+ * its dk- prefix, the store's own kinds of button, the fields, a notice and
+ * a callout, a hint beside a choice, a grid of cards, and the page's own
+ * frame. A component that wore another's class would change when that one
+ * did.
  */
 
 const SHARED = new Set([
-    'button',
-    'button-primary',
     'button-large',
     'text-button',
     'option-button',
@@ -28,6 +27,25 @@ const SHARED = new Set([
 
 /** Folders that hold nothing a page is written from: what is built, installed or generated. */
 const SKIPPED = new Set(['node_modules', 'dist', 'generated', 'e2e', 'test-results']);
+
+/** The classes a style sheet's selectors name, past its comments and what its values hold. */
+const classesOf = (css: string): Set<string> =>
+    new Set(
+        [
+            ...css
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                .replace(/url\([^)]*\)/g, '')
+                .replace(/(['"])(?:(?!\1).)*\1/g, '')
+                .matchAll(/\.([a-zA-Z][\w-]*)/g),
+        ].map((match) => match[1] ?? '')
+    );
+
+/** The classes the design kit's sheets style, the only dk- classes there are. */
+const KIT = new Set(
+    ['tokens.css', 'base.css', 'components.css'].flatMap((sheet) => [
+        ...classesOf(readFileSync(require.resolve(`@jasonsdevspace/design-kit/${sheet}`), 'utf8')),
+    ])
+);
 
 /** Every file under a folder that `keep` keeps, past the folders nothing is written from. */
 const walk = (dir: string, keep: (name: string) => boolean): string[] =>
@@ -101,7 +119,7 @@ describe('the components', () => {
         // borrows it, whether or not the feature's own components wear it too.
         const borrowed = found.flatMap((component) =>
             component.classes
-                .filter((name) => !SHARED.has(name))
+                .filter((name) => !SHARED.has(name) && !KIT.has(name))
                 .filter((name) => {
                     const owner = ownerOf(name);
                     return features.has(owner) && !partOf(component).has(owner);
@@ -146,19 +164,32 @@ describe('the components', () => {
             prefixes.some((prefix) => name.startsWith(prefix));
         const unworn = sheets.flatMap((sheet) => {
             // A class is a selector, so what a rule's values hold, a url or a string, is no class.
-            const css = readFileSync(sheet, 'utf8')
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/url\([^)]*\)/g, '')
-                .replace(/(['"])(?:(?!\1).)*\1/g, '');
-            const defined = new Set(
-                [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => match[1] ?? '')
-            );
-            return [...defined]
+            return [...classesOf(readFileSync(sheet, 'utf8'))]
                 .filter((name) => !worn(name))
                 .map((name) => `${relative(app, sheet)} defines ${name}`);
         });
         expect(sheets.length).toBeGreaterThan(0);
         expect(prefixes).toContain('searchbox-option-');
         expect(unworn).toEqual([]);
+    });
+
+    it('leave the pages written by hand only classes a sheet styles, the kit’s or the store’s', () => {
+        const app = join(__dirname, '..');
+        const styled = new Set([
+            ...KIT,
+            ...walk(join(app, 'src'), (name) => name.endsWith('.css')).flatMap((sheet) => [
+                ...classesOf(readFileSync(sheet, 'utf8')),
+            ]),
+        ]);
+        const pages = walk(app, (name) => name.endsWith('.html'));
+        const unstyled = pages.flatMap((page) =>
+            [...readFileSync(page, 'utf8').matchAll(/class="([^"]*)"/g)]
+                .flatMap((match) => (match[1] ?? '').split(/\s+/).filter(Boolean))
+                .filter((name) => !styled.has(name))
+                .map((name) => `${relative(app, page)} wears ${name}`)
+        );
+        expect(pages.length).toBeGreaterThan(1);
+        expect(KIT).toContain('dk-button');
+        expect(unstyled).toEqual([]);
     });
 });

@@ -1,3 +1,5 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
+
 import type { StartFailureKind } from '../worker/register.js';
 
 /** What a browser that cannot run the store is told, here and by the widget's demo. */
@@ -30,8 +32,6 @@ export const StartFailure = ({
         <div className="notice standby" role="alert">
             <h1 className="standby-heading">The store could not start</h1>
             <p>Check your connection and try again.</p>
-            <button type="button" className="button" onClick={retry}>
-                Try again
-            </button>
+            <Button onClick={retry}>Try again</Button>
         </div>
     );

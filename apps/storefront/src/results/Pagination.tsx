@@ -6,6 +6,8 @@
  * history entry and the back button walks back through them.
  */
 
+import { Button } from '@jasonsdevspace/design-kit/react';
+
 export interface PaginationProps {
     readonly page: number;
     readonly totalPages: number;
@@ -25,37 +27,26 @@ export const Pagination = ({ page, totalPages, onPage }: PaginationProps) => {
     if (totalPages <= 1) return null;
     return (
         <nav className="pagination" aria-label="Pages">
-            <button
-                type="button"
-                className="button"
-                disabled={page <= 1}
-                onClick={() => onPage(page - 1)}
-            >
+            <Button off={page <= 1} onClick={() => onPage(page - 1)}>
                 Previous
-            </button>
+            </Button>
             <ul className="pagination-list">
                 {windowOf(page, totalPages).map((number) => (
                     <li key={number}>
-                        <button
-                            type="button"
-                            className="button pagination-number"
+                        <Button
+                            className="pagination-number"
                             aria-current={number === page ? 'page' : undefined}
                             aria-label={`Page ${number}`}
                             onClick={() => onPage(number)}
                         >
                             {number}
-                        </button>
+                        </Button>
                     </li>
                 ))}
             </ul>
-            <button
-                type="button"
-                className="button"
-                disabled={page >= totalPages}
-                onClick={() => onPage(page + 1)}
-            >
+            <Button off={page >= totalPages} onClick={() => onPage(page + 1)}>
                 Next
-            </button>
+            </Button>
             <span className="pagination-status">
                 Page {page} of {totalPages}
             </span>

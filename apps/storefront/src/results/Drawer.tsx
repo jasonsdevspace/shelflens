@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -76,7 +77,7 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
             <button
                 ref={openButton}
                 type="button"
-                className="button"
+                className="dk-button"
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 onClick={() => setOpen(true)}
@@ -117,13 +118,13 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
                                 </button>
                             </div>
                             <div className="drawer-body">{children}</div>
-                            <button
-                                type="button"
-                                className="button button-primary button-large drawer-done"
+                            <Button
+                                accent
+                                className="button-large drawer-done"
                                 onClick={() => setOpen(false)}
                             >
                                 {done}
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </>,

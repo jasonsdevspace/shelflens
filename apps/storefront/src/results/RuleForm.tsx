@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type FormEvent, type ReactNode, type RefObject, useId } from 'react';
 
 import {
@@ -272,12 +273,10 @@ export const RuleForm = (props: RuleFormProps) => {
             )}
             <WeightField id={id} form={form} onChange={onChange} />
             <div className="rules-actions">
-                <button type="submit" className="button button-primary">
+                <Button type="submit" accent>
                     Save rule
-                </button>
-                <button type="button" className="button" onClick={onCancel}>
-                    Cancel
-                </button>
+                </Button>
+                <Button onClick={onCancel}>Cancel</Button>
                 {existing && (
                     <button type="button" className="text-button" onClick={onRemove}>
                         Remove rule

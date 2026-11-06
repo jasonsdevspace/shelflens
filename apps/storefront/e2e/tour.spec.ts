@@ -174,14 +174,20 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
         probe.style.background = 'var(--dk-raised)';
         const raised = getComputedStyle(probe).backgroundColor;
         probe.remove();
+        // What a button is seen on: its own ground, or the first one under it that is drawn.
+        const seenOn = (element: Element | null): string => {
+            for (let at = element; at; at = at.parentElement) {
+                const color = getComputedStyle(at).backgroundColor;
+                if (color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') return color;
+            }
+            return getComputedStyle(document.body).backgroundColor;
+        };
         return {
             raised,
             page: getComputedStyle(document.body).backgroundColor,
             tour: getComputedStyle(document.querySelector('.tour') ?? document.body)
                 .backgroundColor,
-            button: getComputedStyle(
-                document.querySelector('.tour-nav .button:not(.button-primary)') ?? document.body
-            ).backgroundColor,
+            button: seenOn(document.querySelector('.tour-nav .dk-button:not(.dk-button-accent)')),
         };
     });
     expect(backgrounds.tour).toBe(backgrounds.raised);
@@ -274,7 +280,7 @@ test.describe('on a short screen', () => {
             await page.keyboard.press('Enter');
             await expect(tour).toContainText(`Stop ${String(stop)} of`);
             expect(
-                await inSheet(page, '.tour-steps .button:last-child'),
+                await inSheet(page, '.tour-steps .dk-button:last-child'),
                 `Next at stop ${String(stop)}`
             ).toBe(true);
         }

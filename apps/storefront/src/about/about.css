@@ -45,7 +45,7 @@
  * A link takes the kit's accent, which is too close to the text to mark a
  * link by itself, so the underline stays.
  */
-.about a:not(.button) {
+.about a:not(.dk-button) {
     text-decoration: underline;
 }
 

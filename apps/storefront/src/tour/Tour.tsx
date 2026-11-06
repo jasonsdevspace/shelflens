@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { REPO_URL } from '../app/Portfolio.jsx';
@@ -89,12 +90,8 @@ const TourOffer = ({
         >
             <p className="tour-offer-text">A tour of what to try, {STOPS.length} stops</p>
             <div className="tour-offer-actions">
-                <button type="button" className="button" onClick={onStart}>
-                    Start
-                </button>
-                <button type="button" className="button" onClick={onDecline}>
-                    Not now
-                </button>
+                <Button onClick={onStart}>Start</Button>
+                <Button onClick={onDecline}>Not now</Button>
             </div>
         </aside>
     );
@@ -159,7 +156,12 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 <p className="tour-count" aria-hidden="true">
                     {position}
                 </p>
-                <button ref={closer} type="button" className="button tour-close" onClick={onClose}>
+                <button
+                    ref={closer}
+                    type="button"
+                    className="dk-button tour-close"
+                    onClick={onClose}
+                >
                     Close
                 </button>
             </div>
@@ -195,25 +197,16 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
             </p>
             <div className="tour-nav">
                 {stop.to && (
-                    <StateLink className="button button-primary" to={stop.to} navigate={tryIt}>
+                    <StateLink className="dk-button dk-button-accent" to={stop.to} navigate={tryIt}>
                         Try it
                     </StateLink>
                 )}
                 <div className="tour-steps">
-                    {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
-                    <button
-                        type="button"
-                        className="button"
-                        aria-disabled={first}
-                        onClick={() => {
-                            if (!first) onIndex(index - 1);
-                        }}
-                    >
+                    {/* Off at the first stop, but still focusable, so a press there keeps focus. */}
+                    <Button off={first} onClick={() => onIndex(index - 1)}>
                         Previous
-                    </button>
-                    <button
-                        type="button"
-                        className="button"
+                    </Button>
+                    <Button
                         onClick={() => {
                             if (!last) {
                                 onIndex(index + 1);
@@ -239,7 +232,7 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                                 Finish
                             </span>
                         </span>
-                    </button>
+                    </Button>
                 </div>
             </div>
         </aside>
@@ -259,7 +252,7 @@ export const TourToggle = ({
     <button
         ref={buttonRef}
         type="button"
-        className="button"
+        className="dk-button"
         aria-expanded={touring}
         // Names the tour only while there is one to name.
         aria-controls={touring ? TOUR_ID : undefined}
