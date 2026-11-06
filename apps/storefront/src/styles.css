@@ -286,7 +286,6 @@ h4 {
     font: inherit;
     font-size: var(--text-small);
     text-align: left;
-    text-decoration: none;
     color: var(--accent);
     background: none;
     border: none;
@@ -739,6 +738,14 @@ h4 {
     min-height: 2rem;
     font-size: var(--text-small);
     font-weight: var(--weight-strong);
+}
+
+/*
+ * The categories and the way up are links, which a browser underlines, drawn as the facets' other
+ * choices are. Without weight, so pointing at one or focusing it still underlines it.
+ */
+:where(.facet-links .option-button, .facet-up) {
+    text-decoration: none;
 }
 
 .facet-links.is-nested {

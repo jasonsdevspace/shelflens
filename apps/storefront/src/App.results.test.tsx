@@ -141,8 +141,9 @@ describe('narrowing', () => {
             'href',
             '?'
         );
-        // A click with a modifier is the browser's, for a new tab or window, so the page stays.
-        fireEvent.click(link, { ctrlKey: true });
+        // A click with a modifier is the browser's, for a new tab or window, so the page leaves it
+        // alone and stays where it is.
+        expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
         expect(window.location.search).toBe('?category=clothing');
         await user.click(link);
         await settled();
@@ -219,6 +220,16 @@ describe('narrowing', () => {
         );
         await settled();
         expect(window.location.search).toBe('?q=jacket&explain=1&rules=1');
+    });
+
+    it('keeps an order of the shopper’s own on the way up to every category', async () => {
+        const user = await open('?category=clothing&sort=price-asc');
+        await settled();
+        const up = within(facet('Category')).getByRole('link', { name: 'All categories' });
+        expect(up).toHaveAttribute('href', '?sort=price-asc');
+        await user.click(up);
+        await settled();
+        expect(window.location.search).toBe('?sort=price-asc');
     });
 
     it('drops a category’s own order with the category, on the way up to every category', async () => {

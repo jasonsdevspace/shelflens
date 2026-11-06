@@ -1,6 +1,6 @@
 import { type ReactNode, useId, useState } from 'react';
 
-import { type CategoryTree, childrenOf } from '../app/categories.js';
+import { type Category, type CategoryTree, childrenOf } from '../app/categories.js';
 import { StateLink } from '../app/StateLink.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import {
@@ -19,12 +19,11 @@ import { Stars } from './Stars.jsx';
 /**
  * The facets beside the results.
  *
- * Each is a fieldset of real inputs, so a keyboard and a screen reader get
- * them for free. The categories are links to their own pages, so a shopper
- * can open one in a new tab or copy it, and a plain click goes there in place. The counts come from the API, which counts each facet
- * past its own filter: choosing "Red" never zeroes "Blue". Checking a box
- * resets the page to the first, since the old page number means nothing
- * over a different set of results.
+ * Each is a fieldset. The categories are links to their own pages, so a shopper can open one in a
+ * new tab or copy it, and a plain click goes there in place. The rest are real inputs, so a
+ * keyboard and a screen reader get them for free. The counts come from the API, which counts each
+ * facet past its own filter: choosing "Red" never zeroes "Blue". Checking a box resets the page to
+ * the first, since the old page number means nothing over a different set of results.
  */
 
 type Facet = SearchQuery['search']['facets'][number];
@@ -88,6 +87,14 @@ const Group = ({
     </fieldset>
 );
 
+/** The way up from a category: to its parent, or from a root category to every category. */
+const upFrom = (state: SearchState, parent: Category | undefined): SearchState => {
+    if (parent) return { ...state, category: parent.id, page: 1 };
+    // Above every category, a category's own order means nothing, so it goes too.
+    const { category: _category, sort, ...rest } = state;
+    return { ...rest, ...(sort && sort !== 'position' && { sort }), page: 1 };
+};
+
 const CategoryFacet = ({
     facet,
     state,
@@ -105,16 +112,15 @@ const CategoryFacet = ({
     const parentId = current && current.path.length > 1 ? current.path.at(-2) : undefined;
     const parent = parentId === undefined ? undefined : categories.get(parentId);
     if (next.length === 0 && !current) return null;
-    // Above every category, a category's own order means nothing, so it goes too.
-    const { category: _category, sort, ...rest } = state;
-    const up: SearchState = parent
-        ? { ...state, category: parent.id, page: 1 }
-        : { ...rest, ...(sort && sort !== 'position' && { sort }), page: 1 };
     return (
         <Group title={TITLES.category} name="category">
             {current && (
                 <>
-                    <StateLink to={up} navigate={onChange} className="option-button facet-up">
+                    <StateLink
+                        to={upFrom(state, parent)}
+                        navigate={onChange}
+                        className="option-button facet-up"
+                    >
                         <span aria-hidden="true">‹</span> {parent ? parent.name : 'All categories'}
                     </StateLink>
                     {/* The breadcrumb names the page. This says where in the categories the shopper is. */}
