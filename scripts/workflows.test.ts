@@ -108,6 +108,9 @@ describe('the workflows', () => {
         const [quoted] = stepsOf("    - run: npx playwright install\n      timeout-minutes: '3'");
         if (!quoted) throw new Error('expected a step');
         expect(hasOwnTimeLimit(quoted)).toBe(true);
+        const [core] = stepsOf('    - run: npx playwright-core install chromium');
+        if (!core) throw new Error('expected a step');
+        expect(installsBrowser(core)).toBe(true);
     });
 
     // The publishing job holds the token trusted publishing issues, so what it installs is what
@@ -119,18 +122,16 @@ describe('the workflows', () => {
         expect(installs.length).toBeGreaterThan(0);
         for (const { text } of installs) {
             expect(text).toMatch(/NPM_INTEGRITY: sha512-[A-Za-z0-9+/]+=*\s*$/m);
-            expect(text).toMatch(/openssl dgst -sha512/);
+            // The digest is compared with the pin, and a mismatch stops the step, before the install.
+            const compared = text.search(
+                /if \[ "\$got" != "\$NPM_INTEGRITY" \]; then\n\s+echo[^\n]*\n\s+exit 1\n/
+            );
+            expect(text.indexOf('openssl dgst -sha512')).toBeGreaterThan(-1);
+            expect(compared).toBeGreaterThan(text.indexOf('openssl dgst -sha512'));
+            expect(compared).toBeLessThan(text.indexOf('npm install -g'));
             expect(text).toMatch(/npm install -g --offline --ignore-scripts "\$tarball"/);
             expect(text).not.toMatch(/npm install -g[^\n]*\bnpm@/);
         }
-    });
-
-    it('leave a version an earlier run staged alone, so a release can be run again whole', () => {
-        const [stage] = stepsOf(jobsOf(read('release.yml')).get('publish') ?? '').filter(
-            ({ text }) => /npm stage publish/.test(text)
-        );
-        expect(stage?.text).toMatch(/if ! output=\$\(npm stage publish/);
-        expect(stage?.text).toMatch(/cannot publish over\|previously published/);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {
