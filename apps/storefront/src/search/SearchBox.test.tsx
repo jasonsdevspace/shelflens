@@ -91,6 +91,39 @@ const renderBox = (client: GraphQLClient) => {
     return { onSearch, onPick, input: screen.getByRole('combobox') };
 };
 
+/**
+ * Answers the request for the whole phrase once it is sent, and waits for an option that only
+ * this answer draws, matched by the start of its name, since a product's name runs on to its
+ * brand and price. A slow run can let the pause pass partway through the phrase, or on the phrase
+ * twice, and send more than one request, and the page aborts all but its newest. So the request
+ * answered is the newest one still awaited, found by its phrase rather than its place. The box is
+ * expanded and the list shown while the store is asked, so neither says the answer is drawn.
+ */
+const answerWith = async (
+    network: ReturnType<typeof createNetwork>,
+    phrase: string,
+    suggestions: Suggestions,
+    drawn: string,
+    root: HTMLElement = document.body
+) => {
+    const request = await waitFor(() => {
+        const asked = network.pending.findLast(
+            (pending) => pending.phrase === phrase && pending.signal?.aborted !== true
+        );
+        if (!asked) throw new Error(`expected a request for ${phrase}`);
+        return asked;
+    });
+    request.answer(suggestions);
+    await within(root).findByRole('option', { name: (name) => name.startsWith(drawn) });
+    // However many were sent on the way, one request for the phrase is left open, so a page that
+    // asked again for every keystroke would show here.
+    expect(
+        network.pending.filter(
+            (pending) => pending.phrase === phrase && pending.signal?.aborted !== true
+        )
+    ).toHaveLength(1);
+};
+
 describe('the popover under real typing', () => {
     beforeEach(() => {
         vi.useFakeTimers();
@@ -161,9 +194,8 @@ describe('the popover as a combobox', () => {
         const box = renderBox(network.client);
         const user = userEvent.setup();
         await user.type(box.input, phrase);
-        await waitFor(() => expect(network.pending).toHaveLength(1));
-        network.pending[0]?.answer(suggestionsFor(phrase));
-        await waitFor(() => expect(box.input).toHaveAttribute('aria-expanded', 'true'));
+        await answerWith(network, phrase, suggestionsFor(phrase), `${phrase} one`);
+        expect(box.input).toHaveAttribute('aria-expanded', 'true');
         return { ...box, user, network };
     };
 
@@ -303,11 +335,9 @@ describe('what this browser searched before', () => {
         const box = renderBox(network.client);
         const user = userEvent.setup();
         await user.type(box.input, 'trail');
-        await waitFor(() => expect(network.pending).toHaveLength(1));
-        network.pending[0]?.answer(suggestionsFor('trail'));
-        await waitFor(() =>
-            expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeVisible()
-        );
+        // Both queries are recent phrases too, so only a product says the answer is drawn.
+        await answerWith(network, 'trail', suggestionsFor('trail'), 'trail one');
+        expect(screen.getByRole('listbox', { name: 'Suggestions' })).toBeVisible();
         expect(screen.getByRole('group', { name: 'Recent searches' })).toBeInTheDocument();
         expect(screen.getByRole('group', { name: 'Suggestions' })).toBeInTheDocument();
         const names = screen
@@ -464,9 +494,13 @@ describe('what this browser searched before', () => {
         const box = renderBox(network.client);
         const user = userEvent.setup();
         await user.type(box.input, 'trail');
-        await waitFor(() => expect(network.pending).toHaveLength(1));
-        network.pending[0]?.answer({ queries: ['trail  runner', 'trail jacket'], products: [] });
-        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 suggestion'));
+        await answerWith(
+            network,
+            'trail',
+            { queries: ['trail  runner', 'trail jacket'], products: [] },
+            'trail jacket'
+        );
+        expect(screen.getByRole('status')).toHaveTextContent('1 suggestion');
         expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
             'trail runner',
             'trail jacket',
@@ -530,9 +564,8 @@ describe('the box inside a shadow root', () => {
         const input = within(container).getByRole('combobox');
         fireEvent.focus(input);
         fireEvent.change(input, { target: { value: 'trail' } });
-        await waitFor(() => expect(network.pending).toHaveLength(1));
-        network.pending[0]?.answer(suggestionsFor('trail'));
-        await waitFor(() => expect(input).toHaveAttribute('aria-expanded', 'true'));
+        await answerWith(network, 'trail', suggestionsFor('trail'), 'trail one', container);
+        expect(input).toHaveAttribute('aria-expanded', 'true');
         fireEvent.keyDown(input, { key: 'ArrowDown' });
         fireEvent.keyDown(input, { key: 'ArrowDown' });
         const second = within(container).getAllByRole('option')[1];

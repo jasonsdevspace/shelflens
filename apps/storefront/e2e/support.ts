@@ -141,3 +141,32 @@ export const settle = (page: Page): Promise<void> =>
                 requestAnimationFrame(() => requestAnimationFrame(() => done()));
             })
     );
+
+/**
+ * Scrolls the page with the mouse wheel and waits for the scroll to end, so nothing measured after
+ * it is taken mid-scroll. A wheel's scroll is smooth, so the page can be well down after one frame
+ * and still be moving for many more, carrying on under a press made in that time. It waits for a
+ * scroll to end with the page at least `atLeast` pixels down, and fails naming where the page
+ * stopped if none has within five seconds.
+ */
+export const wheelScroll = async (page: Page, by: number, atLeast = 1): Promise<void> => {
+    const ended = page.evaluate(
+        (least) =>
+            new Promise<number>((done, fail) => {
+                const timer = setTimeout(
+                    () => fail(new Error(`the wheel left the page at ${String(window.scrollY)}`)),
+                    5000
+                );
+                const onEnd = () => {
+                    if (window.scrollY < least) return;
+                    clearTimeout(timer);
+                    document.removeEventListener('scrollend', onEnd);
+                    done(window.scrollY);
+                };
+                document.addEventListener('scrollend', onEnd);
+            }),
+        atLeast
+    );
+    await page.mouse.wheel(0, by);
+    await ended;
+};

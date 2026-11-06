@@ -1,4 +1,4 @@
-import { expect, type Page, settle, test } from './support.js';
+import { expect, type Page, settle, test, wheelScroll } from './support.js';
 
 /*
  * The column beside the results on a wide screen: it never scrolls sideways, and it scrolls with
@@ -96,8 +96,7 @@ test('stays in view beside the results when the column fits on the screen', asyn
     await expect.poll(async () => (await column(page)).pinned).toBe(true);
     expect((await column(page)).scrollsItself).toBe(false);
     const filters = page.getByRole('complementary', { name: 'Filters' });
-    await page.mouse.wheel(0, 600);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await wheelScroll(page, 600);
     await expect(filters.getByRole('group', { name: 'Category' })).toBeInViewport();
 });
 
@@ -108,24 +107,27 @@ test('keeps the column still when showing a list makes it too tall to stay in vi
     await openStore(page, 900);
     await page.setViewportSize({ width: 820, height: (await columnHeight(page)) + 200 });
     await expect.poll(async () => (await column(page)).pinned).toBe(true);
-    await page.mouse.wheel(0, 1500);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400);
+    // The press waits for the wheel's smooth scroll to end, since one still running when the
+    // column is let go carries the page on past where the column was put back. At least 400 down,
+    // so the column's own place is well up the page and a jump back to it would show.
+    await wheelScroll(page, 1500, 400);
     const filters = page.getByRole('complementary', { name: 'Filters' });
     const before = await filters.boundingBox();
+    if (!before) throw new Error('expected the column to be drawn before the press');
     await page.getByRole('button', { name: /^Show all \d+ colors$/ }).click();
     await expect.poll(async () => (await column(page)).pinned).toBe(false);
     // The column stays where it was on the screen, rather than jumping back to its place up the
     // page with the button the shopper pressed.
     const after = await filters.boundingBox();
-    expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+    if (!after) throw new Error('expected the column to be drawn after the press');
+    expect(Math.abs(after.y - before.y)).toBeLessThan(2);
 });
 
 test('shows the way past the column at the top of the column, wherever the page is', async ({
     page,
 }) => {
     await openStore(page, 700);
-    await page.mouse.wheel(0, 300);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await wheelScroll(page, 300);
     const filters = page.getByRole('complementary', { name: 'Filters' });
     const skip = filters.getByRole('link', { name: 'Skip to results' });
     await skip.focus();
