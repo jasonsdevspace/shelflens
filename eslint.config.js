@@ -131,11 +131,6 @@ export default defineConfig(
         },
     },
     {
-        // The script each page runs before its first paint, in the browser.
-        files: ['apps/storefront/theme.js'],
-        languageOptions: { globals: globals.browser },
-    },
-    {
         // The storefront runs in a browser, and its hooks follow React's rules.
         files: ['apps/storefront/**/*.{ts,tsx}'],
         languageOptions: { globals: { ...globals.browser, ...globals.serviceworker } },

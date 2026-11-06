@@ -284,7 +284,7 @@ packages/
                  cache key, the shape over HTTP, and the events and rules receivers
 apps/
 ├── server/      the API behind HTTP, with a rate limit and a request id
-└── storefront/  the demo page, and theme.js, the script both pages run before their first paint
+└── storefront/  the demo page, the explainer, the try page and the widget's host pages
     ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
     └── src/     tokens.css (the design's named values), styles.css, app (the URL as state,
