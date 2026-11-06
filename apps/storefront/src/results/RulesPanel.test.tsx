@@ -133,6 +133,17 @@ const lastDraft = (onDraft: Mock<(draft: readonly Rule[] | undefined) => void>) 
     return draft;
 };
 
+/**
+ * The panel's alert once it says this. While a rule is open the alert is in the panel empty, so it
+ * is heard as it fills, and finding it is not the same as finding what it says.
+ */
+const alertSaying = (text: string | RegExp) =>
+    waitFor(() => {
+        const alert = screen.getByRole('alert');
+        expect(alert).toHaveTextContent(text);
+        return alert;
+    });
+
 const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn<(draft: readonly Rule[] | undefined) => void>();
     const onStoreChanged = vi.fn();
@@ -315,8 +326,7 @@ describe('the rules panel', () => {
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-404');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const refused = await screen.findByRole('alert');
-        expect(refused).toHaveTextContent('no product has the SKU SL-404');
+        const refused = await alertSaying('no product has the SKU SL-404');
         expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(posted).toHaveLength(1);
         expect(onStoreChanged).not.toHaveBeenCalled();
@@ -497,8 +507,7 @@ describe('the rules panel', () => {
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const failed = await screen.findByRole('alert');
-        expect(failed).toHaveTextContent(/^Error: ?The rules could not be saved\. Try again\.$/);
+        const failed = await alertSaying(/^Error: ?The rules could not be saved\. Try again\.$/);
         expect(failed.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
@@ -656,8 +665,7 @@ describe('the rules panel', () => {
         vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
         storeBuiltAgain(1);
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const refused = await screen.findByRole('alert');
-        expect(refused).toHaveTextContent('The rules are being read again. Try again in a moment.');
+        const refused = await alertSaying('The rules are being read again. Try again in a moment.');
         expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(await store.current()).toBeUndefined();
