@@ -10,8 +10,8 @@ import { expect, type Page, test } from './support.js';
 
 /**
  * Once the page has said its first answer, every time from then on that the results' status
- * region fills with an answer, as a screen reader hears each one. A line is counted each time the
- * region goes from empty to holding words, so the same words said again count again.
+ * region fills with an answer, which is what a screen reader is given to say. A line is counted
+ * each time the region goes from empty to holding words, so the same words said again count again.
  */
 const listen = async (page: Page) => {
     const heading = page.getByRole('heading', { level: 1 });
@@ -51,7 +51,10 @@ const heard = (page: Page) =>
         return Array.isArray(lines) ? lines.map(String) : [];
     });
 
-/** Once nothing more is said for longer than the region waits to settle, what it said. */
+/**
+ * What the region has said, once it has said something and a while longer than it waits to
+ * settle.
+ */
 const quiet = async (page: Page) => {
     await expect.poll(() => heard(page), { timeout: 5000 }).not.toEqual([]);
     await page.waitForTimeout(1500);
@@ -68,8 +71,8 @@ test('says the results once a shopper stops stepping through a facet, not at eve
     await listen(page);
     await options.first().focus();
     await page.keyboard.press('Space');
-    // Faster than the region waits to settle by a wide margin, so however slowly the answers land,
-    // no step is left long enough to be said.
+    // A tenth of a second apart, far inside the time the region waits to settle, so while the
+    // answers land as quickly as the presses, no step stays long enough to be said.
     for (let step = 0; step < 3; step += 1) {
         await page.waitForTimeout(100);
         await page.keyboard.press('ArrowDown');
