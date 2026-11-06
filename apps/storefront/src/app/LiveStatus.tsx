@@ -18,11 +18,14 @@ export const StatusRegion = ({ children }: { readonly children: ReactNode }) => 
  * is empty on its first render and filled a moment later. Given a time to
  * settle, it waits until the text has stayed the same that long, so text that
  * changes again and again in quick succession is said once, as it ends up.
+ * Emptying is never held back: a screen reader does not say what leaves a
+ * region, and an emptied region is what lets an answer that comes back in the
+ * same words be heard again.
  */
 export const useSaidLater = (text: string, settleMs = 0): string => {
     const [said, setSaid] = useState('');
     useEffect(() => {
-        const timer = setTimeout(() => setSaid(text), settleMs);
+        const timer = setTimeout(() => setSaid(text), text === '' ? 0 : settleMs);
         return () => clearTimeout(timer);
     }, [text, settleMs]);
     return said;

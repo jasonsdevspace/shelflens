@@ -5,6 +5,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { nth } from './test/dom.js';
 import { cards, catalog, facet, heading, open, settled } from './test/store.jsx';
 
+/** Long enough for the results' status line to settle and be said, with room for a slow runner. */
+const ANNOUNCED_WITHIN_MS = 3000;
+
 /* Finding things: browsing, narrowing, counting, paging, searching, a search that finds nothing, what was searched before, and where focus is and what is said as the results change. */
 
 describe('browsing', () => {
@@ -35,12 +38,14 @@ describe('browsing', () => {
         expect(window.location.search).toBe(`?category=${root.id}`);
         // The category says how many products it holds, on the page and to a screen reader.
         expect(heading()).toHaveTextContent(new RegExp(`^${root.name}, \\d+ products$`));
-        await waitFor(() =>
-            expect(
-                screen
-                    .getAllByRole('status')
-                    .some((status) => status.textContent.startsWith(heading().textContent))
-            ).toBe(true)
+        await waitFor(
+            () =>
+                expect(
+                    screen
+                        .getAllByRole('status')
+                        .some((status) => status.textContent.startsWith(heading().textContent))
+                ).toBe(true),
+            { timeout: ANNOUNCED_WITHIN_MS }
         );
         expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveValue('position');
         const crumbs = screen.getByRole('navigation', { name: 'Category' });
@@ -283,12 +288,14 @@ describe('counting', () => {
         await user.click(one);
         await settled();
         expect(heading()).toHaveTextContent(/^1 result for "jacket"$/);
-        await waitFor(() =>
-            expect(
-                screen
-                    .getAllByRole('status')
-                    .some((status) => status.textContent === '1 result for "jacket"')
-            ).toBe(true)
+        await waitFor(
+            () =>
+                expect(
+                    screen
+                        .getAllByRole('status')
+                        .some((status) => status.textContent === '1 result for "jacket"')
+                ).toBe(true),
+            { timeout: ANNOUNCED_WITHIN_MS }
         );
     });
 });
@@ -517,12 +524,14 @@ describe('keeping place on the results', () => {
         const user = await open();
         await user.click(screen.getByRole('button', { name: 'Next' }));
         await waitFor(() => expect(heading()).toHaveFocus());
-        await waitFor(() =>
-            expect(
-                screen
-                    .getAllByRole('status')
-                    .some((status) => /page 2 of \d+/.test(status.textContent))
-            ).toBe(true)
+        await waitFor(
+            () =>
+                expect(
+                    screen
+                        .getAllByRole('status')
+                        .some((status) => /page 2 of \d+/.test(status.textContent))
+                ).toBe(true),
+            { timeout: ANNOUNCED_WITHIN_MS }
         );
     });
 
@@ -581,12 +590,16 @@ describe('saying what changed', () => {
     it('announces the results once they land, after a search and after a filter', async () => {
         const user = await open('?q=jacket');
         await settled();
-        await waitFor(() => expect(announced()).toContain(heading().textContent));
+        await waitFor(() => expect(announced()).toContain(heading().textContent), {
+            timeout: ANNOUNCED_WITHIN_MS,
+        });
         const [brand] = within(facet('Brand')).getAllByRole('checkbox');
         if (!brand) throw new Error('expected a brand');
         await user.click(brand);
         await settled();
-        await waitFor(() => expect(announced()).toContain(heading().textContent));
+        await waitFor(() => expect(announced()).toContain(heading().textContent), {
+            timeout: ANNOUNCED_WITHIN_MS,
+        });
     });
 
     it('keeps focus in the search box after Enter, and says nothing about suggestions', async () => {

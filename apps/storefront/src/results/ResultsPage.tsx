@@ -149,7 +149,8 @@ const SideColumn = ({
  * answer at every press, a few tenths of a second apart, and hearing each one
  * buries the one they stop on. Longer than the gap between deliberate presses,
  * and short enough that the answer follows the pause, while the page itself
- * draws every step at once.
+ * draws every step at once. A single change, a click, a sort or Enter in the
+ * search box, waits the same, which still reads as the answer to it.
  */
 const ANNOUNCE_SETTLE_MS = 750;
 
