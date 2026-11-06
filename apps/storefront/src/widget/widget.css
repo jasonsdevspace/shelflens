@@ -4,11 +4,12 @@
  * the font, at a size no host's root font size can scale, the color, and
  * the cursor, so a cursor the host sets does not show over the widget.
  * The colors follow the host's color-scheme, which is the one standard
- * property a host sets to theme the widget, and the store's own theme script
- * sets it on the demo's host page. Each is chosen by name from the pairs in
- * the tokens. A custom property takes any value, so the choice by scheme
- * sits behind a feature check, with the light one for a browser that does
- * not know light-dark().
+ * property a host sets to theme the widget, and on the demo's host page
+ * the store's stylesheet sets it by the theme the design kit's script
+ * puts on the root. Each is chosen by name from the pairs in the tokens.
+ * A custom property takes any value, so the choice by scheme sits behind
+ * a feature check, with the light one for a browser that does not know
+ * light-dark().
  */
 .shelflens {
     --bg: var(--light-bg);

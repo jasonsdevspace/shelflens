@@ -127,7 +127,7 @@ the page.
   the API's one cache key, and keeps what the answer's headers allow in the Cache API under the
   answer's URL, since a response a worker makes up never enters the browser's own cache. Its handler
   is tested with plain fetch requests.
-- **In development the dev server answers instead.** `src/dev` is a Vite plugin that mounts the
+- **In development the dev server answers instead.** `src/dev/api-plugin.ts` is a Vite plugin that
   Node handler from `@shelflens/server` on the paths the Node server serves, over the same store
   host, so `npm run dev` needs no second process and no worker fighting hot reloading.
 - **Deployed by CI.** Once every check has passed on main, the workflow builds the page, the

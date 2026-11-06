@@ -28,8 +28,9 @@
 
 /*
  * The theme is the one the portfolio saved, or the system's when nothing is
- * saved. A script in index.html sets the attribute before the first paint,
- * so this page and jasonsdevspace.com switch together.
+ * saved. The design kit's script, which its plugin puts in each page's
+ * head, sets the attribute before the first paint, so this page and
+ * jasonsdevspace.com switch together.
  */
 :root[data-theme='dark'] {
     --bg: var(--dark-bg);

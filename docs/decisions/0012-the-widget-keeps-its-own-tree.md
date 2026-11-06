@@ -38,11 +38,11 @@ is inheritance, so the widget's container pins the font at 16px, the color, the 
 letter spacing, the text transform and the cursor. It takes its colors from the one standard
 property a host sets to theme it, `color-scheme`, through `light-dark()`, each chosen by name from
 the light and dark pairs in `tokens.css` that the store's pages share, with the light values alone
-for a browser that does not know it. The store's own theme script sets that property, so on the
-demo's host page the widget switches with the portfolio and the store. Layout and the stacking
-context sit on that inner container rather than on `:host`, where a host rule on the element would
-win, and the element is given `display: block` as an inline style at mount, which only an
-`!important` could beat.
+for a browser that does not know it. The design kit's theme script sets the page's theme and the
+store's stylesheet sets that property from it, so on the demo's host page the widget switches with
+the portfolio and the store. Layout and the stacking context sit on that inner container rather
+than on `:host`, where a host rule on the element would win, and the element is given
+`display: block` as an inline style at mount, which only an `!important` could beat.
 
 **The top layer.** A stacking context of its own makes the popover's order private but leaves the
 widget in the host's order at `auto`, so a fixed banner at a high z-index paints over the list

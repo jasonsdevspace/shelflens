@@ -10,8 +10,13 @@ import { type Plugin, runnerImport } from 'vite';
  * loading line where the search box goes.
  */
 const ROOT = '<div id="root"><!-- page-shell --></div>';
-/** Where a widget page mounts the search box, which also marks it as a widget page. */
-export const WIDGET = '<div id="shelflens-search"><!-- widget-waiting --></div>';
+/**
+ * The element a widget page mounts the search box in, which also marks it as a widget page, before
+ * the shell fills it and after.
+ */
+export const WIDGET_MOUNT = '<div id="shelflens-search">';
+/** Where a widget page mounts the search box, still waiting for the shell's loading line. */
+const WIDGET = `${WIDGET_MOUNT}<!-- widget-waiting --></div>`;
 const SHELL = fileURLToPath(new URL('../app/shell.tsx', import.meta.url));
 
 type Shell = typeof import('../app/shell.jsx');
@@ -42,10 +47,7 @@ export const pageShell = (): Plugin => {
                 }
                 if (html.includes(WIDGET)) {
                     const { WIDGET_WAITING } = await shell();
-                    return html.replace(
-                        WIDGET,
-                        () => `<div id="shelflens-search">${WIDGET_WAITING}</div>`
-                    );
+                    return html.replace(WIDGET, () => `${WIDGET_MOUNT}${WIDGET_WAITING}</div>`);
                 }
                 return html;
             },
