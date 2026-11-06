@@ -112,19 +112,24 @@ const inspect = () => {
             .map((problem) => `${name(control)} ${problem}`);
     };
 
-    return all(document)
-        .filter(
-            (element) =>
-                element.matches(
-                    'button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"])'
-                ) &&
-                // A control that is off, disabled or marked so, is held to no edge, as WCAG holds
-                // an inactive one to none, and draws the line's color instead.
-                !('disabled' in element && element.disabled === true) &&
-                element.getAttribute('aria-disabled') !== 'true' &&
-                shown(element)
-        )
-        .flatMap((control) => [...edgeOf(control), ...selectOf(control)]);
+    return (
+        all(document)
+            .filter(
+                (element) =>
+                    element.matches(
+                        'button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"])'
+                    ) &&
+                    !('disabled' in element && element.disabled === true) &&
+                    shown(element)
+            )
+            // A kit button that is off, marked aria-disabled, draws its edge in the line's color
+            // and is held to no edge, as WCAG holds an inactive control to none. It is held to
+            // the rest.
+            .flatMap((control) => [
+                ...(control.matches('.dk-button[aria-disabled="true"]') ? [] : edgeOf(control)),
+                ...selectOf(control),
+            ])
+    );
 };
 
 /** The most Tab presses a page may take before focus comes back around. */

@@ -174,20 +174,25 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
         probe.style.background = 'var(--dk-raised)';
         const raised = getComputedStyle(probe).backgroundColor;
         probe.remove();
+        // What a button is seen on: its own ground, or the first one under it that is drawn.
+        const seenOn = (element: Element | null): string => {
+            for (let at = element; at; at = at.parentElement) {
+                const color = getComputedStyle(at).backgroundColor;
+                if (color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') return color;
+            }
+            return getComputedStyle(document.body).backgroundColor;
+        };
         return {
             raised,
             page: getComputedStyle(document.body).backgroundColor,
             tour: getComputedStyle(document.querySelector('.tour') ?? document.body)
                 .backgroundColor,
-            button: getComputedStyle(
-                document.querySelector('.tour-nav .dk-button:not(.dk-button-accent)') ??
-                    document.body
-            ).backgroundColor,
+            button: seenOn(document.querySelector('.tour-nav .dk-button:not(.dk-button-accent)')),
         };
     });
     expect(backgrounds.tour).toBe(backgrounds.raised);
-    // Its buttons have no ground of their own, so they sit on the panel, not in wells of the page's.
-    expect(backgrounds.button).toBe('rgba(0, 0, 0, 0)');
+    // Its buttons sit on the panel, not in wells of the page's color.
+    expect(backgrounds.button).toBe(backgrounds.raised);
     expect(backgrounds.raised).not.toBe(backgrounds.page);
 });
 

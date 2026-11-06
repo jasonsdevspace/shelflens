@@ -202,13 +202,8 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                     </StateLink>
                 )}
                 <div className="tour-steps">
-                    {/* Off at the first stop, but still focusable, so pressing it there leaves focus on it. */}
-                    <Button
-                        off={first}
-                        onClick={() => {
-                            if (!first) onIndex(index - 1);
-                        }}
-                    >
+                    {/* Off at the first stop, but still focusable, so a press there keeps focus. */}
+                    <Button off={first} onClick={() => onIndex(index - 1)}>
                         Previous
                     </Button>
                     <Button

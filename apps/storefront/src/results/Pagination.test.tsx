@@ -6,7 +6,8 @@ import { Pagination } from './Pagination.jsx';
 
 /*
  * The way between pages. A step that goes nowhere is off rather than disabled, so a keyboard that
- * reaches it keeps its place and hears why, as every off button in the design kit does.
+ * reaches it keeps its place and a screen reader hears it is unavailable, as with every off button
+ * in the design kit.
  */
 
 describe('the pages of results', () => {
@@ -27,6 +28,10 @@ describe('the pages of results', () => {
         render(<Pagination page={3} totalPages={3} onPage={onPage} />);
         const next = screen.getByRole('button', { name: 'Next' });
         expect(next).toHaveAttribute('aria-disabled', 'true');
+        expect(next).toBeEnabled();
+        next.focus();
+        expect(next).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
         await userEvent.click(next);
         expect(onPage).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole('button', { name: 'Previous' }));

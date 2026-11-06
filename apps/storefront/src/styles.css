@@ -18,7 +18,7 @@
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
  * keeps the plain arrow, so no control has to remember its own. One that is
- * off but keeps focus, as the tour's Previous does at the first stop, says so
+ * off but keeps focus, as Previous and Next do where they go nowhere, says so
  * with aria-disabled and counts as off. The labels around a checkbox or a
  * radio are named by class, since :has() is newer than some of the browsers
  * the build supports.
@@ -115,7 +115,7 @@ summary,
  * control color and the field's height, so it sits level with a select
  * beside it, a pressed or open one says so in the accent, and a
  * .dk-button-accent is the one action a view asks for. What follows are
- * the store's own two kinds.
+ * the store's own kinds.
  *
  * A .button-large is a kit button for the action that ends a step, such as
  * showing what a drawer has filtered.
@@ -123,6 +123,9 @@ summary,
  * A .text-button is an action that reads as text, in a sentence or under
  * a list, in the accent and always underlined, since the accent alone is
  * too close to the text to mark it.
+ *
+ * An .option-button is a choice in a list, a full row in the accent,
+ * underlined when it is pointed at or focused.
  */
 .button-large {
     min-height: var(--dk-target);
@@ -1133,7 +1136,6 @@ summary,
 
 .tour-close:hover {
     color: var(--dk-fg);
-    border-color: transparent;
 }
 
 /* How far through the tour the visitor is, drawn under the count it repeats. */

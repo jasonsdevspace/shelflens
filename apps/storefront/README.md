@@ -60,15 +60,15 @@ the page.
   weight and line, and the cut to motion. The strip and the footer are the kit's, and so is the skip
   link on the pages written by hand. The store's pages draw the strip, with the demo's switches in
   it, and the footer from the kit's React components. The pages written by hand write the same
-  markup, which a test holds to what the components draw. Every bordered button is the kit's
-  `Button`, or a link or a label that wears its `.dk-button`, the one action a view asks for is its
-  accent, and a step that goes nowhere is off rather than disabled, so a keyboard keeps its place on
-  it. An action that reads as text is the store's own `.text-button`, always underlined. Each
-  component otherwise wears classes of its own. The page picks each color by the saved theme and the
-  widget by its host's color scheme. A test holds every sheet to the tokens, the store's palette to
-  every pairing the kit measures, and the widget's frame to every name it reads, and a browser test
-  holds every control on every page that is not off to an edge of 3 to 1, the one focus ring and,
-  for a select, its caret, in both themes and on a phone.
+  markup, which a test holds to what the components draw. Every bordered button is the kit's, its
+  `Button`, or its `.dk-button` on a link, a label or a button the page moves focus to. The one
+  action a view asks for is its accent, and a step that goes nowhere is off rather than disabled, so
+  a keyboard keeps its place on it. An action that reads as text is the store's own `.text-button`,
+  always underlined. Each component otherwise wears classes of its own. The page picks each color by
+  the saved theme and the widget by its host's color scheme. A test holds every sheet to the tokens,
+  the store's palette to every pairing the kit measures, and the widget's frame to every name it
+  reads, and a browser test holds every control on every page that is not off to an edge of 3 to 1,
+  the one focus ring and, for a select, its caret, in both themes and on a phone.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about
