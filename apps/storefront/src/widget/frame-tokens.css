@@ -1,0 +1,54 @@
+/*
+ * The widget's frame, .shelflens, inside its shadow root on other people's
+ * pages, where the design kit's sheets would match nothing. It takes every
+ * role and scale step the widget reads, set to the values the store's pages
+ * draw, so a host page's own --dk- values never reach it. Its colors are the
+ * light values first, then by the host's color scheme behind a feature
+ * check, the one place the build leaves light-dark() as it is written.
+ * Rewritten as it is for the page, it would rest on switches set on the
+ * page's root, which no other host has, and draw no color at all. A test
+ * holds the frame to every name the widget reads, to the colors the store's
+ * pages draw, and to the kit's values wherever it repeats them.
+ */
+/* Everything the widget reads, its colors in the light theme for a browser without light-dark(). */
+.shelflens {
+    /* The store's name, which is a mark rather than a heading. */
+    --weight-mark: 700;
+    --dk-bg: #ffffff;
+    --dk-fg: #1a1a1a;
+    --dk-muted: #5c5c5c;
+    --dk-line: #d9d9d9;
+    --dk-control: #858585;
+    --dk-accent: #1f4fd8;
+    --dk-on-accent: #ffffff;
+    --dk-highlight: #eef2fd;
+    --dk-raised: #ffffff;
+    --dk-danger: #b7472a;
+    --rating: #b45309;
+    --swatch-edge: rgba(0, 0, 0, 0.12);
+    --dk-leading-tight: 1.2;
+    --dk-leading-body: 1.5;
+    --dk-weight-medium: 500;
+    --dk-weight-strong: 600;
+    --dk-ring-width: 2px;
+    --dk-ring-offset: 2px;
+    --dk-shadow-raised: 0 6px 24px rgb(0 0 0 / 0.18);
+}
+
+/* And by the host's color scheme, where the browser knows light-dark(). */
+@supports (color: light-dark(#000, #fff)) {
+    .shelflens {
+        --dk-bg: light-dark(#ffffff, #121212);
+        --dk-fg: light-dark(#1a1a1a, #f0f0f0);
+        --dk-muted: light-dark(#5c5c5c, #a5a5a5);
+        --dk-line: light-dark(#d9d9d9, #3a3a3a);
+        --dk-control: light-dark(#858585, #7d7d7d);
+        --dk-accent: light-dark(#1f4fd8, #8fb0ff);
+        --dk-on-accent: light-dark(#ffffff, #121212);
+        --dk-highlight: light-dark(#eef2fd, #1e2a4a);
+        --dk-raised: light-dark(#ffffff, #1c1c1c);
+        --dk-danger: light-dark(#b7472a, #e8795a);
+        --rating: light-dark(#b45309, #f2b544);
+        --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
+    }
+}

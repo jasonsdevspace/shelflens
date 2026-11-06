@@ -1,19 +1,19 @@
 /* The page for a visitor's own catalog, before its store is built. */
 
 .try-stage {
-    max-width: var(--measure);
+    max-width: var(--dk-measure);
 }
 
 /* An entry page, so it opens at the explainer's size, and at a heading's on a phone. */
 .try-stage h1 {
-    font-size: var(--text-display);
-    line-height: var(--leading-tight);
-    margin-block: var(--space-2) var(--space-4);
+    font-size: var(--dk-text-display);
+    line-height: var(--dk-leading-tight);
+    margin-block: var(--dk-space-2) var(--dk-space-4);
 }
 
 @media (max-width: 48rem) {
     .try-stage h1 {
-        font-size: var(--text-heading);
+        font-size: var(--dk-text-heading);
     }
 }
 
@@ -22,33 +22,33 @@
 }
 
 .try-stage h2 {
-    font-size: var(--text-body);
-    margin-block: var(--space-5) var(--space-2);
+    font-size: var(--dk-text-body);
+    margin-block: var(--dk-space-5) var(--dk-space-2);
 }
 
 .try-private {
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 .try-problem {
-    color: var(--warn);
-    font-weight: var(--weight-strong);
+    color: var(--dk-danger);
+    font-weight: var(--dk-weight-strong);
 }
 
 .try-drop {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-5);
-    margin-block: var(--space-4);
-    border: 2px dashed var(--control);
-    border-radius: var(--radius-large);
+    gap: var(--dk-space-3);
+    padding: var(--dk-space-5);
+    margin-block: var(--dk-space-4);
+    border: 2px dashed var(--dk-control);
+    border-radius: var(--dk-radius-large);
 }
 
 .try-drop.is-over {
-    border-color: var(--accent);
-    background: var(--highlight);
+    border-color: var(--dk-accent);
+    background: var(--dk-highlight);
 }
 
 .try-drop p {
@@ -76,24 +76,24 @@
 }
 
 .try-pick:focus-within {
-    outline: var(--ring-width) solid var(--accent);
-    outline-offset: var(--ring-offset);
+    outline: var(--dk-ring-width) solid var(--dk-accent);
+    outline-offset: var(--dk-ring-offset);
 }
 
 .try-mapping {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: var(--space-3) var(--space-5);
+    gap: var(--dk-space-3) var(--dk-space-5);
 }
 
 .try-field {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
     min-width: 0;
 }
 
 .try-field label {
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 /* A label and, for the two parts a store cannot do without, the word that says so. */
@@ -101,13 +101,13 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
 }
 
 /* Name and Price stand out from the parts that have a default. */
 .try-field.is-needed label {
-    color: var(--fg);
-    font-weight: var(--weight-strong);
+    color: var(--dk-fg);
+    font-weight: var(--dk-weight-strong);
 }
 
 /* A long column name in a visitor's file stops at its column's edge rather than widening the page. */
@@ -118,21 +118,21 @@
 .try-search-only {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
-    margin-block: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-small);
+    gap: var(--dk-space-2) var(--dk-space-5);
+    margin-block: var(--dk-space-4);
+    padding: var(--dk-space-3) var(--dk-space-4);
+    border: 1px solid var(--dk-line);
+    border-radius: var(--dk-radius-small);
 }
 
 .try-search-only legend {
-    padding-inline: var(--space-1);
+    padding-inline: var(--dk-space-1);
 }
 
 .try-preview {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-    gap: var(--space-3);
+    gap: var(--dk-space-3);
     padding: 0;
     list-style: none;
 }
@@ -140,32 +140,32 @@
 .try-preview-card {
     display: grid;
     align-content: start;
-    gap: var(--space-1);
-    padding: var(--space-3);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
+    gap: var(--dk-space-1);
+    padding: var(--dk-space-3);
+    border: 1px solid var(--dk-line);
+    border-radius: var(--dk-radius-large);
 }
 
 .try-preview-name {
-    font-weight: var(--weight-strong);
+    font-weight: var(--dk-weight-strong);
 }
 
 .try-skipped {
-    margin-block: var(--space-4);
+    margin-block: var(--dk-space-4);
 }
 
 .try-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-block: var(--space-5);
+    gap: var(--dk-space-3);
+    margin-block: var(--dk-space-5);
 }
 
 .try-bar {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-1) var(--space-4);
+    gap: var(--dk-space-1) var(--dk-space-4);
 }
 
 /* A thumb's height when the bar stacks on a phone, the link as well as the buttons. */
@@ -173,7 +173,7 @@
     .try-bar .text-button {
         display: inline-flex;
         align-items: center;
-        min-height: var(--target);
+        min-height: var(--dk-target);
     }
 }
 
@@ -184,8 +184,8 @@
 
 /* A question that asks for an answer is in the text's own color, never muted. */
 .try-ask {
-    color: var(--fg);
-    margin-block: var(--space-5);
+    color: var(--dk-fg);
+    margin-block: var(--dk-space-5);
 }
 
 .try-bar .try-ask {
@@ -193,5 +193,5 @@
 }
 
 .try-stage a {
-    color: var(--accent);
+    color: var(--dk-accent);
 }

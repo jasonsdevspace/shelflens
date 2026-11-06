@@ -34,3 +34,24 @@ test('mounts on a page from another origin, gets suggestions from the server, an
     await search.press('Enter');
     await expect(page).toHaveURL(`${DEMO}?q=boot`);
 });
+
+for (const [colorScheme, fg, bg] of [
+    ['light', 'rgb(26, 26, 26)', 'rgb(255, 255, 255)'],
+    ['dark', 'rgb(240, 240, 240)', 'rgb(18, 18, 18)'],
+] as const) {
+    test(`draws its own colors under a host that sets a ${colorScheme} color scheme`, async ({
+        page,
+    }) => {
+        // A host themes the widget by its color scheme alone, so the widget's colors have to
+        // resolve from what its own sheet holds, with nothing of the store's on the page.
+        await page.goto(HOST);
+        await page.evaluate((scheme) => {
+            document.documentElement.style.colorScheme = scheme;
+        }, colorScheme);
+        const search = page.getByRole('combobox', { name: 'Search the store' });
+        await expect(search).toBeVisible();
+        const frame = page.locator('.shelflens');
+        expect(await frame.evaluate((el) => getComputedStyle(el).color)).toBe(fg);
+        expect(await search.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(bg);
+    });
+}

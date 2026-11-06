@@ -287,8 +287,9 @@ apps/
 └── storefront/  the demo page and the widget's hosts, with the design kit's theme script
     ├── about/   the page on how it works, built beside the demo
     ├── public/  the rules file, and the catalog the build writes beside it
-    └── src/     tokens.css (the design's named values), styles.css, app (the URL as state,
-                 categories, the store context, the first screen, focus and the live status),
+    └── src/     tokens.css (the store's values over the design kit's), styles.css, app (the
+                 URL as state, categories, the store context, the first screen, focus and the
+                 live status),
                  client (the GraphQL client, its memory, the latest-request helper, and the
                  rules and catalog clients), search (the popover), results (facets, sort,
                  pages, explain mode, nothing, the rules panel), product, format (money and

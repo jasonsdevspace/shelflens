@@ -39,17 +39,17 @@
     font: inherit;
     font-size: 1em;
     /* Its own line height, so the box is the same height in the store and inside a host's page. */
-    line-height: var(--leading-tight);
+    line-height: var(--dk-leading-tight);
     padding: 0.6em 0.8em;
-    border: 1px solid var(--control);
+    border: 1px solid var(--dk-control);
     border-radius: 0.5em;
-    background: var(--bg);
-    color: var(--fg);
+    background: var(--dk-bg);
+    color: var(--dk-fg);
 }
 
 .searchbox-input:focus {
-    outline: var(--ring-width) solid var(--accent);
-    outline-offset: var(--ring-offset);
+    outline: var(--dk-ring-width) solid var(--dk-accent);
+    outline-offset: var(--dk-ring-offset);
 }
 
 /*
@@ -66,11 +66,11 @@
     right: 0;
     margin: 0.25em 0 0;
     padding: 0.25em 0;
-    background: var(--bg);
-    color: var(--fg);
-    border: 1px solid var(--line);
+    background: var(--dk-bg);
+    color: var(--dk-fg);
+    border: 1px solid var(--dk-line);
     border-radius: 0.5em;
-    box-shadow: var(--shadow-raised);
+    box-shadow: var(--dk-shadow-raised);
     max-height: 70vh;
     overflow-y: auto;
 }
@@ -117,10 +117,10 @@
 .searchbox-heading,
 .searchbox-group-title {
     font-size: 0.85em;
-    font-weight: var(--weight-strong);
+    font-weight: var(--dk-weight-strong);
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 .searchbox-group-title {
@@ -128,7 +128,7 @@
 }
 
 li[role='group'] + li[role='group'] {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--dk-line);
     margin-top: 0.25em;
 }
 
@@ -138,16 +138,16 @@ li[role='group'] + li[role='group'] {
     min-height: 1.75em;
     min-width: 1.75em;
     padding: 0.15em 0.5em;
-    border: 1px solid var(--control);
+    border: 1px solid var(--dk-control);
     border-radius: 0.375em;
-    background: var(--bg);
-    color: var(--fg);
+    background: var(--dk-bg);
+    color: var(--dk-fg);
     cursor: pointer;
 }
 
 .searchbox-clear:focus-visible {
-    outline: var(--ring-width) solid var(--accent);
-    outline-offset: var(--ring-offset);
+    outline: var(--dk-ring-width) solid var(--dk-accent);
+    outline-offset: var(--dk-ring-offset);
 }
 
 .searchbox-option {
@@ -159,15 +159,15 @@ li[role='group'] + li[role='group'] {
 }
 
 .searchbox-option.is-active {
-    background: var(--highlight);
+    background: var(--dk-highlight);
 }
 
 .searchbox-option-query {
-    font-weight: var(--weight-medium);
+    font-weight: var(--dk-weight-medium);
 }
 
 .searchbox-option-query + .searchbox-option-product {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--dk-line);
     margin-top: 0.25em;
     padding-top: 0.75em;
 }
@@ -186,7 +186,7 @@ li[role='group'] + li[role='group'] {
 
 .searchbox-product-meta {
     font-size: 0.85em;
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 .swatch {
