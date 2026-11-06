@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { nth } from '../test/dom.js';
+import { alertSaying, nth } from '../test/dom.js';
 import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
 import { onlyUnderRelevance } from './setAside.js';
 import { useRulesEditor } from './useRulesEditor.js';
@@ -132,17 +132,6 @@ const lastDraft = (onDraft: Mock<(draft: readonly Rule[] | undefined) => void>) 
     if (!draft) throw new Error('expected the panel to hand on a draft');
     return draft;
 };
-
-/**
- * The panel's alert once it says this. While a rule is open the alert is in the panel empty, so it
- * is heard as it fills, and finding it is not the same as finding what it says.
- */
-const alertSaying = (text: string | RegExp) =>
-    waitFor(() => {
-        const alert = screen.getByRole('alert');
-        expect(alert).toHaveTextContent(text);
-        return alert;
-    });
 
 const open = (props: Partial<RulesPanelProps> = {}) => {
     const onDraft = vi.fn<(draft: readonly Rule[] | undefined) => void>();
@@ -455,14 +444,11 @@ describe('the rules panel', () => {
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const first = await screen.findByRole('alert');
-        await waitFor(() => expect(first).toHaveTextContent('The rules could not be saved.'));
+        const first = await alertSaying('The rules could not be saved.');
         // A region that keeps the same words says nothing, so the second is said in one anew.
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
         await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
-        await waitFor(() =>
-            expect(screen.getByRole('alert')).toHaveTextContent('The rules could not be saved.')
-        );
+        await alertSaying('The rules could not be saved.');
     });
 
     it('says nothing on the next open of a save that failed after the panel closed', async () => {
