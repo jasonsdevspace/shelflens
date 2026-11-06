@@ -49,9 +49,11 @@ describe('the theme the portfolio saved', () => {
     it('allows each built page the one inline script that lands in it, by its hash, and no other', () => {
         for (const page of PAGES) {
             const html = built(readFileSync(page, 'utf8'));
-            const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(
-                ([, body]) => body ?? ''
-            );
+            // Each inline script's text, read by splitting at its tags, as the build writes them.
+            const scripts = html
+                .split('<script>')
+                .slice(1)
+                .map((part) => part.split('</script>')[0] ?? '');
             expect(scripts, page).toHaveLength(1);
             const hash = createHash('sha256')
                 .update(scripts[0] ?? '')
