@@ -108,7 +108,15 @@ test('keeps the column still when showing a list makes it too tall to stay in vi
     await openStore(page, 900);
     await page.setViewportSize({ width: 820, height: (await columnHeight(page)) + 200 });
     await expect.poll(async () => (await column(page)).pinned).toBe(true);
+    // The wheel scrolls on after the page reaches its end, and a scroll still going when the column
+    // is let go carries it on past where it was, so the press waits for the wheel to finish.
+    const wheel = await page.evaluateHandle(() => ({
+        done: new Promise<void>((done) => {
+            document.addEventListener('scrollend', () => done(), { once: true });
+        }),
+    }));
     await page.mouse.wheel(0, 1500);
+    await wheel.evaluate(({ done }) => done);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400);
     const filters = page.getByRole('complementary', { name: 'Filters' });
     const before = await filters.boundingBox();
