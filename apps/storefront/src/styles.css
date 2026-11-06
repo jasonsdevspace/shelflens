@@ -5,19 +5,20 @@
 
 /*
  * The base comes from the design kit: the page's type, colors and line
- * height, the border box, the one focus ring in the accent, the accent on a
+ * height, the border box, a link's color, the one focus ring in the accent
+ * and none on a heading or section the page moves focus to, the accent on a
  * box or a dot a visitor ticks, a heading's weight and line, code in running
- * text, and motion cut short for a visitor who asks for less. What follows
- * is the store's own.
+ * text, a table's shared borders, and motion cut short for a visitor who
+ * asks for less. What follows is the store's own.
  */
 
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
  * keeps the plain arrow, so no control has to remember its own. One that is
  * off but keeps focus, as the tour's Previous does at the first stop, says so
- * with aria-disabled and counts as off. The labels
- * around a checkbox or a radio are named by class, since :has() is newer
- * than some of the browsers the build supports.
+ * with aria-disabled and counts as off. The labels around a checkbox or a
+ * radio are named by class, since :has() is newer than some of the browsers
+ * the build supports.
  */
 button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
@@ -556,8 +557,9 @@ summary,
 }
 
 /*
- * The results dim while the next ones load, once the page has waited a
- * moment for them, so a fast answer never flickers. They come back at once,
+ * The results dim while the next ones load. The page adds is-loading only
+ * once the wait has lasted a moment, in ResultsPage through useHeld, so a
+ * fast answer never flickers. They come back as soon as the answer lands,
  * and with reduced motion they change without fading.
  */
 .results-main {
@@ -981,11 +983,6 @@ summary,
 
 .no-results-offer {
     margin: var(--dk-space-2) 0;
-}
-
-/* The ways forward from nothing found, in the page's one accent. */
-.no-results a {
-    color: var(--dk-accent);
 }
 
 /* The rules a sort set aside, with the way back after the line rather than inside it. */

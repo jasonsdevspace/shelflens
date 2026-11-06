@@ -380,12 +380,12 @@ const Answer = ({
     </>
 );
 
-/** The layout's classes: dimmed while loading, and one column when there are no facets. */
 /** How long the next results may take before the ones on the page dim. */
 const DIM_AFTER_MS = 100;
 
-const layoutClass = (loading: boolean, empty: boolean) =>
-    ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
+/** The layout's classes: dimmed while loading, and one column when there are no facets. */
+const layoutClass = (dimmed: boolean, empty: boolean) =>
+    ['results-layout', dimmed && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
 
 export const ResultsPage = ({
     client,
@@ -419,7 +419,7 @@ export const ResultsPage = ({
         state,
         draft
     );
-    // The results dim only once the next ones have taken a moment, so a quick answer never flickers.
+    // Dimmed only once the next results have taken a moment, so a quick answer never flickers.
     const dimmed = useHeld(loading, DIM_AFTER_MS);
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));

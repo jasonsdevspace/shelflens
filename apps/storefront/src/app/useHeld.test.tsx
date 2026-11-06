@@ -5,8 +5,8 @@ import { useHeld } from './useHeld.js';
 
 /*
  * A state that only counts once it has lasted a moment, so an answer that comes back quickly never
- * shows the wait at all. The wait is kept in the script rather than in a stylesheet's delay, since a
- * visitor who asks for less motion has every delay in a stylesheet cut to nothing.
+ * shows the wait at all. The wait is kept in the script rather than in a stylesheet's delay, since
+ * a visitor who asks for less motion has every delay in a stylesheet cut to nothing.
  */
 
 const Probe = ({ on }: { readonly on: boolean }) => <p>{useHeld(on, 100) ? 'held' : 'not yet'}</p>;

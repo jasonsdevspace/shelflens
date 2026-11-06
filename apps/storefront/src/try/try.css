@@ -17,10 +17,6 @@
     }
 }
 
-.try-stage h1:focus {
-    outline: none;
-}
-
 .try-stage h2 {
     font-size: var(--dk-text-body);
     margin-block: var(--dk-space-5) var(--dk-space-2);
@@ -190,8 +186,4 @@
 
 .try-bar .try-ask {
     margin: 0;
-}
-
-.try-stage a {
-    color: var(--dk-accent);
 }
