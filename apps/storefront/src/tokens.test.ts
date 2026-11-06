@@ -339,16 +339,8 @@ describe('the spacing', () => {
             .filter(({ property }) => SPACING.test(property))
             // The search box's space follows its own text, as its sizes do.
             .filter(({ at }) => at !== RELATIVE)
-            .filter(({ at, property, value }) =>
-                /\d*\.?\d+(rem|em)\b/.test(
-                    value
-                        // The skip link waits out of sight, past any step, until it takes focus.
-                        .replace(
-                            /^-10rem$/,
-                            at === 'styles.css' && property === 'top' ? '' : '-10rem'
-                        )
-                        .replace(/var\(--[a-z-]+\d?\)/g, '')
-                )
+            .filter(({ value }) =>
+                /\d*\.?\d+(rem|em)\b/.test(value.replace(/var\(--[a-z-]+\d?\)/g, ''))
             )
             .map(({ at, property, value }) => `${at}: ${property}: ${value}`);
         expect(stray).toEqual([]);

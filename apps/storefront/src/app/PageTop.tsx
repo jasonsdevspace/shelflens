@@ -1,13 +1,13 @@
 import type { MouseEvent, ReactNode } from 'react';
 
-import { PortfolioStrip } from './Portfolio.jsx';
+import { Strip } from './Portfolio.jsx';
 
 /**
  * The top of the store's pages: the portfolio strip, with the demo's own
- * switches beside it, and the masthead with the brand and whatever the
- * masthead holds once the store is ready. The switches are the demo's, not
- * the store's, so they sit with the strip that says whose demo it is, and
- * the masthead is what a shopper uses. The build puts the same markup into
+ * switches in a section of their own at its end, and the masthead with the
+ * brand and whatever the masthead holds once the store is ready. The
+ * switches are the demo's, not the store's, so they sit in the strip that
+ * says whose demo it is, and the masthead is what a shopper uses. The build puts the same markup into
  * the page's own HTML, so it shows before the script runs and nothing moves
  * when the script takes over.
  */
@@ -18,7 +18,7 @@ export const PageTop = ({
     tools,
     children,
 }: {
-    /** The demo's own switches, beside the strip, once the store is ready. */
+    /** The demo's own switches, in the strip's own section, once the store is ready. */
     readonly tools?: ReactNode;
     /** Where the brand leads, relative to the page. */
     readonly home: string;
@@ -32,13 +32,11 @@ export const PageTop = ({
     readonly children?: ReactNode;
 }) => (
     <>
+        {/* The strip draws the switches in a landmark of their own, named for them, so a screen
+        reader finds them. While it only keeps their room, the room is the sheet's, with no
+        landmark for it. */}
         <div className={waiting ? 'topbar is-waiting' : 'topbar'}>
-            <PortfolioStrip />
-            {/* A landmark of its own once it holds the switches, named for them, so a screen reader
-            finds them, and no landmark while it only keeps their room. */}
-            <section className="topbar-tools" aria-label={tools ? 'Demo' : undefined}>
-                {tools}
-            </section>
+            <Strip tools={tools} />
         </div>
         <header className={waiting ? 'masthead is-waiting' : 'masthead'}>
             <div className="masthead-row">

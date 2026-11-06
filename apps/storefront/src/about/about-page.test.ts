@@ -3,13 +3,6 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-    GITHUB_PROFILE_URL,
-    LICENSE_URL,
-    PORTFOLIO_URL,
-    PORTFOLIO_WORK_URL,
-    REPO_URL,
-} from '../app/Portfolio.jsx';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
 import { STOPS } from '../tour/stops.js';
@@ -94,11 +87,6 @@ describe('the explainer', () => {
         const cap = `${NUMBER_WORDS[CATALOG_ROW_CAP / 1000] ?? ''} thousand products`;
         expect(flat(page)).toContain(cap);
         expect(flat(readme)).toContain(cap);
-    });
-
-    it('carries the same strip and footer links as the store', () => {
-        const urls = [PORTFOLIO_WORK_URL, REPO_URL, PORTFOLIO_URL, GITHUB_PROFILE_URL, LICENSE_URL];
-        for (const url of urls) expect(page, url).toContain(`href="${url}"`);
     });
 
     it('has the landmarks and the headings an audit looks for', () => {

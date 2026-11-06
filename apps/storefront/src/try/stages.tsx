@@ -3,7 +3,7 @@ import { type ChangeEvent, useState } from 'react';
 import { useHeadingFocus } from '../app/focus.js';
 import { LiveStatus } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
-import { DemoFooter } from '../app/Portfolio.jsx';
+import { Footer } from '../app/Portfolio.jsx';
 import { Preparing } from '../app/Preparing.jsx';
 import { StartFailure } from '../app/StartFailure.jsx';
 import type { Loaded } from '../client/catalog.js';
@@ -407,6 +407,6 @@ export const BeforeStore = ({
                 />
             )}
         </main>
-        {stage.kind !== 'starting' && <DemoFooter />}
+        {stage.kind !== 'starting' && <Footer />}
     </>
 );

@@ -11,7 +11,7 @@ import {
 import type { CategoryTree } from './app/categories.js';
 import { CategoryNav } from './app/CategoryNav.jsx';
 import { PageTop } from './app/PageTop.jsx';
-import { DemoFooter } from './app/Portfolio.jsx';
+import { Footer } from './app/Portfolio.jsx';
 import { Preparing } from './app/Preparing.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
@@ -149,11 +149,13 @@ const ViewerSwitch = ({
 const switchesViewer = (info: StoreInfo): boolean => info.memberPricing || info.membersOnlyProducts;
 
 /**
- * The demo's own switches, which sit with the strip rather than in the
+ * The demo's own switches, which sit in the strip rather than in the
  * store's masthead: who the visitor shops as, when the store has groups to
- * choose between, and the tour, when the page offers it.
+ * choose between, and the tour, when the page offers it. A page with
+ * neither has none, and gives the strip nothing, since the strip draws a
+ * landmark for whatever it is given.
  */
-const DemoTools = ({
+const demoTools = ({
     viewerSwitch,
     group,
     onGroup,
@@ -171,12 +173,13 @@ const DemoTools = ({
     readonly touring: boolean;
     readonly onTour: () => void;
     readonly tourButton: RefObject<HTMLButtonElement | null>;
-}) => (
-    <>
-        {viewerSwitch && <ViewerSwitch group={group} onChange={onGroup} />}
-        {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
-    </>
-);
+}): ReactNode =>
+    viewerSwitch || tour ? (
+        <>
+            {viewerSwitch && <ViewerSwitch group={group} onChange={onGroup} />}
+            {tour && <TourToggle touring={touring} onToggle={onTour} buttonRef={tourButton} />}
+        </>
+    ) : null;
 
 /** The masthead once the store is ready: the search box and the categories. */
 interface MastheadProps {
@@ -304,17 +307,16 @@ export const App = ({
                     home="./"
                     waiting={keepsRoom(tour, readiness)}
                     tools={
-                        isReady && (
-                            <DemoTools
-                                viewerSwitch={switchesViewer(info)}
-                                group={group}
-                                onGroup={switchGroup}
-                                tour={tour}
-                                touring={sheetOpen}
-                                onTour={sheetOpen ? closeTour : openTour}
-                                tourButton={tourButton}
-                            />
-                        )
+                        isReady &&
+                        demoTools({
+                            viewerSwitch: switchesViewer(info),
+                            group,
+                            onGroup: switchGroup,
+                            tour,
+                            touring: sheetOpen,
+                            onTour: sheetOpen ? closeTour : openTour,
+                            tourButton,
+                        })
                     }
                     onHome={(event) => {
                         event.preventDefault();
@@ -384,7 +386,7 @@ export const App = ({
                         />
                     )}
                 </main>
-                {readiness !== 'waiting' && <DemoFooter />}
+                {readiness !== 'waiting' && <Footer />}
             </StoreProvider>
         </EventsProvider>
     );
