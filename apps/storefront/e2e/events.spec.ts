@@ -12,7 +12,7 @@ test('what the shopper did reaches the worker, through a beacon, and outlives th
     await box.fill('jacket');
     await box.press('Enter');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
-    // The cards of the page before stay, dimmed, until the answer lands.
+    // The cards of the page before stay until the answer lands, dimmed if it takes a moment.
     await expect(page.locator('.results-layout')).toHaveAttribute('aria-busy', 'false');
     const first = page.getByRole('list', { name: 'Products' }).getByRole('link').first();
     const sku = await first.getAttribute('data-sku');

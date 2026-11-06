@@ -10,7 +10,7 @@ import { audit, expect, test } from './support.js';
 
 test('keeps its look, its place over the host and its own React, and sends a search to the store', async ({
     page,
-}) => {
+}, testInfo) => {
     await page.goto('/widget/');
     await expect(page).toHaveTitle('ShelfLens on another page');
     const search = page.getByRole('combobox', { name: 'Search the store' });
@@ -61,19 +61,31 @@ test('keeps its look, its place over the host and its own React, and sends a sea
             { x: box.x + box.width / 2, y: box.y + box.height / 2 }
         );
         expect(atCenter).toBe('shelflens-search');
+        // Out past the clipping box's edge: below it on the desktop, and on a phone, where the
+        // box sits low and the list may open upward, above it or below.
         const clip = await page.locator('.host-clip').boundingBox();
         expect(clip).not.toBeNull();
-        if (clip) expect(box.y + box.height).toBeGreaterThan(clip.y + clip.height);
+        if (clip) {
+            const below = box.y + box.height > clip.y + clip.height;
+            const past = testInfo.project.name === 'phone' ? below || box.y < clip.y : below;
+            expect(past, JSON.stringify({ box, clip })).toBe(true);
+        }
     }
-    // The list is a scrolling region here, since the box sits low on this page, and
+    // The list can be a scrolling region here, where the box sits low on the page, and
     // the rule for those wants a tab stop. The combobox contract keeps focus in the
-    // box and scrolls the list from the arrow keys, which the rule cannot see and the
-    // steps below prove, so that one rule is left out of this audit.
+    // box and keeps the active option in view from the arrow keys, which the rule
+    // cannot see and the steps below prove, so that one rule is left out of this audit.
     await audit(page, ['scrollable-region-focusable']);
-    const scrolledBefore = await listbox.evaluate((el) => el.parentElement?.scrollTop ?? 0);
     for (let step = 0; step < 6; step += 1) await search.press('ArrowDown');
-    const scrolledAfter = await listbox.evaluate((el) => el.parentElement?.scrollTop ?? 0);
-    expect(scrolledAfter).toBeGreaterThan(scrolledBefore);
+    // The option the arrows reached is in the list's view, scrolled to where the list scrolls.
+    const active = listbox.locator('[aria-selected="true"]');
+    await expect(active).toHaveCount(1);
+    const inView = await active.evaluate((option) => {
+        const view = option.closest('[role="listbox"]')?.parentElement ?? option;
+        const [shown, list] = [option.getBoundingClientRect(), view.getBoundingClientRect()];
+        return shown.top >= list.top - 1 && shown.bottom <= list.bottom + 1;
+    });
+    expect(inView).toBe(true);
 
     // Typed again, so nothing is highlighted, and Enter searches what was typed.
     await search.fill('');

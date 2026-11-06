@@ -1,29 +1,24 @@
 @import '@jasonsdevspace/design-kit/tokens.css';
+@import '@jasonsdevspace/design-kit/base.css';
 @import './tokens.css';
 @import './search/searchbox.css';
 
-/* The base: what every element takes. */
-
-:root {
-    font-family:
-        system-ui,
-        -apple-system,
-        'Segoe UI',
-        Roboto,
-        sans-serif;
-}
-
-* {
-    box-sizing: border-box;
-}
+/*
+ * The base comes from the design kit: the page's type, colors and line
+ * height, the border box, a link's color, the one focus ring in the accent
+ * and none on a heading or section the page moves focus to, the accent on a
+ * box or a dot a visitor ticks, a heading's weight and line, code in running
+ * text, a table's shared borders, and motion cut short for a visitor who
+ * asks for less. What follows is the store's own.
+ */
 
 /*
  * Whatever a visitor can click shows the pointer, and a control that is off
  * keeps the plain arrow, so no control has to remember its own. One that is
  * off but keeps focus, as the tour's Previous does at the first stop, says so
- * with aria-disabled and counts as off. The labels
- * around a checkbox or a radio are named by class, since :has() is newer
- * than some of the browsers the build supports.
+ * with aria-disabled and counts as off. The labels around a checkbox or a
+ * radio are named by class, since :has() is newer than some of the browsers
+ * the build supports.
  */
 button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
@@ -32,42 +27,6 @@ summary,
 .rules-choice,
 .try-search-only label {
     cursor: pointer;
-}
-
-/*
- * One focus ring for every control, in the accent color, drawn only when
- * the browser would show focus. A heading the page moves focus to is not a
- * control, and says so where it is styled.
- */
-:where(a[href], button, input, select, textarea, summary, [tabindex='0']):focus-visible {
-    outline: var(--dk-ring-width) solid var(--dk-accent);
-    outline-offset: var(--dk-ring-offset);
-}
-
-/* A box or a dot a visitor ticks, in the accent color rather than the browser's. */
-input[type='checkbox'],
-input[type='radio'] {
-    accent-color: var(--dk-accent);
-}
-
-/*
- * A word too long for its line breaks rather than running out past it, as a
- * long product name can at larger text on a narrow screen. Only such a word
- * breaks, and only where it cannot fit whole.
- */
-body {
-    margin: 0;
-    background: var(--dk-bg);
-    color: var(--dk-fg);
-    overflow-wrap: break-word;
-}
-
-/* Every heading takes one weight, whatever its size. */
-h1,
-h2,
-h3,
-h4 {
-    font-weight: var(--dk-weight-strong);
 }
 
 /* The shared look: notices, fields, buttons, a failure to load and the skip link. */
@@ -598,17 +557,17 @@ h4 {
 }
 
 /*
- * The results dim while the next ones load, after a short wait, so a fast
- * answer never flickers. They come back at once, and with reduced motion
- * they change without fading.
+ * The results dim while the next ones load. The page adds is-loading only
+ * once the wait has lasted a moment, in ResultsPage through useHeld, so a
+ * fast answer never flickers. They come back as soon as the answer lands,
+ * and with reduced motion they change without fading.
  */
 .results-main {
-    transition: opacity 0.15s;
+    transition: opacity var(--dk-duration-short);
 }
 
 .results-layout.is-loading .results-main {
     opacity: 0.6;
-    transition-delay: 0.1s;
 }
 
 @media (max-width: 48rem) {
@@ -616,12 +575,6 @@ h4 {
     .results-layout {
         grid-template-columns: minmax(0, 1fr);
         gap: var(--dk-space-4);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .results-main {
-        transition-duration: 0s;
     }
 }
 
@@ -1032,11 +985,6 @@ h4 {
     margin: var(--dk-space-2) 0;
 }
 
-/* The ways forward from nothing found, in the page's one accent. */
-.no-results a {
-    color: var(--dk-accent);
-}
-
 /* The rules a sort set aside, with the way back after the line rather than inside it. */
 .set-aside {
     display: flex;
@@ -1256,16 +1204,6 @@ h4 {
     margin: 0 0 var(--dk-space-1);
 }
 
-/*
- * The page puts focus on the product's heading, or on a view with no
- * product in it, so a screen reader starts there. Neither is a control,
- * so neither draws a ring.
- */
-.product-name:focus,
-.product:focus {
-    outline: none;
-}
-
 /* With no product to show, the line is the page's message, in the text's own color. */
 .product > .notice.is-answer {
     color: var(--dk-fg);
@@ -1294,7 +1232,6 @@ h4 {
 }
 
 .variants {
-    border-collapse: collapse;
     font-size: var(--dk-text-small);
 }
 
@@ -1411,6 +1348,11 @@ h4 {
 .tour-test-file {
     color: var(--dk-fg);
     overflow-wrap: anywhere;
+}
+
+/* A file's name in code, at the caption's size, already the smallest step. */
+.tour-test-file code {
+    font-size: inherit;
 }
 
 /*
