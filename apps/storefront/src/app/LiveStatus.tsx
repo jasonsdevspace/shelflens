@@ -15,22 +15,34 @@ export const StatusRegion = ({ children }: { readonly children: ReactNode }) => 
 /**
  * The text a live region holds, a moment after it is given. A live region
  * announces what changes in it, not what it was created with, so the region
- * is empty on its first render and filled a moment later.
+ * is empty on its first render and filled a moment later. Given a time to
+ * settle, it waits until the text has stayed the same that long, so text that
+ * changes again and again in quick succession is said once, as it ends up.
+ * Emptying is never held back: a screen reader does not say what leaves a
+ * region, and an emptied region is what lets an answer that comes back in the
+ * same words be heard again.
  */
-export const useSaidLater = (text: string): string => {
+export const useSaidLater = (text: string, settleMs = 0): string => {
     const [said, setSaid] = useState('');
     useEffect(() => {
-        const timer = setTimeout(() => setSaid(text), 0);
+        const timer = setTimeout(() => setSaid(text), text === '' ? 0 : settleMs);
         return () => clearTimeout(timer);
-    }, [text]);
+    }, [text, settleMs]);
     return said;
 };
 
 /**
  * A line said each time it changes. It stays mounted through loading, so
- * each landed answer is a change.
+ * each landed answer is a change. Given a time to settle, a line that changes
+ * again before that time is said only as it ends up.
  */
-export const LiveStatus = ({ text }: { readonly text: string }) => {
-    const said = useSaidLater(text);
+export const LiveStatus = ({
+    text,
+    settleMs = 0,
+}: {
+    readonly text: string;
+    readonly settleMs?: number;
+}) => {
+    const said = useSaidLater(text, settleMs);
     return <StatusRegion>{said}</StatusRegion>;
 };

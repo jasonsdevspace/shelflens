@@ -144,6 +144,17 @@ const SideColumn = ({
 };
 
 /**
+ * How long the results stay the same before the status line says them. A
+ * shopper stepping through a facet's options with the arrow keys lands an
+ * answer at every press, a few tenths of a second apart, and hearing each one
+ * buries the one they stop on. Longer than the gap between deliberate presses,
+ * and short enough that the answer follows the pause, while the page itself
+ * draws every step at once. A single change, such as a click, a sort or Enter
+ * in the search box, waits the same, which still reads as the answer to it.
+ */
+const ANNOUNCE_SETTLE_MS = 750;
+
+/**
  * What the status line says: the heading once an answer has landed, nothing
  * while one is coming.
  */
@@ -427,7 +438,10 @@ export const ResultsPage = ({
         navigate({ ...state, page });
     };
     const status = (
-        <LiveStatus text={announcement({ state, categories, locale }, result, loading)} />
+        <LiveStatus
+            text={announcement({ state, categories, locale }, result, loading)}
+            settleMs={ANNOUNCE_SETTLE_MS}
+        />
     );
 
     // An error is the page, except with the panel open: the answer before it stays
