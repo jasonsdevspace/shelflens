@@ -272,7 +272,7 @@ describe('the rules panel', () => {
         expect(another).toHaveFocus();
         expect(first).not.toHaveAttribute('aria-invalid');
         expect(first).not.toHaveAccessibleDescription(/Error:/);
-        // The name of the product a field holds stays below it, so the field never moves as it is typed.
+        // The product's name stays below the field, so the field never moves as a SKU is typed.
         expect(first).toHaveAccessibleDescription(/Trail Jacket/);
     });
 

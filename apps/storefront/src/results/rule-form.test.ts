@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fresh, problemsOf, summary } from './rule-form.js';
+import { formOf, fresh, problemsOf, summary } from './rule-form.js';
 
 describe('a rule in a few words', () => {
     it('says a boost and a bury by their factor, as the cards do', () => {
@@ -30,6 +30,12 @@ describe('what is wrong with a rule', () => {
         const problems = problemsOf(pin(['', '']), new Set(['SL-2']));
         expect(problems.skus).toBe('Name at least one product.');
         expect(problems.skuAt).toBe(0);
+    });
+
+    it('gives a saved rule that names no product a field to say so on', () => {
+        const form = formOf({ id: 'empty', when: { queries: ['jacket'] }, pin: [] });
+        expect(form.skus).toEqual(['']);
+        expect(problemsOf(form, new Set()).skuAt).toBe(0);
     });
 
     it('says nothing of a product field when the products are sound', () => {

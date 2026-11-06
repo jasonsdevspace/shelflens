@@ -586,11 +586,6 @@ summary,
     font-size: var(--dk-text-small);
 }
 
-/* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
-.sort .dk-select {
-    min-width: 0;
-}
-
 .cards {
     list-style: none;
     margin: 0;
@@ -926,8 +921,9 @@ summary,
     font-size: var(--dk-text-small);
 }
 
+/* The legend is labeled as the kit labels a field, so the form's labels read alike. */
 .rules-field > legend {
-    font-weight: var(--dk-weight-strong);
+    font-weight: var(--dk-weight-medium);
     padding: 0;
 }
 

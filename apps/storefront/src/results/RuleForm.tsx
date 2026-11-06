@@ -18,12 +18,15 @@ import { onlyUnderRelevance } from './setAside.js';
 /** How the form names each target, so a target added to the list needs a name to compile. */
 const TARGET_LABELS: Readonly<Record<Target, string>> = { product: 'A product', brand: 'A brand' };
 
-/**
+/** Which products a rule may name, said once, above the first product field. */
+const SKU_HINT = 'A product the results have shown, or one a saved rule names';
+
+/*
  * One rule, as a form of the design kit's fields. Every change goes up at
  * once, so the results beside the panel preview the draft while it is
- * typed. A problem is said above its field, under the field's hint, which
- * stays, and only once the merchandiser has tried to save, so a half typed
- * rule is not told off.
+ * typed. A problem is said above its field, after any hint the field has,
+ * which stays, and only once the merchandiser has tried to save, so a half
+ * typed rule is not told off.
  */
 
 export interface RuleFormProps {
@@ -42,11 +45,10 @@ export interface RuleFormProps {
     readonly onRemove: () => void;
 }
 
-/** A field's problem, once a save was tried. */
-const shown = (tried: boolean, problem: string | undefined): string | undefined =>
-    tried ? problem : undefined;
-
-/** The name the page or the rule has shown for a SKU, which outlives the product's place on the page. */
+/**
+ * The name the page or the rule has shown for a SKU, which outlives the product's place on the
+ * page.
+ */
 const nameOf = (named: readonly Named[], sku: string): string =>
     named.find((product) => product.sku === sku.trim())?.name ?? '';
 
@@ -54,24 +56,29 @@ const ProductFields = ({
     id,
     form,
     problems,
-    tried,
     products,
     onChange,
-}: Pick<RuleFormProps, 'form' | 'problems' | 'tried' | 'products' | 'onChange'> & {
+}: Pick<RuleFormProps, 'form' | 'problems' | 'products' | 'onChange'> & {
     readonly id: string;
 }) => (
     <>
         {form.skus.map((sku, index) => (
-            // The name of the product the field holds is below it, rather than the kit's hint
-            // above it, so the field never moves as a SKU is typed.
+            // The first field's hint says which products a rule may name, and every field after
+            // it is described by that hint too. The name of the product a field holds is below
+            // it, rather than in a hint above it, so the field never moves as a SKU is typed.
             <div key={index} className="rules-product">
                 <InputField
                     id={`${id}-sku-${index}`}
                     label={index === 0 ? 'Product' : 'Another product'}
-                    error={problems.skuAt === index ? shown(tried, problems.skus) : undefined}
+                    hint={index === 0 ? SKU_HINT : undefined}
+                    error={problems.skuAt === index ? problems.skus : undefined}
                     list={`${id}-products`}
                     value={sku}
-                    aria-describedby={`${id}-skus ${id}-sku-${index}-line`}
+                    aria-describedby={
+                        index === 0
+                            ? `${id}-sku-0-line`
+                            : `${id}-sku-0-hint ${id}-sku-${index}-line`
+                    }
                     onChange={(event) =>
                         onChange({
                             ...form,
@@ -81,7 +88,7 @@ const ProductFields = ({
                         })
                     }
                 />
-                <span id={`${id}-sku-${index}-line`} className="hint">
+                <span id={`${id}-sku-${index}-line`} className="dk-field-hint">
                     {nameOf([...products, ...form.seen], sku)}
                 </span>
             </div>
@@ -93,9 +100,6 @@ const ProductFields = ({
                 </option>
             ))}
         </datalist>
-        <span id={`${id}-skus`} className="hint">
-            A product the results have shown, or one a saved rule names
-        </span>
         {(form.action === 'pin' || form.action === 'hide') && (
             <button
                 type="button"
@@ -112,16 +116,15 @@ const BrandField = ({
     id,
     form,
     problems,
-    tried,
     brands,
     onChange,
-}: Pick<RuleFormProps, 'form' | 'problems' | 'tried' | 'brands' | 'onChange'> & {
+}: Pick<RuleFormProps, 'form' | 'problems' | 'brands' | 'onChange'> & {
     readonly id: string;
 }) => (
     <SelectField
         id={`${id}-brand`}
         label="Brand"
-        error={shown(tried, problems.brand)}
+        error={problems.brand}
         value={form.brand}
         onChange={(event) => onChange({ ...form, brand: event.target.value })}
     >
@@ -160,6 +163,8 @@ const WeightField = ({
 export const RuleForm = (props: RuleFormProps) => {
     const { form, problems, tried, existing, fields, onChange, onSave, onCancel, onRemove } = props;
     const id = useId();
+    // The problems the form says, which are none until a save is tried.
+    const said = tried ? problems : {};
     const adjusts = form.action === 'boost' || form.action === 'bury';
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -178,7 +183,7 @@ export const RuleForm = (props: RuleFormProps) => {
                 id={`${id}-words`}
                 label="Search words"
                 hint="Separate alternatives with commas, like jacket, jackets"
-                error={shown(tried, problems.words)}
+                error={said.words}
                 value={form.words}
                 onChange={(event) => onChange({ ...form, words: event.target.value })}
             />
@@ -218,9 +223,9 @@ export const RuleForm = (props: RuleFormProps) => {
                 </SelectField>
             )}
             {namesProducts(form) ? (
-                <ProductFields id={id} {...props} />
+                <ProductFields id={id} {...props} problems={said} />
             ) : (
-                <BrandField id={id} {...props} />
+                <BrandField id={id} {...props} problems={said} />
             )}
             <WeightField id={id} form={form} onChange={onChange} />
             <div className="rules-actions">

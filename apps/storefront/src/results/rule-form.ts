@@ -117,8 +117,11 @@ const stepOf = (action: Action, adjustment: RuleAdjustment | undefined): number 
     return found === -1 ? 1 : found;
 };
 
-const productsOf = (rule: Rule, adjustment: RuleAdjustment | undefined): readonly string[] =>
-    rule.pin ?? rule.hide ?? adjustment?.ids ?? [''];
+/** The products a rule names, or one empty field where it names none, so a problem has a place. */
+const productsOf = (rule: Rule, adjustment: RuleAdjustment | undefined): readonly string[] => {
+    const named = rule.pin ?? rule.hide ?? adjustment?.ids ?? [];
+    return named.length > 0 ? named : [''];
+};
 
 /** The form for an existing rule, as far as the form can say it. */
 export const formOf = (rule: Rule): Form => {

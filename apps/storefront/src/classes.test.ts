@@ -6,10 +6,9 @@ import { describe, expect, it } from 'vitest';
 /*
  * Each component wears classes of its own, named for it, and the few that
  * every component may wear are the shared look: the design kit's, under
- * its dk- prefix, the store's own kinds of button, the fields, a notice and
- * a callout, a hint beside a choice, a grid of cards, and the page's own
- * frame. A component that wore another's class would change when that one
- * did.
+ * its dk- prefix, the store's own kinds of button, a notice and a callout,
+ * a hint, a grid of cards, and the page's own frame. A component that wore
+ * another's class would change when that one did.
  */
 
 const SHARED = new Set([
