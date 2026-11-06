@@ -101,11 +101,12 @@ the page.
   only the site's origin, so no search phrase leaves the browser.
   [Decision record 18](../../docs/decisions/0018-visits-are-counted-by-path.md) has the choices.
 - **A page on how it works.** `about/index.html` is a second page in the build, static, sharing the
-  store's sheet, the strip and the footer, with its prose in `src/about/about.css`, which the
-  widget's demo pages share. It tells the same story as the README's two minutes and the tour in
-  words a non-engineer can follow. A test holds its links to the README's steps and its stop count
-  to the tour's, and a link from it into the store marks the tour seen, so the tour does not open
-  over what the reader was sent to see.
+  store's sheet, the strip and the footer, and laid out as the design kit lays out an explainer: a
+  header with the wordmark, the title and its lead, numbered sections and the steps of a search. The
+  widget's demo pages keep their prose in `src/about/about.css`. It tells the same story as the
+  README's two minutes and the tour in words a non-engineer can follow. A test holds its links to
+  the README's steps and its stop count to the tour's, and a link from it into the store marks the
+  tour seen, so the tour does not open over what the reader was sent to see.
 - **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit, or
   on a phone a short bar that opens it on Start, and walks the gotchas the project exists to show,
   one stop each, with a link that puts the page in the state that shows it and the name of the test

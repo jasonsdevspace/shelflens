@@ -92,9 +92,29 @@ describe('the explainer', () => {
     it('has the landmarks and the headings an audit looks for', () => {
         expect(page).toContain('<html lang="en">');
         expect(page.match(/<h1[ >]/g)).toHaveLength(1);
-        expect(page).toContain('<main class="content" id="main-content" tabindex="-1">');
         expect(page).toContain('href="#main-content"');
         expect(page).toContain('aria-label="Portfolio"');
-        expect(page.match(/<h2 /g)?.length).toBe(page.match(/<section /g)?.length);
+        // A section is never named, so it is no landmark, and a reader moves by its heading.
+        expect(page.match(/<h2 id="/g)?.length).toBe(page.match(/<section>/g)?.length);
+        expect(page).not.toMatch(/<section [^>]*aria-label/);
+    });
+
+    it('is laid out as the design kit lays out an explainer', () => {
+        expect(page).toContain('<header class="dk-explainer-header">');
+        expect(page).toContain('<main class="dk-explainer" id="main-content" tabindex="-1">');
+        expect(page).toContain('<p class="dk-explainer-lead">');
+        // Each section's number is for the eye alone, since its heading says what it is.
+        expect(page.match(/<p class="dk-explainer-number" aria-hidden="true">/g)?.length).toBe(
+            page.match(/<section>/g)?.length
+        );
+        // The steps stay a list where a browser drops a list's meaning with its markers, and
+        // every step after the first opens with the arrow from the one before.
+        expect(page).toContain('<ol class="dk-steps" role="list">');
+        // The formatter may break a tag before its closing bracket.
+        const steps = page.match(/<strong class="dk-steps-title"\s*>/g)?.length ?? 0;
+        expect(steps).toBeGreaterThan(1);
+        expect(
+            page.match(/<span class="dk-steps-arrow" aria-hidden="true">↓<\/span>/g)?.length
+        ).toBe(steps - 1);
     });
 });
