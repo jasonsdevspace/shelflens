@@ -26,11 +26,6 @@
     color: var(--dk-muted);
 }
 
-.try-problem {
-    color: var(--dk-danger);
-    font-weight: var(--dk-weight-strong);
-}
-
 .try-drop {
     display: flex;
     flex-wrap: wrap;
@@ -157,13 +152,6 @@
     margin-block: var(--dk-space-5);
 }
 
-.try-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--dk-space-1) var(--dk-space-4);
-}
-
 /* A thumb's height when the bar stacks on a phone, the link as well as the buttons. */
 @media (max-width: 48rem) {
     .try-bar .text-button {
@@ -171,11 +159,6 @@
         align-items: center;
         min-height: var(--dk-target);
     }
-}
-
-/* An alert waiting for a problem takes no room. */
-.try-alert:empty {
-    margin: 0;
 }
 
 /* A question that asks for an answer is in the text's own color, never muted. */

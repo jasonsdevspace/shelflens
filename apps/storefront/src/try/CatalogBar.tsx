@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
+import { SetApart } from '../app/SetApart.jsx';
 import type { Loaded } from '../client/catalog.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
@@ -46,40 +47,42 @@ export const CatalogBar = ({
     }, [focusRemove, confirm, onFocused]);
     return (
         <>
-            <div className="callout try-bar">
-                <span>
-                    You are searching the{' '}
-                    {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept
-                    in this browser.
-                </span>{' '}
-                {confirm === true ? (
-                    <Ask
-                        question="Removing your products also discards the rules you saved for them. Remove them anyway?"
-                        yes="Yes, remove them"
-                        no="Keep my products"
-                        onYes={onConfirm}
-                        onNo={onKeep}
-                    />
-                ) : (
-                    <>
-                        <button type="button" className="text-button" onClick={onAnother}>
-                            Choose another file
-                        </button>{' '}
-                        <button
-                            ref={remove}
-                            type="button"
-                            className="text-button"
-                            onClick={onRemove}
-                        >
-                            Remove your products
-                        </button>{' '}
-                        <a className="text-button" href={widgetUrl}>
-                            See your products on a store&rsquo;s page
-                        </a>
-                    </>
-                )}
-            </div>
-            {/* Under the bar rather than in it, so an empty alert takes no room among its actions. */}
+            <SetApart
+                className="try-bar"
+                actions={
+                    confirm === true ? (
+                        <Ask
+                            question="Removing your products also discards the rules you saved for them. Remove them anyway?"
+                            yes="Yes, remove them"
+                            no="Keep my products"
+                            onYes={onConfirm}
+                            onNo={onKeep}
+                        />
+                    ) : (
+                        <>
+                            <button type="button" className="text-button" onClick={onAnother}>
+                                Choose another file
+                            </button>
+                            <button
+                                ref={remove}
+                                type="button"
+                                className="text-button"
+                                onClick={onRemove}
+                            >
+                                Remove your products
+                            </button>
+                            <a className="text-button" href={widgetUrl}>
+                                See your products on a store&rsquo;s page
+                            </a>
+                        </>
+                    )
+                }
+            >
+                You are searching the{' '}
+                {count(loaded.products, 'product', 'products', DEFAULT_LOCALE)} you loaded, kept in
+                this browser.
+            </SetApart>
+            {/* What the last change said, under the bar rather than among its actions. */}
             {notice !== undefined && (
                 <>
                     <p className="notice">{notice}</p>

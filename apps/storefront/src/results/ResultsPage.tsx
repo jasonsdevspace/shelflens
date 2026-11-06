@@ -3,6 +3,7 @@ import { type ReactNode, useId, useRef, useState } from 'react';
 import { ancestry, type CategoryTree } from '../app/categories.js';
 import { LiveStatus } from '../app/LiveStatus.jsx';
 import { LoadFailure } from '../app/LoadFailure.jsx';
+import { SetApart } from '../app/SetApart.jsx';
 import { StateLink } from '../app/StateLink.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import {
@@ -287,24 +288,30 @@ const SetAside = ({
     readonly heading: string;
     readonly onSortByRelevance: () => void;
 }) => (
-    <div className={said === undefined ? undefined : 'callout set-aside'}>
-        <p role="status">{said}</p>
-        {said !== undefined && (
-            <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                    onSortByRelevance();
-                    (
-                        document.getElementById(sortIdOf(heading)) ??
-                        document.getElementById(heading)
-                    )?.focus();
-                }}
-            >
-                Sort by relevance
-            </button>
-        )}
-    </div>
+    <SetApart
+        waiting={said === undefined}
+        className={said === undefined ? undefined : 'set-aside'}
+        live="status"
+        actions={
+            said !== undefined && (
+                <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                        onSortByRelevance();
+                        (
+                            document.getElementById(sortIdOf(heading)) ??
+                            document.getElementById(heading)
+                        )?.focus();
+                    }}
+                >
+                    Sort by relevance
+                </button>
+            )
+        }
+    >
+        {said}
+    </SetApart>
 );
 
 /** What the page says over the cards: a preview in progress, and rules a sort set aside. */
@@ -323,10 +330,10 @@ const Notices = ({
 }) => (
     <>
         {previewing && (
-            <p className="callout" role="status">
+            <SetApart live="status">
                 Previewing a draft rule. Shoppers see the saved rules until you press &ldquo;Save
                 rule&rdquo;.
-            </p>
+            </SetApart>
         )}
         <SetAside
             said={setAsideBySort(sortKey, setAside)}

@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { StatusRegion } from '../app/LiveStatus.jsx';
+import { SetApart } from '../app/SetApart.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { CustomerGroup } from '../client/graphql.js';
 import { count } from '../format/count.js';
@@ -64,7 +65,7 @@ export const ViewerNotice = ({
     return (
         <>
             <StatusRegion>{said}</StatusRegion>
-            {text !== '' && <p className="callout">{text}</p>}
+            {text !== '' && <SetApart>{text}</SetApart>}
         </>
     );
 };

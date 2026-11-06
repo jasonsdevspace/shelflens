@@ -1,11 +1,12 @@
-import { Button } from '@jasonsdevspace/design-kit/react';
+import { Button, Callout } from '@jasonsdevspace/design-kit/react';
 import type { ReactNode } from 'react';
 
 /**
- * What a page says when what it asked the store for did not arrive: what
- * failed, what to do, and a button that asks again. The reason itself is
- * for a developer, so it is shown only in development. Only the message
- * is the alert, so the buttons beside it are not read as part of it.
+ * What a page says when what it asked the store for did not arrive, in the
+ * design kit's callout for something that went wrong: what failed, what to
+ * do, and a button that asks again. The reason itself is for a developer,
+ * so it is shown only in development, outside the callout. Only the message
+ * is the alert, so the buttons below it are not read as part of it.
  */
 export const LoadFailure = ({
     what,
@@ -23,14 +24,22 @@ export const LoadFailure = ({
     /** Another way on, beside trying again. */
     readonly children?: ReactNode;
 }) => (
-    <div className="notice load-failure">
-        <p role={announce ? 'alert' : undefined}>
-            {what} could not be loaded. Try again, and if it keeps happening, reload the page.
-        </p>
-        {import.meta.env.DEV && <p>{reason}</p>}
-        <div className="load-failure-actions">
-            <Button onClick={onRetry}>Try again</Button>
-            {children}
-        </div>
-    </div>
+    <>
+        <Callout
+            tone="danger"
+            {...(announce ? { live: 'alert' as const } : {})}
+            actions={
+                <>
+                    <Button onClick={onRetry}>Try again</Button>
+                    {children}
+                </>
+            }
+        >
+            <p>
+                {what} could not be loaded. Try again, and if it keeps happening, reload the page.
+            </p>
+        </Callout>
+        {/* Outside the callout, so a developer's reason is never read as part of the alert. */}
+        {import.meta.env.DEV && <p className="notice">{reason}</p>}
+    </>
 );

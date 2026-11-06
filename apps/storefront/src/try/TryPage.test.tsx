@@ -127,6 +127,14 @@ describe('the page for a visitor’s own catalog', () => {
             await screen.findByRole('combobox', { name: 'Search the store' })
         ).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Tour' })).not.toBeInTheDocument();
+        // Whose products these are is said in the kit's callout, with its ways on as its actions.
+        const bar = screen
+            .getByText(/the 200 products you loaded/)
+            .closest<HTMLElement>('.dk-callout');
+        if (!bar) throw new Error('expected the bar to be a callout');
+        expect(
+            within(bar).getByRole('button', { name: 'Remove your products' }).parentElement
+        ).toHaveClass('dk-callout-actions');
     });
 
     it('offers no switches, and no landmark for them, for a catalog with one price for everyone', async () => {
@@ -658,8 +666,14 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await screen.findByRole('button', { name: 'Search 200 products' });
         await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement());
+        // Out of sight while it waits, so an empty callout draws no band, but still in the page.
+        const callout = () => screen.getByRole('alert').closest('.dk-callout');
+        expect(callout()?.parentElement).toHaveClass('visually-hidden');
         await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));
         await alerted(/The store could not be reached/);
+        // In sight once it has words, as the kit draws something that went wrong.
+        expect(callout()).toHaveClass('dk-callout-danger');
+        expect(callout()?.parentElement).not.toHaveClass('visually-hidden');
     });
 
     it('keeps the chooser’s status in the page while a file is read, so “Reading” is heard', async () => {

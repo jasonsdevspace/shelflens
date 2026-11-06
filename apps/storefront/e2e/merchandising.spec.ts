@@ -85,7 +85,7 @@ test('a merchandiser previews a rule on the page, saves it as a new version, and
 
     await panel.getByRole('button', { name: 'Save rule' }).click();
     await expect(panel.getByRole('status')).toContainText('Rule saved. The store is now version');
-    const notice = page.locator('.rules-notice');
+    const notice = page.locator('.dk-callout', { hasText: 'Your edited rules are in effect' });
     await expect(notice).toContainText('Your edited rules are in effect');
     await expect.poll(order).toEqual(previewed);
 
