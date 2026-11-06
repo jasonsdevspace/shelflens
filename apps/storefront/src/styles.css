@@ -741,8 +741,9 @@ h4 {
 }
 
 /*
- * The categories and the way up are links, which a browser underlines, drawn as the facets' other
- * choices are. Without weight, so pointing at one or focusing it still underlines it.
+ * The categories and the way up are links, which a browser underlines. This takes the underline
+ * off to match the facets' other choices, inside :where so it adds no specificity and the
+ * underline on pointing or focus still wins.
  */
 :where(.facet-links .option-button, .facet-up) {
     text-decoration: none;

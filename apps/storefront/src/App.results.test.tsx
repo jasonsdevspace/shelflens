@@ -124,7 +124,7 @@ describe('narrowing', () => {
         expect(heading()).toHaveTextContent(new RegExp(`^All products, ${counted} products?$`));
     });
 
-    it('offers each category, and the way up, as a link to its page that a plain click follows in place', async () => {
+    it('offers a category and the way up as links to their pages, and follows a plain click in place', async () => {
         const user = await open('?category=clothing');
         await settled();
         const group = facet('Category');
