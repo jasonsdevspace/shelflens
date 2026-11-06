@@ -55,13 +55,15 @@ the page.
   spacing steps, the corners, one raised shadow, one scrim and the focus ring, all under the `--dk-`
   prefix. `src/tokens.css` sets again what the store draws its own way, its colors and the width of
   a page of reading, and the widget's frame, which lives in a shadow root where the kit's sheets
-  match nothing, takes everything it reads there. Every bordered button is a `.button`, the one
-  action a view asks for adds `.button-primary`, and an action that reads as text is a
-  `.text-button`, always underlined. Each component otherwise wears classes of its own. The page
-  picks each color by the saved theme and the widget by its host's color scheme. A test holds every
-  sheet to the tokens, the store's palette to every pairing the kit measures, and the widget's frame
-  to every name it reads, and a browser test holds every control on every page to an edge of 3 to 1,
-  the one focus ring and, for a select, its caret, in both themes and on a phone.
+  match nothing, takes everything it reads there. The base styles come from the kit's `base.css`
+  too: the page's type and line height, the border box, the focus ring, a heading's weight and line,
+  and the cut to motion. Every bordered button is a `.button`, the one action a view asks for adds
+  `.button-primary`, and an action that reads as text is a `.text-button`, always underlined. Each
+  component otherwise wears classes of its own. The page picks each color by the saved theme and the
+  widget by its host's color scheme. A test holds every sheet to the tokens, the store's palette to
+  every pairing the kit measures, and the widget's frame to every name it reads, and a browser test
+  holds every control on every page to an edge of 3 to 1, the one focus ring and, for a select, its
+  caret, in both themes and on a phone.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

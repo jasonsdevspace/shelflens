@@ -13,6 +13,7 @@ import {
     type SortKey,
     sortKeyOf,
 } from '../app/url.js';
+import { useHeld } from '../app/useHeld.js';
 import { NARROW, useMediaQuery } from '../app/useMediaQuery.js';
 import type { Navigate } from '../app/useUrlState.js';
 import type { CustomerGroup, GraphQLClient } from '../client/graphql.js';
@@ -380,6 +381,9 @@ const Answer = ({
 );
 
 /** The layout's classes: dimmed while loading, and one column when there are no facets. */
+/** How long the next results may take before the ones on the page dim. */
+const DIM_AFTER_MS = 100;
+
 const layoutClass = (loading: boolean, empty: boolean) =>
     ['results-layout', loading && 'is-loading', empty && 'is-empty'].filter(Boolean).join(' ');
 
@@ -415,6 +419,8 @@ export const ResultsPage = ({
         state,
         draft
     );
+    // The results dim only once the next ones have taken a moment, so a quick answer never flickers.
+    const dimmed = useHeld(loading, DIM_AFTER_MS);
     const narrow = useMediaQuery(NARROW);
     const applied = useAppliedRules(result, answered, previewing, searchKey(state));
     useRememberedSearch(state.phrase, result, own, searched);
@@ -508,7 +514,7 @@ export const ResultsPage = ({
             </FacetColumn>
         )
     );
-    const layout = layoutClass(loading, facetless && !state.rules);
+    const layout = layoutClass(dimmed, facetless && !state.rules);
 
     return (
         <>

@@ -10,7 +10,6 @@
 .about h1 {
     margin: var(--dk-space-4) 0 var(--dk-space-2);
     font-size: var(--dk-text-display);
-    font-weight: var(--dk-weight-strong);
 }
 
 .about-pitch {
@@ -27,13 +26,11 @@
 .about h2 {
     margin: 0 0 var(--dk-space-3);
     font-size: var(--dk-text-title);
-    font-weight: var(--dk-weight-strong);
 }
 
 .about h3 {
     margin: var(--dk-space-5) 0 var(--dk-space-1);
     font-size: var(--dk-text-body);
-    font-weight: var(--dk-weight-strong);
 }
 
 .about p {
@@ -45,18 +42,11 @@
 }
 
 /*
- * The accent, not the browser's blue, so links match the rest of the page in
- * both themes. It is too close to the text to mark a link by itself, so the
- * underline stays.
+ * A link takes the kit's accent, which is too close to the text to mark a
+ * link by itself, so the underline stays.
  */
 .about a:not(.button) {
-    color: var(--dk-accent);
     text-decoration: underline;
-}
-
-.about code {
-    font-size: var(--dk-text-small);
-    overflow-wrap: anywhere;
 }
 
 .about-where {
