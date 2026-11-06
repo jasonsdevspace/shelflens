@@ -47,7 +47,10 @@ export interface Kept {
     readonly active?: Rule['active'];
 }
 
-export type Problems = Partial<Record<'words' | 'skus' | 'brand', string>>;
+export type Problems = Partial<Record<'words' | 'skus' | 'brand', string>> & {
+    /** The product field the products' problem is about, given with it. */
+    readonly skuAt?: number;
+};
 
 /** The weight each named step means, so the label says what the explain line will. */
 export const STEPS: Readonly<
@@ -114,8 +117,11 @@ const stepOf = (action: Action, adjustment: RuleAdjustment | undefined): number 
     return found === -1 ? 1 : found;
 };
 
-const productsOf = (rule: Rule, adjustment: RuleAdjustment | undefined): readonly string[] =>
-    rule.pin ?? rule.hide ?? adjustment?.ids ?? [''];
+/** The products a rule names, or one empty field where it names none, so a problem has a place. */
+const productsOf = (rule: Rule, adjustment: RuleAdjustment | undefined): readonly string[] => {
+    const named = rule.pin ?? rule.hide ?? adjustment?.ids ?? [];
+    return named.length > 0 ? named : [''];
+};
 
 /** The form for an existing rule, as far as the form can say it. */
 export const formOf = (rule: Rule): Form => {
@@ -194,9 +200,12 @@ export const problemsOf = (form: Form, known: ReadonlySet<string>): Problems => 
     if (namesProducts(form)) {
         const skus = skusOf(form);
         const unknown = skus.find((sku) => !known.has(sku));
-        if (skus.length === 0) problems.skus = 'Name at least one product.';
-        else if (unknown) {
+        if (skus.length === 0) {
+            problems.skus = 'Name at least one product.';
+            problems.skuAt = 0;
+        } else if (unknown) {
             problems.skus = `The results have not shown a product with the SKU ${unknown}. Choose one from the list.`;
+            problems.skuAt = form.skus.findIndex((sku) => sku.trim() === unknown);
         }
     } else if (!form.brand) {
         problems.brand = 'Choose a brand.';
