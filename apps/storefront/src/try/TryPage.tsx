@@ -105,6 +105,16 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     // Set while products are loaded and the visitor looks at another file, so they can go back.
     const [back, setBack] = useState(false);
     const catalogUrl = `${base}catalog`;
+    // Ends a change with the worker. The next stage is drawn before the guard is let go. Otherwise a
+    // quick second press lands on the old button, whose handler still sees the stage before, and
+    // repeats the change.
+    const release = (draw: (() => void) | undefined) => {
+        try {
+            if (draw) flushSync(draw);
+        } finally {
+            pending.current = false;
+        }
+    };
 
     useEffect(() => {
         let live = true;
@@ -221,22 +231,20 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         pending.current = true;
         choice.current += 1;
         const mine = choice.current;
-        // Asked before the store is built, so the page never says it is building and then
-        // asks. The worker still refuses on its own, in case the rules changed meanwhile.
-        const ask = !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
-        // A file chosen or dropped while the rules were read is the visitor's latest choice.
-        if (mine !== choice.current) {
-            pending.current = false;
-            return;
-        }
-        if (ask) {
-            pending.current = false;
-            const { problem: _last, ...asking } = review;
-            setStage({ ...asking, replacing: true });
-            return;
-        }
-        setStage({ kind: 'loading', products: catalog.products.length });
+        const { problem: _last, ...asking } = review;
+        let next: Stage | undefined;
         try {
+            // Asked before the store is built, so the page never says it is building and then
+            // asks. The worker still refuses on its own, in case the rules changed meanwhile.
+            const ask =
+                !discardRules && (await wouldDiscardRules(base, catalogUrl, catalog.version));
+            // A file chosen or dropped while the rules were read is the visitor's latest choice.
+            if (mine !== choice.current) return;
+            if (ask) {
+                next = { ...asking, replacing: true };
+                return;
+            }
+            setStage({ kind: 'loading', products: catalog.products.length });
             // Preparing a large file for the worker holds the page, so the stage shows first.
             await nextPaint();
             const response = await changeCatalog(
@@ -245,33 +253,31 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 discardRules
             );
             if (response === 'refused') {
-                const { problem: _last, ...asking } = review;
-                setStage({ ...asking, replacing: true });
+                next = { ...asking, replacing: true };
                 return;
             }
             if (!response.ok) {
-                setStage({ ...review, problem: await errorOf(response, retry) });
+                next = { ...review, problem: await errorOf(response, retry) };
                 return;
             }
             // The products the visitor could have gone back to are replaced now.
             setBack(false);
             const loaded = await readLoaded(catalogUrl);
             clearSearch(base);
-            setStage(
-                loaded
-                    ? { kind: 'searching', loaded, arrival: performance.now() }
-                    : {
-                          ...review,
-                          problem: `The store did not keep your products. Press \u201c${retry}\u201d to try again.`,
-                      }
-            );
+            next = loaded
+                ? { kind: 'searching', loaded, arrival: performance.now() }
+                : {
+                      ...review,
+                      problem: `The store did not keep your products. Press \u201c${retry}\u201d to try again.`,
+                  };
         } catch (error) {
-            setStage({
+            next = {
                 ...review,
                 problem: `The store could not be reached (${messageOf(error)}). Press \u201c${retry}\u201d to try again.`,
-            });
+            };
         } finally {
-            pending.current = false;
+            const last = next;
+            release(last && (() => setStage(last)));
         }
     };
 
@@ -285,35 +291,42 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         choice.current += 1;
         const mine = choice.current;
         pending.current = true;
+        let next: Stage | undefined;
+        // The way back goes once the products are read, whether or not they are still there.
+        let read = false;
         try {
             const loaded = await readLoaded(catalogUrl);
             if (mine !== choice.current) return;
+            read = true;
             if (loaded) {
-                setBack(false);
                 window.history.replaceState(null, '', `${base}${lastSearch.current}`);
-                setStage({ kind: 'searching', loaded });
-                return;
-            }
-            setBack(false);
-            if (from.kind !== 'review') setStage({ kind: 'choose', problem: GONE });
+                next = { kind: 'searching', loaded };
+            } else if (from.kind !== 'review') next = { kind: 'choose', problem: GONE };
             else if (from.replacing === true) {
                 // Only the saved rules are left, and searching this file still discards them,
                 // so the question stays.
-                setStage({
+                next = {
                     ...from,
                     problem:
                         'Your products are no longer in this browser, so there is nothing to keep. Press \u201cYes, search this file\u201d to search it.',
-                });
-            } else setStage({ ...from, problem: GONE });
+                };
+            } else next = { ...from, problem: GONE };
         } catch (error) {
             if (mine !== choice.current) return;
             const problem = `Your products could not be read (${messageOf(error)}). Reload the page to get back to them.`;
             if (from.kind === 'review') {
                 const { replacing: _replacing, ...rest } = from;
-                setStage({ ...rest, problem });
-            } else setStage({ kind: 'choose', problem });
+                next = { ...rest, problem };
+            } else next = { kind: 'choose', problem };
         } finally {
-            pending.current = false;
+            const last = next;
+            release(
+                last &&
+                    (() => {
+                        if (read) setBack(false);
+                        setStage(last);
+                    })
+            );
         }
     };
 
@@ -324,34 +337,32 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         const { loaded } = stage;
         pending.current = true;
         setActed(true);
-        // The stage is drawn before the guard is let go. Otherwise a quick second press reaches
-        // the button still drawn, and sends a second removal the visitor never asked for.
-        const show = (next: Stage) => flushSync(() => setStage(next));
-
+        let next: Stage | undefined;
         try {
             const response = await changeCatalog(catalogUrl, { method: 'DELETE' }, discardRules);
             if (response === 'refused') {
-                show({ kind: 'searching', loaded, confirm: true });
-                return;
+                next = { kind: 'searching', loaded, confirm: true };
+            } else {
+                if (!response.ok) throw new Error(`error ${response.status}`);
+                clearSearch(base);
+                next = {
+                    kind: 'choose',
+                    notice: discardRules
+                        ? 'Your products and the rules you saved for them were removed from this browser.'
+                        : 'Your products were removed from this browser.',
+                };
             }
-            if (!response.ok) throw new Error(`error ${response.status}`);
-            clearSearch(base);
-            show({
-                kind: 'choose',
-                notice: discardRules
-                    ? 'Your products and the rules you saved for them were removed from this browser.'
-                    : 'Your products were removed from this browser.',
-            });
         } catch (error) {
-            show({
+            next = {
                 kind: 'searching',
                 loaded,
                 focusRemove: true,
                 problemAt: performance.now(),
                 problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
-            });
+            };
         } finally {
-            pending.current = false;
+            const last = next;
+            release(last && (() => setStage(last)));
         }
     };
 

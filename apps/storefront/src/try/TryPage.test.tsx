@@ -53,7 +53,26 @@ const page = () => {
         return (await worker.handle(request)) ?? new Response('not found', { status: 404 });
     });
     render(<TryPage ready={Promise.resolve()} base={BASE} />);
-    return { rules };
+    return { rules, worker };
+};
+
+/**
+ * Presses a button again once the page has handled the answer to its first press, and before it
+ * draws what comes next, as a quick second click can land in a browser. Inside act the page draws
+ * only once the callback is done. `handled` says the page's own step after the answer has run,
+ * and one more turn lets whatever it began settle, so the press never lands while the first one
+ * is still with the worker.
+ */
+const pressBetween = async (button: HTMLElement, answer: () => void, handled: () => boolean) => {
+    await act(async () => {
+        answer();
+        for (let turn = 0; turn < 50 && !handled(); turn += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        expect(handled()).toBe(true);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        button.click();
+    });
 };
 
 /** One saved rule, as the panel would save it. Only whether it exists matters here. */
@@ -609,7 +628,10 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'What is in second.csv'
         );
-        expect(screen.getByRole('button', { name: 'Search 2 products' })).toBeInTheDocument();
+        // The press the drop overtook ended without a stage of its own, and still lets the next go.
+        failure = undefined;
+        await userEvent.click(screen.getByRole('button', { name: 'Search 2 products' }));
+        await screen.findByText(/the 2 products you loaded/);
     });
 
     it('keeps its alert in the page before a problem, so the problem is heard as it arrives', async () => {
@@ -729,7 +751,7 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await rules.current()).toBeUndefined();
     });
 
-    it('sends no second removal for a press that lands once the first is answered, before the chooser is drawn', async () => {
+    it('sends one removal when a second press lands just after the first is answered', async () => {
         const { rules } = page();
         await loadSample();
         await rules.replace(SAVED);
@@ -747,16 +769,94 @@ describe('the page for a visitor’s own catalog', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
         const yes = await screen.findByRole('button', { name: 'Yes, remove them' });
         await userEvent.click(yes);
-        // Inside act the page draws only once the callback is done, so the second press comes
-        // after the answer is handled and before the chooser replaces the button, as a quick
-        // second click can in a browser.
-        await act(async () => {
-            answer();
-            await new Promise((resolve) => setTimeout(resolve, 0));
-            yes.click();
-        });
+        // The page clears the search once the removal is answered, the last step before it draws.
+        const cleared = vi.spyOn(window.history, 'replaceState');
+        await pressBetween(yes, answer, () => cleared.mock.calls.length > 0);
+        cleared.mockRestore();
         expect(await chooser()).toBeInTheDocument();
         expect(removals).toBe(1);
+    });
+
+    it('reads the products once for a way back pressed again before they are drawn', async () => {
+        const { worker } = page();
+        await loadSample();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        let reads = 0;
+        let answer: () => void = () => undefined;
+        failure = (request) => {
+            if (request.method !== 'GET' || new URL(request.url).pathname !== `${BASE}catalog`) {
+                return undefined;
+            }
+            reads += 1;
+            return new Promise((resolve) => {
+                answer = () =>
+                    resolve(
+                        worker.handle(request).then((response) => response ?? Response.error())
+                    );
+            });
+        };
+        const back = screen.getByRole('button', { name: 'Back to your products' });
+        await userEvent.click(back);
+        // The page puts the search back once the products are read, the last step before it draws.
+        const restored = vi.spyOn(window.history, 'replaceState');
+        await pressBetween(back, answer, () => restored.mock.calls.length > 0);
+        restored.mockRestore();
+        await screen.findByText(/the 200 products you loaded/);
+        expect(reads).toBe(1);
+    });
+
+    it('asks once for a search pressed again before the question is drawn', async () => {
+        const { rules, worker } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        await userEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+        await chooser();
+        sample = () => Promise.resolve(new Response(sampleCsv(150)));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
+        );
+        const search = await screen.findByRole('button', { name: 'Search 150 products' });
+        // The rules and the products are read before the question, and held until both are in.
+        let asks = 0;
+        let bodies = 0;
+        const held: (() => void)[] = [];
+        failure = (request) => {
+            const path = new URL(request.url).pathname;
+            if (
+                request.method !== 'GET' ||
+                (path !== `${BASE}rules` && path !== `${BASE}catalog`)
+            ) {
+                return undefined;
+            }
+            if (path === `${BASE}rules`) asks += 1;
+            return new Promise((resolve) => {
+                held.push(() =>
+                    resolve(
+                        worker.handle(request).then((answered) => {
+                            const response = answered ?? Response.error();
+                            const read = response.json.bind(response);
+                            response.json = async () => {
+                                const body: unknown = await read();
+                                bodies += 1;
+                                return body;
+                            };
+                            return response;
+                        })
+                    )
+                );
+            });
+        };
+        await userEvent.click(search);
+        await waitFor(() => expect(held).toHaveLength(2));
+        // Once both bodies are read, the rest of the check needs nothing more from the worker.
+        await pressBetween(
+            search,
+            () => held.splice(0).forEach((release) => release()),
+            () => bodies === 2
+        );
+        expect(await screen.findByRole('button', { name: 'Keep my products' })).toBeInTheDocument();
+        expect(asks).toBe(1);
     });
 
     it('puts focus back on the remove button when the visitor keeps their rules, or the removal fails', async () => {

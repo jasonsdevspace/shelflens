@@ -92,11 +92,12 @@ const renderBox = (client: GraphQLClient) => {
 };
 
 /**
- * Answers the request for the whole phrase once it is sent, and waits for an option only that
- * answer draws, matched by the start of its name, since a product's name runs on to its brand
- * and price. Typing slowed past the pause asks about the start of the phrase first, and the
- * page aborts that request, so the first request sent is not always this one. The box is expanded
- * and the list shown while the store is asked, so neither says the answer is drawn.
+ * Answers the request for the whole phrase once it is sent, and waits for an option that only
+ * this answer draws, matched by the start of its name, since a product's name runs on to its
+ * brand and price. A slow run can let the pause pass partway through the phrase, or on the phrase
+ * twice, and send more than one request, and the page aborts all but its newest. So the request
+ * answered is the newest one still awaited, found by its phrase rather than its place. The box is
+ * expanded and the list shown while the store is asked, so neither says the answer is drawn.
  */
 const answerWith = async (
     network: ReturnType<typeof createNetwork>,
@@ -106,7 +107,9 @@ const answerWith = async (
     root: HTMLElement = document.body
 ) => {
     const request = await waitFor(() => {
-        const asked = network.pending.find((pending) => pending.phrase === phrase);
+        const asked = network.pending.findLast(
+            (pending) => pending.phrase === phrase && pending.signal?.aborted !== true
+        );
         if (!asked) throw new Error(`expected a request for ${phrase}`);
         return asked;
     });
