@@ -253,7 +253,12 @@ through npm's trusted publishing, and creates the GitHub release with the change
 notes. The version goes live when it is promoted on the package page on npmjs.com, so a release
 needs a tag from main, a green run and one click, and nothing that happens in CI alone can
 change what `latest` points at. A version with a hyphen, such as `0.2.0-rc.1`, is staged under
-the `next` tag and marked as a prerelease.
+the `next` tag and marked as a prerelease. The job that stages holds the publish token, so it
+installs nothing but a pinned npm, from a tarball checked against the checksum npm's registry gives
+for that version, and fetches nothing else. It stops on a version npm already holds, staged or
+published, since it cannot tell one staged by an earlier run from one staged from other code, so a
+run whose later step failed is repeated with "Re-run failed jobs", which keeps the staging and runs
+only what failed.
 
 The storefront is released the same way with a tag such as `storefront-v1.2.0`, against
 `apps/storefront/package.json` and `apps/storefront/CHANGELOG.md`. It is deployed from main
