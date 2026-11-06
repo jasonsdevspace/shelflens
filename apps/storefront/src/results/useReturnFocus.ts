@@ -61,7 +61,7 @@ export const useArrivalFocus = (
 
 /**
  * Puts focus back on the page when the control that had it went away, such
- * as a category's button replaced by its children, or "Clear all filters"
+ * as a category's link replaced by its children, or "Clear all filters"
  * once nothing is ticked. Once the answer is in, focus goes to the open
  * drawer's title, or else to the results heading, so the next Tab starts
  * from there and a screen reader says where it is. Only a control that is
