@@ -54,7 +54,7 @@ describe('browsing', () => {
         );
         if (!child) throw new Error('expected a child category');
         expect(
-            within(facet('Category')).getByRole('button', {
+            within(facet('Category')).getByRole('link', {
                 name: new RegExp(`^${child.name}, \\d+ results?$`),
             })
         ).toBeInTheDocument();
@@ -124,16 +124,41 @@ describe('narrowing', () => {
         expect(heading()).toHaveTextContent(new RegExp(`^All products, ${counted} products?$`));
     });
 
+    it('offers each category, and the way up, as a link to its page that a plain click follows in place', async () => {
+        const user = await open('?category=clothing');
+        await settled();
+        const group = facet('Category');
+        const child = catalog.categories.find(
+            (category) => category.path[0] === 'clothing' && category.path.length === 2
+        );
+        if (!child) throw new Error('expected a child of clothing');
+        const link = within(group).getByRole('link', {
+            name: new RegExp(`^${child.name}, \\d+ results?$`),
+        });
+        // A real link, so it can open in a new tab, be copied, and be read as a link.
+        expect(link).toHaveAttribute('href', `?category=${child.id}`);
+        expect(within(group).getByRole('link', { name: 'All categories' })).toHaveAttribute(
+            'href',
+            '?'
+        );
+        // A click with a modifier is the browser's, for a new tab or window, so the page stays.
+        fireEvent.click(link, { ctrlKey: true });
+        expect(window.location.search).toBe('?category=clothing');
+        await user.click(link);
+        await settled();
+        expect(window.location.search).toBe(`?category=${child.id}`);
+    });
+
     it('keeps the category group at a category with no children, with the way up above it', async () => {
         const user = await open('?category=outerwear');
         await settled();
         const group = facet('Category');
         expect(within(group).getByText('Outerwear')).toHaveAttribute('aria-current', 'location');
-        await user.click(within(group).getByRole('button', { name: 'Clothing' }));
+        await user.click(within(group).getByRole('link', { name: 'Clothing' }));
         await settled();
         expect(window.location.search).toBe('?category=clothing');
         // From a root category the way up is to every category, with the category left out.
-        await user.click(within(facet('Category')).getByRole('button', { name: 'All categories' }));
+        await user.click(within(facet('Category')).getByRole('link', { name: 'All categories' }));
         await settled();
         expect(window.location.search).toBe('');
     });
@@ -199,7 +224,7 @@ describe('narrowing', () => {
     it('drops a category’s own order with the category, on the way up to every category', async () => {
         const user = await open('?category=clothing&sort=position');
         await settled();
-        await user.click(within(facet('Category')).getByRole('button', { name: 'All categories' }));
+        await user.click(within(facet('Category')).getByRole('link', { name: 'All categories' }));
         await settled();
         expect(window.location.search).toBe('');
     });

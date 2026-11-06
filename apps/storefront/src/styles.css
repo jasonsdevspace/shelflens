@@ -286,6 +286,7 @@ h4 {
     font: inherit;
     font-size: var(--text-small);
     text-align: left;
+    text-decoration: none;
     color: var(--accent);
     background: none;
     border: none;
