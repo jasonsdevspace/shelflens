@@ -30,6 +30,34 @@ const jobsOf = (text: string): Map<string, string> => {
     return jobs;
 };
 
+/** One step of a workflow: how far its dash is indented, and its lines. */
+interface Step {
+    readonly indent: string;
+    readonly text: string;
+}
+
+/**
+ * A workflow's steps, each with its lines, read without comments or Windows line ends. A comment
+ * after a value is dropped as well as a line of one, so a step that mentions a flag in a comment
+ * is not taken for using it.
+ */
+const stepsOf = (text: string): Step[] =>
+    [
+        ...`${text}\n`
+            .replace(/\r\n/g, '\n')
+            .replace(/^[ \t]*#.*\n/gm, '')
+            .replace(/[ \t]+#[ \t].*$/gm, '')
+            .matchAll(/^( *)- .*\n(?:\1 {2}.*\n|[ \t]*\n)*/gm),
+    ].map(([step = '', indent = '']) => ({ indent, text: step }));
+
+/** Whether a step installs a browser, by the Playwright package or command it runs. */
+const installsBrowser = ({ text }: Step) =>
+    /(?:@playwright\/test|playwright(?:-core)?)(?:@\S+)?\s+install\b/.test(text);
+
+/** Whether the step has a time limit of its own, as a key of the step and not of an input. */
+const hasOwnTimeLimit = ({ indent, text }: Step) =>
+    new RegExp(`^${indent} {2}timeout-minutes: ['"]?[1-5]['"]?\\s*$`, 'm').test(text);
+
 describe('the workflows', () => {
     const files = readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/.test(name));
 
@@ -55,21 +83,54 @@ describe('the workflows', () => {
     });
 
     it('install a browser without system packages, and give each install a time of its own', () => {
-        /** A workflow's steps, each with its lines, read without comments or Windows line ends. */
-        const stepsOf = (name: string) =>
-            [
-                ...read(name)
-                    .replace(/\r\n/g, '\n')
-                    .replace(/^\s*#.*\n/gm, '')
-                    .matchAll(/^( *)- .*\n(?:\1 {2}.*\n|[ \t]*\n)*/gm),
-            ].map(([step = '']) => step);
-        const steps = files.flatMap(stepsOf);
+        const steps = files.flatMap((file) => stepsOf(read(file)));
         // The packages come from Ubuntu's mirror, which has been slow enough to run a job out
         // of time before its tests began, and the runner image already has them.
-        expect(steps.filter((step) => /--with-deps|\binstall-deps\b/.test(step))).toEqual([]);
-        const installs = steps.filter((step) => /playwright(?:@\S+)?\s+install\b/.test(step));
+        expect(steps.filter(({ text }) => /--with-deps|\binstall-deps\b/.test(text))).toEqual([]);
+        const installs = steps.filter(installsBrowser);
         expect(installs.length).toBeGreaterThan(0);
-        for (const step of installs) expect(step).toMatch(/^\s+timeout-minutes: [1-5]\b/m);
+        expect(installs.filter((step) => !hasOwnTimeLimit(step))).toEqual([]);
+    });
+
+    it('read a step the way GitHub does, whatever the step looks like', () => {
+        const [step] = stepsOf(
+            [
+                '            - run: npx @playwright/test install chromium # not --with-deps',
+                '              with:',
+                '                  timeout-minutes: 3',
+            ].join('\n')
+        );
+        if (!step) throw new Error('expected a step');
+        expect(installsBrowser(step)).toBe(true);
+        expect(step.text).not.toMatch(/--with-deps/);
+        // A time limit given to an action's input is not the step's own.
+        expect(hasOwnTimeLimit(step)).toBe(false);
+        const [quoted] = stepsOf("    - run: npx playwright install\n      timeout-minutes: '3'");
+        if (!quoted) throw new Error('expected a step');
+        expect(hasOwnTimeLimit(quoted)).toBe(true);
+    });
+
+    // The publishing job holds the token trusted publishing issues, so what it installs is what
+    // a release trusts most.
+    it('install npm where the engine publishes only from a tarball held to a pinned checksum', () => {
+        const installs = stepsOf(jobsOf(read('release.yml')).get('publish') ?? '').filter(
+            ({ text }) => /\bnpm install -g\b/.test(text)
+        );
+        expect(installs.length).toBeGreaterThan(0);
+        for (const { text } of installs) {
+            expect(text).toMatch(/NPM_INTEGRITY: sha512-[A-Za-z0-9+/]+=*\s*$/m);
+            expect(text).toMatch(/openssl dgst -sha512/);
+            expect(text).toMatch(/npm install -g --offline --ignore-scripts "\$tarball"/);
+            expect(text).not.toMatch(/npm install -g[^\n]*\bnpm@/);
+        }
+    });
+
+    it('leave a version an earlier run staged alone, so a release can be run again whole', () => {
+        const [stage] = stepsOf(jobsOf(read('release.yml')).get('publish') ?? '').filter(
+            ({ text }) => /npm stage publish/.test(text)
+        );
+        expect(stage?.text).toMatch(/if ! output=\$\(npm stage publish/);
+        expect(stage?.text).toMatch(/cannot publish over\|previously published/);
     });
 
     it('publish only the tarball whose checksum the oldest Node check reported', () => {

@@ -142,10 +142,26 @@ jobs:
 
             # Trusted publishing and staging need an npm newer than the runner
             # ships. Pinned, so what publishes is the npm a release was proven
-            # on. Dependabot cannot see a version in a script, so it is raised
-            # by hand, with a release, when npm changes how publishing works.
+            # on, and checked against the checksum npm's registry gives for that
+            # version before anything installs it, so this job, which holds the
+            # token, runs only that npm. npm ships its dependencies inside its own
+            # tarball, so it installs offline, fetching nothing more. Dependabot
+            # cannot see a version in a script, so it is raised by hand, with its
+            # checksum, when npm changes how publishing works.
             - name: Use a pinned npm
-              run: npm install -g --ignore-scripts npm@12.2.1 && npm --version
+              env:
+                  NPM_VERSION: 12.2.1
+                  NPM_INTEGRITY: sha512-bKCmFRVT/BB+YPEYbZwQ1XUI3N5t4xKSpU1MxOjo7z3iWzKBJ0ZXRC1xFdEN+TC7N5TdywaBzf2dMXGJq/e2PQ==
+              run: |
+                  tarball="$RUNNER_TEMP/npm-$NPM_VERSION.tgz"
+                  curl -fsSL "https://registry.npmjs.org/npm/-/npm-$NPM_VERSION.tgz" -o "$tarball"
+                  got="sha512-$(openssl dgst -sha512 -binary "$tarball" | base64 | tr -d '\n')"
+                  if [ "$got" != "$NPM_INTEGRITY" ]; then
+                      echo "npm $NPM_VERSION does not match its pinned checksum"
+                      exit 1
+                  fi
+                  npm install -g --offline --ignore-scripts "$tarball"
+                  npm --version
 
             - name: Download the packed engine
               uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -153,8 +169,12 @@ jobs:
                   name: engine-package
                   path: ${{ runner.temp }}/package
 
-            # A version already on npm is left alone, so a run can be repeated
-            # after a later step failed.
+            # A version already on npm, or already staged there, is left alone, so a
+            # run can be repeated whole after a later step failed. A staged version is
+            # hidden from npm view until it is promoted, and the token trusted
+            # publishing issues cannot list what is staged, so a version staged by an
+            # earlier run is known by npm refusing to stage it again: a staged version
+            # shares the version numbers published ones use.
             - name: Stage the version on npm with provenance
               run: |
                   if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
@@ -176,7 +196,15 @@ jobs:
                   echo "$SHA256  $tarball" | sha256sum -c -
                   tag=latest
                   [ "$PRERELEASE" = "true" ] && tag=next
-                  npm stage publish "$tarball" --provenance --access public --tag "$tag"
+                  if ! output=$(npm stage publish "$tarball" --provenance --access public --tag "$tag" 2>&1); then
+                      echo "$output"
+                      if echo "$output" | grep -qiE 'cannot publish over|previously published|already (been )?staged'; then
+                          echo "$VERSION is already staged or published on npm"
+                          exit 0
+                      fi
+                      exit 1
+                  fi
+                  echo "$output"
 
     # A release on GitHub with the changelog entry as its notes, so the tag
     # has a page a reader can land on. Left alone if it exists. Its own job,
