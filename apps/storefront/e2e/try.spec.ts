@@ -178,11 +178,11 @@ const loadBenches = async (page: Page) => {
     await expect(page.getByText('the 4 products you loaded')).toBeVisible();
 };
 
-test('keeps the way past the filters out of sight until it takes focus, wherever the column starts', async ({
+test('keeps the way past the filters out of sight until it takes focus, under the bar about a visitor’s products', async ({
     page,
 }) => {
-    // The bar about the visitor's products sets the column high on the page, where a link put
-    // out of sight above the column would still be on it.
+    // The bar about the visitor's products sets the column high on the page, where a link
+    // waiting above the column would still be on the page, over the masthead.
     await loadBenches(page);
     await page.goto('try/?q=bench');
     const skip = page.getByRole('link', { name: 'Skip to results' });

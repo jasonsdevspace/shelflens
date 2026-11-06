@@ -9,12 +9,12 @@ import { LoadFailure } from './LoadFailure.jsx';
  */
 
 describe('a failure to load', () => {
-    it('says what failed as an alert that holds the message alone, with the way on beside it', () => {
+    it('says what failed as an alert that holds the message alone, with the way on below it', () => {
         render(<LoadFailure what="The products" reason="a 500" onRetry={() => undefined} />);
         const alert = screen.getByRole('alert');
         // The tone is said in words too, so it is not told by its color alone.
         expect(alert).toHaveTextContent(
-            /^Error: The products could not be loaded\. Try again, and if it keeps happening, reload the page\./
+            /^Error: ?The products could not be loaded\. Try again, and if it keeps happening, reload the page\.$/
         );
         expect(within(alert).queryByRole('button')).toBeNull();
         const callout = alert.closest<HTMLElement>('.dk-callout');

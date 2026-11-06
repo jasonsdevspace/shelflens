@@ -32,7 +32,7 @@ summary,
     cursor: pointer;
 }
 
-/* The shared look: notices, fields, buttons and a failure to load. */
+/* The shared look: notices, the room below a callout, fields and buttons. */
 
 .notice {
     color: var(--dk-muted);
@@ -323,7 +323,7 @@ summary,
     top: var(--dk-space-4);
 }
 
-.results-side .dk-skip:not(:focus) {
+.results-side .dk-skip:not(:focus-visible) {
     clip-path: inset(50%);
 }
 
@@ -762,18 +762,6 @@ summary,
 
 .no-results-offer {
     margin: var(--dk-space-2) 0;
-}
-
-/* The rules a sort set aside, with the way back after the line rather than inside it. */
-.set-aside {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--dk-space-1) var(--dk-space-3);
-}
-
-.set-aside p {
-    margin: 0;
 }
 
 .pagination {

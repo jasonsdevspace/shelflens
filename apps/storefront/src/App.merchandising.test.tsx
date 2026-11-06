@@ -44,9 +44,12 @@ describe('explain mode', () => {
             'The sort “Price, low to high” sets aside the pin of “featured-jacket”.'
         );
         expect(said).toHaveAttribute('role', 'status');
-        // The way back is a button beside the line, outside the status, so only the line is heard.
+        // The way back is a button below the line, outside the status, so only the line is heard.
+        // The line is set apart in the kit's callout, with the button among its actions.
         const back = screen.getByRole('button', { name: 'Sort by relevance' });
         expect(said).not.toContainElement(back);
+        expect(said.closest('.dk-callout')).toContainElement(back);
+        expect(back.parentElement).toHaveClass('dk-callout-actions');
         await user.click(back);
         await settled();
         const sort = screen.getByRole('combobox', { name: 'Sort by' });

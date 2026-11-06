@@ -161,11 +161,6 @@
     }
 }
 
-/* A problem stands apart from what is around it, and while it waits it is out of sight. */
-.try-alert {
-    margin-block: var(--dk-space-4);
-}
-
 /* A question that asks for an answer is in the text's own color, never muted. */
 .try-ask {
     color: var(--dk-fg);

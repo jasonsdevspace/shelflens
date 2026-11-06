@@ -1,7 +1,7 @@
-import { Callout } from '@jasonsdevspace/design-kit/react';
 import { useId, useLayoutEffect, useRef } from 'react';
 
 import { useSaidLater } from '../app/LiveStatus.jsx';
+import { SetApart } from '../app/SetApart.jsx';
 
 /**
  * A problem, said in an alert that is in the page before it is filled, so it
@@ -13,11 +13,9 @@ import { useSaidLater } from '../app/LiveStatus.jsx';
 export const ProblemAlert = ({ problem }: { readonly problem: string | undefined }) => {
     const shown = useSaidLater(problem ?? '');
     return (
-        <div className={shown === '' ? 'try-alert visually-hidden' : 'try-alert'}>
-            <Callout tone="danger" live="alert">
-                {shown}
-            </Callout>
-        </div>
+        <SetApart waiting={shown === ''} tone="danger" live="alert">
+            {shown}
+        </SetApart>
     );
 };
 

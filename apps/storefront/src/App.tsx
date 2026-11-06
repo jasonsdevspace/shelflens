@@ -1,4 +1,3 @@
-import { Callout } from '@jasonsdevspace/design-kit/react';
 import {
     type ReactNode,
     type RefObject,
@@ -14,6 +13,7 @@ import { CategoryNav } from './app/CategoryNav.jsx';
 import { PageTop } from './app/PageTop.jsx';
 import { Footer } from './app/Portfolio.jsx';
 import { Preparing } from './app/Preparing.jsx';
+import { SetApart } from './app/SetApart.jsx';
 import { StartFailure } from './app/StartFailure.jsx';
 import { type StoreInfo, storeInfoOf, StoreProvider } from './app/StoreContext.jsx';
 import { EMPTY_STATE, searchKey, type SearchState } from './app/url.js';
@@ -78,7 +78,7 @@ const Standby = ({
 
 /**
  * Said on every page while a saved set of rules is in effect, since the tour
- * and the README describe the store's own, with the way back beside it.
+ * and the README describe the store's own, with the way back below it.
  */
 const EditedRulesNotice = ({
     rulesUrl,
@@ -90,11 +90,9 @@ const EditedRulesNotice = ({
     // Drawn once above the page, so it holds its own discard.
     const discarding = useDiscard(rulesUrl, onReset, 0);
     return (
-        <div className="callout">
-            <Callout actions={<DiscardRules held={discarding} />}>
-                Your edited rules are in effect.
-            </Callout>
-        </div>
+        <SetApart actions={<DiscardRules held={discarding} />}>
+            Your edited rules are in effect.
+        </SetApart>
     );
 };
 

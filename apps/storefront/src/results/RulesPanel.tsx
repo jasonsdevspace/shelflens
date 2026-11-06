@@ -1,8 +1,8 @@
-import { Callout } from '@jasonsdevspace/design-kit/react';
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { useRef, useState } from 'react';
 
 import { LoadFailure } from '../app/LoadFailure.jsx';
+import { SetApart } from '../app/SetApart.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { type Form, formOf, fresh, type Named, summary } from './rule-form.js';
 import { RuleForm } from './RuleForm.jsx';
@@ -145,11 +145,7 @@ export const RulesPanel = ({
             <h2 className="rules-title" tabIndex={-1} ref={title}>
                 {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
             </h2>
-            {message && (
-                <div className="callout">
-                    <Callout live="status">{message}</Callout>
-                </div>
-            )}
+            {message && <SetApart live="status">{message}</SetApart>}
             {failed && (
                 <LoadFailure
                     what="The rules"
