@@ -143,11 +143,11 @@ export const settle = (page: Page): Promise<void> =>
     );
 
 /**
- * Scrolls the page with the mouse wheel and waits until the scroll has ended, so nothing measured
- * after it is taken mid-scroll. A wheel's scroll is smooth: it can reach where it is going in one
- * frame and still be running for many more, and a press made while it runs is carried on by it.
- * It waits for the page to have scrolled past `atLeast` and for the scroll to end, and fails
- * naming where the page stopped if that does not happen within five seconds.
+ * Scrolls the page with the mouse wheel and waits for the scroll to end, so nothing measured after
+ * it is taken mid-scroll. A wheel's scroll is smooth, so the page can be well down after one frame
+ * and still be moving for many more, carrying on under a press made in that time. It waits for a
+ * scroll to end with the page at least `atLeast` pixels down, and fails naming where the page
+ * stopped if none has within five seconds.
  */
 export const wheelScroll = async (page: Page, by: number, atLeast = 1): Promise<void> => {
     const ended = page.evaluate(
@@ -168,5 +168,5 @@ export const wheelScroll = async (page: Page, by: number, atLeast = 1): Promise<
         atLeast
     );
     await page.mouse.wheel(0, by);
-    expect(await ended).toBeGreaterThanOrEqual(atLeast);
+    await ended;
 };

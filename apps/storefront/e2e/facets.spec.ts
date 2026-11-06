@@ -107,8 +107,9 @@ test('keeps the column still when showing a list makes it too tall to stay in vi
     await openStore(page, 900);
     await page.setViewportSize({ width: 820, height: (await columnHeight(page)) + 200 });
     await expect.poll(async () => (await column(page)).pinned).toBe(true);
-    // The press waits for the wheel's smooth scroll to end. One still running when the column is
-    // let go would carry the page on past where the column was put back.
+    // The press waits for the wheel's smooth scroll to end, since one still running when the
+    // column is let go carries the page on past where the column was put back. At least 400 down,
+    // so the column's own place is well up the page and a jump back to it would show.
     await wheelScroll(page, 1500, 400);
     const filters = page.getByRole('complementary', { name: 'Filters' });
     const before = await filters.boundingBox();

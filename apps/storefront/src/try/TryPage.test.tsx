@@ -678,9 +678,9 @@ describe('the page for a visitor’s own catalog', () => {
         await alerted(
             'Your products are no longer in this browser, so there is nothing to keep. Press “Yes, search this file” to search it.'
         );
-        // The alert means the failed read is answered. Cleared before the press, since the
-        // page reads the catalog again as soon as it is built, and a loaded run can get there
-        // before the press returns, which reads the new products as gone.
+        // The alert means the failed read is answered, so the failure can go. It goes before the
+        // press, since the page reads the catalog back as soon as it is built, and on a loaded run
+        // that read can come before the press returns and find the new products gone.
         failure = undefined;
         await userEvent.click(screen.getByRole('button', { name: 'Yes, search this file' }));
         await screen.findByText(/the 150 products you loaded/);
