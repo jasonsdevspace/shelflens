@@ -2,6 +2,7 @@ import type { Rule } from '@jasonsdevspace/shelflens';
 import { useRef, useState } from 'react';
 
 import { LoadFailure } from '../app/LoadFailure.jsx';
+import { ProblemAlert } from '../app/ProblemAlert.jsx';
 import { SetApart } from '../app/SetApart.jsx';
 import { useStoreInfo } from '../app/StoreContext.jsx';
 import { type Form, formOf, fresh, type Named, summary } from './rule-form.js';
@@ -95,7 +96,14 @@ export const DiscardRules = ({ held }: { readonly held: Discard }) => {
     if (!held.asking) {
         return (
             <>
-                {held.failure !== undefined && <span role="alert">{held.failure} </span>}
+                {/* In the kit's words for an error, beside the way to try again rather than in a
+                callout of its own, since it can sit in the banner's callout. */}
+                {held.failure !== undefined && (
+                    <span className="dk-field-error" role="alert">
+                        <span className="visually-hidden">Error: </span>
+                        {held.failure}{' '}
+                    </span>
+                )}
                 <button type="button" className="text-button" onClick={() => held.ask(true)}>
                     Discard your rules
                 </button>
@@ -114,6 +122,31 @@ export const DiscardRules = ({ held }: { readonly held: Discard }) => {
         </p>
     );
 };
+
+/**
+ * What the panel says after a change it was asked for. News is said politely. A change that went
+ * wrong is said at once, in its own tone, in an alert that is in the panel while a rule is open,
+ * before anything is saved, and anew for each failure, so the same words a second time are heard
+ * again.
+ */
+const SaveLines = ({
+    message,
+    open,
+}: {
+    readonly message: RulesEditor['message'];
+    /** Whether a rule is open, which is when a save can go wrong. */
+    readonly open: boolean;
+}) => (
+    <>
+        {message && !message.failed && <SetApart live="status">{message.text}</SetApart>}
+        {open && (
+            <ProblemAlert
+                key={message?.failed === true ? message.at : 0}
+                problem={message?.failed === true ? message.text : undefined}
+            />
+        )}
+    </>
+);
 
 /**
  * The merchandiser's side of the store: the rules that apply to the current
@@ -145,7 +178,7 @@ export const RulesPanel = ({
             <h2 className="rules-title" tabIndex={-1} ref={title}>
                 {phrase ? `Rules for \u201c${phrase}\u201d` : 'Rules'}
             </h2>
-            {message && <SetApart live="status">{message}</SetApart>}
+            <SaveLines message={message} open={form !== undefined} />
             {failed && (
                 <LoadFailure
                     what="The rules"
