@@ -57,11 +57,12 @@ const page = () => {
 };
 
 /**
- * Presses a button again once the page has handled the answer to its first press, and before it
- * draws what comes next, as a quick second click can land in a browser. Inside act the page draws
- * only once the callback is done. `handled` says the page's own step after the answer has run,
- * and one more turn lets whatever it began settle, so the press never lands while the first one
- * is still with the worker.
+ * Presses a button again once the page has handled the answer to its first press, as a quick
+ * second click can land in a browser. Inside act, React draws a scheduled update only once the
+ * callback is done, so without the fix the old button is still on the page for the press. With
+ * it, the next stage is drawn at once and the button pressed is no longer there. `handled` says
+ * the page's own step after the answer has run, and one more turn lets whatever it began settle,
+ * so the press never lands while the first one is still with the worker.
  */
 const pressBetween = async (button: HTMLElement, answer: () => void, handled: () => boolean) => {
     await act(async () => {

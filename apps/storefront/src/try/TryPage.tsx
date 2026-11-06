@@ -105,12 +105,17 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
     // Set while products are loaded and the visitor looks at another file, so they can go back.
     const [back, setBack] = useState(false);
     const catalogUrl = `${base}catalog`;
-    // Ends a change with the worker. The next stage is drawn before the guard is let go. Otherwise a
-    // quick second press lands on the old button, whose handler still sees the stage before, and
-    // repeats the change.
-    const release = (draw: (() => void) | undefined) => {
+    // Ends a change with the worker. The next stage, with anything drawn beside it, is drawn before
+    // the guard is let go. Otherwise a quick second press lands on the old button, whose handler
+    // still sees the stage before, and repeats the change. The guard goes whatever happens.
+    const release = (next: Stage | undefined, beside?: () => void) => {
         try {
-            if (draw) flushSync(draw);
+            if (next) {
+                flushSync(() => {
+                    beside?.();
+                    setStage(next);
+                });
+            }
         } finally {
             pending.current = false;
         }
@@ -276,8 +281,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 problem: `The store could not be reached (${messageOf(error)}). Press \u201c${retry}\u201d to try again.`,
             };
         } finally {
-            const last = next;
-            release(last && (() => setStage(last)));
+            release(next);
         }
     };
 
@@ -319,14 +323,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 next = { ...rest, problem };
             } else next = { kind: 'choose', problem };
         } finally {
-            const last = next;
-            release(
-                last &&
-                    (() => {
-                        if (read) setBack(false);
-                        setStage(last);
-                    })
-            );
+            release(next, read ? () => setBack(false) : undefined);
         }
     };
 
@@ -361,8 +358,7 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
                 problem: `Your products could not be removed (${messageOf(error)}), so they are still here. Press \u201cRemove your products\u201d to try again.`,
             };
         } finally {
-            const last = next;
-            release(last && (() => setStage(last)));
+            release(next);
         }
     };
 

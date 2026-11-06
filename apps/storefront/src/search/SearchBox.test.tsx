@@ -115,6 +115,13 @@ const answerWith = async (
     });
     request.answer(suggestions);
     await within(root).findByRole('option', { name: (name) => name.startsWith(drawn) });
+    // However many were sent on the way, one request for the phrase is left open, so a page that
+    // asked again for every keystroke would show here.
+    expect(
+        network.pending.filter(
+            (pending) => pending.phrase === phrase && pending.signal?.aborted !== true
+        )
+    ).toHaveLength(1);
 };
 
 describe('the popover under real typing', () => {
