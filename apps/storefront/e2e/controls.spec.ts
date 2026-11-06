@@ -153,11 +153,11 @@ const rings = async (page: Page): Promise<string[]> => {
             }
             const style = getComputedStyle(active);
             const probe = document.createElement('i');
-            probe.style.color = style.getPropertyValue('--accent').trim();
+            probe.style.color = style.getPropertyValue('--dk-accent').trim();
             document.body.append(probe);
             const accent = getComputedStyle(probe).color;
             probe.remove();
-            const width = style.getPropertyValue('--ring-width').trim();
+            const width = style.getPropertyValue('--dk-ring-width').trim();
             return {
                 id: `${active.tagName.toLowerCase()} "${active.textContent.trim().slice(0, 30)}"`,
                 ring: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,

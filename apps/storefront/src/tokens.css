@@ -1,14 +1,22 @@
 /*
- * The design's named values, for the store's pages and for the widget
- * inside its shadow root, which is why each is set on both the page's root
- * and the widget's frame.
+ * The store's palette on the design kit's color roles, and its own names
+ * beside them. The kit's tokens.css, which styles.css loads first, gives the
+ * page every role and the whole scale, and the store sets again only the
+ * roles it draws in colors of its own, in rules outside a layer, which win
+ * over the kit's. Each role holds its light and its dark value in one
+ * light-dark(), which picks by the color scheme of what it is drawn on: the
+ * page's, which the kit sets from the theme the portfolio saved, or for the
+ * widget, its host's. Every pairing the kit measures passes in both themes.
  *
- * The palette is written here once, each color as the pair of values it
- * takes in the light theme and the dark. The page chooses between them by
- * the theme the portfolio saved, and the widget by its host's color scheme,
- * each in its own sheet, by name and never by value. Every text pair passes
- * WCAG AA in both themes, and the control color passes 3 to 1 against the
- * page in both.
+ * The widget lives in a shadow root on other people's pages, where the kit's
+ * sheets would match nothing, so its frame, .shelflens, takes every role and
+ * scale step the widget reads, set to the same values the page has. Its
+ * colors are the light values first, then by the host's scheme behind a
+ * feature check, the one place the page's build leaves light-dark() as it is
+ * written. Rewritten for the page, it would rest on switches set on the
+ * page's root, which no other host has, and draw no color at all. A test
+ * holds the frame to every name the widget reads, so a host page's own
+ * --dk- values never reach it, and holds each value it repeats to the kit's.
  *
  * Which unit goes where:
  *
@@ -32,86 +40,65 @@
  *   its buttons in view while a long stop scrolls under them. A shorter screen,
  *   or larger text, leaves the stop the room instead.
  */
+/* The roles the store draws in its own colors on its pages, and its own names beside them. */
+:root {
+    /* What a card or a choice under the pointer sits on, a little cooler than the kit's. */
+    --dk-highlight: light-dark(#eef2fd, #1e2a4a);
+    /* What floats over the page, a step above it in the dark theme where a shadow cannot show. */
+    --dk-raised: light-dark(#ffffff, #1c1c1c);
+    /* What a visitor has to act on, warmer than the kit's red. */
+    --dk-danger: light-dark(#b7472a, #e8795a);
+    /* The stars of a rating, solid and outlined alike, 3 to 1 against a card and its hover in both themes. */
+    --rating: light-dark(#b45309, #f2b544);
+    /* The edge of a product's swatch, faint on white and lighter on dark, so a dark color keeps its shape. */
+    --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
+    /* The width a page of reading holds to, the explainer and the page for a visitor's products alike. */
+    --dk-measure: 42rem;
+}
+
+/* The store's name, which is a mark rather than a heading. */
 :root,
 .shelflens {
-    --light-bg: #ffffff;
-    --dark-bg: #121212;
-    --light-fg: #1a1a1a;
-    --dark-fg: #f0f0f0;
-    --light-muted: #5c5c5c;
-    --dark-muted: #a5a5a5;
-    /* The lines between things. */
-    --light-line: #d9d9d9;
-    --dark-line: #3a3a3a;
-    --light-accent: #1f4fd8;
-    --dark-accent: #8fb0ff;
-    --light-on-accent: #ffffff;
-    --dark-on-accent: #121212;
-    --light-highlight: #eef2fd;
-    --dark-highlight: #1e2a4a;
-    /* The edges of the fields and buttons a visitor uses, darker than the lines between things. */
-    --light-control: #8a8a8a;
-    --dark-control: #6e6e6e;
-    /* The stars of a rating, solid and outlined alike, 3 to 1 against a card and its hover in both themes. */
-    --light-rating: #b45309;
-    --dark-rating: #f2b544;
-    /* What floats over the page, a step above it in the dark theme where a shadow cannot show. */
-    --light-raised: #ffffff;
-    --dark-raised: #1c1c1c;
-    --light-warn: #b7472a;
-    --dark-warn: #e8795a;
-    /* The edge of a product's swatch, faint on white and lighter on dark, so a dark color keeps its shape. */
-    --light-swatch-edge: rgba(0, 0, 0, 0.12);
-    --dark-swatch-edge: #6e6e6e;
-
-    /* Type. */
-    --text-caption: 0.85rem;
-    --text-small: 0.9rem;
-    --text-body: 1rem;
-    --text-lead: 1.1rem;
-    --text-title: 1.25rem;
-    --text-heading: 1.5rem;
-    --text-display: 1.75rem;
-    --leading-tight: 1.2;
-    --leading-body: 1.5;
-    --weight-normal: 400;
-    --weight-medium: 500;
-    /* Every heading's weight, and every label's that stands out. */
-    --weight-strong: 600;
-    /* The store's name, which is a mark rather than a heading. */
     --weight-mark: 700;
+}
 
-    /* Space, in steps. */
-    --space-1: 0.25rem;
-    --space-2: 0.5rem;
-    --space-3: 0.75rem;
-    --space-4: 1rem;
-    --space-5: 1.5rem;
-    --space-6: 2rem;
+/* Everything the widget reads, its colors in the light theme for a browser without light-dark(). */
+.shelflens {
+    --dk-bg: #ffffff;
+    --dk-fg: #1a1a1a;
+    --dk-muted: #5c5c5c;
+    --dk-line: #d9d9d9;
+    --dk-control: #858585;
+    --dk-accent: #1f4fd8;
+    --dk-on-accent: #ffffff;
+    --dk-highlight: #eef2fd;
+    --dk-raised: #ffffff;
+    --dk-danger: #b7472a;
+    --rating: #b45309;
+    --swatch-edge: rgba(0, 0, 0, 0.12);
+    --dk-leading-tight: 1.2;
+    --dk-leading-body: 1.5;
+    --dk-weight-medium: 500;
+    --dk-weight-strong: 600;
+    --dk-ring-width: 2px;
+    --dk-ring-offset: 2px;
+    --dk-shadow-raised: 0 6px 24px rgb(0 0 0 / 0.18);
+}
 
-    /* Corners. */
-    --radius-small: 0.25rem;
-    --radius: 0.375rem;
-    --radius-large: 0.5rem;
-
-    /*
-     * What floats over the page, and what dims the page behind a drawer. The
-     * shadow is in pixels, since the search box's list wears it on other
-     * people's pages too, where a rem is the host's.
-     */
-    --shadow-raised: 0 6px 24px rgb(0 0 0 / 0.18);
-    --scrim: rgb(0 0 0 / 0.4);
-
-    /* The one focus ring every control draws, in the accent color. */
-    --ring-width: 2px;
-    --ring-offset: 2px;
-
-    /* A field a visitor types into or picks from: its height and its text's inset. */
-    --field-height: 2.25rem;
-    /* The height of anything a thumb presses on a phone, and of the actions that end a step. */
-    --target: 2.75rem;
-    --field-inline: var(--space-2);
-
-    /* The width a page of reading holds to, the explainer and the page for a visitor's products alike. */
-    --measure: 42rem;
+/* And by the host's color scheme, where the browser knows light-dark(). */
+@supports (color: light-dark(#000, #fff)) {
+    .shelflens {
+        --dk-bg: light-dark(#ffffff, #121212);
+        --dk-fg: light-dark(#1a1a1a, #f0f0f0);
+        --dk-muted: light-dark(#5c5c5c, #a5a5a5);
+        --dk-line: light-dark(#d9d9d9, #3a3a3a);
+        --dk-control: light-dark(#858585, #7d7d7d);
+        --dk-accent: light-dark(#1f4fd8, #8fb0ff);
+        --dk-on-accent: light-dark(#ffffff, #121212);
+        --dk-highlight: light-dark(#eef2fd, #1e2a4a);
+        --dk-raised: light-dark(#ffffff, #1c1c1c);
+        --dk-danger: light-dark(#b7472a, #e8795a);
+        --rating: light-dark(#b45309, #f2b544);
+        --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
+    }
 }

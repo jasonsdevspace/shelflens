@@ -1,13 +1,15 @@
 import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, sep } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 /*
- * The design's values are named once, in tokens.css, and every sheet the
- * store's pages and the widget use refers to them by name. The widget's
- * host pages have a sheet of their own, written to look like someone else's
- * site, which is why it is not one of these.
+ * The design's values are named once, in the design kit's tokens and in the
+ * store's tokens.css over them, and every sheet the store's pages and the
+ * widget use refers to them by name. The widget's host pages have a sheet of
+ * their own, written to look like someone else's site, which is why it is
+ * not one of these.
  */
 
 /** The sheets that hold the values, and the host pages' own, which are no store sheet. */
@@ -73,16 +75,106 @@ const COLORED = [
     'caret-color',
 ];
 
-/** The color roles a block sets from the palette's pairs, with the pairs each one names. */
-const roles = (block: string) =>
-    [...block.matchAll(/--([a-z-]+): ([^;]+);/g)]
-        .map((match) => ({
-            role: match[1] ?? '',
-            pairs: [...(match[2] ?? '').matchAll(/--(?:light|dark)-([a-z-]+)/g)].map(
-                (pair) => pair[1]
-            ),
-        }))
-        .filter(({ pairs }) => pairs.length > 0);
+/** The store's tokens, and the kit's, as the installed package ships them. */
+const STORE_TOKENS = readFileSync(join(__dirname, 'tokens.css'), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    ''
+);
+const KIT_TOKENS = readFileSync(
+    createRequire(import.meta.url).resolve('@jasonsdevspace/design-kit/tokens.css'),
+    'utf8'
+).replace(/\/\*[\s\S]*?\*\//g, '');
+
+/** The declarations in each rule whose selector is the one given, at the top level of a sheet. */
+const rulesFor = (css: string, selector: string): Map<string, string> =>
+    new Map(
+        [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+            .filter(([, head]) => (head ?? '').trim().replace(/\s+/g, ' ') === selector)
+            .flatMap(([, , body]) =>
+                [...(body ?? '').matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(
+                    ([, name = '', value = '']) =>
+                        [name, value.trim().replace(/\s+/g, ' ')] as const
+                )
+            )
+    );
+
+/** The store's tokens outside the feature check, and the widget's colors by scheme inside it. */
+const AT_SUPPORTS = STORE_TOKENS.indexOf('@supports (color: light-dark(');
+const OUTSIDE = STORE_TOKENS.slice(0, AT_SUPPORTS);
+const BY_SCHEME = rulesFor(
+    STORE_TOKENS.slice(STORE_TOKENS.indexOf('{', AT_SUPPORTS) + 1),
+    '.shelflens'
+);
+
+/** The roles the store sets on its pages, and everything the widget's frame holds. */
+const PAGE = rulesFor(OUTSIDE, ':root');
+const FRAME = new Map([
+    ...rulesFor(OUTSIDE, ':root, .shelflens'),
+    ...rulesFor(OUTSIDE, '.shelflens'),
+]);
+
+/** Every custom property a sheet reads. */
+const reads = (css: string) =>
+    new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(([, name = '']) => name));
+
+/** A color role's light and dark values, from its light-dark(). */
+const pair = (value: string): readonly [string, string] | undefined => {
+    const found = /^light-dark\((#[\da-f]{6}), (#[\da-f]{6})\)$/i.exec(value);
+    return found?.[1] && found[2] ? [found[1], found[2]] : undefined;
+};
+
+const luminance = (hex: string) => {
+    const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => {
+        const channel = parseInt(hex.slice(at, at + 2), 16) / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/** The contrast WCAG defines between two colors. */
+const contrast = (a: string, b: string) => {
+    const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return ((high ?? 0) + 0.05) / ((low ?? 0) + 0.05);
+};
+
+/** The palette the store's pages draw: the kit's roles, with the store's own set over them. */
+/** The kit's own roles and scale, as its tokens declare them on the root. */
+const PALETTE_KIT = rulesFor(
+    KIT_TOKENS.replace(/@layer[^{;]*;/g, '').replace(/@layer[^{]*\{/, ''),
+    ':where(:root)'
+);
+
+const PALETTE = new Map([...PALETTE_KIT, ...PAGE]);
+
+const GROUNDS = ['bg', 'surface', 'raised'];
+const TONES = ['highlight', 'success-bg', 'danger-bg'];
+
+/**
+ * The pairings the kit holds its own palette to, at their ratios, so the store's colors pass what
+ * the kit's components drawn on them expect, and the stars of a rating at 3 to 1 on what a card
+ * sits on and on its hover.
+ */
+const PAIRS: readonly (readonly [string, string, number])[] = [
+    ...GROUNDS.flatMap((ground): (readonly [string, string, number])[] => [
+        ...['fg', 'muted', 'accent', 'success', 'danger'].map(
+            (front) => [front, ground, 4.5] as const
+        ),
+        ['control', ground, 3],
+    ]),
+    ['on-accent', 'accent', 4.5],
+    ...TONES.flatMap((ground) => [
+        ['fg', ground, 4.5] as const,
+        ['muted', ground, 4.5] as const,
+        ['accent', ground, 4.5] as const,
+        ['control', ground, 3] as const,
+    ]),
+    ['success', 'success-bg', 4.5],
+    ['danger', 'danger-bg', 4.5],
+    ...['bg', 'raised', 'highlight'].map((ground) => ['rating', ground, 3] as const),
+];
+
+const valueOf = (role: string) =>
+    PALETTE.get(role.startsWith('rating') ? '--rating' : `--dk-${role}`) ?? '';
 
 describe('the design tokens', () => {
     it('read every store sheet, the ones split off included', () => {
@@ -104,47 +196,73 @@ describe('the design tokens', () => {
         expect([...byValue, ...named]).toEqual([]);
     });
 
-    it('choose every color by name, each role from its own pair, in every list that chooses', () => {
-        const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
-        const pairs = [...tokens.matchAll(/--light-([a-z-]+):/g)].map((match) => match[1] ?? '');
-        for (const name of pairs) expect(tokens, name).toContain(`--dark-${name}:`);
-        const page = sheet('styles.css');
-        const widget = sheet('widget/widget.css');
-        const lists = {
-            'the light page': /:root \{([^}]*)\}/.exec(page)?.[1],
-            'the dark page': /:root\[data-theme='dark'\] \{([^}]*)\}/.exec(page)?.[1],
-            'the widget': /\.shelflens \{([^}]*)\}/.exec(widget)?.[1],
-            'the widget by its scheme': /@supports[^{]*\{\s*\.shelflens \{([^}]*)\}/.exec(
-                widget
-            )?.[1],
-        };
-        for (const [list, block] of Object.entries(lists)) {
-            const set = roles(block ?? '');
-            expect(set.map(({ role }) => role).sort(), list).toEqual([...pairs].sort());
-            for (const { role, pairs: named } of set) {
-                expect(new Set(named), `${list}: --${role}`).toEqual(new Set([role]));
-            }
+    it("sets the widget's colors by its host's scheme, with each light value for a browser without it", () => {
+        expect(BY_SCHEME.size).toBeGreaterThan(0);
+        for (const [name, value] of BY_SCHEME) {
+            const light = /^light-dark\((.+), [^,]+\)$/.exec(value)?.[1];
+            expect(FRAME.get(name), name).toBe(light);
         }
+        const colors = [...FRAME.keys()].filter((name) => /^(#|rgb)/.test(FRAME.get(name) ?? ''));
+        expect(colors.sort()).toEqual([...BY_SCHEME.keys()].sort());
     });
+
+    it("draws the store's own colors the same on its pages and in the widget", () => {
+        const own = [...PAGE].filter(([, value]) => value.startsWith('light-dark('));
+        expect(own.length).toBeGreaterThan(0);
+        for (const [name, value] of own) expect(BY_SCHEME.get(name), name).toBe(value);
+    });
+
+    it("gives the widget's frame every name the widget reads, so a host page's never reach it", () => {
+        const read = [
+            ...reads(sheet('search/searchbox.css')),
+            ...reads(sheet('widget/widget.css')),
+        ];
+        expect(read.filter((name) => !FRAME.has(name))).toEqual([]);
+    });
+
+    it("holds every value the frame repeats from the kit to the kit's own", () => {
+        const repeated = [...BY_SCHEME, ...FRAME].filter(
+            ([name, value]) => !PAGE.has(name) && PALETTE_KIT.has(name) && !/^(#|rgb)/.test(value)
+        );
+        expect(repeated.length).toBeGreaterThan(0);
+        for (const [name, value] of repeated) expect(value, name).toBe(PALETTE_KIT.get(name));
+    });
+
+    for (const [theme, side] of [
+        ['light', 0],
+        ['dark', 1],
+    ] as const) {
+        it(`holds every pairing the kit measures to its ratio in the ${theme} theme`, () => {
+            const short = PAIRS.flatMap(([front, back, ratio]) => {
+                const [a, b] = [pair(valueOf(front)), pair(valueOf(back))];
+                if (!a || !b) return [`${front} on ${back}: not a light-dark() of two colors`];
+                const measured = contrast(a[side], b[side]);
+                return measured < ratio
+                    ? [`${front} on ${back}: ${measured.toFixed(2)}, needs ${String(ratio)}`]
+                    : [];
+            });
+            expect(short).toEqual([]);
+        });
+    }
 
     it('name every type size, weight and line height', () => {
         expect([
             ...loose(
                 'font-size',
-                /^(var\(--text-[a-z]+\)|max\(var\(--text-body\), 16px\)|inherit)$/,
+                /^(var\(--dk-text-[a-z]+\)|max\(var\(--dk-text-body\), 16px\)|inherit)$/,
                 /^[\d.]+em$/
             ),
-            ...loose('font-weight', /^var\(--weight-[a-z]+\)$/),
-            ...loose('line-height', /^var\(--(leading-[a-z]+|space-\d)\)$/),
+            ...loose('font-weight', /^var\(--(dk-weight-[a-z]+|weight-mark)\)$/),
+            ...loose('line-height', /^var\(--dk-(leading-[a-z]+|space-\d)\)$/),
             // The widget's frame pins its text, at a size no host's root can scale.
-            ...loose('font', /^(inherit|16px\/var\(--leading-[a-z]+\) system-ui, .*)$/),
+            ...loose('font', /^(inherit|16px\/var\(--dk-leading-[a-z]+\) system-ui, .*)$/),
         ]).toEqual([]);
     });
 
     it('name every corner and every shadow', () => {
         expect([
-            ...loose('border-radius', /^((var\(--radius(-[a-z]+)?\)|0)( |$))+$/, /^[\d.]+em$/),
-            ...loose('box-shadow', /^(var\(--shadow-raised\)|none)$/),
+            ...loose('border-radius', /^((var\(--dk-radius(-[a-z]+)?\)|0)( |$))+$/, /^[\d.]+em$/),
+            ...loose('box-shadow', /^(var\(--dk-shadow-raised\)|none)$/),
         ]).toEqual([]);
     });
 });
@@ -166,7 +284,7 @@ const everyDeclaration = () =>
  */
 const PIXEL_ALLOWED = [
     ({ property }: { property: string }) => /^(border|outline)(-[a-z]+)*$/.test(property),
-    ({ value }: { value: string }) => value === 'max(var(--text-body), 16px)',
+    ({ value }: { value: string }) => value === 'max(var(--dk-text-body), 16px)',
     ({ at, property, value }: { at: string; property: string; value: string }) =>
         at === 'widget/widget.css' && property === 'font' && value.startsWith('16px/'),
     ({ property, value }: { property: string; value: string }) =>

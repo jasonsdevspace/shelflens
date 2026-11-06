@@ -3,41 +3,41 @@
  * wordmark's left edge, with the demo's own steps for type and space.
  */
 .about {
-    max-width: var(--measure);
-    line-height: var(--leading-body);
+    max-width: var(--dk-measure);
+    line-height: var(--dk-leading-body);
 }
 
 .about h1 {
-    margin: var(--space-4) 0 var(--space-2);
-    font-size: var(--text-display);
-    font-weight: var(--weight-strong);
+    margin: var(--dk-space-4) 0 var(--dk-space-2);
+    font-size: var(--dk-text-display);
+    font-weight: var(--dk-weight-strong);
 }
 
 .about-pitch {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-lead);
+    margin: 0 0 var(--dk-space-4);
+    font-size: var(--dk-text-lead);
 }
 
 .about section {
-    margin-top: var(--space-6);
-    padding-block: var(--space-6) 0;
-    border-top: 1px solid var(--line);
+    margin-top: var(--dk-space-6);
+    padding-block: var(--dk-space-6) 0;
+    border-top: 1px solid var(--dk-line);
 }
 
 .about h2 {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-title);
-    font-weight: var(--weight-strong);
+    margin: 0 0 var(--dk-space-3);
+    font-size: var(--dk-text-title);
+    font-weight: var(--dk-weight-strong);
 }
 
 .about h3 {
-    margin: var(--space-5) 0 var(--space-1);
-    font-size: var(--text-body);
-    font-weight: var(--weight-strong);
+    margin: var(--dk-space-5) 0 var(--dk-space-1);
+    font-size: var(--dk-text-body);
+    font-weight: var(--dk-weight-strong);
 }
 
 .about p {
-    margin: 0 0 var(--space-4);
+    margin: 0 0 var(--dk-space-4);
 }
 
 .about p:last-child {
@@ -50,12 +50,12 @@
  * underline stays.
  */
 .about a:not(.button) {
-    color: var(--accent);
+    color: var(--dk-accent);
     text-decoration: underline;
 }
 
 .about code {
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
     overflow-wrap: anywhere;
 }
 
@@ -64,27 +64,27 @@
 }
 
 .eyebrow {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-caption);
-    color: var(--muted);
+    margin: 0 0 var(--dk-space-1);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-muted);
     font-variant-numeric: tabular-nums;
 }
 
 /* The steps stack, one under the next, with the arrow between them saying so. */
 .flow {
     list-style: none;
-    margin: var(--space-4) 0;
+    margin: var(--dk-space-4) 0;
     padding: 0;
     display: grid;
-    gap: var(--space-5);
+    gap: var(--dk-space-5);
 }
 
 .flow li {
     position: relative;
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
-    font-size: var(--text-small);
+    padding: var(--dk-space-3) var(--dk-space-4);
+    border: 1px solid var(--dk-line);
+    border-radius: var(--dk-radius-large);
+    font-size: var(--dk-text-small);
 }
 
 .flow li + li::before {
@@ -92,21 +92,21 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: calc(-1 * var(--space-5));
+    top: calc(-1 * var(--dk-space-5));
     /* The arrow fills the gap between two steps, and its line is the gap's height, so it sits in the middle. */
-    height: var(--space-5);
-    line-height: var(--space-5);
+    height: var(--dk-space-5);
+    line-height: var(--dk-space-5);
     text-align: center;
-    color: var(--control);
+    color: var(--dk-control);
 }
 
 .flow strong {
     display: block;
-    font-weight: var(--weight-medium);
+    font-weight: var(--dk-weight-medium);
 }
 
 .flow-note {
     display: block;
-    margin-top: var(--space-1);
-    color: var(--muted);
+    margin-top: var(--dk-space-1);
+    color: var(--dk-muted);
 }

@@ -50,13 +50,16 @@ the page.
   to do. Nothing is uploaded.
   [Decision record 13](../../docs/decisions/0013-a-visitors-catalog-stays-in-the-browser.md) has
   the choices.
-- **One set of tokens.** `src/tokens.css` names the design's values once: the palette, each color as
-  its light and dark pair, the type sizes, weights and line heights, the spacing steps, the corners,
-  one raised shadow, one scrim and the focus ring. Every bordered button is a `.button`, the one
-  action a view asks for adds `.button-primary`, and an action that reads as text is a
-  `.text-button`, always underlined. Each component otherwise wears classes of its own. The page
-  picks each color by the saved theme and the widget by its host's color scheme, both by name. A
-  test holds every sheet to the tokens and every component to its own classes, and a browser test
+- **One set of tokens.** The design's values are the design kit's: its color roles, each holding its
+  light and its dark value in one `light-dark()`, the type sizes, weights and line heights, the
+  spacing steps, the corners, one raised shadow, one scrim and the focus ring, all under the `--dk-`
+  prefix. `src/tokens.css` sets again the roles the store draws in its own colors, and the widget's
+  frame, which lives in a shadow root where the kit's sheets match nothing, takes everything it
+  reads there. Every bordered button is a `.button`, the one action a view asks for adds
+  `.button-primary`, and an action that reads as text is a `.text-button`, always underlined. Each
+  component otherwise wears classes of its own. The page picks each color by the saved theme and the
+  widget by its host's color scheme. A test holds every sheet to the tokens, the store's palette to
+  every pairing the kit measures, and the widget's frame to every name it reads, and a browser test
   holds every control on every page to an edge of 3 to 1, the one focus ring and, for a select, its
   caret, in both themes and on a phone.
 - **What this browser searched before.** The box offers the phrases this browser searched

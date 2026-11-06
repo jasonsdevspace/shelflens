@@ -171,7 +171,7 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
     const backgrounds = await page.evaluate(() => {
         // The raised token as a color, drawn on an element of its own.
         const probe = document.body.appendChild(document.createElement('div'));
-        probe.style.background = 'var(--dark-raised)';
+        probe.style.background = 'var(--dk-raised)';
         const raised = getComputedStyle(probe).backgroundColor;
         probe.remove();
         return {

@@ -1,51 +1,16 @@
+@import '@jasonsdevspace/design-kit/tokens.css';
 @import './tokens.css';
 @import './search/searchbox.css';
 
 /* The base: the theme and what every element takes. */
 
 :root {
-    --column: 72rem;
-    --bg: var(--light-bg);
-    --fg: var(--light-fg);
-    --muted: var(--light-muted);
-    --line: var(--light-line);
-    --accent: var(--light-accent);
-    --on-accent: var(--light-on-accent);
-    --highlight: var(--light-highlight);
-    --control: var(--light-control);
-    --rating: var(--light-rating);
-    --raised: var(--light-raised);
-    --warn: var(--light-warn);
-    --swatch-edge: var(--light-swatch-edge);
-    color-scheme: light;
     font-family:
         system-ui,
         -apple-system,
         'Segoe UI',
         Roboto,
         sans-serif;
-}
-
-/*
- * The theme is the one the portfolio saved, or the system's when nothing is
- * saved. The design kit's script, which its plugin puts in each page's
- * head, sets the attribute before the first paint, so this page and
- * jasonsdevspace.com switch together.
- */
-:root[data-theme='dark'] {
-    --bg: var(--dark-bg);
-    --fg: var(--dark-fg);
-    --muted: var(--dark-muted);
-    --line: var(--dark-line);
-    --accent: var(--dark-accent);
-    --on-accent: var(--dark-on-accent);
-    --highlight: var(--dark-highlight);
-    --control: var(--dark-control);
-    --rating: var(--dark-rating);
-    --raised: var(--dark-raised);
-    --warn: var(--dark-warn);
-    --swatch-edge: var(--dark-swatch-edge);
-    color-scheme: dark;
 }
 
 * {
@@ -75,14 +40,14 @@ summary,
  * control, and says so where it is styled.
  */
 :where(a[href], button, input, select, textarea, summary, [tabindex='0']):focus-visible {
-    outline: var(--ring-width) solid var(--accent);
-    outline-offset: var(--ring-offset);
+    outline: var(--dk-ring-width) solid var(--dk-accent);
+    outline-offset: var(--dk-ring-offset);
 }
 
 /* A box or a dot a visitor ticks, in the accent color rather than the browser's. */
 input[type='checkbox'],
 input[type='radio'] {
-    accent-color: var(--accent);
+    accent-color: var(--dk-accent);
 }
 
 /*
@@ -92,8 +57,8 @@ input[type='radio'] {
  */
 body {
     margin: 0;
-    background: var(--bg);
-    color: var(--fg);
+    background: var(--dk-bg);
+    color: var(--dk-fg);
     overflow-wrap: break-word;
 }
 
@@ -102,27 +67,27 @@ h1,
 h2,
 h3,
 h4 {
-    font-weight: var(--weight-strong);
+    font-weight: var(--dk-weight-strong);
 }
 
 /* The shared look: notices, fields, buttons, a failure to load and the skip link. */
 
 .notice {
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 /* A line the page wants seen, such as who is shopping or whose catalog this is, on the highlight. */
 .callout {
-    margin: 0 0 var(--space-4);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-small);
-    background: var(--highlight);
-    border-radius: var(--radius);
+    margin: 0 0 var(--dk-space-4);
+    padding: var(--dk-space-2) var(--dk-space-3);
+    font-size: var(--dk-text-small);
+    background: var(--dk-highlight);
+    border-radius: var(--dk-radius);
 }
 
 .hint {
-    color: var(--muted);
-    font-size: var(--text-caption);
+    color: var(--dk-muted);
+    font-size: var(--dk-text-caption);
 }
 
 /*
@@ -133,20 +98,20 @@ h4 {
  */
 .select,
 .rules-input {
-    min-height: var(--field-height);
-    padding: var(--space-1) var(--field-inline);
+    min-height: var(--dk-field-height);
+    padding: var(--dk-space-1) var(--dk-field-inline);
     font: inherit;
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
-    background-color: var(--bg);
-    color: var(--fg);
+    border: 1px solid var(--dk-control);
+    border-radius: var(--dk-radius);
+    background-color: var(--dk-bg);
+    color: var(--dk-fg);
 }
 
 @media (max-width: 48rem) {
     .select,
     .rules-input {
-        min-height: var(--target);
-        font-size: max(var(--text-body), 16px);
+        min-height: var(--dk-target);
+        font-size: max(var(--dk-text-body), 16px);
     }
 }
 
@@ -162,23 +127,23 @@ h4 {
     appearance: none;
     max-width: 100%;
     /* The text's inset, then room for the caret and the same inset again beyond it. */
-    padding-inline-end: calc(var(--field-inline) * 2 + var(--space-3));
+    padding-inline-end: calc(var(--dk-field-inline) * 2 + var(--dk-space-3));
     text-overflow: ellipsis;
     /* The caret, two halves of a triangle in the muted text color, its right point the text's inset from the edge. */
     background-image:
-        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, var(--dk-muted) 50%),
+        linear-gradient(135deg, var(--dk-muted) 50%, transparent 50%);
     background-repeat: no-repeat;
     background-position:
-        right calc(var(--field-inline) + 0.375rem) center,
-        right var(--field-inline) center;
+        right calc(var(--dk-field-inline) + 0.375rem) center,
+        right var(--dk-field-inline) center;
     background-size: 0.375rem 0.375rem;
 }
 
 @media (forced-colors: active) {
     .select {
         appearance: auto;
-        padding-inline-end: var(--field-inline);
+        padding-inline-end: var(--dk-field-inline);
         background-image: none;
     }
 }
@@ -200,41 +165,41 @@ h4 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    min-height: var(--field-height);
-    padding: 0 var(--space-3);
+    gap: var(--dk-space-2);
+    min-height: var(--dk-field-height);
+    padding: 0 var(--dk-space-3);
     font: inherit;
-    font-size: var(--text-small);
-    line-height: var(--leading-tight);
+    font-size: var(--dk-text-small);
+    line-height: var(--dk-leading-tight);
     text-decoration: none;
-    color: var(--fg);
-    background: var(--bg);
-    border: 1px solid var(--control);
-    border-radius: var(--radius);
+    color: var(--dk-fg);
+    background: var(--dk-bg);
+    border: 1px solid var(--dk-control);
+    border-radius: var(--dk-radius);
 }
 
 .button:hover {
-    border-color: var(--accent);
+    border-color: var(--dk-accent);
 }
 
 .button[aria-pressed='true'],
 .button[aria-expanded='true'] {
-    background: var(--highlight);
-    border-color: var(--accent);
+    background: var(--dk-highlight);
+    border-color: var(--dk-accent);
 }
 
 .button:disabled,
 .button[aria-disabled='true'] {
-    color: var(--muted);
-    background: var(--bg);
-    border-color: var(--line);
+    color: var(--dk-muted);
+    background: var(--dk-bg);
+    border-color: var(--dk-line);
 }
 
 .button-primary {
-    font-weight: var(--weight-strong);
-    color: var(--on-accent);
-    background: var(--accent);
-    border-color: var(--accent);
+    font-weight: var(--dk-weight-strong);
+    color: var(--dk-on-accent);
+    background: var(--dk-accent);
+    border-color: var(--dk-accent);
 }
 
 /* Its edge is the accent already, so a primary button shows the pointer over it by its label. */
@@ -244,20 +209,20 @@ h4 {
 
 /* A disabled button of either kind looks the same, so a muted label never sits on the accent. */
 .button-primary:disabled {
-    font-weight: var(--weight-normal);
+    font-weight: var(--dk-weight-normal);
 }
 
 .button-large {
-    min-height: var(--target);
-    padding-inline: var(--space-4);
-    font-size: var(--text-body);
-    border-radius: var(--radius-large);
+    min-height: var(--dk-target);
+    padding-inline: var(--dk-space-4);
+    font-size: var(--dk-text-body);
+    border-radius: var(--dk-radius-large);
 }
 
 /* A thumb's size on a phone, as the fields are. */
 @media (max-width: 48rem) {
     .button {
-        min-height: var(--target);
+        min-height: var(--dk-target);
     }
 }
 
@@ -265,7 +230,7 @@ h4 {
     justify-self: start;
     padding: 0;
     font: inherit;
-    color: var(--accent);
+    color: var(--dk-accent);
     background: none;
     border: none;
     text-decoration: underline;
@@ -275,19 +240,19 @@ h4 {
 .facets .text-button,
 .rules .text-button {
     min-height: 1.5rem;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 .option-button {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     width: 100%;
     min-height: 2rem;
     font: inherit;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
     text-align: left;
-    color: var(--accent);
+    color: var(--dk-accent);
     background: none;
     border: none;
     padding: 0;
@@ -300,7 +265,7 @@ h4 {
 
 /* What did not load, in the text's own color since it asks for something to be done. */
 .load-failure {
-    color: var(--fg);
+    color: var(--dk-fg);
 }
 
 /* What did not load, with the way to ask again and any other way on beside it. */
@@ -308,23 +273,23 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--dk-space-3);
 }
 
 /* Skip to content, out of sight until it takes focus. */
 .skip {
     position: absolute;
-    left: var(--space-4);
+    left: var(--dk-space-4);
     top: -10rem;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius);
-    background: var(--accent);
-    color: var(--on-accent);
+    padding: var(--dk-space-2) var(--dk-space-4);
+    border-radius: var(--dk-radius);
+    background: var(--dk-accent);
+    color: var(--dk-on-accent);
     z-index: 10;
 }
 
 .skip:focus-visible {
-    top: var(--space-4);
+    top: var(--dk-space-4);
 }
 
 /* The page frame: the strip, the masthead, the categories and the footer. */
@@ -338,7 +303,7 @@ h4 {
 .topbar,
 .masthead,
 .colophon {
-    padding-inline: calc(max(0px, (100% - var(--column)) / 2) + var(--space-4));
+    padding-inline: calc(max(0px, (100% - var(--dk-column)) / 2) + var(--dk-space-4));
 }
 
 /*
@@ -351,13 +316,13 @@ h4 {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0 var(--space-5);
-    border-bottom: 1px solid var(--line);
+    gap: 0 var(--dk-space-5);
+    border-bottom: 1px solid var(--dk-line);
 }
 
 .topbar .portfolio {
     justify-content: flex-start;
-    gap: 0 var(--space-5);
+    gap: 0 var(--dk-space-5);
     padding-inline: 0;
     border-bottom: 0;
 }
@@ -371,7 +336,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--dk-space-3);
     min-height: 2.5rem;
 }
 
@@ -385,9 +350,9 @@ h4 {
     flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
-    gap: 0 var(--space-4);
-    border-bottom: 1px solid var(--line);
-    font-size: var(--text-small);
+    gap: 0 var(--dk-space-4);
+    border-bottom: 1px solid var(--dk-line);
+    font-size: var(--dk-text-small);
 }
 
 /* The whole row height is the target, not the one line of small text. */
@@ -399,23 +364,23 @@ h4 {
 
 .portfolio a,
 .colophon a {
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 .portfolio a:hover,
 .portfolio a:focus-visible,
 .colophon a:hover,
 .colophon a:focus-visible {
-    color: var(--fg);
+    color: var(--dk-fg);
 }
 
 /* The footer's rule runs the width of the page, as the header's do, with its text in the column. */
 .colophon {
-    margin-top: var(--space-6);
-    padding-block: var(--space-4);
-    border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: var(--text-small);
+    margin-top: var(--dk-space-6);
+    padding-block: var(--dk-space-4);
+    border-top: 1px solid var(--dk-line);
+    color: var(--dk-muted);
+    font-size: var(--dk-text-small);
 }
 
 .colophon p {
@@ -426,9 +391,9 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-4);
-    padding-block: var(--space-3);
-    border-bottom: 1px solid var(--line);
+    gap: var(--dk-space-4);
+    padding-block: var(--dk-space-3);
+    border-bottom: 1px solid var(--dk-line);
 }
 
 /*
@@ -450,19 +415,19 @@ h4 {
 .topbar.is-waiting .topbar-tools:empty {
     display: flex;
     min-width: 15.65rem;
-    min-height: var(--field-height);
+    min-height: var(--dk-field-height);
 }
 
 .brand {
     font-weight: var(--weight-mark);
-    font-size: var(--text-title);
+    font-size: var(--dk-text-title);
     color: inherit;
     text-decoration: none;
 }
 
 .content {
-    padding: var(--space-4);
-    max-width: var(--column);
+    padding: var(--dk-space-4);
+    max-width: var(--dk-column);
     margin: 0 auto;
 }
 
@@ -481,14 +446,14 @@ h4 {
 .masthead {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
 }
 
 .masthead-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-5);
+    gap: var(--dk-space-2) var(--dk-space-5);
 }
 
 /* The search box gives way before anything wraps, so the row holds from a phone's width up. */
@@ -505,16 +470,16 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-small);
-    color: var(--muted);
+    gap: var(--dk-space-2);
+    font-size: var(--dk-text-small);
+    color: var(--dk-muted);
 }
 
 /* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
 .category-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 var(--space-5);
+    gap: 0 var(--dk-space-5);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -523,23 +488,23 @@ h4 {
 .category-link {
     display: inline-flex;
     align-items: center;
-    min-height: var(--target);
-    color: var(--muted);
-    font-weight: var(--weight-medium);
+    min-height: var(--dk-target);
+    color: var(--dk-muted);
+    font-weight: var(--dk-weight-medium);
     text-decoration: none;
     border-bottom: 2px solid transparent;
 }
 
 .category-link:hover,
 .category-link:focus-visible {
-    color: var(--fg);
-    border-bottom-color: var(--control);
+    color: var(--dk-fg);
+    border-bottom-color: var(--dk-control);
 }
 
 .category-link[aria-current='page'] {
-    color: var(--fg);
-    font-weight: var(--weight-strong);
-    border-bottom-color: var(--accent);
+    color: var(--dk-fg);
+    font-weight: var(--dk-weight-strong);
+    border-bottom-color: var(--dk-accent);
 }
 
 @media (max-width: 48rem) {
@@ -557,7 +522,7 @@ h4 {
      */
     .topbar.is-waiting .topbar-tools:empty {
         min-width: 0;
-        min-height: calc(var(--target) + var(--space-2));
+        min-height: calc(var(--dk-target) + var(--dk-space-2));
     }
 
     /*
@@ -565,18 +530,18 @@ h4 {
      * where they do not, and the switches on the line below them.
      */
     .topbar .portfolio {
-        gap: 0 var(--space-4);
-        font-size: var(--text-caption);
+        gap: 0 var(--dk-space-4);
+        font-size: var(--dk-text-caption);
     }
 
     .topbar-tools {
-        padding-block: 0 var(--space-2);
+        padding-block: 0 var(--dk-space-2);
     }
 
     /* The brand and the search box on one row, the categories below, as focus takes them. */
     .masthead-row {
         flex-wrap: wrap;
-        gap: var(--space-2) var(--space-3);
+        gap: var(--dk-space-2) var(--dk-space-3);
     }
 
     .masthead .searchbox {
@@ -592,8 +557,8 @@ h4 {
 
 /* A store that did not start says so as the page's heading, in the text's own color. */
 .standby-heading {
-    font-size: var(--text-title);
-    color: var(--fg);
+    font-size: var(--dk-text-title);
+    color: var(--dk-fg);
 }
 
 /* The results page: facets beside a grid of cards. */
@@ -601,7 +566,7 @@ h4 {
 .results-layout {
     display: grid;
     grid-template-columns: 15rem minmax(0, 1fr);
-    gap: var(--space-6);
+    gap: var(--dk-space-6);
     align-items: start;
 }
 
@@ -613,7 +578,7 @@ h4 {
  */
 .results-side {
     position: relative;
-    --pinned-top: var(--space-4);
+    --pinned-top: var(--dk-space-4);
     scroll-margin-top: var(--pinned-top);
     /* Not what the browser holds the page still by, since the page scrolls to hold the column. */
     overflow-anchor: none;
@@ -650,7 +615,7 @@ h4 {
     /* The column is the screen's width, never what its widest content asks for. */
     .results-layout {
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--space-4);
+        gap: var(--dk-space-4);
     }
 }
 
@@ -667,18 +632,18 @@ h4 {
 }
 
 .facets > .text-button {
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--dk-space-3);
 }
 
 .facet {
     /* A fieldset is as wide as its widest row unless told otherwise, and the column is narrower. */
     min-inline-size: 0;
     margin: 0;
-    padding: var(--space-4) 0;
+    padding: var(--dk-space-4) 0;
     border: none;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--dk-line);
     display: grid;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
 }
 
 .facet:first-of-type {
@@ -690,10 +655,10 @@ h4 {
 .facet-title {
     float: left;
     width: 100%;
-    font-size: var(--text-small);
-    font-weight: var(--weight-strong);
+    font-size: var(--dk-text-small);
+    font-weight: var(--dk-weight-strong);
     padding: 0;
-    margin-bottom: var(--space-1);
+    margin-bottom: var(--dk-space-1);
 }
 
 .facet-title + * {
@@ -709,22 +674,22 @@ h4 {
 .facet-current,
 .facet .text-button,
 .facet .option-button {
-    padding-inline: var(--space-2);
+    padding-inline: var(--dk-space-2);
 }
 
 .facet-option {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     min-height: 2rem;
-    padding-inline: var(--space-2);
-    font-size: var(--text-small);
-    border-radius: var(--radius-small);
+    padding-inline: var(--dk-space-2);
+    font-size: var(--dk-text-small);
+    border-radius: var(--dk-radius-small);
 }
 
 .facet-option:hover,
 .facet-option:has(:focus-visible) {
-    background: var(--highlight);
+    background: var(--dk-highlight);
 }
 
 .facets .hint {
@@ -737,8 +702,8 @@ h4 {
     display: flex;
     align-items: center;
     min-height: 2rem;
-    font-size: var(--text-small);
-    font-weight: var(--weight-strong);
+    font-size: var(--dk-text-small);
+    font-weight: var(--dk-weight-strong);
 }
 
 /*
@@ -751,7 +716,7 @@ h4 {
 }
 
 .facet-links.is-nested {
-    padding-left: var(--space-3);
+    padding-left: var(--dk-space-3);
 }
 
 /* A rating band: the stars a card shows at it, then "and up", which wraps under them if it must. */
@@ -759,7 +724,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0 var(--space-2);
+    gap: 0 var(--dk-space-2);
 }
 
 .facet-rating .stars {
@@ -778,7 +743,7 @@ h4 {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
 }
 
 /* The filters that are on, each a chip that removes itself, then the way to clear them all. */
@@ -786,8 +751,8 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-4);
+    gap: var(--dk-space-2);
+    margin: 0 0 var(--dk-space-4);
     padding: 0;
     list-style: none;
 }
@@ -795,43 +760,43 @@ h4 {
 .chip {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     min-height: 2rem;
-    padding: 0 var(--space-3);
+    padding: 0 var(--dk-space-3);
     font: inherit;
-    font-size: var(--text-small);
-    color: var(--fg);
-    background: var(--highlight);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-large);
+    font-size: var(--dk-text-small);
+    color: var(--dk-fg);
+    background: var(--dk-highlight);
+    border: 1px solid var(--dk-accent);
+    border-radius: var(--dk-radius-large);
 }
 
 .chip-x {
-    color: var(--muted);
+    color: var(--dk-muted);
 }
 
 .chip:hover .chip-x,
 .chip:focus-visible .chip-x {
-    color: var(--fg);
+    color: var(--dk-fg);
 }
 
 .crumbs {
-    font-size: var(--text-small);
-    color: var(--muted);
+    font-size: var(--dk-text-small);
+    color: var(--dk-muted);
 }
 
 .crumb-list {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
     list-style: none;
-    margin: 0 0 var(--space-2);
+    margin: 0 0 var(--dk-space-2);
     padding: 0;
 }
 
 .crumb-list li + li::before {
     content: '/';
-    margin-right: var(--space-1);
+    margin-right: var(--dk-space-1);
 }
 
 .crumb-list a {
@@ -839,7 +804,7 @@ h4 {
 }
 
 .crumb-list a[aria-current='page'] {
-    color: var(--fg);
+    color: var(--dk-fg);
     text-decoration: none;
 }
 
@@ -848,20 +813,20 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-4);
+    gap: var(--dk-space-2) var(--dk-space-3);
+    margin-bottom: var(--dk-space-4);
 }
 
 /* The results heading. */
 
 .results-heading {
-    font-size: var(--text-title);
-    font-weight: var(--weight-strong);
+    font-size: var(--dk-text-title);
+    font-weight: var(--dk-weight-strong);
 }
 
 .results-note {
-    font-weight: var(--weight-normal);
-    color: var(--muted);
+    font-weight: var(--dk-weight-normal);
+    color: var(--dk-muted);
 }
 
 .results-heading {
@@ -880,9 +845,9 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     min-width: 0;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 /* The select narrows to the room there is, and its own ellipsis shortens a long choice. */
@@ -897,7 +862,7 @@ h4 {
     display: grid;
     /* A card is never wider than the screen, where larger text makes its usual width too wide. */
     grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
-    gap: var(--space-4);
+    gap: var(--dk-space-4);
 }
 
 /*
@@ -913,35 +878,35 @@ h4 {
 
 .card-link {
     display: flex;
-    gap: var(--space-3);
+    gap: var(--dk-space-3);
     flex: 1 1 auto;
-    padding: var(--space-3);
+    padding: var(--dk-space-3);
     color: inherit;
     text-decoration: none;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
+    border: 1px solid var(--dk-line);
+    border-radius: var(--dk-radius-large);
 }
 
 .card-link:hover,
 .card-link:focus-visible {
-    background: var(--highlight);
-    border-color: var(--accent);
+    background: var(--dk-highlight);
+    border-color: var(--dk-accent);
 }
 
 .card-text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
     min-width: 0;
 }
 
 .card-name {
-    font-weight: var(--weight-medium);
+    font-weight: var(--dk-weight-medium);
 }
 
 .card-meta {
-    font-size: var(--text-caption);
-    color: var(--muted);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-muted);
 }
 
 /* One line where it fits, wrapping on a narrow card rather than spilling past it. */
@@ -949,22 +914,22 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-small);
-    color: var(--muted);
+    gap: var(--dk-space-1);
+    font-size: var(--dk-text-small);
+    color: var(--dk-muted);
 }
 
 .card-rating-seen {
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
 }
 
 .card-rating-average {
-    margin-left: var(--space-1);
-    color: var(--fg);
-    font-weight: var(--weight-medium);
+    margin-left: var(--dk-space-1);
+    color: var(--dk-fg);
+    font-weight: var(--dk-weight-medium);
     font-variant-numeric: tabular-nums;
 }
 
@@ -972,7 +937,7 @@ h4 {
 .stars {
     position: relative;
     display: inline-flex;
-    line-height: var(--leading-tight);
+    line-height: var(--dk-leading-tight);
 }
 
 .stars-fill {
@@ -1005,20 +970,20 @@ h4 {
 
 .card-stock,
 .product-stock {
-    font-size: var(--text-caption);
-    color: var(--warn);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-danger);
 }
 
 /* What the viewer switch changed, on the card and the product: the difference, not the membership. */
 .card-member,
 .product-member {
-    font-size: var(--text-caption);
-    color: var(--accent);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-accent);
 }
 
 .product-member,
 .product-stock {
-    margin: var(--space-1) 0 0;
+    margin: var(--dk-space-1) 0 0;
 }
 
 /*
@@ -1034,42 +999,42 @@ h4 {
 .card-explain {
     flex: 1 1 auto;
     margin: 0;
-    padding: var(--space-2) var(--space-3) var(--space-3);
+    padding: var(--dk-space-2) var(--dk-space-3) var(--dk-space-3);
     list-style: none;
-    font-size: var(--text-caption);
-    color: var(--muted);
-    border: 1px solid var(--line);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-muted);
+    border: 1px solid var(--dk-line);
     border-top: 0;
-    border-radius: 0 0 var(--radius-large) var(--radius-large);
+    border-radius: 0 0 var(--dk-radius-large) var(--dk-radius-large);
 }
 
 /* What a rule did is the line a merchandiser looks for, so it reads in the foreground. */
 .card-explain .card-explain-rule {
-    color: var(--fg);
+    color: var(--dk-fg);
 }
 
 .card-explain li + li {
-    margin-top: var(--space-1);
+    margin-top: var(--dk-space-1);
 }
 
 /* The rank is the answer to "where did it land", so it reads in the foreground. */
 .card-explain li:first-child {
-    color: var(--fg);
+    color: var(--dk-fg);
 }
 
 .no-results-heading {
-    font-size: var(--text-lead);
-    font-weight: var(--weight-strong);
-    margin: var(--space-5) 0 var(--space-3);
+    font-size: var(--dk-text-lead);
+    font-weight: var(--dk-weight-strong);
+    margin: var(--dk-space-5) 0 var(--dk-space-3);
 }
 
 .no-results-offer {
-    margin: var(--space-2) 0;
+    margin: var(--dk-space-2) 0;
 }
 
 /* The ways forward from nothing found, in the page's one accent. */
 .no-results a {
-    color: var(--accent);
+    color: var(--dk-accent);
 }
 
 /* The rules a sort set aside, with the way back after the line rather than inside it. */
@@ -1077,7 +1042,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-1) var(--space-3);
+    gap: var(--dk-space-1) var(--dk-space-3);
 }
 
 .set-aside p {
@@ -1088,14 +1053,14 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-5);
+    gap: var(--dk-space-2);
+    margin-top: var(--dk-space-5);
 }
 
 .pagination-list {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1103,28 +1068,28 @@ h4 {
 
 .pagination-number[aria-current='page'] {
     cursor: default;
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
+    background: var(--dk-accent);
+    border-color: var(--dk-accent);
+    color: var(--dk-on-accent);
 }
 
 .pagination-status {
     margin-left: auto;
-    font-size: var(--text-small);
-    color: var(--muted);
+    font-size: var(--dk-text-small);
+    color: var(--dk-muted);
 }
 
 /* The facets as a drawer, on a phone. */
 .drawer-badge {
-    font-weight: var(--weight-strong);
-    color: var(--accent);
+    font-weight: var(--dk-weight-strong);
+    color: var(--dk-accent);
 }
 
 .drawer-backdrop {
     position: fixed;
     inset: 0;
     z-index: 20;
-    background: var(--scrim);
+    background: var(--dk-scrim);
 }
 
 .drawer-panel {
@@ -1136,10 +1101,10 @@ h4 {
     width: min(22rem, 90vw);
     display: flex;
     flex-direction: column;
-    background: var(--bg);
+    background: var(--dk-bg);
     /* An edge as well as the shadow, which cannot show against a dark backdrop. */
-    border-right: 1px solid var(--line);
-    box-shadow: var(--shadow-raised);
+    border-right: 1px solid var(--dk-line);
+    box-shadow: var(--dk-shadow-raised);
 }
 
 .drawer-panel[hidden] {
@@ -1150,36 +1115,36 @@ h4 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--line);
+    padding: var(--dk-space-4);
+    border-bottom: 1px solid var(--dk-line);
 }
 
 .drawer-title {
     margin: 0;
-    font-size: var(--text-lead);
+    font-size: var(--dk-text-lead);
 }
 
 /* The first stop in the drawer, as big as a thumb, as its rows are. */
 .drawer-close {
-    min-height: var(--target);
-    padding-inline: var(--space-2);
+    min-height: var(--dk-target);
+    padding-inline: var(--dk-space-2);
 }
 
 .drawer-body {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-4);
+    padding: var(--dk-space-4);
 }
 
 /* Rows a thumb can hit. */
 .drawer-body .facet-option,
 .drawer-body .option-button,
 .drawer-body .facet-current {
-    min-height: var(--target);
+    min-height: var(--dk-target);
 }
 
 .drawer-done {
-    margin: var(--space-4);
+    margin: var(--dk-space-4);
 }
 
 /*
@@ -1188,7 +1153,7 @@ h4 {
  */
 .rules {
     display: grid;
-    gap: var(--space-4);
+    gap: var(--dk-space-4);
 }
 
 .rules-list {
@@ -1196,80 +1161,80 @@ h4 {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
 }
 
 .rules-rule {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
 }
 
 /* The panel's heading is the size of the filter titles beside it, below the page's own heading. */
 .rules-title {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-body);
-    font-weight: var(--weight-strong);
+    margin: 0 0 var(--dk-space-1);
+    font-size: var(--dk-text-body);
+    font-weight: var(--dk-weight-strong);
 }
 
 .rules-rule-name {
-    font-weight: var(--weight-strong);
+    font-weight: var(--dk-weight-strong);
 }
 
 .rules-form {
     display: grid;
-    gap: var(--space-3);
+    gap: var(--dk-space-3);
 }
 
 .rules-field {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--dk-space-1);
     margin: 0;
     padding: 0;
     border: none;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 .rules-field > label,
 .rules-field > legend {
-    font-weight: var(--weight-strong);
+    font-weight: var(--dk-weight-strong);
     padding: 0;
 }
 
 .rules-input[aria-invalid='true'],
 .select[aria-invalid='true'] {
-    border-color: var(--warn);
+    border-color: var(--dk-danger);
 }
 
 .rules-choice {
     display: flex;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     align-items: baseline;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 .rules-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
+    gap: var(--dk-space-2) var(--dk-space-4);
     align-items: center;
 }
 
 .rules-notice {
-    margin: 0 0 var(--space-4);
+    margin: 0 0 var(--dk-space-4);
 }
 
 /* One product. */
 
 .rail {
-    margin-top: var(--space-6);
+    margin-top: var(--dk-space-6);
 }
 
 .product-head {
     display: flex;
-    gap: var(--space-5);
+    gap: var(--dk-space-5);
     align-items: flex-start;
-    margin: var(--space-4) 0;
+    margin: var(--dk-space-4) 0;
 }
 
 /* The name and lines beside the swatch, never wider than the head, so a long name breaks. */
@@ -1280,15 +1245,15 @@ h4 {
 
 .product-crumbs,
 .product-meta {
-    color: var(--muted);
-    margin: 0 0 var(--space-1);
+    color: var(--dk-muted);
+    margin: 0 0 var(--dk-space-1);
 }
 
 .product-name {
-    font-size: var(--text-display);
-    font-weight: var(--weight-strong);
-    line-height: var(--leading-tight);
-    margin: 0 0 var(--space-1);
+    font-size: var(--dk-text-display);
+    font-weight: var(--dk-weight-strong);
+    line-height: var(--dk-leading-tight);
+    margin: 0 0 var(--dk-space-1);
 }
 
 /*
@@ -1303,14 +1268,14 @@ h4 {
 
 /* With no product to show, the line is the page's message, in the text's own color. */
 .product > .notice.is-answer {
-    color: var(--fg);
-    margin: 0 0 var(--space-3);
+    color: var(--dk-fg);
+    margin: 0 0 var(--dk-space-3);
 }
 
 .product-price {
-    font-size: var(--text-title);
-    font-weight: var(--weight-strong);
-    margin: var(--space-2) 0 0;
+    font-size: var(--dk-text-title);
+    font-weight: var(--dk-weight-strong);
+    margin: var(--dk-space-2) 0 0;
 }
 
 .product-description {
@@ -1318,8 +1283,8 @@ h4 {
 }
 
 .product-subheading {
-    font-size: var(--text-body);
-    margin: var(--space-5) 0 var(--space-2);
+    font-size: var(--dk-text-body);
+    margin: var(--dk-space-5) 0 var(--dk-space-2);
 }
 
 /* The table scrolls inside its own frame where the screen is too narrow for it, never the page. */
@@ -1330,25 +1295,25 @@ h4 {
 
 .variants {
     border-collapse: collapse;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 .variants th,
 .variants td {
     text-align: left;
-    padding: var(--space-2) var(--space-4) var(--space-2) 0;
-    border-bottom: 1px solid var(--line);
+    padding: var(--dk-space-2) var(--dk-space-4) var(--dk-space-2) 0;
+    border-bottom: 1px solid var(--dk-line);
 }
 
 @media (max-width: 48rem) {
     /* The swatch above the product's name, so the name has the width of the page. */
     .product-head {
         flex-direction: column;
-        gap: var(--space-3);
+        gap: var(--dk-space-3);
     }
 
     .product-name {
-        font-size: var(--text-heading);
+        font-size: var(--dk-text-heading);
     }
 }
 
@@ -1356,16 +1321,16 @@ h4 {
 
 .tour {
     position: fixed;
-    right: var(--space-4);
-    bottom: var(--space-4);
+    right: var(--dk-space-4);
+    bottom: var(--dk-space-4);
     z-index: 5;
     width: min(24rem, calc(100vw - 2rem));
-    padding: var(--space-3) var(--space-4) var(--space-4);
-    background: var(--raised);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-raised);
+    padding: var(--dk-space-3) var(--dk-space-4) var(--dk-space-4);
+    background: var(--dk-raised);
+    color: var(--dk-fg);
+    border: 1px solid var(--dk-line);
+    border-radius: var(--dk-radius-large);
+    box-shadow: var(--dk-shadow-raised);
 }
 
 /*
@@ -1373,78 +1338,78 @@ h4 {
  * behind it, at the height it is drawn, on a phone and on a wide screen.
  */
 :root.is-touring {
-    scroll-padding-bottom: calc(var(--tour-height, 0rem) + var(--space-4) * 2);
+    scroll-padding-bottom: calc(var(--tour-height, 0rem) + var(--dk-space-4) * 2);
 }
 
 .tour-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--dk-space-4);
 }
 
 .tour-count {
     margin: 0;
-    font-size: var(--text-caption);
-    color: var(--muted);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-muted);
     font-variant-numeric: tabular-nums;
 }
 
 /* Close is there when wanted and quiet otherwise, so Try it is the panel's one strong action. */
 .button.tour-close {
-    margin-right: calc(var(--space-2) * -1);
-    padding-inline: var(--space-2);
-    color: var(--muted);
+    margin-right: calc(var(--dk-space-2) * -1);
+    padding-inline: var(--dk-space-2);
+    color: var(--dk-muted);
     background: none;
     border-color: transparent;
 }
 
 .button.tour-close:hover {
-    color: var(--fg);
+    color: var(--dk-fg);
     border-color: transparent;
 }
 
 /* The panel's buttons sit on its raised surface, not in wells of the page's. */
 .tour .button:not(.button-primary) {
-    background: var(--raised);
+    background: var(--dk-raised);
 }
 
 /* How far through the tour the visitor is, drawn under the count it repeats. */
 .tour-progress {
-    height: var(--space-1);
-    margin-top: var(--space-2);
-    background: var(--line);
-    border-radius: var(--radius-small);
+    height: var(--dk-space-1);
+    margin-top: var(--dk-space-2);
+    background: var(--dk-line);
+    border-radius: var(--dk-radius-small);
 }
 
 .tour-progress-done {
     display: block;
     height: 100%;
-    background: var(--accent);
-    border-radius: var(--radius-small);
+    background: var(--dk-accent);
+    border-radius: var(--dk-radius-small);
 }
 
 .tour-title {
-    margin: var(--space-3) 0 var(--space-2);
-    font-size: var(--text-lead);
-    line-height: var(--leading-tight);
+    margin: var(--dk-space-3) 0 var(--dk-space-2);
+    font-size: var(--dk-text-lead);
+    line-height: var(--dk-leading-tight);
 }
 
 .tour-body {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-small);
-    line-height: var(--leading-body);
+    margin: 0 0 var(--dk-space-3);
+    font-size: var(--dk-text-small);
+    line-height: var(--dk-leading-body);
 }
 
 .tour-test {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-caption);
-    color: var(--muted);
+    margin: 0 0 var(--dk-space-4);
+    font-size: var(--dk-text-caption);
+    color: var(--dk-muted);
 }
 
 /* Each file whole on a line where it fits, broken inside its name only where it cannot. */
 .tour-test-file {
-    color: var(--fg);
+    color: var(--dk-fg);
     overflow-wrap: anywhere;
 }
 
@@ -1457,7 +1422,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
 }
 
 .tour-step-label {
@@ -1477,7 +1442,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     margin-left: auto;
 }
 
@@ -1486,7 +1451,7 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
 }
 
 /* The two answers keep together, wrapping as one where larger text leaves no room, then apart. */
@@ -1494,14 +1459,14 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--dk-space-2);
     margin-left: auto;
 }
 
 .tour-offer-text {
     flex: 1 1 7em;
     margin: 0;
-    font-size: var(--text-small);
+    font-size: var(--dk-text-small);
 }
 
 /*
@@ -1509,7 +1474,7 @@ h4 {
  * and the gap it floats in, so what a stop points at there is never under it.
  */
 .content.has-tour {
-    padding-bottom: calc(var(--tour-height, 0dvh) + var(--space-6));
+    padding-bottom: calc(var(--tour-height, 0dvh) + var(--dk-space-6));
 }
 
 @media (max-width: 48rem) {
@@ -1528,7 +1493,7 @@ h4 {
         width: auto;
         overflow: auto;
         border-width: 1px 0 0;
-        border-radius: var(--radius-large) var(--radius-large) 0 0;
+        border-radius: var(--dk-radius-large) var(--dk-radius-large) 0 0;
     }
 
     /* The sheet's own bottom padding is the buttons', so nothing scrolls under them. */
@@ -1538,8 +1503,8 @@ h4 {
     }
 
     .tour-nav {
-        padding-block: var(--space-2) var(--space-4);
-        background: var(--raised);
+        padding-block: var(--dk-space-2) var(--dk-space-4);
+        background: var(--dk-raised);
     }
 
     /* The bar that offers the tour is one row where it fits, not a sheet. */
@@ -1549,7 +1514,7 @@ h4 {
 
     /* The last cards and the pagination can still scroll above the sheet, at its drawn height. */
     .content.has-tour {
-        padding-bottom: calc(var(--tour-height, 50dvh) + var(--space-4));
+        padding-bottom: calc(var(--tour-height, 50dvh) + var(--dk-space-4));
     }
 }
 
