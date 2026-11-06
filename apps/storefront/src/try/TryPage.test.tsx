@@ -129,6 +129,18 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.queryByRole('button', { name: 'Tour' })).not.toBeInTheDocument();
     });
 
+    it('offers no switches, and no landmark for them, for a catalog with one price for everyone', async () => {
+        // The sample with its member prices in a column the mapping leaves out.
+        sample = () =>
+            Promise.resolve(new Response(sampleCsv().replace('Member price', 'Supplier code')));
+        page();
+        await loadSample();
+        await screen.findByRole('combobox', { name: 'Search the store' });
+        expect(screen.queryByRole('combobox', { name: 'Shopping as' })).toBeNull();
+        expect(screen.queryByRole('region', { name: 'Demo' })).toBeNull();
+        expect(document.querySelector('.dk-strip-tools')).toBeNull();
+    });
+
     it('says the sample could not be loaded rather than reading an error page as products', async () => {
         sample = () => Promise.resolve(new Response('<html>not here</html>', { status: 404 }));
         page();

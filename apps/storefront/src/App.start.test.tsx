@@ -287,7 +287,7 @@ describe('a store that does not start', () => {
         expect(strip()).not.toHaveClass('is-waiting');
     });
 
-    it('puts the demo’s switches beside the strip, in a landmark of their own, and keeps the masthead for the shopper', async () => {
+    it('puts the demo’s switches in the strip, in a landmark of their own, and keeps the masthead for the shopper', async () => {
         await open();
         const demo = await screen.findByRole('region', { name: 'Demo' });
         expect(within(demo).getByRole('combobox', { name: 'Shopping as' })).toBeInTheDocument();

@@ -17,22 +17,25 @@ const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..'
 
 /**
  * An element as the page means it, whatever the formatter did to the source: its tag, its
- * attributes in order of name, and its children, with each run of white space read as one space
- * and the space at either end of an element dropped. White space alone between two elements is
- * dropped too, as the strip's row of links drops it, and the footer's sentence has none.
+ * attributes in order of name, and its children, with each run of white space read as one space.
+ * The white space a browser draws nothing for is dropped: at either end of a paragraph or a box,
+ * and alone between the boxes and the links of the strip's rows. Inside a sentence every space
+ * counts, so a space gained or lost between two links fails the test.
  */
-const shape = (node: Node): string => {
+const shape = (node: Node, parent = ''): string => {
     if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent ?? '';
-        return text.trim() === '' ? '' : text.replace(/\s+/g, ' ');
+        const text = (node.textContent ?? '').replace(/\s+/g, ' ');
+        return text === ' ' && parent !== 'p' && parent !== 'a' ? '' : text;
     }
     if (!(node instanceof Element)) return '';
+    const name = node.localName;
     const attributes = [...node.attributes]
         .map((attribute) => `${attribute.name}="${attribute.value}"`)
         .sort()
         .join(' ');
-    const inside = [...node.childNodes].map(shape).join('').trim();
-    return `<${node.localName} ${attributes}>${inside}</${node.localName}>`;
+    const joined = [...node.childNodes].map((child) => shape(child, name)).join('');
+    const inside = name === 'a' ? joined : joined.trim();
+    return `<${name} ${attributes}>${inside}</${name}>`;
 };
 
 const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');

@@ -10,8 +10,9 @@
  * and none on a heading or section the page moves focus to, the accent on a
  * box or a dot a visitor ticks, a heading's weight and line, code in running
  * text, a table's shared borders, and motion cut short for a visitor who
- * asks for less. The skip link, the strip and the footer are the kit's
- * too, from its components. What follows is the store's own.
+ * asks for less. The strip, the footer and the skip link on the pages
+ * written by hand are the kit's too, from its components, and so is the
+ * look of the way past the filters. What follows is the store's own.
  */
 
 /*
@@ -31,7 +32,7 @@ summary,
     cursor: pointer;
 }
 
-/* The shared look: notices, fields, buttons, a failure to load and the way past the filters. */
+/* The shared look: notices, fields, buttons and a failure to load. */
 
 .notice {
     color: var(--dk-muted);
@@ -237,27 +238,7 @@ summary,
     gap: var(--dk-space-3);
 }
 
-/*
- * The way past the filters to the results, out of sight until it takes
- * focus. It sits in the filters' column, so it lines up with the column
- * rather than the page, as the kit's skip link does.
- */
-.skip {
-    position: absolute;
-    left: var(--dk-space-4);
-    top: -10rem;
-    padding: var(--dk-space-2) var(--dk-space-4);
-    border-radius: var(--dk-radius);
-    background: var(--dk-accent);
-    color: var(--dk-on-accent);
-    z-index: 10;
-}
-
-.skip:focus-visible {
-    top: var(--dk-space-4);
-}
-
-/* The page frame: the strip, the masthead, the categories and the footer. */
+/* The page frame between the kit's strip and footer: the masthead and the categories. */
 
 /*
  * The masthead keeps its rule across the whole viewport and lines its
@@ -289,8 +270,8 @@ summary,
 /*
  * A field's height, and the width of the two switches, as they take once
  * they arrive, so they wrap, or not, as they will. The strip draws no
- * section for them until they come, so the room is kept by a box of the
- * sheet's, which no screen reader reads.
+ * section for them until they come, so the room is an empty box the sheet
+ * draws at the strip's end, with no text or landmark for a screen reader.
  */
 .topbar.is-waiting .dk-strip::after {
     content: '';

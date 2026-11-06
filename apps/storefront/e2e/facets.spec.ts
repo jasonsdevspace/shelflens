@@ -132,8 +132,10 @@ test('shows the way past the column at the top of the column, wherever the page 
     const skip = filters.getByRole('link', { name: 'Skip to results' });
     await skip.focus();
     const [link, aside] = await Promise.all([skip.boundingBox(), filters.boundingBox()]);
-    expect(link?.y ?? 0).toBeGreaterThanOrEqual(aside?.y ?? 0);
-    expect(link?.x ?? 0).toBeGreaterThanOrEqual(aside?.x ?? 0);
-    // At the column's top, not anywhere in it.
-    expect((link?.y ?? 0) - (aside?.y ?? 0)).toBeLessThan(40);
+    if (!link || !aside) throw new Error('expected the link and the column to be drawn');
+    expect(link.y).toBeGreaterThanOrEqual(aside.y);
+    expect(link.x).toBeGreaterThanOrEqual(aside.x);
+    // At the column's top and its inset, not anywhere in it or at the page's edge.
+    expect(link.y - aside.y).toBeLessThan(40);
+    expect(link.x - aside.x).toBeLessThan(40);
 });

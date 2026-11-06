@@ -4,10 +4,10 @@ import { Strip } from './Portfolio.jsx';
 
 /**
  * The top of the store's pages: the portfolio strip, with the demo's own
- * switches beside it, and the masthead with the brand and whatever the
- * masthead holds once the store is ready. The switches are the demo's, not
- * the store's, so they sit with the strip that says whose demo it is, and
- * the masthead is what a shopper uses. The build puts the same markup into
+ * switches in a section of their own at its end, and the masthead with the
+ * brand and whatever the masthead holds once the store is ready. The
+ * switches are the demo's, not the store's, so they sit in the strip that
+ * says whose demo it is, and the masthead is what a shopper uses. The build puts the same markup into
  * the page's own HTML, so it shows before the script runs and nothing moves
  * when the script takes over.
  */
@@ -18,7 +18,7 @@ export const PageTop = ({
     tools,
     children,
 }: {
-    /** The demo's own switches, beside the strip, once the store is ready. */
+    /** The demo's own switches, in the strip's own section, once the store is ready. */
     readonly tools?: ReactNode;
     /** Where the brand leads, relative to the page. */
     readonly home: string;

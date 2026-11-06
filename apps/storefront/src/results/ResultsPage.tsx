@@ -77,10 +77,12 @@ export interface ResultsPageProps {
  * The first stop in a column beside the results, seen only when it has
  * focus, that takes a keyboard past the column to the results heading.
  * Focus moves by script, so the address and the history stay as they are.
+ * It wears the kit's skip link's look, which the positioned column holds at
+ * its own inset.
  */
 const SkipToResults = ({ heading }: { readonly heading: string }) => (
     <a
-        className="skip"
+        className="dk-skip"
         href={`#${heading}`}
         onClick={(event) => {
             event.preventDefault();
