@@ -729,6 +729,36 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await rules.current()).toBeUndefined();
     });
 
+    it('sends no second removal for a press that lands once the first is answered, before the chooser is drawn', async () => {
+        const { rules } = page();
+        await loadSample();
+        await rules.replace(SAVED);
+        let removals = 0;
+        let answer: () => void = () => undefined;
+        failure = (request) => {
+            if (request.method !== 'DELETE' || !request.url.includes('discard-rules=yes')) {
+                return undefined;
+            }
+            removals += 1;
+            return new Promise((resolve) => {
+                answer = () => resolve(new Response(null, { status: 204 }));
+            });
+        };
+        await userEvent.click(screen.getByRole('button', { name: 'Remove your products' }));
+        const yes = await screen.findByRole('button', { name: 'Yes, remove them' });
+        await userEvent.click(yes);
+        // Inside act the page draws only once the callback is done, so the second press comes
+        // after the answer is handled and before the chooser replaces the button, as a quick
+        // second click can in a browser.
+        await act(async () => {
+            answer();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            yes.click();
+        });
+        expect(await chooser()).toBeInTheDocument();
+        expect(removals).toBe(1);
+    });
+
     it('puts focus back on the remove button when the visitor keeps their rules, or the removal fails', async () => {
         const { rules } = page();
         await loadSample();

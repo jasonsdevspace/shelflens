@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { App } from '../App.jsx';
 import { changeCatalog, type Loaded, readLoaded } from '../client/catalog.js';
@@ -323,23 +324,26 @@ export const TryPage = ({ ready, base }: TryPageProps) => {
         const { loaded } = stage;
         pending.current = true;
         setActed(true);
+        // The stage is drawn before the guard is let go. Otherwise a quick second press reaches
+        // the button still drawn, and sends a second removal the visitor never asked for.
+        const show = (next: Stage) => flushSync(() => setStage(next));
 
         try {
             const response = await changeCatalog(catalogUrl, { method: 'DELETE' }, discardRules);
             if (response === 'refused') {
-                setStage({ kind: 'searching', loaded, confirm: true });
+                show({ kind: 'searching', loaded, confirm: true });
                 return;
             }
             if (!response.ok) throw new Error(`error ${response.status}`);
             clearSearch(base);
-            setStage({
+            show({
                 kind: 'choose',
                 notice: discardRules
                     ? 'Your products and the rules you saved for them were removed from this browser.'
                     : 'Your products were removed from this browser.',
             });
         } catch (error) {
-            setStage({
+            show({
                 kind: 'searching',
                 loaded,
                 focusRemove: true,
