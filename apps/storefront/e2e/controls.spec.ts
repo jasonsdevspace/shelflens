@@ -118,7 +118,10 @@ const inspect = () => {
                 element.matches(
                     'button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"])'
                 ) &&
+                // A control that is off, disabled or marked so, is held to no edge, as WCAG holds
+                // an inactive one to none, and draws the line's color instead.
                 !('disabled' in element && element.disabled === true) &&
+                element.getAttribute('aria-disabled') !== 'true' &&
                 shown(element)
         )
         .flatMap((control) => [...edgeOf(control), ...selectOf(control)]);

@@ -60,7 +60,7 @@ describe('the tour panel', () => {
         expect(done?.style.inlineSize).toBe(`${String((2 / STOPS.length) * 100)}%`);
         // The bar repeats the count, which is said with the stop already.
         expect(document.querySelector('.tour-progress')).toHaveAttribute('aria-hidden', 'true');
-        expect(screen.getByRole('link', { name: 'Try it' })).toHaveClass('button-primary');
+        expect(screen.getByRole('link', { name: 'Try it' })).toHaveClass('dk-button-accent');
         expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('tour-close');
     });
 

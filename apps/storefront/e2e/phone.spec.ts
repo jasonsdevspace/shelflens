@@ -191,8 +191,8 @@ test.describe('on a first visit', () => {
         page.evaluate(() => {
             const scroller = document.querySelector('.tour');
             const nav = document.querySelector('.tour-nav');
-            const step = document.querySelector('.tour-steps .button:last-child');
-            const previous = document.querySelector('.tour-steps .button:first-child');
+            const step = document.querySelector('.tour-steps .dk-button:last-child');
+            const previous = document.querySelector('.tour-steps .dk-button:first-child');
             if (!scroller || !nav || !step || !previous) {
                 throw new Error('expected the sheet and its buttons');
             }
@@ -294,7 +294,7 @@ test.describe('on a first visit', () => {
         await expect(bar).toContainText('A tour of what to try');
         const row = await page.evaluate(() => {
             const text = document.querySelector('.tour-offer-text');
-            const answers = [...document.querySelectorAll('.tour-offer-actions .button')];
+            const answers = [...document.querySelectorAll('.tour-offer-actions .dk-button')];
             if (!text || answers.length !== 2) throw new Error('expected the text and two answers');
             const [start, decline] = answers.map((answer) => answer.getBoundingClientRect());
             return {

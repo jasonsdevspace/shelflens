@@ -180,13 +180,14 @@ test('stands the tour off the page in the dark theme', async ({ page }) => {
             tour: getComputedStyle(document.querySelector('.tour') ?? document.body)
                 .backgroundColor,
             button: getComputedStyle(
-                document.querySelector('.tour-nav .button:not(.button-primary)') ?? document.body
+                document.querySelector('.tour-nav .dk-button:not(.dk-button-accent)') ??
+                    document.body
             ).backgroundColor,
         };
     });
     expect(backgrounds.tour).toBe(backgrounds.raised);
-    // Its buttons sit on the panel, not in wells of the page's color.
-    expect(backgrounds.button).toBe(backgrounds.raised);
+    // Its buttons have no ground of their own, so they sit on the panel, not in wells of the page's.
+    expect(backgrounds.button).toBe('rgba(0, 0, 0, 0)');
     expect(backgrounds.raised).not.toBe(backgrounds.page);
 });
 
@@ -274,7 +275,7 @@ test.describe('on a short screen', () => {
             await page.keyboard.press('Enter');
             await expect(tour).toContainText(`Stop ${String(stop)} of`);
             expect(
-                await inSheet(page, '.tour-steps .button:last-child'),
+                await inSheet(page, '.tour-steps .dk-button:last-child'),
                 `Next at stop ${String(stop)}`
             ).toBe(true);
         }

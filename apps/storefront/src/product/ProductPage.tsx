@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import {
     type ReactNode,
     type RefObject,
@@ -367,11 +368,7 @@ export const ProductPage = ({
         const { product: _product, ...rest } = state;
         navigate(rest);
     };
-    const backButton = (
-        <button type="button" className="button" onClick={back}>
-            {backLabel(state, direct)}
-        </button>
-    );
+    const backButton = <Button onClick={back}>{backLabel(state, direct)}</Button>;
 
     if (error) {
         return (

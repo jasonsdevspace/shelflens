@@ -680,16 +680,16 @@ describe('the page for a visitor’s own catalog', () => {
         page();
         await chooser();
         expect(screen.getByText('Choose a file').closest('label')).toHaveClass(
-            'button',
-            'button-primary',
+            'dk-button',
+            'dk-button-accent',
             'button-large'
         );
         await userEvent.click(
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
         );
         expect(await screen.findByRole('button', { name: 'Search 200 products' })).toHaveClass(
-            'button',
-            'button-primary',
+            'dk-button',
+            'dk-button-accent',
             'button-large'
         );
     });

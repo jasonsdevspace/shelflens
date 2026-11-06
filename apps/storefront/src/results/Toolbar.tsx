@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import type { ReactNode } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
@@ -107,19 +108,15 @@ export const Toolbar = ({
             {/* With nothing found there is nothing to explain or sort, so both step aside,
             unless explain mode is on, which keeps its switch so it can be turned off. */}
             {(result.total > 0 || state.explain === true) && (
-                <button
-                    type="button"
-                    className="button"
-                    aria-pressed={state.explain ?? false}
+                <Button
+                    pressed={state.explain ?? false}
                     onClick={() => navigate({ ...state, explain: !state.explain })}
                 >
                     Explain ranking
-                </button>
+                </Button>
             )}
-            <button
-                type="button"
-                className="button"
-                aria-pressed={state.rules ?? false}
+            <Button
+                pressed={state.rules ?? false}
                 onClick={() =>
                     state.rules
                         ? onCloseRules()
@@ -127,7 +124,7 @@ export const Toolbar = ({
                 }
             >
                 Rules
-            </button>
+            </Button>
             {result.total > 0 && (
                 <SortField id={sortIdOf(id)} sortKey={sortKey} state={state} navigate={navigate} />
             )}

@@ -5,15 +5,14 @@ import { describe, expect, it } from 'vitest';
 
 /*
  * Each component wears classes of its own, named for it, and the few that
- * every component may wear are the shared look: the buttons, the fields,
- * a notice and a callout, a hint beside a choice, a grid of cards, and the
- * page's own frame. A component that wore another's class would change
- * when that one did.
+ * every component may wear are the shared look: the design kit's, under
+ * its dk- prefix, the store's own kinds of button, the fields, a notice and
+ * a callout, a hint beside a choice, a grid of cards, and the page's own
+ * frame. A component that wore another's class would change when that one
+ * did.
  */
 
 const SHARED = new Set([
-    'button',
-    'button-primary',
     'button-large',
     'text-button',
     'option-button',
@@ -101,7 +100,7 @@ describe('the components', () => {
         // borrows it, whether or not the feature's own components wear it too.
         const borrowed = found.flatMap((component) =>
             component.classes
-                .filter((name) => !SHARED.has(name))
+                .filter((name) => !SHARED.has(name) && !name.startsWith('dk-'))
                 .filter((name) => {
                     const owner = ownerOf(name);
                     return features.has(owner) && !partOf(component).has(owner);

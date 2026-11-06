@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import type { ReactNode } from 'react';
 
 /**
@@ -28,9 +29,7 @@ export const LoadFailure = ({
         </p>
         {import.meta.env.DEV && <p>{reason}</p>}
         <div className="load-failure-actions">
-            <button type="button" className="button" onClick={onRetry}>
-                Try again
-            </button>
+            <Button onClick={onRetry}>Try again</Button>
             {children}
         </div>
     </div>
