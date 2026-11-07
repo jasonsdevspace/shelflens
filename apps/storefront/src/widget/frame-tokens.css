@@ -4,9 +4,9 @@
  * role and scale step the widget reads, set to the values the store's pages
  * draw, so a host page's own --dk- values never reach it. Its colors are the
  * light values first, then by the host's color scheme behind a feature
- * check, the one place the build leaves light-dark() as it is written.
- * Rewritten as it is for the page, it would rest on switches set on the
- * page's root, which no other host has, and draw no color at all. A test
+ * check, where the widget's build leaves light-dark() as it is written.
+ * Without the check, that build would rewrite it into switches set on the
+ * page's root, which no host's page has, and draw no color at all. A test
  * holds the frame to every name the widget reads, to the colors the store's
  * pages draw, and to the kit's values wherever it repeats them.
  */

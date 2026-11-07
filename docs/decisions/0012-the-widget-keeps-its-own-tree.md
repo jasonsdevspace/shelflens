@@ -39,7 +39,7 @@ spacing, the text transform and the cursor. It takes its colors from the one sta
 host sets to theme it, `color-scheme`, through `light-dark()`, with the same colors the store's
 pages draw, set on the frame in `apps/storefront/src/widget/frame-tokens.css`, and the light values
 alone for a browser that does not know it. Those values sit behind a feature check for
-`light-dark()`, since the build otherwise rewrites it into switches set on the page's root, which no
+`light-dark()`, since the widget's build would rewrite it into switches on the page's root, which no
 host's page has. The design kit's theme script sets the page's theme and the kit's tokens set that
 property from it, so on the demo's host page the widget switches with the portfolio and the store.
 Layout and the stacking context sit on that inner container rather than on `:host`, where a host
