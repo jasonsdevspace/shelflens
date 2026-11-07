@@ -1,0 +1,117 @@
+# 19. The pages are drawn from the design kit, and the store keeps what is its own
+
+**Status:** accepted
+
+## Context
+
+ShelfLens drew every page from styles of its own: a theme script, a set of tokens, base rules, the
+strip and the footer, buttons, fields, callouts and an explainer layout. The portfolio and its
+other demos need the same pieces, so they moved into `@jasonsdevspace/design-kit`, published on
+npm, and the store was left holding copies that would drift from it. The store is held to a
+Lighthouse score, an axe audit, a bundle budget and a screenshot of every view, and its widget
+draws inside a shadow root on pages the store does not own.
+
+## Options
+
+**How the kit arrives.** Copy its files into the repository, and the copies drift from the kit as
+the store's own would. Point at its source in a workspace or a git address, and a change to the kit
+reaches the store with no change of the store's to hold it to its checks. Or install it from npm
+at a pinned version, as a reader of the kit would.
+
+**How much at once.** Take the whole kit in one change, and every screenshot moves at once, for
+reasons that cannot be told apart. Or take one layer at a time, the theme script first, then the
+tokens, the base, the chrome, the controls and the explainer, each held to every check before the
+next.
+
+**Where the kit falls short.** Wait for the kit before taking a piece, and keep the store's own copy
+until then. Restyle the kit's pieces from the store's sheet wherever the store would draw them
+differently, and drift from the kit through overrides of its own. Or take each piece as the kit
+draws it, keep the smallest workaround of the store's own where the kit cannot do what the page
+needs, and file what the kit is missing against the kit.
+
+**What moves.** Everything that looks like the kit, and the kit grows pieces only one demo draws. Or
+only what the kit's other users draw the same way, with the store keeping what is the store's.
+
+## Decision
+
+**From npm, pinned, one layer at a time.** The store installs the kit at an exact version, so it
+takes the kit as any other project would and a new version is a change of its own. Each layer was
+its own pull request, and each screenshot it moved was taken again for a reason it names.
+
+**What moved to the kit.**
+
+- The theme script that runs before the page paints, from the kit's Vite plugin, with the policy
+  allowing it by the hash the kit gives for it.
+- The tokens: every color role, space, size and line height, named by the kit's `--dk-` roles.
+- The base: the border box, the body's type, the one focus ring, a heading's weight and the cut to
+  motion, with the kit's line heights for text and headings.
+- The strip and the footer, drawn by the kit's React components on the store's pages, and the skip
+  link too on the pages written by hand, which write the kit's markup for each.
+- Every bordered button, every field and select, and every line the page sets apart, as the kit's
+  `Button`, `InputField`, `SelectField` and `Callout`, or as their classes where the page draws the
+  element itself, with a failure in the callout's tone for something that went wrong.
+- The explainer's layout: its header, numbered sections and the steps of a search.
+
+**What stayed the store's.**
+
+- **Its palette.** The store takes the kit's roles, and sets again the few it draws its own way:
+  the highlight, the tour's raised panel, the warning color and a wider measure for a page of
+  reading. The rating, a swatch's edge and the weight of the store's mark keep names
+  of their own.
+- **The widget's frame.** The widget draws in a shadow root on someone else's page, where the kit's
+  sheets do not reach, so its frame carries every role it reads in a sheet only the widget loads, as
+  record 12 says.
+- **The store's own components.** The facets, the cards, the search box, the tour, the rules panel
+  and the mapping of a visitor's columns are what the store exists to show, and no other demo draws
+  them.
+- **A few pieces the kit does not have.** The large button that ends a step, the button that
+  reads as text, the tour's quiet Close and the muted line the store calls a notice.
+- **The prose on the widget's demo pages,** in a sheet beside those pages, since the explainer no
+  longer shares it.
+
+**Where the kit fell short,** the store took the piece anyway, kept a small workaround where the
+page needed one, and filed each gap against the kit:
+
+- `Button` takes no ref, so a button the page moves focus to is a plain button that wears the kit's
+  class.
+- The strip draws no room for switches still on their way, so the store's sheet draws an empty box
+  in its place while the store loads.
+- The kit's skip link waits above what holds it, which is out of sight only at the top of a page,
+  so the one at the top of the results column is clipped to nothing until a keyboard gives it focus.
+- An empty live callout still draws its ground, so the store holds each one out of sight until it
+  has words.
+- The kit's footer cannot mark its link to the explainer as the current page, so on the explainer
+  that link goes unmarked while the strip's is marked.
+
+## Consequences
+
+- A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
+  version that carries it.
+- Body text runs at the kit's line height rather than the browser's, so every view is taller than
+  it was, and every screenshot was taken again for that.
+- The kit's field text is never under 16px, so the store's selects take that size on a wide screen
+  too.
+- The kit cuts every delay in a stylesheet for a visitor who asks for less motion, so the wait
+  before the results dim is kept in the script, and the host page's waiting line shows at once for
+  that visitor.
+- A new version of the kit is a pull request of its own, held to the same checks, so a change in
+  the kit never reaches the store unseen.
+- The workarounds are the store's to remove, one at a time, as the kit takes each gap.
+- The bundle budgets did not move, and every page stayed under its own.
+
+## How it is tested
+
+- The theme test reads every page from the Vite config, holds each to asking for the kit's script,
+  and holds each built page's policy to the hash of the script that lands in it.
+- A token test reads every store sheet and finds no color written outside the palette. It holds
+  the store's palette to every pairing the kit measures in both themes, and the widget's frame to
+  every name the widget reads.
+- A class test holds every class a page written by hand wears to a rule in the kit's sheets or the
+  store's, and every class a store sheet styles to something that wears it, so a class the kit
+  dropped or the store deleted fails it.
+- A chrome test holds the skip link, the strip and the footer written by hand to what the kit's
+  components draw.
+- A browser test holds every control on every page that is not off to an edge of 3 to 1 and the one
+  focus ring, and each select to its caret, in both themes and on a phone.
+- The end to end tests, the axe audits, the Lighthouse audits, the size budgets and the screenshot
+  comparison ran on every layer, and each changed screenshot was accepted with the reason for it.

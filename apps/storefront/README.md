@@ -55,8 +55,8 @@ the page.
   light and its dark value in one `light-dark()`, the type sizes, weights and line heights, the
   spacing steps, the corners, one raised shadow, one scrim and the focus ring, all under the `--dk-`
   prefix. `src/tokens.css` sets again what the store draws its own way, its colors and the width of
-  a page of reading, and the widget's frame, which lives in a shadow root where the kit's sheets
-  match nothing, takes everything it reads there. The store's pages take their base styles from the
+  a page of reading, and the widget's frame, in a shadow root where the kit's sheets match nothing,
+  takes all it reads from `src/widget/frame-tokens.css`. The store's pages take their base from the
   kit's `base.css` too: the page's type and line height, the border box, the focus ring, a heading's
   weight and line, and the cut to motion. The strip and the footer are the kit's, and so is the skip
   link on the pages written by hand. The store's pages draw the strip, with the demo's switches in
@@ -75,6 +75,8 @@ the page.
   store's palette to every pairing the kit measures, and the widget's frame to every name it reads,
   and a browser test holds every control on every page that is not off to an edge of 3 to 1, the one
   focus ring and, for a select, its caret, in both themes and on a phone.
+  [Decision record 19](../../docs/decisions/0019-the-pages-are-drawn-from-the-design-kit.md) has
+  what moved to the kit and what stayed the store's.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about

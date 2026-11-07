@@ -37,14 +37,14 @@ questions this record exists to answer stop being questions. What a shadow root 
 inheritance, so the widget's container pins the font at 16px, the color, the line height, the letter
 spacing, the text transform and the cursor. It takes its colors from the one standard property a
 host sets to theme it, `color-scheme`, through `light-dark()`, with the same colors the store's
-pages draw, set on the frame in `tokens.css`, and the light values alone for a browser that does not
-know it. Those values sit behind a feature check for `light-dark()`, since the build otherwise
-rewrites it into switches set on the page's root, which no host's page has. The design kit's theme
-script sets the page's theme and the kit's tokens set that property from it, so on the demo's host
-page the widget switches with the portfolio and the store. Layout and the stacking context sit on
-that inner container rather than on `:host`, where a host rule on the element would win, and the
-element is given `display: block` as an inline style at mount, which only an `!important` could
-beat.
+pages draw, set on the frame in `widget/frame-tokens.css`, and the light values alone for a browser
+that does not know it. Those values sit behind a feature check for `light-dark()`, since the build
+otherwise rewrites it into switches set on the page's root, which no host's page has. The design
+kit's theme script sets the page's theme and the kit's tokens set that property from it, so on the
+demo's host page the widget switches with the portfolio and the store. Layout and the stacking
+context sit on that inner container rather than on `:host`, where a host rule on the element would
+win, and the element is given `display: block` as an inline style at mount, which only an
+`!important` could beat.
 
 **The top layer.** A stacking context of its own makes the popover's order private but leaves the
 widget in the host's order at `auto`, so a fixed banner at a high z-index paints over the list
