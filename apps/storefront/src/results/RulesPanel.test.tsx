@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { nth } from '../test/dom.js';
+import { alertSaying, nth } from '../test/dom.js';
 import { RulesPanel, type RulesPanelProps } from './RulesPanel.jsx';
 import { onlyUnderRelevance } from './setAside.js';
 import { useRulesEditor } from './useRulesEditor.js';
@@ -315,8 +315,7 @@ describe('the rules panel', () => {
         await user.click(screen.getByRole('button', { name: 'Add a rule' }));
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-404');
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const refused = await screen.findByRole('alert');
-        expect(refused).toHaveTextContent('no product has the SKU SL-404');
+        const refused = await alertSaying('no product has the SKU SL-404');
         expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(posted).toHaveLength(1);
         expect(onStoreChanged).not.toHaveBeenCalled();
@@ -445,14 +444,11 @@ describe('the rules panel', () => {
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const first = await screen.findByRole('alert');
-        await waitFor(() => expect(first).toHaveTextContent('The rules could not be saved.'));
+        const first = await alertSaying('The rules could not be saved.');
         // A region that keeps the same words says nothing, so the second is said in one anew.
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
         await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
-        await waitFor(() =>
-            expect(screen.getByRole('alert')).toHaveTextContent('The rules could not be saved.')
-        );
+        await alertSaying('The rules could not be saved.');
     });
 
     it('says nothing on the next open of a save that failed after the panel closed', async () => {
@@ -497,8 +493,7 @@ describe('the rules panel', () => {
         await user.type(screen.getByRole('combobox', { name: 'Product' }), 'SL-2');
         vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const failed = await screen.findByRole('alert');
-        expect(failed).toHaveTextContent(/^Error: ?The rules could not be saved\. Try again\.$/);
+        const failed = await alertSaying(/^Error: ?The rules could not be saved\. Try again\.$/);
         expect(failed.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Save rule' })).toBeInTheDocument();
@@ -656,8 +651,7 @@ describe('the rules panel', () => {
         vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
         storeBuiltAgain(1);
         await user.click(screen.getByRole('button', { name: 'Save rule' }));
-        const refused = await screen.findByRole('alert');
-        expect(refused).toHaveTextContent('The rules are being read again. Try again in a moment.');
+        const refused = await alertSaying('The rules are being read again. Try again in a moment.');
         expect(refused.closest('.dk-callout')).toHaveClass('dk-callout-danger');
         expect(onStoreChanged).not.toHaveBeenCalled();
         expect(await store.current()).toBeUndefined();
