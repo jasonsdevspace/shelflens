@@ -62,9 +62,9 @@ the page.
   are the kit's, and so is the skip link on the pages written by hand. The store's pages draw the
   strip, with the demo's switches in it, and the footer from the kit's React components. The pages
   written by hand write the same markup, which a test holds to what the components draw. Every
-  bordered button is the kit's, its `Button`, or its `.dk-button` on a link, a label or a button the
-  page moves focus to. The one action a view asks for is its accent, and a step that goes nowhere is
-  off rather than disabled, so a keyboard keeps its place on it. An action that reads as text is the
+  bordered button is the kit's, its `Button`, or its `.dk-button` on a link or a label. The one
+  action a view asks for is its accent, and a step that goes nowhere is off rather than disabled,
+  so a keyboard keeps its place on it. An action that reads as text is the
   store's own `.text-button`, always underlined. Every select is the kit's `.dk-select`, and the
   rule form draws its fields from the kit's `InputField` and `SelectField`, each problem said above
   its field and after any hint it has, which stays. The search box keeps a look of its own. A line

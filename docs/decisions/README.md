@@ -56,4 +56,4 @@ work they describe, from the code, its tests and the pull requests that made it.
 19. [The pages are drawn from the design kit, and the store keeps what is its own](0019-the-pages-are-drawn-from-the-design-kit.md):
     the kit from npm at a pinned version, one layer at a time, its tokens, base, chrome and
     controls in place of the store's, and the palette, the widget's frame and the store's own
-    components kept, with each gap in the kit filed against it.
+    components kept, with each gap in the kit filed against it until the kit took it.

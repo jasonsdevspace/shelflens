@@ -667,15 +667,14 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await screen.findByRole('button', { name: 'Search 200 products' });
         await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement());
-        // The kit draws an empty callout as nothing, so it waits in the page with no room kept below.
+        // Out of sight while it waits, so it opens no gap where it sits, but still in the page.
         const callout = () => screen.getByRole('alert').closest('.dk-callout');
-        expect(callout()?.parentElement).not.toHaveClass('visually-hidden');
-        expect(callout()?.parentElement).not.toHaveClass('callout');
+        expect(callout()?.parentElement).toHaveClass('visually-hidden');
         await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));
         await alertSaying(/The store could not be reached/);
         // In sight once it has words, as the kit draws something that went wrong.
         expect(callout()).toHaveClass('dk-callout-danger');
-        expect(callout()?.parentElement).toHaveClass('callout');
+        expect(callout()?.parentElement).not.toHaveClass('visually-hidden');
     });
 
     it('keeps the chooser’s status in the page while a file is read, so “Reading” is heard', async () => {
