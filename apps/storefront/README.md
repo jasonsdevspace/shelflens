@@ -106,7 +106,7 @@ the page.
   It tells the same story as the README's two minutes and the tour in words a non-engineer can
   follow. A test holds its links to the README's steps and its stop count to the tour's, and a link
   from it into the store marks the tour seen, so the tour does not open over what the reader was
-  sent to see. The widget's demo pages keep their prose in `src/about/about.css`.
+  sent to see. The widget's demo pages take their prose from `src/widget/page.css`.
 - **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit, or
   on a phone a short bar that opens it on Start, and walks the gotchas the project exists to show,
   one stop each, with a link that puts the page in the state that shows it and the name of the test

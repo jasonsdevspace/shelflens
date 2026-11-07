@@ -1,33 +1,34 @@
 /*
- * The prose on the widget's host pages: a reading measure, sharing the
- * wordmark's left edge, with the design kit's type and space scales. The
- * explainer at about/ is laid out by the kit's explainer rules instead.
+ * The prose on the widget's demo pages, around the widget: a reading measure,
+ * sharing the wordmark's left edge, with the design kit's type and space
+ * scales. The rough styles a host page might throw at the widget are in
+ * host.css, beside it.
  */
-.about {
+.page-prose {
     max-width: var(--dk-measure);
     line-height: var(--dk-leading-body);
 }
 
-.about h1 {
+.page-prose h1 {
     margin: var(--dk-space-4) 0 var(--dk-space-2);
     font-size: var(--dk-text-display);
 }
 
-.about-pitch {
+.page-pitch {
     margin: 0 0 var(--dk-space-4);
     font-size: var(--dk-text-lead);
 }
 
-.about h2 {
+.page-prose h2 {
     margin: 0 0 var(--dk-space-3);
     font-size: var(--dk-text-title);
 }
 
-.about p {
+.page-prose p {
     margin: 0 0 var(--dk-space-4);
 }
 
-.about p:last-child {
+.page-prose p:last-child {
     margin-bottom: 0;
 }
 
@@ -35,10 +36,10 @@
  * A link takes the kit's accent, which is too close to the text to mark a
  * link by itself, so the underline stays.
  */
-.about a:not(.dk-button) {
+.page-prose a:not(.dk-button) {
     text-decoration: underline;
 }
 
-.about-where {
+.page-where {
     margin: 0;
 }

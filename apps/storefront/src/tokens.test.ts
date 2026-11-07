@@ -173,7 +173,7 @@ const valueOf = (role: string) => PALETTE.get(OWN_NAMES[role] ?? `--dk-${role}`)
 
 describe('the design tokens', () => {
     it('read every store sheet, the ones split off included', () => {
-        expect(SHEETS).toEqual(expect.arrayContaining(['styles.css', 'about/about.css']));
+        expect(SHEETS).toEqual(expect.arrayContaining(['styles.css', 'widget/page.css']));
     });
 
     it('write the palette once, so no sheet writes a color of its own', () => {
