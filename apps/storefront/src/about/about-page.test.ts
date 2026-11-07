@@ -48,6 +48,8 @@ const NUMBER_WORDS: readonly string[] = [
 
 describe('the explainer', () => {
     const page = read('apps/storefront/about/index.html');
+    // Each section from its opening tag to its close, with whatever attributes the tag carries.
+    const sections = page.match(/<section[\s>][\s\S]*?<\/section>/g) ?? [];
     const readme = read('README.md');
 
     it('links to every state the README’s two minutes link to', () => {
@@ -95,8 +97,11 @@ describe('the explainer', () => {
         expect(page).toContain('href="#main-content"');
         expect(page).toContain('aria-label="Portfolio"');
         // A section is never named, so it is no landmark, and a reader moves by its heading.
-        expect(page.match(/<h2 id="/g)?.length).toBe(page.match(/<section>/g)?.length);
-        expect(page).not.toMatch(/<section [^>]*aria-label/);
+        expect(sections.length).toBeGreaterThan(1);
+        for (const section of sections) {
+            expect(section).toMatch(/^<section>/);
+            expect(section).toMatch(/<h2 id="/);
+        }
     });
 
     it('is laid out as the design kit lays out an explainer', () => {
@@ -104,17 +109,19 @@ describe('the explainer', () => {
         expect(page).toContain('<main class="dk-explainer" id="main-content" tabindex="-1">');
         expect(page).toContain('<p class="dk-explainer-lead">');
         // Each section's number is for the eye alone, since its heading says what it is.
-        expect(page.match(/<p class="dk-explainer-number" aria-hidden="true">/g)?.length).toBe(
-            page.match(/<section>/g)?.length
-        );
+        for (const section of sections) {
+            expect(section).toMatch(/<p class="dk-explainer-number" aria-hidden="true">/);
+        }
         // The steps stay a list where a browser drops a list's meaning with its markers, and
         // every step after the first opens with the arrow from the one before.
-        expect(page).toContain('<ol class="dk-steps" role="list">');
+        const list = /<ol class="dk-steps" role="list">([\s\S]*?)<\/ol>/.exec(page)?.[1] ?? '';
+        const steps = list.split(/<li(?:\s[^>]*)?>/).slice(1);
+        expect(steps.length).toBeGreaterThan(1);
         // The formatter may break a tag before its closing bracket.
-        const steps = page.match(/<strong class="dk-steps-title"\s*>/g)?.length ?? 0;
-        expect(steps).toBeGreaterThan(1);
-        expect(
-            page.match(/<span class="dk-steps-arrow" aria-hidden="true">↓<\/span>/g)?.length
-        ).toBe(steps - 1);
+        const arrow = /^\s*<span class="dk-steps-arrow" aria-hidden="true"\s*>↓<\/span\s*>/;
+        for (const [index, step] of steps.entries()) {
+            expect(step).toMatch(/<strong class="dk-steps-title"\s*>/);
+            expect(arrow.test(step)).toBe(index > 0);
+        }
     });
 });
