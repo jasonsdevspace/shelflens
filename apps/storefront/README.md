@@ -57,26 +57,26 @@ the page.
   prefix. `src/tokens.css` sets again what the store draws its own way, its colors, its mark's
   weight and the width of a page of reading, and the widget's frame, in a shadow root where the
   kit's sheets match nothing, takes all it reads from `src/widget/frame-tokens.css`. The store's
-  pages take their base from the kit's `base.css` too: the page's type and line height, the border box, the focus ring, a heading's
-  weight and line, and the cut to motion. The strip and the footer are the kit's, and so is the skip
-  link on the pages written by hand. The store's pages draw the strip, with the demo's switches in
-  it, and the footer from the kit's React components. The pages written by hand write the same
-  markup, which a test holds to what the components draw. Every bordered button is the kit's, its
-  `Button`, or its `.dk-button` on a link, a label or a button the page moves focus to. The one
-  action a view asks for is its accent, and a step that goes nowhere is off rather than disabled, so
-  a keyboard keeps its place on it. An action that reads as text is the store's own `.text-button`,
-  always underlined. Every select is the kit's `.dk-select`, and the rule form draws its fields from
-  the kit's `InputField` and `SelectField`, each problem said above its field and after any hint it
-  has, which stays. The search box keeps a look of its own. A line the page sets apart, such as who
-  is shopping, whose products these are, that edited rules are in effect or which rules a sort set
-  aside, is the kit's `Callout`, and so is what failed to load, in its tone for something that went
-  wrong. Each component otherwise wears classes of its own. The page picks each color by the saved
-  theme and the widget by its host's color scheme. A test holds every sheet to the tokens, the
-  store's palette to every pairing the kit measures, and the widget's frame to every name it reads,
-  and a browser test holds every control on every page that is not off to an edge of 3 to 1, the one
-  focus ring and, for a select, its caret, in both themes and on a phone.
-  [Decision record 19](../../docs/decisions/0019-the-pages-are-drawn-from-the-design-kit.md) has
-  what moved to the kit and what stayed the store's.
+  pages take their base from the kit's `base.css` too: the page's type and line height, the border
+  box, the focus ring, a heading's weight and line, and the cut to motion. The strip and the footer
+  are the kit's, and so is the skip link on the pages written by hand. The store's pages draw the
+  strip, with the demo's switches in it, and the footer from the kit's React components. The pages
+  written by hand write the same markup, which a test holds to what the components draw. Every
+  bordered button is the kit's, its `Button`, or its `.dk-button` on a link, a label or a button the
+  page moves focus to. The one action a view asks for is its accent, and a step that goes nowhere is
+  off rather than disabled, so a keyboard keeps its place on it. An action that reads as text is the
+  store's own `.text-button`, always underlined. Every select is the kit's `.dk-select`, and the
+  rule form draws its fields from the kit's `InputField` and `SelectField`, each problem said above
+  its field and after any hint it has, which stays. The search box keeps a look of its own. A line
+  the page sets apart, such as who is shopping, whose products these are, that edited rules are in
+  effect or which rules a sort set aside, is the kit's `Callout`, and so is what failed to load, in
+  its tone for something that went wrong. Each component otherwise wears classes of its own. The
+  page picks each color by the saved theme and the widget by its host's color scheme. A test holds
+  every sheet to the tokens, the store's palette to every pairing the kit measures, and the widget's
+  frame to every name it reads, and a browser test holds every control on every page that is not off
+  to an edge of 3 to 1, the one focus ring and, for a select, its caret, in both themes and on a
+  phone. [Decision record 19](../../docs/decisions/0019-the-pages-are-drawn-from-the-design-kit.md)
+  has what moved to the kit and what stayed the store's.
 - **What this browser searched before.** The box offers the phrases this browser searched
   before, filtered as you type, under a visible heading with a "Clear" button beside it. They
   are kept in local storage and never sent anywhere, so Global Privacy Control, which is about
