@@ -4,9 +4,10 @@
  * first, gives the page every role and the whole scale, and the store sets
  * again only the roles it draws in colors of its own, and a wider measure,
  * in rules outside a layer, which win over the kit's. Each color holds its
- * light and its dark value in one light-dark(), which picks by the page's
- * color scheme, which the kit sets from the theme the portfolio saved or
- * else the system's. Every pairing the kit measures passes in both themes.
+ * light and its dark value in one light-dark(), which picks by the color
+ * scheme of the element that draws it. The kit sets the page's scheme from
+ * the theme the portfolio saved or else the system's. Every pairing the kit
+ * measures passes in both themes.
  * The widget's frame takes the same colors in widget/frame-tokens.css,
  * since the widget lives in a shadow root.
  *
