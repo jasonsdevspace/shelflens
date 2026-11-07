@@ -1,8 +1,9 @@
 /*
- * The prose on the widget's demo pages, around the widget: a reading measure,
- * sharing the wordmark's left edge, with the design kit's type and space
- * scales. The rough styles a host page might throw at the widget are in
- * host.css, beside it.
+ * The prose on the widget's demo pages, around the widget: a reading measure
+ * from the wordmark's left edge, on the design kit's type and space scales,
+ * and the line in the masthead that says where the box is shown. What the
+ * page does as a host, the styles written to reach into the widget, is in
+ * host.css beside it.
  */
 .page-prose {
     max-width: var(--dk-measure);
