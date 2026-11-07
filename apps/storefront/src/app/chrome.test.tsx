@@ -79,7 +79,7 @@ describe('the chrome on the pages written by hand', () => {
         if (footer) {
             it(`is the kit's footer on ${path}`, () => {
                 expect(drawn(page, 'dk-footer')).toBe(
-                    kit(<DemoFooter name="ShelfLens" about={strip.about} source={REPO_URL} />)
+                    kit(<DemoFooter name="ShelfLens" {...strip} source={REPO_URL} />)
                 );
             });
         }

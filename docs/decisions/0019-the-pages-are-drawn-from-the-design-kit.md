@@ -84,6 +84,14 @@ page needed one, and filed each gap against the kit:
 - The kit's footer cannot mark its link to the explainer as the current page, so on the explainer
   that link goes unmarked while the strip's is marked.
 
+**Amended with design kit 0.1.0-next.3.** The kit took each gap above, and the store's workarounds
+went with them. A button the page moves focus to is the kit's `Button`, holding its ref. The strip
+keeps the room of the store's switches while the store loads, with no box of the store's. The way
+past the filters is the kit's skip link, which now waits out of sight wherever it sits. A live
+callout the store mounts empty draws nothing until it has words, and its holder keeps no room
+below it while it waits. The footer on the explainer marks its link there as the current page, and
+the kit draws that link, in the strip and the footer, at the heading's weight.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the

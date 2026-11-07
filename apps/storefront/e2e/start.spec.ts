@@ -199,7 +199,7 @@ test('the strip and the masthead keep the room what arrives takes, at every widt
             await page.goto(`${baseURL ?? ''}?q=jacket`);
             if (javaScriptEnabled) await page.locator('.cards > .card').first().waitFor();
             const measured = await page.evaluate(() =>
-                ['.topbar', '.masthead'].map(
+                ['.dk-strip', '.masthead'].map(
                     (selector) =>
                         document.querySelector(selector)?.getBoundingClientRect().height ?? 0
                 )

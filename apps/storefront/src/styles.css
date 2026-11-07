@@ -142,24 +142,11 @@ summary,
  * The room the search box and the category links take once the store is
  * ready, kept while the masthead holds the brand alone, so the page below
  * does not move when they arrive. One row on a wide screen, and two on a
- * phone, the brand and the search box, then the categories. The demo's
- * switches keep their room in the strip the same way, beside its links on
- * a wide screen and on a row of their own on a phone.
+ * phone, the brand and the search box, then the categories. The kit's
+ * strip keeps the room of the demo's switches the same way.
  */
 .masthead.is-waiting {
     min-height: 4.35rem;
-}
-
-/*
- * A field's height, and the width of the two switches, as they take once
- * they arrive, so they wrap, or not, as they will. The strip draws no
- * section for them until they come, so the room is an empty box the sheet
- * draws at the strip's end, with no text or landmark for a screen reader.
- */
-.topbar.is-waiting .dk-strip::after {
-    content: '';
-    min-width: 15.65rem;
-    min-height: var(--dk-field-height);
 }
 
 .brand {
@@ -256,17 +243,6 @@ summary,
         min-height: 7.35rem;
     }
 
-    /*
-     * A field is a thumb's height on a phone, so the room kept is too, on a
-     * row of its own below the links, as the switches take it, with the gap
-     * they keep below them.
-     */
-    .topbar.is-waiting .dk-strip::after {
-        flex-basis: 100%;
-        min-width: 0;
-        min-height: calc(var(--dk-target) + var(--dk-space-2));
-    }
-
     /* The brand and the search box on one row, the categories below, as focus takes them. */
     .masthead-row {
         flex-wrap: wrap;
@@ -311,20 +287,6 @@ summary,
     scroll-margin-top: var(--pinned-top);
     /* Not what the browser holds the page still by, since the page scrolls to hold the column. */
     overflow-anchor: none;
-}
-
-/*
- * The way past the filters waits clipped to nothing at the column's top,
- * rather than above it as the kit's skip link waits above the page, since
- * the column can start high enough that the room above it is on the page,
- * where the link would cover the masthead and take its clicks.
- */
-.results-side .dk-skip {
-    top: var(--dk-space-4);
-}
-
-.results-side .dk-skip:not(:focus-visible) {
-    clip-path: inset(50%);
 }
 
 .results-side.is-pinned {

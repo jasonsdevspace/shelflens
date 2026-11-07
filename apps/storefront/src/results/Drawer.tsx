@@ -74,16 +74,14 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
 
     return (
         <div className="drawer">
-            <button
+            <Button
                 ref={openButton}
-                type="button"
-                className="dk-button"
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 onClick={() => setOpen(true)}
             >
                 {opener}
-            </button>
+            </Button>
             {/* On the page's body, so nothing the results do, such as dimming while they
                 load, reaches the drawer or lays it under another layer. */}
             {createPortal(

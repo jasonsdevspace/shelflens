@@ -16,8 +16,15 @@ const ABOUT_URL = `${import.meta.env.BASE_URL}about/`;
 /** The page where a visitor searches a file of their own products. */
 const TRY_URL = `${import.meta.env.BASE_URL}try/`;
 
-export const Strip = ({ tools }: { readonly tools?: ReactNode }) => (
-    <PortfolioStrip about={ABOUT_URL} source={REPO_URL} tools={tools} />
+export const Strip = ({
+    tools,
+    toolsWaiting = false,
+}: {
+    readonly tools?: ReactNode;
+    /** Whether the demo's switches are on their way, so the strip keeps their room. */
+    readonly toolsWaiting?: boolean;
+}) => (
+    <PortfolioStrip about={ABOUT_URL} source={REPO_URL} tools={tools} toolsWaiting={toolsWaiting} />
 );
 
 export const Footer = () => (
