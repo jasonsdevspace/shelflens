@@ -42,7 +42,8 @@ its own pull request, and each screenshot it moved was taken again for a reason 
 
 - The theme script that runs before the page paints, from the kit's Vite plugin, with the policy
   allowing it by the hash the kit gives for it.
-- The tokens: every color role, space, size and line height, named by the kit's `--dk-` roles.
+- The tokens: every color role, space, size and line height, the corners, the raised shadow, the
+  scrim and the focus ring, named by the kit's `--dk-` roles.
 - The base: the border box, the body's type, the one focus ring, a heading's weight and the cut to
   motion, with the kit's line heights for text and headings.
 - The strip and the footer, drawn by the kit's React components on the store's pages, and the skip
@@ -55,9 +56,8 @@ its own pull request, and each screenshot it moved was taken again for a reason 
 **What stayed the store's.**
 
 - **Its palette.** The store takes the kit's roles, and sets again the few it draws its own way:
-  the highlight, the tour's raised panel, the warning color and a wider measure for a page of
-  reading. The rating, a swatch's edge and the weight of the store's mark keep names
-  of their own.
+  the highlight, the tour's raised panel, the kit's danger role and a wider measure for a page of
+  reading. The rating, a swatch's edge and the weight of the store's mark keep names of their own.
 - **The widget's frame.** The widget draws in a shadow root on someone else's page, where the kit's
   sheets do not reach, so its frame carries every role it reads in a sheet only the widget loads, as
   record 12 says.
@@ -72,12 +72,13 @@ its own pull request, and each screenshot it moved was taken again for a reason 
 **Where the kit fell short,** the store took the piece anyway, kept a small workaround where the
 page needed one, and filed each gap against the kit:
 
-- `Button` takes no ref, so a button the page moves focus to is a plain button that wears the kit's
-  class.
+- `Button`'s props have no place for a ref, so a button the page moves focus to is a plain button
+  that wears the kit's class.
 - The strip draws no room for switches still on their way, so the store's sheet draws an empty box
   in its place while the store loads.
 - The kit's skip link waits above what holds it, which is out of sight only at the top of a page,
-  so the one at the top of the results column is clipped to nothing until a keyboard gives it focus.
+  so the way past the filters, at the top of their column, is clipped to nothing until a keyboard
+  gives it focus.
 - An empty live callout still draws its ground, so the store holds each one out of sight until it
   has words.
 - The kit's footer cannot mark its link to the explainer as the current page, so on the explainer
@@ -104,8 +105,9 @@ page needed one, and filed each gap against the kit:
 - The theme test reads every page from the Vite config, holds each to asking for the kit's script,
   and holds each built page's policy to the hash of the script that lands in it.
 - A token test reads every store sheet and finds no color written outside the palette. It holds
-  the store's palette to every pairing the kit measures in both themes, and the widget's frame to
-  every name the widget reads.
+  the store's palette to every pairing the kit measures in both themes. It holds the widget's frame
+  to every name the widget reads, its colors to the store's pages and every value it repeats from
+  the kit to the kit's own, so the one copy the store keeps cannot drift.
 - A class test holds every class a page written by hand wears to a rule in the kit's sheets or the
   store's, and every class a store sheet styles to something that wears it, so a class the kit
   dropped or the store deleted fails it.

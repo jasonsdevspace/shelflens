@@ -54,9 +54,9 @@ the page.
 - **One set of tokens.** The design's values are the design kit's: its color roles, each holding its
   light and its dark value in one `light-dark()`, the type sizes, weights and line heights, the
   spacing steps, the corners, one raised shadow, one scrim and the focus ring, all under the `--dk-`
-  prefix. `src/tokens.css` sets again what the store draws its own way, its colors and the width of
-  a page of reading, and the widget's frame, in a shadow root where the kit's sheets match nothing,
-  takes all it reads from `src/widget/frame-tokens.css`. The store's pages take their base from the
+  prefix. `src/tokens.css` sets again what the store draws its own way, its colors, its mark's
+  weight and the width of a page of reading, and the widget's frame, in a shadow root where the
+  kit's sheets match nothing, takes all it reads from `src/widget/frame-tokens.css`. The store's pages take their base from the
   kit's `base.css` too: the page's type and line height, the border box, the focus ring, a heading's
   weight and line, and the cut to motion. The strip and the footer are the kit's, and so is the skip
   link on the pages written by hand. The store's pages draw the strip, with the demo's switches in
