@@ -667,7 +667,7 @@ describe('the page for a visitor’s own catalog', () => {
         );
         await screen.findByRole('button', { name: 'Search 200 products' });
         await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement());
-        // Out of sight while it waits, so an empty callout draws no band, but still in the page.
+        // Out of sight while it waits, so it opens no gap where it sits, but still in the page.
         const callout = () => screen.getByRole('alert').closest('.dk-callout');
         expect(callout()?.parentElement).toHaveClass('visually-hidden');
         await userEvent.click(screen.getByRole('button', { name: 'Search 200 products' }));

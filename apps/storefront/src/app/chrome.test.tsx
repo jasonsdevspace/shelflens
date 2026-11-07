@@ -54,7 +54,10 @@ const kit = (component: ReactElement): string => {
     return shape(element);
 };
 
-/** Each page, where its strip's link to the explainer leads, and whether it has a footer. */
+/**
+ * Each page, where its links to the explainer lead and whether they mark that page as current,
+ * which the strip and the footer share, and whether it has a footer.
+ */
 const PAGES: readonly {
     readonly path: string;
     readonly strip: { readonly about: string; readonly current?: 'about' };
@@ -79,7 +82,7 @@ describe('the chrome on the pages written by hand', () => {
         if (footer) {
             it(`is the kit's footer on ${path}`, () => {
                 expect(drawn(page, 'dk-footer')).toBe(
-                    kit(<DemoFooter name="ShelfLens" about={strip.about} source={REPO_URL} />)
+                    kit(<DemoFooter name="ShelfLens" {...strip} source={REPO_URL} />)
                 );
             });
         }

@@ -59,9 +59,9 @@ first screen paints in the theme the portfolio saved.
   when the script takes over. A test holds the two equal for each page, so a change to the strip,
   the masthead or the status line that breaks this fails the tests.
 - The masthead's waiting heights in `apps/storefront/src/styles.css` are measured, one for each
-  breakpoint, and have to follow the masthead when the search box or its links change. The strip
-  keeps the room the demo's own switches take beside its links in the same way, a field's height on
-  a wide screen and a thumb's on a phone.
+  breakpoint, and have to follow the masthead when the search box or its links change. The room the
+  demo's own switches take beside the strip's links is the kit's to keep, while the strip is told
+  they are on their way.
 - React's static renderer runs only in the build and the dev server. Nothing in the page imports
   `shell.tsx`, so the page's bundle carries none of it.
 - A page whose root asks for a first screen that has none written is refused by name at build

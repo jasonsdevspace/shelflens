@@ -84,6 +84,17 @@ page needed one, and filed each gap against the kit:
 - The kit's footer cannot mark its link to the explainer as the current page, so on the explainer
   that link goes unmarked while the strip's is marked.
 
+**Amended with design kit 0.1.0-next.3.** The kit took each gap above, and all but one of the
+store's workarounds went with them. A button the page moves focus to is the kit's `Button`, holding
+its ref. The strip keeps the room of the demo's switches while the store loads, with no box of the
+store's. The way past the filters wears the kit's skip link, which now waits clipped to nothing
+where it sits. Its column is always positioned, so it shows at the column's top when a keyboard
+gives it focus. The footer on the explainer marks its link there as the current page, as the
+strip's does, and the kit draws that link, in the strip and the footer, at the heading's weight. A
+live callout the store mounts empty now draws nothing, but the store still holds it out of sight
+until it has words, since an empty one stays in the flow, and some sit in a grid whose gap would
+open around it.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
@@ -97,7 +108,8 @@ page needed one, and filed each gap against the kit:
   that visitor.
 - A new version of the kit is a pull request of its own, held to the same checks, so a change in
   the kit never reaches the store unseen.
-- The workarounds are the store's to remove, one at a time, as the kit takes each gap.
+- Each workaround lasted until the kit took its gap. Since design kit 0.1.0-next.3 the store keeps
+  only the holder that takes a waiting callout out of the flow.
 - The bundle budgets did not move, and every page stayed under its own.
 
 ## How it is tested

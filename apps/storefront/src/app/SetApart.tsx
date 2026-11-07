@@ -4,8 +4,8 @@ import type { ComponentProps } from 'react';
 /**
  * A line the page sets apart: the design kit's callout, in a holder that keeps the room below it,
  * since the callout takes no class of the page's. A live callout the page mounts before it has
- * words waits in a holder out of sight, since an empty callout still draws its ground, and shows
- * once it is filled.
+ * words waits in a holder out of sight, and shows once it is filled. The kit draws an empty one as
+ * nothing, but it is still in the flow, and some sit in a grid whose gap would open around it.
  */
 export const SetApart = ({
     waiting = false,

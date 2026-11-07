@@ -156,14 +156,9 @@ export const Tour = ({ index, onIndex, navigate, onClose, takeFocus }: TourProps
                 <p className="tour-count" aria-hidden="true">
                     {position}
                 </p>
-                <button
-                    ref={closer}
-                    type="button"
-                    className="dk-button tour-close"
-                    onClick={onClose}
-                >
+                <Button ref={closer} className="tour-close" onClick={onClose}>
                     Close
-                </button>
+                </Button>
             </div>
             <div className="tour-progress" aria-hidden="true">
                 <span
@@ -249,17 +244,15 @@ export const TourToggle = ({
     readonly onToggle: () => void;
     readonly buttonRef: RefObject<HTMLButtonElement | null>;
 }) => (
-    <button
+    <Button
         ref={buttonRef}
-        type="button"
-        className="dk-button"
         aria-expanded={touring}
         // Names the tour only while there is one to name.
         aria-controls={touring ? TOUR_ID : undefined}
         onClick={onToggle}
     >
         Tour
-    </button>
+    </Button>
 );
 
 /** The tour, or on a phone's first visit the short bar that offers it. */
