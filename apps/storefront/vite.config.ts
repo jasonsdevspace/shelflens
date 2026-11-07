@@ -31,6 +31,11 @@ export default defineConfig({
         outDir: 'dist',
         emptyOutDir: true,
         sourcemap: true,
+        // The design kit's browser floor, as its README sets it, so the minifier leaves each
+        // light-dark() as it is, resolved by the scheme of the element that draws it. A wider
+        // target rewrites it into switches set on the root, so a part of a page set to the other
+        // scheme would keep the page's colors.
+        cssTarget: ['chrome123', 'edge123', 'firefox120', 'safari17.5'],
         // Two pages would share the preload polyfill as a chunk of its own, one more
         // request on the store's first visit. Every browser that runs the worker
         // preloads modules on its own, so the polyfill is left out.
