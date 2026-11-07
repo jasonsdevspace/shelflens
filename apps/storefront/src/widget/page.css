@@ -1,0 +1,46 @@
+/*
+ * The prose on the widget's demo pages, around the widget: a reading measure
+ * from the wordmark's left edge, on the design kit's type and space scales,
+ * and the line in the masthead that says where the box is shown. What the
+ * page does as a host, the styles written to reach into the widget, is in
+ * host.css beside it.
+ */
+.page-prose {
+    max-width: var(--dk-measure);
+    line-height: var(--dk-leading-body);
+}
+
+.page-prose h1 {
+    margin: var(--dk-space-4) 0 var(--dk-space-2);
+    font-size: var(--dk-text-display);
+}
+
+.page-pitch {
+    margin: 0 0 var(--dk-space-4);
+    font-size: var(--dk-text-lead);
+}
+
+.page-prose h2 {
+    margin: 0 0 var(--dk-space-3);
+    font-size: var(--dk-text-title);
+}
+
+.page-prose p {
+    margin: 0 0 var(--dk-space-4);
+}
+
+.page-prose p:last-child {
+    margin-bottom: 0;
+}
+
+/*
+ * A link takes the kit's accent, which is too close to the text to mark a
+ * link by itself, so the underline stays.
+ */
+.page-prose a:not(.dk-button) {
+    text-decoration: underline;
+}
+
+.page-where {
+    margin: 0;
+}

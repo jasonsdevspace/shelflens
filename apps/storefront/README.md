@@ -38,7 +38,8 @@ the page.
   opens its list in the browser's top layer, over anything the host stacks or clips. The host
   says where the API and the store are, and can say what a search or a product does instead.
   The page at `widget/` is a host with unfriendly styles, a banner, a clipping box and a React of
-  its own, to show the widget keeping its look and its place.
+  its own, to show the widget keeping its look and its place. Its prose is styled in
+  `src/widget/page.css`, and what it throws at the widget is in `src/widget/host.css`.
   A page on another origin runs the Node server with that origin named, as the server's README
   says, and the browser test does it from a second origin.
   [Decision record 12](../../docs/decisions/0012-the-widget-keeps-its-own-tree.md) has the
@@ -101,11 +102,12 @@ the page.
   only the site's origin, so no search phrase leaves the browser.
   [Decision record 18](../../docs/decisions/0018-visits-are-counted-by-path.md) has the choices.
 - **A page on how it works.** `about/index.html` is a second page in the build, static, sharing the
-  store's sheet, the strip and the footer, with its prose in `src/about/about.css`, which the
-  widget's demo pages share. It tells the same story as the README's two minutes and the tour in
-  words a non-engineer can follow. A test holds its links to the README's steps and its stop count
-  to the tour's, and a link from it into the store marks the tour seen, so the tour does not open
-  over what the reader was sent to see.
+  store's sheet, the strip and the footer, and laid out as the design kit lays out an explainer: a
+  header with the wordmark, the title and its lead, numbered sections and the steps of a search.
+  It tells the same story as the README's two minutes and the tour in words a non-engineer can
+  follow. A test holds its links to the README's steps and its stop count to the tour's, and a link
+  from it into the store marks the tour seen, so the tour does not open over what the reader was
+  sent to see.
 - **The tour is the acceptance check.** `src/tour` is a panel that opens itself on a first visit, or
   on a phone a short bar that opens it on Start, and walks the gotchas the project exists to show,
   one stop each, with a link that puts the page in the state that shows it and the name of the test

@@ -69,7 +69,7 @@ test('the explainer fits a phone, with its steps stacked and nothing scrolling s
 }) => {
     await page.goto('/about/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('How ShelfLens works');
-    const steps = page.locator('.flow li');
+    const steps = page.locator('.dk-steps > li');
     await expect(steps).toHaveCount(5);
     const first = await steps.nth(0).boundingBox();
     const second = await steps.nth(1).boundingBox();
