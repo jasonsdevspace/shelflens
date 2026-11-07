@@ -112,18 +112,20 @@ open around it.
   only the holder that takes a waiting callout out of the flow.
 - The bundle budgets did not move, and every page stayed under its own.
 - The page build targets the kit's browser floor, Chrome and Edge 123, Firefox 120 and Safari 17.5,
-  so each `light-dark()` reaches the browser as written and picks by the scheme of the element that
-  draws it. A wider target rewrote each one into switches set once on the root, which drew the same
-  page but left any part set to the other scheme in the page's colors. The widget's build keeps
-  Vite's default target, with its colors behind a feature check, since it runs on other sites'
-  pages.
+  for its script and its sheets alike. Each `light-dark()` reaches the browser as written and picks
+  by the scheme of the element that draws it. Vite's default target rewrote each one into switches
+  set once on the root, which drew the same page but left any part set to the other scheme in the
+  page's colors. A browser under the floor no longer gets the store's script without its colors.
+  The widget's build keeps Vite's default target, since the pages it runs on are not the store's
+  to hold to a floor, and its colors still reach the browser as written, behind the feature check
+  record 12 describes.
 
 ## How it is tested
 
 - The theme test reads every page from the Vite config, holds each to asking for the kit's script,
   and holds each built page's policy to the hash of the script that lands in it.
-- A browser test sets the body of every page to the other scheme and holds it to that scheme's
-  colors, so a build that rewrites `light-dark()` fails it.
+- A browser test sets the body of every page in the dark theme to the light scheme and holds its
+  text and its ground to the light theme's colors, so a build that rewrites `light-dark()` fails it.
 - A token test reads every store sheet and finds no color written outside the palette. It holds
   the store's palette to every pairing the kit measures in both themes. It holds the widget's frame
   to every name the widget reads, its colors to the store's pages and every value it repeats from
