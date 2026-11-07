@@ -170,8 +170,8 @@ The libraries are in `packages/`, and what runs, the demo and the server, is in 
 
 Each choice with a real alternative is a record in [docs/decisions](docs/decisions), with the
 option rejected, what the choice costs, and the test or measurement behind it. Most were written
-when the choice was made, and records 16 and 17 after the work they describe. Every record is read
-again against the code before each release, and amended where the code has moved on.
+when the choice was made, and records 16, 17 and 19 after the work they describe. Every record
+is read again against the code before each release, and amended where the code has moved on.
 
 1. [An engine of our own, rather than a library](docs/decisions/0001-an-engine-of-our-own.md)
 2. [Flat arrays for the index](docs/decisions/0002-flat-arrays-for-the-index.md)
@@ -191,6 +191,7 @@ again against the code before each release, and amended where the code has moved
 16. [The first screen is in the page, drawn by the components the script uses](docs/decisions/0016-the-first-screen-is-in-the-page.md)
 17. [A sort sets aside what rules do to the order, and the page says so](docs/decisions/0017-a-sort-sets-aside-what-rules-do-to-the-order.md)
 18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](docs/decisions/0018-visits-are-counted-by-path.md)
+19. [The pages are drawn from the design kit, and the store keeps what is its own](docs/decisions/0019-the-pages-are-drawn-from-the-design-kit.md)
 
 ## Dev setup
 

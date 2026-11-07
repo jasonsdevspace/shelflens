@@ -2,8 +2,8 @@
 
 The decisions in this project that had a real alternative, with the option rejected, what the
 choice costs, and the test or measurement behind it. Records 1 to 15 and 18 were written when the
-decision was made, so the evidence was still fresh. Records 16 and 17 were written after the work
-they describe, from the code and its tests.
+decision was made, so the evidence was still fresh. Records 16, 17 and 19 were written after the
+work they describe, from the code, its tests and the pull requests that made it.
 
 1. [An engine of our own, rather than a library](0001-an-engine-of-our-own.md): the parts a
    library hides are the parts the project exists to show.
@@ -53,3 +53,7 @@ they describe, from the code and its tests.
 18. [Visits are counted by path, with Plausible, and not under Global Privacy Control](0018-visits-are-counted-by-path.md):
     the tracker bundled from npm, one site for the whole domain, each address cut back to its path,
     and never started under the signal or by the widget's own file.
+19. [The pages are drawn from the design kit, and the store keeps what is its own](0019-the-pages-are-drawn-from-the-design-kit.md):
+    the kit from npm at a pinned version, one layer at a time, its tokens, base, chrome and
+    controls in place of the store's, and the palette, the widget's frame and the store's own
+    components kept, with each gap in the kit filed against it.
