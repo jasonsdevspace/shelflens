@@ -27,6 +27,8 @@ concurrency:
     group: ci-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every install below skips its packages' install scripts, so no dependency runs code here by
+# being installed, as record 20 says.
 jobs:
     verify:
         name: Lint, test and build
@@ -45,7 +47,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             - name: Type-check
               run: npm run type-check --workspaces && npx tsc -p scripts
@@ -115,7 +117,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # The runner image has the libraries Chromium needs, so only the browser is
             # fetched. Installing the libraries again reads Ubuntu's mirror, which has been
@@ -174,7 +176,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # The runner image has the libraries Chromium needs, so only the browser is
             # fetched. Installing the libraries again reads Ubuntu's mirror, which has been
@@ -217,7 +219,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             - name: Build the storefront
               run: npm run storefront
@@ -284,7 +286,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # Packing runs the engine's build, on the Node the project builds on,
             # which is how the published package is made.
@@ -334,7 +336,7 @@ jobs:
                   cd "$RUNNER_TEMP/consumer"
                   npm init -y
                   npm pkg set type=module
-                  npm install --engine-strict "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz
+                  npm install --engine-strict --ignore-scripts "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz
                   smoke="$GITHUB_WORKSPACE/packages/engine/smoke"
                   cp "$smoke"/consumer.mjs "$smoke"/exports.mjs "$smoke"/types.ts "$smoke"/tsconfig.nodenext.json "$smoke"/tsconfig.bundler.json .
 
@@ -393,7 +395,7 @@ jobs:
                   cache: 'npm'
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # The page, the catalog, the rules and the worker, built for the
             # path the project site is served under.
