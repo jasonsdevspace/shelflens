@@ -10,7 +10,7 @@ import { audit, expect, test } from './support.js';
 
 test('keeps its look, its place over the host and its own React, and sends a search to the store', async ({
     page,
-}, testInfo) => {
+}) => {
     await page.goto('/widget/');
     await expect(page).toHaveTitle('ShelfLens on another page');
     const search = page.getByRole('combobox', { name: 'Search the store' });
@@ -75,13 +75,12 @@ test('keeps its look, its place over the host and its own React, and sends a sea
             { x: shown.x, y: shown.y }
         );
         expect(atCenter).toBe('shelflens-search');
-        // Out past the clipping box's edge: below it on the desktop, and on a phone, where the
-        // box sits low and the list may open upward, above it or below.
+        // Out past the clipping box's edge, below it or above it, where the box sits low
+        // enough that more of the list fits above.
         const clip = await page.locator('.host-clip').boundingBox();
         expect(clip).not.toBeNull();
         if (clip) {
-            const below = box.y + box.height > clip.y + clip.height;
-            const past = testInfo.project.name === 'phone' ? below || box.y < clip.y : below;
+            const past = box.y + box.height > clip.y + clip.height || box.y < clip.y;
             expect(past, JSON.stringify({ box, clip })).toBe(true);
         }
     }
@@ -108,6 +107,67 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     await search.press('Enter');
     await expect(page).toHaveURL(/\/\?q=boot/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for');
+});
+
+test('opens the list above a box set low, where more of it fits, and keeps it there as it narrows', async ({
+    page,
+    isMobile,
+}) => {
+    // Only on a phone does the demo's box sit low enough that a suggestion or more shows above.
+    test.skip(!isMobile, 'the box sits low with a suggestion more of room above only on a phone');
+    await page.goto('/widget/');
+    await page.mouse.move(0, 0);
+    const search = page.getByRole('combobox', { name: 'Search the store' });
+    await search.fill('boot');
+    const listbox = page.getByRole('listbox', { name: 'Suggestions' });
+    await expect(listbox.getByRole('option').first()).toBeVisible();
+    /** Where the list is, and the room either side of the box, less the gap and the edge kept. */
+    const place = () =>
+        listbox.evaluate((list) => {
+            const frame = list.closest('[popover]');
+            const root = list.getRootNode();
+            const field =
+                root instanceof ShadowRoot || root instanceof Document
+                    ? root.querySelector('[role="combobox"]')
+                    : null;
+            if (!(frame instanceof HTMLElement) || !field) throw new Error('no popover or box');
+            const box = field.getBoundingClientRect();
+            const shown = frame.getBoundingClientRect();
+            const kept = 4 + 12;
+            return {
+                below: innerHeight - box.bottom - kept,
+                above: box.top - kept,
+                needs: frame.scrollHeight + frame.offsetHeight - frame.clientHeight,
+                bottom: shown.bottom,
+                boxTop: box.top,
+                tall: shown.height,
+                options: list.querySelectorAll('[role="option"]').length,
+            };
+        });
+    // Settled once the suggestions have arrived and the list has been placed for them.
+    await expect.poll(async () => (await place()).options).toBe(6);
+    await expect
+        .poll(async () => {
+            const at = await place();
+            return at.bottom <= at.boxTop;
+        })
+        .toBe(true);
+    const at = await place();
+    // The case the rule is for: room under the box, but less than the list needs, and more
+    // above it, so a list opened below would show only part of itself.
+    expect(at.below, JSON.stringify(at)).toBeGreaterThan(0);
+    expect(at.below, JSON.stringify(at)).toBeLessThan(at.needs);
+    expect(at.above, JSON.stringify(at)).toBeGreaterThan(at.below);
+    // Above the box, and the whole list shows, with no scrolling inside it.
+    expect(at.tall, JSON.stringify(at)).toBeGreaterThanOrEqual(at.needs - 1);
+
+    // Narrowed to one suggestion, which would fit below, the list stays where it opened rather
+    // than jumping to the other side of the box.
+    await search.fill('waterproof hiking boot');
+    await expect.poll(async () => (await place()).options).toBe(1);
+    const narrowed = await place();
+    expect(narrowed.needs, JSON.stringify(narrowed)).toBeLessThan(narrowed.below);
+    expect(narrowed.bottom, JSON.stringify(narrowed)).toBeLessThanOrEqual(narrowed.boxTop);
 });
 
 test('says the search box is loading until it arrives', async ({ page }) => {
