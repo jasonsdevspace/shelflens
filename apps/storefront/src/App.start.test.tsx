@@ -328,10 +328,10 @@ describe('whose work this is', () => {
     it('says so above the masthead and below the content, with the portfolio and the source', async () => {
         await open();
         const strip = screen.getByRole('navigation', { name: 'Portfolio' });
-        // The strip's first link leads to the portfolio's work, whatever words the kit gives it.
+        // The strip's first link leads to the portfolio, whatever words the kit gives it.
         expect(within(strip).getAllByRole('link')[0]).toHaveAttribute(
             'href',
-            'https://jasonsdevspace.com/#work'
+            'https://jasonsdevspace.com/'
         );
         expect(within(strip).getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute(
             'href',

@@ -52,9 +52,9 @@ test('says whose work it is before anything else, and follows the theme the port
         /^All products, [\d,]+ products$/
     );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
-    // The strip's first link leads to the portfolio's work, whatever words the kit gives it.
+    // The strip's first link leads to the portfolio, whatever words the kit gives it.
     const work = strip.getByRole('link').first();
-    await expect(work).toHaveAttribute('href', 'https://jasonsdevspace.com/#work');
+    await expect(work).toHaveAttribute('href', 'https://jasonsdevspace.com/');
     await expect(strip.getByRole('link', { name: 'Source on GitHub' })).toBeVisible();
     // The first Tab from the top lands on the way back, before the storefront's own chrome.
     await page.keyboard.press('Tab');
@@ -196,7 +196,14 @@ test('the strip and the masthead keep the room what arrives takes, at every widt
             });
             const page = await context.newPage();
             await page.goto(`${baseURL ?? ''}?q=jacket`);
-            if (javaScriptEnabled) await page.locator('.cards > .card').first().waitFor();
+            if (javaScriptEnabled) {
+                await page.locator('.cards > .card').first().waitFor();
+                // The switches fit the width their section keeps for them, in this font.
+                const spills = await page
+                    .locator('.dk-strip-tools')
+                    .evaluate((tools) => tools.scrollWidth > tools.clientWidth);
+                expect(spills, `the switches at ${String(width)}`).toBe(false);
+            }
             const measured = await page.evaluate(() =>
                 ['.dk-strip', '.masthead'].map(
                     (selector) =>

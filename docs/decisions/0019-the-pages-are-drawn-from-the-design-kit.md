@@ -95,12 +95,14 @@ live callout the store mounts empty now draws nothing, but the store still holds
 until it has words, since an empty one stays in the flow, and some sit in a grid whose gap would
 open around it.
 
-**Amended with design kit 0.1.0-next.4.** The kit's strip calls its first link "More work by Jason
-Poteet", and the three pages that write the strip by hand say so too. The kit pads a callout as its
-other boxed text, holds the footer's sentence to the measure, gives a summary its pointer, which the
-store's own rule no longer repeats, and marks an invalid field in forced colors. A callout now takes
-a page's class, but the store keeps its holder, which keeps the room below a callout and holds a
-live one out of sight until it has words.
+**Amended with design kit 0.1.0-next.5.** The kit's strip names its author in its first link, "Jason
+Poteet", which leads to the portfolio as the footer's does, and the three pages that write the strip
+by hand say so too. The store names its switches' width in the kit's `--dk-strip-tools`, so the room
+the strip keeps for them is as wide as they are when they come, and nothing below the strip moves at
+any width. The kit pads a callout as its other boxed text, holds the footer's sentence to the
+measure, gives a summary its pointer, which the store's own rule no longer repeats, and marks an
+invalid field in forced colors. A callout now takes a page's class, but the store keeps its holder,
+which keeps the room below a callout and holds a live one out of sight until it has words.
 
 ## Consequences
 
