@@ -341,20 +341,33 @@ describe('a packed path too long for the tar header', () => {
 });
 
 describe('a packed path written another way', () => {
-    /** A tarball of one file at `path` under `package/`, written in tar's `format`. */
-    const packed = (path: string, format: string) => {
+    /**
+     * A tarball of one file at `path` under `package/`, written in the first of `formats` the
+     * machine's tar knows, since GNU tar and BSD tar name the GNU format differently.
+     */
+    const packed = (path: string, ...formats: string[]) => {
         const dir = mkdtempSync(join(tmpdir(), 'format-'));
         made.push(dir);
         mkdirSync(join(dir, 'package', path, '..'), { recursive: true });
         writeFileSync(join(dir, 'package', path), 'a { color: red; }');
         const tarball = join(dir, 'k.tgz');
-        execFileSync('tar', [`--format=${format}`, '-czf', tarball, '-C', dir, 'package']);
+        const written = formats.some((format) => {
+            try {
+                execFileSync('tar', [`--format=${format}`, '-czf', tarball, '-C', dir, 'package'], {
+                    stdio: 'ignore',
+                });
+                return true;
+            } catch {
+                return false;
+            }
+        });
+        if (!written) throw new Error(`tar knows none of ${formats.join(', ')}`);
         return filesOf(readFileSync(tarball)).map(({ path: found }) => found);
     };
 
     it('reads a long path from the long name entry GNU tar writes', () => {
         const long = `dist/${'b'.repeat(160)}/file.css`;
-        expect(packed(long, 'gnutar')).toContain(long);
+        expect(packed(long, 'gnu', 'gnutar')).toContain(long);
     });
 
     it('reads a pax path whole, a newline in it and all', () => {
