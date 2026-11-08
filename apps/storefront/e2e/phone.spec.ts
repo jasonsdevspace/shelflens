@@ -38,7 +38,9 @@ test('the facets open in a drawer, narrow the results, and close back to them', 
     await expect(page.getByRole('button', { name: /Filters/ })).toContainText('1');
 });
 
-test('the popover fits the screen and works from the keyboard', async ({ page }) => {
+test('the popover opens under the box, fits the screen and works from the keyboard', async ({
+    page,
+}) => {
     await page.goto('/');
     const search = page.getByRole('combobox', { name: 'Search the store' });
     await search.tap();
@@ -58,6 +60,8 @@ test('the popover fits the screen and works from the keyboard', async ({ page })
         const field = await search.boundingBox();
         expect(field?.width ?? 0).toBeLessThan(320);
         expect(box.width).toBeGreaterThan(viewport.width - 40);
+        // Under the box, where the list fits, since the box sits at the top of the store.
+        expect(box.y).toBeGreaterThanOrEqual((field?.y ?? Infinity) + (field?.height ?? 0));
     }
     await search.press('ArrowDown');
     await search.press('Enter');
