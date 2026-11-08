@@ -14,6 +14,7 @@ import { useStoreInfo } from '../app/StoreContext.jsx';
 import type { GraphQLClient } from '../client/graphql.js';
 import { count } from '../format/count.js';
 import { formatPriceRange } from '../format/money.js';
+import { opensAbove, type Room } from './placement.js';
 import {
     clearRecentSearches,
     fold,
@@ -216,22 +217,19 @@ const EDGE_PX = 12;
 const LIST_MIN_PX = 320;
 
 /**
- * Places the list under the box, from the box's rectangle, within the viewport.
- * Where the list would not fit under the box and there is more room above it,
- * as for a box low on a phone, the list opens above, and it never reaches past
- * the viewport's edge, so every option can be seen.
+ * Places the list under the box, from the box's rectangle, within the viewport, and says which
+ * way it opened. Where the list would not fit under the box and more of it shows above, as for a
+ * box low on a phone, it opens above, by the rule `opensAbove` keeps. It never reaches past the
+ * viewport's edge, so every option can be seen, and the room under the box ends where the screen
+ * a visitor sees does, above a phone's keyboard.
  */
-const placeUnder = (box: HTMLElement, field: HTMLElement) => {
+const placeUnder = (box: HTMLElement, field: HTMLElement, open: Room['open']): Room['open'] => {
     const rect = field.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom - GAP_PX - EDGE_PX;
-    const above = rect.top - GAP_PX - EDGE_PX;
-    // The height the list takes whole, with its border, whatever height it is held to.
-    const needs = box.scrollHeight + box.offsetHeight - box.clientHeight;
-    const flipped = needs > below && above > below;
     // The viewport's width without a scrollbar, so the list never sits under one.
     const viewport = document.documentElement.clientWidth;
     // As wide as the field, or the screen's width when the field is too narrow for a product's
-    // line, as beside the brand on a phone.
+    // line, as beside the brand on a phone. Set before the list is measured, since its lines wrap
+    // at its width.
     const width =
         rect.width >= LIST_MIN_PX
             ? Math.min(rect.width, viewport - 2 * EDGE_PX)
@@ -239,12 +237,20 @@ const placeUnder = (box: HTMLElement, field: HTMLElement) => {
     const left = Math.min(Math.max(EDGE_PX, rect.left), viewport - EDGE_PX - width);
     box.style.setProperty('left', `${left}px`);
     box.style.setProperty('width', `${width}px`);
+    const seen = window.visualViewport;
+    const bottom = seen ? seen.offsetTop + seen.height : window.innerHeight;
+    const below = bottom - rect.bottom - GAP_PX - EDGE_PX;
+    const above = rect.top - GAP_PX - EDGE_PX;
+    // The height the list takes whole, with its border, whatever height it is held to.
+    const needs = box.scrollHeight + box.offsetHeight - box.clientHeight;
+    const flipped = opensAbove({ below, above, needs, open });
     box.style.setProperty('top', flipped ? 'auto' : `${rect.bottom + GAP_PX}px`);
     box.style.setProperty(
         'bottom',
         flipped ? `${window.innerHeight - rect.top + GAP_PX}px` : 'auto'
     );
     box.style.setProperty('max-height', `${Math.max(0, flipped ? above : below)}px`);
+    return flipped ? 'above' : 'below';
 };
 
 /**
@@ -268,29 +274,49 @@ const usePlacedPopover = (
             box.togglePopover(false);
             return;
         }
-        const place = () => placeUnder(box, field);
+        // Which way the list is open, kept while it stays open, so it moves to the other side
+        // only by the rule's own terms.
+        let open: Room['open'] = 'below';
+        const place = () => {
+            open = placeUnder(box, field, open);
+        };
+        // A change to what the list holds, placed once a frame however many come together.
+        let queued = 0;
+        const placeSoon = () => {
+            if (queued === 0) {
+                queued = requestAnimationFrame(() => {
+                    queued = 0;
+                    place();
+                });
+            }
+        };
         // The list's own scrolling is the one scroll that cannot move the box.
         const scrolled = (event: Event) => {
             if (!(event.target instanceof Node && box.contains(event.target))) place();
         };
         place();
         box.togglePopover(true);
+        // Again once it is shown, since a popover that is not open has no height to measure.
+        place();
         // The box moves with a scroll, a resize, and any layout the page or the host
         // shifts under it, such as an image or a font landing late.
         window.addEventListener('scroll', scrolled, true);
         window.addEventListener('resize', place);
+        window.visualViewport?.addEventListener('resize', place);
         const watched = new ResizeObserver(place);
         watched.observe(field);
         watched.observe(document.body);
         // And with what the list holds, which decides whether it fits under the box, as
         // suggestions arrive or the recent searches are cleared.
-        const filled = new MutationObserver(place);
+        const filled = new MutationObserver(placeSoon);
         filled.observe(box, { childList: true, subtree: true, characterData: true });
         return () => {
             window.removeEventListener('scroll', scrolled, true);
             window.removeEventListener('resize', place);
+            window.visualViewport?.removeEventListener('resize', place);
             watched.disconnect();
             filled.disconnect();
+            cancelAnimationFrame(queued);
         };
     }, [expanded, input, popover]);
 };
