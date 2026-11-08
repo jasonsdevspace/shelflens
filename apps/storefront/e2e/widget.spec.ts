@@ -56,9 +56,23 @@ test('keeps its look, its place over the host and its own React, and sends a sea
     const box = await listbox.boundingBox();
     expect(box).not.toBeNull();
     if (box) {
+        // The middle of the part of the list a visitor sees. Where the room beside the box is
+        // short, the list scrolls inside a popover held to the viewport, so the list's own middle
+        // can lie past what shows.
+        const shown = await listbox.evaluate((list) => {
+            const frame = list.closest('[popover]') ?? list;
+            const a = list.getBoundingClientRect();
+            const b = frame.getBoundingClientRect();
+            const top = Math.max(a.top, b.top, 0);
+            const bottom = Math.min(a.bottom, b.bottom, window.innerHeight);
+            return { x: a.left + a.width / 2, y: (top + bottom) / 2, tall: bottom - top };
+        });
+        // At least a whole suggestion shows, so the list can be used where it opens.
+        const option = await listbox.getByRole('option').first().boundingBox();
+        expect(shown.tall).toBeGreaterThanOrEqual(option?.height ?? Infinity);
         const atCenter = await page.evaluate(
             ({ x, y }) => document.elementFromPoint(x, y)?.id ?? '',
-            { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+            { x: shown.x, y: shown.y }
         );
         expect(atCenter).toBe('shelflens-search');
         // Out past the clipping box's edge: below it on the desktop, and on a phone, where the

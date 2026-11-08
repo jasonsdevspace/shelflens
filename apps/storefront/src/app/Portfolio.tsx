@@ -2,7 +2,7 @@ import { DemoFooter, PortfolioStrip } from '@jasonsdevspace/design-kit/react';
 import type { ReactNode } from 'react';
 
 /*
- * The two pieces of chrome that say whose demo this is, the design kit's strip above the masthead
+ * The two pieces of chrome that say whose work this is, the design kit's strip above the masthead
  * and its footer below the content, with ShelfLens's links in them.
  *
  * The strip answers the questions a visitor has on landing, who made this, what it shows and where

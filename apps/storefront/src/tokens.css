@@ -51,6 +51,16 @@
      * pages and the page for a visitor's products alike.
      */
     --dk-measure: 42rem;
+    /*
+     * The width of the store's switches in the strip, "Shopping as" and the
+     * tour, in the strip's own text size, a little wider than they are in any
+     * font, so the room the strip keeps for them before the store is ready is
+     * as wide as they are when they come, and nothing below the strip moves.
+     * The room is drawn before the store knows which switches its catalog
+     * shows, so it holds both, and a catalog with only the tour keeps the
+     * same room, wrapping on a narrow laptop before and after alike.
+     */
+    --dk-strip-tools: 20em;
     /* The store's name, which is a mark rather than a heading. */
     --weight-mark: 700;
 }

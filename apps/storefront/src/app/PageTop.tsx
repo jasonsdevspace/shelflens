@@ -6,7 +6,7 @@ import { Strip } from './Portfolio.jsx';
  * The top of the store's pages: the portfolio strip, with the demo's own switches in a section of
  * their own at its end, and the masthead with the brand and whatever the masthead holds once the
  * store is ready. The switches are the demo's, not the store's, so they sit in the strip that says
- * whose demo it is, and the masthead is what a shopper uses. The build puts the same markup into
+ * whose work it is, and the masthead is what a shopper uses. The build puts the same markup into
  * the page's own HTML, so it shows before the script runs and nothing moves when the script takes
  * over.
  */

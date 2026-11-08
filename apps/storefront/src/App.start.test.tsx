@@ -13,7 +13,7 @@ import {
 import { featured, open, shopAs } from './test/store.jsx';
 import { StoreDidNotStart, WorkerUnsupported } from './worker/register.js';
 
-/* How the store starts, what it says when something does not load or it cannot start, and whose demo it is. */
+/* How the store starts, what it says when something does not load or it cannot start, and whose work it is. */
 
 describe('a store that starts', () => {
     it('arrives in one step, the masthead, the content and the footer together', async () => {
@@ -324,13 +324,14 @@ describe('a store that does not start', () => {
     });
 });
 
-describe('whose demo this is', () => {
+describe('whose work this is', () => {
     it('says so above the masthead and below the content, with the portfolio and the source', async () => {
         await open();
         const strip = screen.getByRole('navigation', { name: 'Portfolio' });
-        expect(within(strip).getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
+        // The strip's first link leads to the portfolio, whatever words the kit gives it.
+        expect(within(strip).getAllByRole('link')[0]).toHaveAttribute(
             'href',
-            'https://jasonsdevspace.com/#work'
+            'https://jasonsdevspace.com/'
         );
         expect(within(strip).getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute(
             'href',
