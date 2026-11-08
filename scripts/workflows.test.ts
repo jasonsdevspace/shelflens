@@ -1,15 +1,16 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { lookupText, readJson } from './json.js';
+import { lookupRecord, lookupText, readJson } from './json.js';
 
 /*
  * What the workflows promise that only reading them can hold: a name for
  * every job a reviewer sees in the checks, the screenshots taken in the
  * image of the Playwright the tests pin, a browser installed without the
- * system packages the runner already has and within a time of its own, an
+ * system packages the runner already has and within a time of its own,
+ * every install done without its packages' install scripts, an
  * engine published only as the tarball the oldest Node check proved, and a
  * release on GitHub named for the part of the project it is.
  */
@@ -58,8 +59,94 @@ const installsBrowser = ({ text }: Step) =>
 const hasOwnTimeLimit = ({ indent, text }: Step) =>
     new RegExp(`^${indent} {2}timeout-minutes: ['"]?[1-5]['"]?\\s*$`, 'm').test(text);
 
+/** npm's subcommands that install, in every spelling npm takes for them. */
+const INSTALLS = new Set([
+    'ci',
+    'clean-install',
+    'ic',
+    'install-clean',
+    'isntall-clean',
+    'i',
+    'in',
+    'ins',
+    'inst',
+    'insta',
+    'instal',
+    'install',
+    'isnt',
+    'isnta',
+    'isntal',
+    'isntall',
+    'add',
+    'it',
+    'cit',
+    'install-test',
+    'install-ci-test',
+]);
+
+/** npm's flags that take their value as the next word, so it is not read as the subcommand. */
+const VALUED = new Set([
+    '--prefix',
+    '-C',
+    '--workspace',
+    '-w',
+    '--cache',
+    '--registry',
+    '--userconfig',
+]);
+
+/** Whether an install's arguments skip install scripts, a value of false refused. */
+const skipsScripts = (args: readonly string[]) =>
+    args.some(
+        (arg, index) =>
+            arg === '--ignore-scripts=true' ||
+            (arg === '--ignore-scripts' && args[index + 1] !== 'false')
+    );
+
+/** An npm or npx command: which it is, its subcommand, the words after that, and its line. */
+interface NpmCommand {
+    readonly npx: boolean;
+    readonly command: string;
+    readonly args: readonly string[];
+    readonly line: string;
+}
+
+/**
+ * Each npm or npx command in a step's text: its subcommand and the words after it, wherever it
+ * sits, after a keyword, an assignment or another command, with continued lines joined and what is
+ * quoted left out, so a message that names a command is not taken for one.
+ */
+const commandsIn = (text: string): NpmCommand[] =>
+    text
+        .replace(/\\\n\s*/g, ' ')
+        .replace(/"[^"\n]*"|'[^'\n]*'/g, '""')
+        .split(/\n|&&|\|\||;|\||\$\(|`/)
+        .flatMap((part): NpmCommand[] => {
+            const words = part.trim().split(/\s+/);
+            const at = words.findIndex((word) => word === 'npm' || word === 'npx');
+            if (at < 0) return [];
+            const npx = words[at] === 'npx';
+            const rest = words.slice(at + 1);
+            if (npx) return [{ npx, command: '', args: rest, line: part.trim() }];
+            let index = 0;
+            while (index < rest.length && (rest[index] ?? '').startsWith('-')) {
+                index += VALUED.has(rest[index] ?? '') ? 2 : 1;
+            }
+            return [
+                {
+                    npx,
+                    command: rest[index] ?? '',
+                    args: rest.slice(index + 1),
+                    line: part.trim(),
+                },
+            ];
+        });
+
 describe('the workflows', () => {
     const files = readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/.test(name));
+    /** Every npm and npx command in the workflows' steps. */
+    const npmCommands = () =>
+        files.flatMap((file) => stepsOf(read(file)).flatMap(({ text }) => commandsIn(text)));
 
     it('give every job a name that says what it does, not only its id', () => {
         const unnamed = files.flatMap((file) =>
@@ -88,15 +175,48 @@ describe('the workflows', () => {
     });
 
     it('install dependencies without running their install scripts', () => {
-        // Each command that installs from npm, in any of npm's spellings, where a command starts:
-        // a line, a run, or after another command, rather than words in a message that name it.
-        const command =
-            /(?:^|run:|&&|\|\||;|\|)\s*npm\s+(?:ci|i|install|add|it|install-clean)\b[^\n&;|]*/gm;
-        const installs = files.flatMap((file) =>
-            stepsOf(read(file)).flatMap(({ text }) => text.match(command) ?? [])
-        );
+        const installs = npmCommands().filter(({ command }) => INSTALLS.has(command));
         expect(installs.length).toBeGreaterThan(0);
-        expect(installs.filter((line) => !/--ignore-scripts(?!=)/.test(line))).toEqual([]);
+        expect(installs.filter(({ args }) => !skipsScripts(args)).map(({ line }) => line)).toEqual(
+            []
+        );
+    });
+
+    it('run with npx only the tools the lockfile installed, so nothing is fetched with its scripts', () => {
+        const bin = join(ROOT, 'node_modules/.bin');
+        const fetched = npmCommands()
+            .filter(({ npx, command }) => npx || command === 'exec' || command === 'x')
+            .filter(({ npx, args }) => {
+                const tool = (npx ? [args[0], ...args] : args).find(
+                    (arg) => arg !== undefined && !arg.startsWith('-')
+                );
+                return tool === undefined || !existsSync(join(bin, tool));
+            })
+            .map(({ line }) => line);
+        expect(fetched).toEqual([]);
+    });
+
+    it('read an install in any of its spellings, with its flags, wherever it sits in a step', () => {
+        const read = (text: string) =>
+            commandsIn(text)
+                .filter(({ command }) => INSTALLS.has(command))
+                .map(({ args }) => skipsScripts(args));
+        expect(read('run: npm --prefix a ci')).toEqual([false]);
+        expect(read('run: if [ -n "$X" ]; then npm clean-install; fi')).toEqual([false]);
+        expect(read('run: FOO=1 npm ic --ignore-scripts')).toEqual([true]);
+        expect(read('run: |\n    npm ci \\\n        --ignore-scripts')).toEqual([true]);
+        expect(read('run: npm ci --ignore-scripts false')).toEqual([false]);
+        expect(read('run: npm ci --ignore-scripts=true')).toEqual([true]);
+        expect(read('run: npm ci --ignore-scripts=false')).toEqual([false]);
+        // Words in a message that name a command are not a command.
+        expect(read('run: echo "install it with `npm install x`"')).toEqual([]);
+    });
+
+    it('publish an engine that runs no script of its own when it is installed', () => {
+        const scripts = Object.keys(
+            lookupRecord(readJson(join(ROOT, 'packages/engine/package.json')), 'scripts') ?? {}
+        );
+        expect(scripts.filter((name) => /^(?:pre|post)?install$/.test(name))).toEqual([]);
     });
 
     it('take the screenshots in the image of the Playwright the tests pin', () => {
