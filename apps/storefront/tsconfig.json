@@ -10,6 +10,8 @@
         // types their own dependencies disagree with, so declaration files are left unchecked.
         "skipLibCheck": true,
         "noEmit": true,
+        // The bench scripts write the run's summary with the repository's own script.
+        "allowJs": true,
         "customConditions": ["@shelflens/source"]
     },
     "include": [

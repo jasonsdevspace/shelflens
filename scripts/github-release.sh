@@ -15,8 +15,20 @@ changelog="$3"
 title="$4"
 shift 4
 
+# What it did, written to the run's page when it runs in one.
+url="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/releases/tag/$tag"
+# The title as a link's text, its brackets escaped so they cannot end the link.
+named="${title//[/\\[}"
+named="${named//]/\\]}"
+said() {
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+        printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY" || true
+    fi
+}
+
 if gh release view "$tag" >/dev/null 2>&1; then
     echo "the release for $tag exists"
+    said "### On GitHub"$'\n\n'"[$named]($url) was already released, so it was left as it is."
     exit 0
 fi
 
@@ -37,3 +49,4 @@ if [ -n "${NOTES_LEAD:-}" ]; then
 fi
 
 gh release create "$tag" --title "$title" --notes-file notes.md "$@"
+said "### Released on GitHub"$'\n\n'"[$named]($url), with the changelog entry as its notes."

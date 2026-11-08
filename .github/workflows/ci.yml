@@ -30,7 +30,7 @@ concurrency:
 jobs:
     verify:
         name: Lint, test and build
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         steps:
             - name: Checkout
@@ -92,10 +92,16 @@ jobs:
     # The storefront in a real browser, served as the demo is served, with
     # the service worker answering and axe auditing each page. Desktop and
     # phone, since the facets and the popover lay out differently on each.
+    # The tests are split into two even halves across both, each in a job of
+    # its own, so the two halves run side by side.
     browser:
-        name: Browser tests
-        runs-on: ubuntu-latest
+        name: Browser tests (${{ matrix.shard }} of 2)
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2]
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,14 +127,27 @@ jobs:
                   npx playwright install chromium
                   node -e "require('@playwright/test').chromium.launch().then((browser) => browser.close())"
 
+            # The totals, and any test that failed, go to the run's summary from the
+            # JSON report. The summary reports the tests and never decides them, so the
+            # step ends with their status whether or not it could be written.
             - name: Browser tests
-              run: npm run e2e
+              env:
+                  SHARD: ${{ matrix.shard }}
+              run: |
+                  rm -f apps/storefront/playwright-results.json
+                  status=0
+                  npm run e2e -- --shard "$SHARD/2" || status=$?
+                  if [ -f apps/storefront/playwright-results.json ]; then
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests, part $SHARD of 2" "$status" ||
+                          echo "The summary of the browser tests could not be written."
+                  fi
+                  exit "$status"
 
             - name: Upload the report on failure
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: playwright-report
+                  name: playwright-report-${{ matrix.shard }}
                   path: |
                       apps/storefront/playwright-report
                       apps/storefront/test-results
@@ -140,7 +159,7 @@ jobs:
     # tests rather than after them.
     lighthouse:
         name: Lighthouse audits
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         steps:
             - name: Checkout
@@ -178,7 +197,7 @@ jobs:
     # keeps what it took, to accept with `npm run screenshots:accept <run id>`.
     visual:
         name: Screenshot comparison
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         container:
             # Pinned by digest, as the actions are, so the image cannot change under its tag.
@@ -203,8 +222,18 @@ jobs:
             - name: Build the storefront
               run: npm run storefront
 
+            # The totals, and any screenshot that differs, go to the run's summary from the
+            # JSON report, whatever stopped the run.
             - name: Compare the screenshots
-              run: npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone
+              run: |
+                  rm -f apps/storefront/playwright-results.json
+                  status=0
+                  npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone || status=$?
+                  if [ -f apps/storefront/playwright-results.json ]; then
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Screenshot comparison" "$status" ||
+                          echo "The summary of the screenshot comparison could not be written."
+                  fi
+                  exit "$status"
 
             - name: Collect the screenshots
               if: failure()
@@ -238,7 +267,7 @@ jobs:
     # and used through its public exports and its types.
     floor:
         name: Package on oldest Node
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         outputs:
             sha256: ${{ steps.pack.outputs.sha256 }}
@@ -333,6 +362,13 @@ jobs:
                   retention-days: 7
                   overwrite: true
 
+            # What the tarball that was proved weighs, file by file, raw and gzipped,
+            # for the run's summary. It reports the engine and never decides it.
+            - name: Summarize the engine's size
+              run: |
+                  node scripts/summary.mjs package "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz ||
+                      echo "The summary of the engine's size could not be written."
+
     # The demo, published to GitHub Pages at jasonsdevspace.com/shelflens/
     # once everything above has passed on main. A merge that fails a check
     # is never deployed. The site is built in a job with no more than read
@@ -342,7 +378,7 @@ jobs:
         name: Build the demo site
         needs: [verify, browser, lighthouse, floor, visual]
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 15
         steps:
             - name: Checkout
@@ -374,7 +410,7 @@ jobs:
     deploy:
         name: Deploy the demo
         needs: site
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         permissions:
             pages: write
@@ -389,3 +425,10 @@ jobs:
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+            - name: Summarize the deploy
+              env:
+                  PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+              run: |
+                  commit="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+                  printf '### Deployed\n\n%s, from [`%s`](%s).\n' "$PAGE_URL" "${GITHUB_SHA:0:7}" "$commit" >> "$GITHUB_STEP_SUMMARY"

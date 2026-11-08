@@ -7,3 +7,4 @@ apps/storefront/public/catalog.json
 apps/storefront/public/try/sample-products.csv
 playwright-report
 test-results
+playwright-results.json
