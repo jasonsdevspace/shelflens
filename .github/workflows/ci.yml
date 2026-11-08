@@ -91,16 +91,17 @@ jobs:
 
     # The storefront in a real browser, served as the demo is served, with
     # the service worker answering and axe auditing each page. Desktop and
-    # phone, since the facets and the popover lay out differently on each,
-    # each in a job of its own so the two run side by side.
+    # phone, since the facets and the popover lay out differently on each.
+    # The tests are split into two even halves across both, each in a job of
+    # its own, so the two halves run side by side.
     browser:
-        name: Browser tests (${{ matrix.project }})
+        name: Browser tests (${{ matrix.shard }} of 2)
         runs-on: ubuntu-26.04
         timeout-minutes: 10
         strategy:
             fail-fast: false
             matrix:
-                project: [desktop, phone]
+                shard: [1, 2]
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -131,13 +132,13 @@ jobs:
             # step ends with their status whether or not it could be written.
             - name: Browser tests
               env:
-                  PROJECT: ${{ matrix.project }}
+                  SHARD: ${{ matrix.shard }}
               run: |
                   rm -f apps/storefront/playwright-results.json
                   status=0
-                  npm run e2e -- --project "$PROJECT" || status=$?
+                  npm run e2e -- --shard "$SHARD/2" || status=$?
                   if [ -f apps/storefront/playwright-results.json ]; then
-                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests on $PROJECT" ||
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests, part $SHARD of 2" ||
                           echo "The summary of the browser tests could not be written."
                   fi
                   exit "$status"
@@ -146,7 +147,7 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: playwright-report-${{ matrix.project }}
+                  name: playwright-report-${{ matrix.shard }}
                   path: |
                       apps/storefront/playwright-report
                       apps/storefront/test-results
