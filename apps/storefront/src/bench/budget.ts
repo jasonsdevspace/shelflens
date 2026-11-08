@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-import { budgetSummary, writeSummary } from '../../../../scripts/summary.mjs';
+import { budgetSummary, kb, writeSummary } from '../../../../scripts/summary.mjs';
 import {
     BUDGET_BYTES,
     CATALOG_BUDGET_BYTES,
@@ -88,7 +88,6 @@ for (const { what, files, budget, graphql } of SHIPPED) {
         if (text.includes(FIXTURE_PROBE))
             failures.push(`${what} carries the golden queries in ${file}`);
     }
-    const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
     console.log(`${what}: ${kb(compressed)} of ${kb(budget)}, in ${files.join(', ')}`);
     if (compressed >= budget) failures.push(`${what} is ${kb(compressed)}, past ${kb(budget)}`);
     parts.push({

@@ -14,14 +14,21 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import { isRunDirectly } from './repository.mjs';
 
 /**
- * Appends to the run's summary, or does nothing outside a run, where there is none.
+ * Appends to the run's summary, or does nothing outside a run, where there is none. A summary
+ * that cannot be written is said in the log and never thrown, so it cannot decide the check it
+ * reports.
  *
  * @param {string} markdown
  * @param {Record<string, string | undefined>} [env]
  */
 export const writeSummary = (markdown, env = process.env) => {
     const file = env['GITHUB_STEP_SUMMARY'];
-    if (file) appendFileSync(file, markdown);
+    if (!file) return;
+    try {
+        appendFileSync(file, markdown);
+    } catch (error) {
+        console.warn(`The run's summary could not be written: ${String(error)}`);
+    }
 };
 
 /**
@@ -37,14 +44,15 @@ export const table = (head, rows) => {
 };
 
 /**
- * A page as the audit judged it, with what it missed of the gates in the audit's own words.
+ * A page as the audit judged it, with what it missed of the gates in the audit's own words. A page
+ * the audit stopped before measuring for performance has no performance figures.
  *
  * @typedef {{
  *     path: string,
  *     accessibility: number,
- *     performance: number,
- *     paint: number,
- *     shift: number,
+ *     performance?: number,
+ *     paint?: number,
+ *     shift?: number,
  *     missed: readonly string[],
  * }} LighthousePage
  * @typedef {{ accessibility: number, performance: number, paint: number, shift: number }} LighthouseGates
@@ -60,11 +68,16 @@ export const lighthouseSummary = (pages, gates) => {
     const rows = pages.map((page) => [
         page.path,
         String(page.accessibility),
-        String(Math.round(page.performance * 100)),
-        `${String(Math.round(page.paint))} ms`,
-        page.shift.toFixed(3),
+        page.performance === undefined
+            ? 'Not measured'
+            : String(Math.round(page.performance * 100)),
+        page.paint === undefined ? 'Not measured' : `${String(Math.round(page.paint))} ms`,
+        page.shift === undefined ? 'Not measured' : page.shift.toFixed(3),
         page.missed.length === 0 ? 'Pass' : `Missed: ${page.missed.join(', ')}`,
     ]);
+    if (pages.length === 0) {
+        return '### Lighthouse\n\nThe audit stopped before it measured a page.\n';
+    }
     return (
         '### Lighthouse\n\n' +
         `Each page on a first visit as a slow phone makes it, held to accessibility ` +
@@ -109,16 +122,18 @@ export const playwrightSummary = (report, { title, runUrl, root = '' }) => {
     ].join(', ');
     /** @type {string[]} */
     const failing = [];
+    /** @type {string[]} */
+    const retried = [];
     /**
      * @param {PlaywrightSuite} suite
      * @param {readonly string[]} groups
      */
     const walk = (suite, groups) => {
         for (const spec of suite.specs ?? []) {
-            if (spec.tests.some((test) => test.status === 'unexpected')) {
-                const name = [...groups, spec.title].join(' › ');
-                failing.push(`- ${name} (\`${join(root, spec.file)}:${String(spec.line)}\`)`);
-            }
+            const name = [...groups, spec.title].join(' › ');
+            const line = `- ${name} (\`${join(root, spec.file)}:${String(spec.line)}\`)`;
+            if (spec.tests.some((test) => test.status === 'unexpected')) failing.push(line);
+            else if (spec.tests.some((test) => test.status === 'flaky')) retried.push(line);
         }
         for (const inner of suite.suites ?? []) walk(inner, [...groups, inner.title]);
     };
@@ -139,8 +154,11 @@ export const playwrightSummary = (report, { title, runUrl, root = '' }) => {
         );
     }
     lines.push(`${totals}.`);
-    if (failing.length > 0 || stopped.length > 0) {
+    // A test that passed only on a retry is named too, since a run that holds tests to passing the
+    // first time fails on one.
+    if (failing.length > 0 || retried.length > 0 || stopped.length > 0) {
         if (failing.length > 0) lines.push('', 'Failed:', '', ...failing);
+        if (retried.length > 0) lines.push('', 'Passed only on a retry:', '', ...retried);
         lines.push(
             '',
             `The report, with each failure's trace and screenshot, is in [the run's artifacts](${runUrl}#artifacts).`
@@ -149,8 +167,12 @@ export const playwrightSummary = (report, { title, runUrl, root = '' }) => {
     return `${lines.join('\n')}\n`;
 };
 
-/** @param {number} bytes */
-const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
+/**
+ * A size in kilobytes to a tenth, as every summary and log line gives one.
+ *
+ * @param {number} bytes
+ */
+export const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 
 /**
  * A part of the build against its budget, gzipped as a server sends it, with anything the budget
@@ -227,6 +249,9 @@ export const filesOf = (tarball) => {
     /** @type {{ path: string, bytes: Buffer }[]} */
     const files = [];
     let at = 0;
+    // A path too long for the header's own fields comes before its entry in a pax header.
+    /** @type {string | undefined} */
+    let long;
     while (at + 512 <= tar.length) {
         const header = tar.subarray(at, at + 512);
         if (header.every((byte) => byte === 0)) break;
@@ -236,7 +261,14 @@ export const filesOf = (tarball) => {
         const prefix = text(345, 500);
         const size = parseInt(text(124, 136).trim() || '0', 8);
         const type = text(156, 157);
-        const path = prefix ? `${prefix}/${name}` : name;
+        if (type === 'x') {
+            const records = tar.subarray(at + 512, at + 512 + size).toString('utf8');
+            long = /(?:^|\n)\d+ path=([^\n]*)\n/.exec(records)?.[1];
+            at += 512 + Math.ceil(size / 512) * 512;
+            continue;
+        }
+        const path = long ?? (prefix ? `${prefix}/${name}` : name);
+        long = undefined;
         if ((type === '0' || type === '') && path.startsWith('package/')) {
             files.push({
                 path: path.slice('package/'.length),

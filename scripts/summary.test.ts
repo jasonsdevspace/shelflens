@@ -230,3 +230,75 @@ describe('the budget summary', () => {
         expect(text).toContain('x-axis ["the widget"]');
     });
 });
+
+describe('a summary that cannot be written', () => {
+    it('is said in the log and never thrown, so it cannot fail the check it reports', () => {
+        expect(() => {
+            writeSummary('text\n', { GITHUB_STEP_SUMMARY: '/nowhere/at/all/summary.md' });
+        }).not.toThrow();
+    });
+});
+
+describe('a test that passed only on a retry', () => {
+    it('is named, with the report linked, since a run that holds tests to the first try fails on it', () => {
+        const text = playwrightSummary(
+            {
+                stats: { expected: 3, unexpected: 0, flaky: 1, skipped: 0 },
+                suites: [
+                    {
+                        title: 'search.spec.ts',
+                        file: 'search.spec.ts',
+                        specs: [
+                            {
+                                title: 'answers a typo',
+                                file: 'search.spec.ts',
+                                line: 7,
+                                tests: [{ status: 'flaky' }],
+                            },
+                        ],
+                    },
+                ],
+            },
+            { title: 'Browser tests', runUrl: 'u', root: 'apps/storefront/e2e' }
+        );
+        expect(text).toContain('3 passed, 1 passed on a retry.');
+        expect(text).toContain('Passed only on a retry:');
+        expect(text).toContain('- answers a typo (`apps/storefront/e2e/search.spec.ts:7`)');
+        expect(text).toContain('#artifacts');
+    });
+});
+
+describe('an audit that stopped partway', () => {
+    const gates = { accessibility: 100, performance: 0.9, paint: 2500, shift: 0.1 };
+
+    it('still gives a page measured for accessibility alone', () => {
+        const text = lighthouseSummary(
+            [{ path: '/about/', accessibility: 100, missed: ['stopped before performance'] }],
+            gates
+        );
+        expect(text).toContain(
+            '| /about/ | 100 | Not measured | Not measured | Not measured | Missed: stopped before performance |'
+        );
+    });
+
+    it('says it measured nothing, rather than giving an empty table', () => {
+        expect(lighthouseSummary([], gates)).toBe(
+            '### Lighthouse\n\nThe audit stopped before it measured a page.\n'
+        );
+    });
+});
+
+describe('a packed path too long for the tar header', () => {
+    it('is read whole from the pax header before it', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'long-'));
+        made.push(dir);
+        const deep = join('package', 'dist', `${'a'.repeat(160)}`, 'file.css');
+        mkdirSync(join(dir, deep, '..'), { recursive: true });
+        writeFileSync(join(dir, 'package', 'package.json'), '{"name":"k","version":"1.0.0"}');
+        writeFileSync(join(dir, deep), 'a { color: red; }');
+        const tarball = join(dir, 'k.tgz');
+        execFileSync('tar', ['--format=pax', '-czf', tarball, '-C', dir, 'package']);
+        const paths = filesOf(readFileSync(tarball)).map(({ path }) => path);
+        expect(paths).toContain(`dist/${'a'.repeat(160)}/file.css`);
+    });
+});

@@ -134,9 +134,8 @@ jobs:
                   PROJECT: ${{ matrix.project }}
               run: |
                   rm -f apps/storefront/playwright-results.json
-                  npm run storefront
                   status=0
-                  npx playwright test --config apps/storefront/playwright.config.ts --project "$PROJECT" || status=$?
+                  npm run e2e -- --project "$PROJECT" || status=$?
                   if [ -f apps/storefront/playwright-results.json ]; then
                       node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests on $PROJECT" ||
                           echo "The summary of the browser tests could not be written."
@@ -222,19 +221,22 @@ jobs:
             - name: Build the storefront
               run: npm run storefront
 
+            # The totals, and any screenshot that differs, go to the run's summary from the
+            # JSON report, whatever stopped the run.
             - name: Compare the screenshots
-              run: npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone
+              run: |
+                  rm -f apps/storefront/playwright-results.json
+                  status=0
+                  npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone || status=$?
+                  if [ -f apps/storefront/playwright-results.json ]; then
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Screenshot comparison" ||
+                          echo "The summary of the screenshot comparison could not be written."
+                  fi
+                  exit "$status"
 
             - name: Collect the screenshots
               if: failure()
               run: node scripts/screenshots.mjs collect
-
-            # Where the screenshots that differ are kept, on the run's page.
-            - name: Summarize the screenshots that differ
-              if: failure()
-              run: |
-                  run="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-                  printf '### Screenshot comparison\n\nA screenshot differs from the one kept in the repository. The expected, actual and diff images are in the screenshots artifact on [the run'"'"'s artifacts](%s#artifacts), and the report in the visual report.\n' "$run" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Upload the screenshots
               if: failure()

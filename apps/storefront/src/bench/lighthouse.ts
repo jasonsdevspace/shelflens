@@ -165,9 +165,20 @@ const main = async () => {
         await auditAccessibility(chrome.port, preview.origin, run, failures);
         await measurePerformance(preview.origin, run, failures);
     } finally {
-        // Written whatever happened, so the pages measured before a failure are still reported.
+        // Written whatever happened, so the pages measured before a failure are still reported,
+        // a page measured for accessibility alone among them.
+        const reported = PAGES.flatMap(({ path }) => {
+            const judged = judgedPages.find((page) => page.path === path);
+            if (judged) return [judged];
+            const score = scores.get(path);
+            if (score === undefined) return [];
+            const short = score < 100 ? [`accessibility ${String(score)}`] : [];
+            return [
+                { path, accessibility: score, missed: [...short, 'stopped before performance'] },
+            ];
+        });
         writeSummary(
-            lighthouseSummary(judgedPages, {
+            lighthouseSummary(reported, {
                 accessibility: 100,
                 performance: PERFORMANCE,
                 paint: LARGEST_PAINT_MS,

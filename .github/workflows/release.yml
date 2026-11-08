@@ -233,18 +233,10 @@ jobs:
               run: |
                   flags=()
                   [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
-                  existed=false
-                  gh release view "$TAG" >/dev/null 2>&1 && existed=true
                   package="$(jq -r .name packages/engine/package.json)"
                   export NOTES_LEAD="The engine is [\`$package\`](https://www.npmjs.com/package/$package) on npm. Once this version is promoted there, install it with \`npm install $package@$VERSION\`."
                   scripts/github-release.sh "$TAG" "$VERSION" packages/engine/CHANGELOG.md \
                       "ShelfLens engine $VERSION" "${flags[@]}"
-                  release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
-                  if [ "$existed" = "true" ]; then
-                      printf '### On GitHub\n\n[ShelfLens engine %s](%s) was already released, so it was left as it is.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
-                  else
-                      printf '### Released on GitHub\n\n[ShelfLens engine %s](%s), with the changelog entry as its notes.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
-                  fi
 
     # The storefront is deployed from main by CI, so its release is a page
     # that names the version and says what changed. It is not marked as the
@@ -274,13 +266,5 @@ jobs:
               run: |
                   flags=(--latest=false)
                   [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
-                  existed=false
-                  gh release view "$TAG" >/dev/null 2>&1 && existed=true
                   scripts/github-release.sh "$TAG" "$VERSION" apps/storefront/CHANGELOG.md \
                       "ShelfLens storefront $VERSION" "${flags[@]}"
-                  release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
-                  if [ "$existed" = "true" ]; then
-                      printf '### On GitHub\n\n[ShelfLens storefront %s](%s) was already released, so it was left as it is.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
-                  else
-                      printf '### Released on GitHub\n\n[ShelfLens storefront %s](%s), with the changelog entry as its notes.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
-                  fi
