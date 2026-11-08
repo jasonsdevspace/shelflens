@@ -212,21 +212,22 @@ const TOP_LAYER = typeof HTMLElement !== 'undefined' && 'togglePopover' in HTMLE
 const GAP_PX = 4;
 const EDGE_PX = 12;
 
-/** How little room under the box is too little, so the list opens above it instead. */
-const ROOM_PX = 160;
 /** The narrowest a list of suggestions reads well, with a product's name, price and swatch. */
 const LIST_MIN_PX = 320;
 
 /**
  * Places the list under the box, from the box's rectangle, within the viewport.
- * With too little room under the box and more above it, the list opens above,
- * and it never reaches past the viewport's edge, so every option can be seen.
+ * Where the list would not fit under the box and there is more room above it,
+ * as for a box low on a phone, the list opens above, and it never reaches past
+ * the viewport's edge, so every option can be seen.
  */
 const placeUnder = (box: HTMLElement, field: HTMLElement) => {
     const rect = field.getBoundingClientRect();
     const below = window.innerHeight - rect.bottom - GAP_PX - EDGE_PX;
     const above = rect.top - GAP_PX - EDGE_PX;
-    const flipped = below < ROOM_PX && above > below;
+    // The height the list takes whole, with its border, whatever height it is held to.
+    const needs = box.scrollHeight + box.offsetHeight - box.clientHeight;
+    const flipped = needs > below && above > below;
     // The viewport's width without a scrollbar, so the list never sits under one.
     const viewport = document.documentElement.clientWidth;
     // As wide as the field, or the screen's width when the field is too narrow for a product's
@@ -281,10 +282,15 @@ const usePlacedPopover = (
         const watched = new ResizeObserver(place);
         watched.observe(field);
         watched.observe(document.body);
+        // And with what the list holds, which decides whether it fits under the box, as
+        // suggestions arrive or the recent searches are cleared.
+        const filled = new MutationObserver(place);
+        filled.observe(box, { childList: true, subtree: true, characterData: true });
         return () => {
             window.removeEventListener('scroll', scrolled, true);
             window.removeEventListener('resize', place);
             watched.disconnect();
+            filled.disconnect();
         };
     }, [expanded, input, popover]);
 };
