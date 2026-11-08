@@ -87,6 +87,18 @@ describe('the workflows', () => {
         expect(unready).toEqual([]);
     });
 
+    it('install dependencies without running their install scripts', () => {
+        // Each command that installs from npm, in any of npm's spellings, where a command starts:
+        // a line, a run, or after another command, rather than words in a message that name it.
+        const command =
+            /(?:^|run:|&&|\|\||;|\|)\s*npm\s+(?:ci|i|install|add|it|install-clean)\b[^\n&;|]*/gm;
+        const installs = files.flatMap((file) =>
+            stepsOf(read(file)).flatMap(({ text }) => text.match(command) ?? [])
+        );
+        expect(installs.length).toBeGreaterThan(0);
+        expect(installs.filter((line) => !/--ignore-scripts(?!=)/.test(line))).toEqual([]);
+    });
+
     it('take the screenshots in the image of the Playwright the tests pin', () => {
         const pinned = lookupText(
             readJson(join(ROOT, 'package.json')),

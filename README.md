@@ -214,7 +214,9 @@ checks that the generated types match the schema and holds the build to its size
 
 In CI the browser tests, desktop and phone together, are split into two even halves that run side by
 side, and every job runs
-on a named Ubuntu image within a time limit, which a test holds. Each check writes what it found to
+on a named Ubuntu image within a time limit, and installs its dependencies without running their install
+scripts, as [record 20](docs/decisions/0020-dependencies-install-without-their-scripts.md) says,
+which a test holds. Each check writes what it found to
 its run's page on GitHub: the browser tests' totals and any test that failed, every page's
 Lighthouse scores against the gates, each part's size against its budget with a chart of how much
 of each budget it uses, the engine package's size file by file, where a failed screenshot

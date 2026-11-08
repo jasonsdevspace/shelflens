@@ -57,3 +57,6 @@ work they describe, from the code, its tests and the pull requests that made it.
     the kit from npm at a pinned version, one layer at a time, its tokens, base, chrome and
     controls in place of the store's, and the palette, the widget's frame and the store's own
     components kept, with each gap in the kit filed against it until the kit took it.
+20. [Dependencies install without their scripts](0020-dependencies-install-without-their-scripts.md):
+    every install in CI passes `--ignore-scripts`, the packed engine's included, and a package that
+    comes to need its script has it run by name in the step that needs it.
