@@ -138,7 +138,7 @@ jobs:
                   status=0
                   npm run e2e -- --shard "$SHARD/2" || status=$?
                   if [ -f apps/storefront/playwright-results.json ]; then
-                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests, part $SHARD of 2" ||
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Browser tests, part $SHARD of 2" "$status" ||
                           echo "The summary of the browser tests could not be written."
                   fi
                   exit "$status"
@@ -230,7 +230,7 @@ jobs:
                   status=0
                   npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone || status=$?
                   if [ -f apps/storefront/playwright-results.json ]; then
-                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Screenshot comparison" ||
+                      node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Screenshot comparison" "$status" ||
                           echo "The summary of the screenshot comparison could not be written."
                   fi
                   exit "$status"

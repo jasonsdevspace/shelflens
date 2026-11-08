@@ -25,7 +25,7 @@ const CHANGELOG = `# Changelog
 `;
 
 /** Runs the script in a folder of its own, and reads back what the stand-in gh was asked for. */
-const release = (lead?: string, exists = false) => {
+const release = (lead?: string, exists = false, title = 'ShelfLens engine 0.6.0') => {
     const at = mkdtempSync(join(tmpdir(), 'github-release-'));
     try {
         writeFileSync(join(at, 'CHANGELOG.md'), CHANGELOG);
@@ -45,21 +45,17 @@ done
         chmodSync(gh, 0o755);
         // The lead is only the one this call gives, never one the shell running the tests has set.
         const { NOTES_LEAD: _outside, ...env } = process.env;
-        execFileSync(
-            'bash',
-            [SCRIPT, 'engine-v0.6.0', '0.6.0', 'CHANGELOG.md', 'ShelfLens engine 0.6.0'],
-            {
-                cwd: at,
-                env: {
-                    ...env,
-                    PATH: `${at}:${env['PATH'] ?? ''}`,
-                    GITHUB_STEP_SUMMARY: join(at, 'summary'),
-                    GITHUB_SERVER_URL: 'https://github.com',
-                    GITHUB_REPOSITORY: 'o/r',
-                    ...(lead === undefined ? {} : { NOTES_LEAD: lead }),
-                },
-            }
-        );
+        execFileSync('bash', [SCRIPT, 'engine-v0.6.0', '0.6.0', 'CHANGELOG.md', title], {
+            cwd: at,
+            env: {
+                ...env,
+                PATH: `${at}:${env['PATH'] ?? ''}`,
+                GITHUB_STEP_SUMMARY: join(at, 'summary'),
+                GITHUB_SERVER_URL: 'https://github.com',
+                GITHUB_REPOSITORY: 'o/r',
+                ...(lead === undefined ? {} : { NOTES_LEAD: lead }),
+            },
+        });
         const read = (name: string) =>
             existsSync(join(at, name)) ? readFileSync(join(at, name), 'utf8') : '';
         return { args: read('args').split('\n'), notes: read('notes'), summary: read('summary') };
@@ -100,6 +96,12 @@ describe('the release on GitHub', () => {
         expect(args).toEqual(['']);
         expect(summary).toBe(
             '### On GitHub\n\n[ShelfLens engine 0.6.0](https://github.com/o/r/releases/tag/engine-v0.6.0) was already released, so it was left as it is.\n'
+        );
+    });
+
+    it('escapes the brackets of a title, so they cannot end the link to the release', () => {
+        expect(release(undefined, false, 'Engine [beta] 0.6.0').summary).toContain(
+            '[Engine \\[beta\\] 0.6.0](https://github.com/o/r/releases/tag/engine-v0.6.0)'
         );
     });
 });

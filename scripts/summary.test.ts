@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
     budgetSummary,
@@ -114,7 +114,11 @@ describe('the browser test summary', () => {
     it('names each failing test by its file and line, and links the report', () => {
         const text = playwrightSummary(
             { ...report(true), suites: report(true).suites.map((suite) => ({ ...suite })) },
-            { title: 'Browser tests', runUrl: 'https://github.com/o/r/actions/runs/1' }
+            {
+                title: 'Browser tests',
+                runUrl: 'https://github.com/o/r/actions/runs/1',
+                failed: true,
+            }
         );
         expect(text).toContain('3 passed, 1 failed, 1 skipped.');
         expect(text).toContain(
@@ -150,7 +154,7 @@ describe('a run that stops outside its tests', () => {
                 suites: [],
                 errors: [{ message: 'Error: Process from config.webServer exited early.\n  at x' }],
             },
-            { title: 'Browser tests', runUrl: 'u' }
+            { title: 'Browser tests', runUrl: 'u', failed: true }
         );
         expect(text).toContain('The run stopped outside its tests:');
         expect(text).toContain('- Error: Process from config.webServer exited early.');
@@ -233,9 +237,17 @@ describe('the budget summary', () => {
 
 describe('a summary that cannot be written', () => {
     it('is said in the log and never thrown, so it cannot fail the check it reports', () => {
-        expect(() => {
-            writeSummary('text\n', { GITHUB_STEP_SUMMARY: '/nowhere/at/all/summary.md' });
-        }).not.toThrow();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            expect(() => {
+                writeSummary('text\n', { GITHUB_STEP_SUMMARY: '/nowhere/at/all/summary.md' });
+            }).not.toThrow();
+            expect(warn).toHaveBeenCalledWith(
+                expect.stringContaining("The run's summary could not be written")
+            );
+        } finally {
+            warn.mockRestore();
+        }
     });
 });
 
@@ -259,12 +271,37 @@ describe('a test that passed only on a retry', () => {
                     },
                 ],
             },
-            { title: 'Browser tests', runUrl: 'u', root: 'apps/storefront/e2e' }
+            { title: 'Browser tests', runUrl: 'u', root: 'apps/storefront/e2e', failed: true }
         );
         expect(text).toContain('3 passed, 1 passed on a retry.');
         expect(text).toContain('Passed only on a retry:');
         expect(text).toContain('- answers a typo (`apps/storefront/e2e/search.spec.ts:7`)');
         expect(text).toContain('#artifacts');
+    });
+
+    it('links no report where the run passed, since CI keeps one only when a run fails', () => {
+        const text = playwrightSummary(
+            {
+                stats: { expected: 3, unexpected: 0, flaky: 1, skipped: 0 },
+                suites: [
+                    {
+                        title: 'a.spec.ts',
+                        file: 'a.spec.ts',
+                        specs: [
+                            {
+                                title: 'b',
+                                file: 'a.spec.ts',
+                                line: 1,
+                                tests: [{ status: 'flaky' }],
+                            },
+                        ],
+                    },
+                ],
+            },
+            { title: 'Browser tests', runUrl: 'u' }
+        );
+        expect(text).toContain('Passed only on a retry:');
+        expect(text).not.toContain('#artifacts');
     });
 });
 
@@ -300,5 +337,29 @@ describe('a packed path too long for the tar header', () => {
         execFileSync('tar', ['--format=pax', '-czf', tarball, '-C', dir, 'package']);
         const paths = filesOf(readFileSync(tarball)).map(({ path }) => path);
         expect(paths).toContain(`dist/${'a'.repeat(160)}/file.css`);
+    });
+});
+
+describe('a packed path written another way', () => {
+    /** A tarball of one file at `path` under `package/`, written in tar's `format`. */
+    const packed = (path: string, format: string) => {
+        const dir = mkdtempSync(join(tmpdir(), 'format-'));
+        made.push(dir);
+        mkdirSync(join(dir, 'package', path, '..'), { recursive: true });
+        writeFileSync(join(dir, 'package', path), 'a { color: red; }');
+        const tarball = join(dir, 'k.tgz');
+        execFileSync('tar', [`--format=${format}`, '-czf', tarball, '-C', dir, 'package']);
+        return filesOf(readFileSync(tarball)).map(({ path: found }) => found);
+    };
+
+    it('reads a long path from the long name entry GNU tar writes', () => {
+        const long = `dist/${'b'.repeat(160)}/file.css`;
+        expect(packed(long, 'gnutar')).toContain(long);
+    });
+
+    it('reads a pax path whole, a newline in it and all', () => {
+        // Long enough that tar has to put it in a pax header.
+        const path = `dist/${'c'.repeat(160)}/a\nb.css`;
+        expect(packed(path, 'pax')).toContain(path);
     });
 });
