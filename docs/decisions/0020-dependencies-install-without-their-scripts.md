@@ -34,9 +34,10 @@ job's install of its pinned npm already did, and so does the oldest Node job's i
 engine into an empty project. The engine ships no install script of its own, which a test holds,
 so that install is the same with scripts on or off. A package that comes to need its script has it
 run by name, with `npm rebuild <package>`, in the one step that needs it, with a comment that says
-why. Commands that install are found in any of npm's spellings, with flags before the subcommand,
-after a keyword or an assignment, and across continued lines, and `npx` runs only tools the lockfile
-installed, so nothing is fetched and run with its scripts on.
+why. Every command that installs or runs install scripts, `npm rebuild` and `npm update` among
+them, is found in any of npm's spellings wherever it sits in what a step runs, and `npx`, `npm exec`
+and `npm create` run only what the lockfile installs, in the repository, so nothing is fetched and
+run with its scripts on.
 
 ## Consequences
 
@@ -52,8 +53,10 @@ installed, so nothing is fetched and run with its scripts on.
 
 ## How it is tested
 
-- `scripts/workflows.test.ts` holds every install in the workflows, in any of npm's spellings and
-  wherever it sits in a step, to `--ignore-scripts` with no value of false, holds `npx` to the tools
-  the lockfile installed, and holds the engine to no install script of its own.
+- `scripts/workflows.test.ts` holds every command in the workflows that installs or runs install
+  scripts, in any of npm's spellings and wherever it sits in what a step runs, to `--ignore-scripts`,
+  the last flag that names it deciding as it does for npm. It holds `npx`, `npm exec` and `npm
+create` to the packages and tools the lockfile installs, in the repository, and holds the engine
+  to no install script of its own.
 - Every job in CI that installs builds and tests with scripts off, so a package that needed one
   would fail it.
