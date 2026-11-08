@@ -40,8 +40,8 @@ select:not(:disabled),
 
 /*
  * The room below a line the page wants seen, such as who is shopping or
- * whose catalog this is, which is the kit's callout. The callout takes no
- * class of the page's, so the room is its holder's.
+ * whose catalog this is, which is the kit's callout. The room is its
+ * holder's, which also holds a live callout out of sight until it has words.
  */
 .callout {
     margin: 0 0 var(--dk-space-4);

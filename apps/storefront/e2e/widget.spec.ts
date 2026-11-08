@@ -67,7 +67,9 @@ test('keeps its look, its place over the host and its own React, and sends a sea
             const bottom = Math.min(a.bottom, b.bottom, window.innerHeight);
             return { x: a.left + a.width / 2, y: (top + bottom) / 2, tall: bottom - top };
         });
-        expect(shown.tall).toBeGreaterThan(0);
+        // At least a whole suggestion shows, so the list can be used where it opens.
+        const option = await listbox.getByRole('option').first().boundingBox();
+        expect(shown.tall).toBeGreaterThanOrEqual(option?.height ?? Infinity);
         const atCenter = await page.evaluate(
             ({ x, y }) => document.elementFromPoint(x, y)?.id ?? '',
             { x: shown.x, y: shown.y }

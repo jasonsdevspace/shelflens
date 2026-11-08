@@ -52,9 +52,16 @@ test('says whose work it is before anything else, and follows the theme the port
         /^All products, [\d,]+ products$/
     );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
-    // The strip's first link leads to the portfolio, whatever words the kit gives it.
+    // The strip's first link leads to the portfolio and names its author as the footer does, in
+    // whatever words the kit gives them both.
     const work = strip.getByRole('link').first();
     await expect(work).toHaveAttribute('href', 'https://jasonsdevspace.com/');
+    const author = await page
+        .getByRole('contentinfo')
+        .locator('a[href="https://jasonsdevspace.com/"]')
+        .textContent();
+    expect(author).toBeTruthy();
+    await expect(work).toHaveAccessibleName(author ?? '');
     await expect(strip.getByRole('link', { name: 'Source on GitHub' })).toBeVisible();
     // The first Tab from the top lands on the way back, before the storefront's own chrome.
     await page.keyboard.press('Tab');
@@ -194,28 +201,49 @@ test('the strip and the masthead keep the room what arrives takes, at every widt
                 javaScriptEnabled,
                 viewport: { width, height: 900 },
             });
-            const page = await context.newPage();
-            await page.goto(`${baseURL ?? ''}?q=jacket`);
-            if (javaScriptEnabled) {
-                await page.locator('.cards > .card').first().waitFor();
-                // The switches fit the width their section keeps for them, in this font.
-                const spills = await page
-                    .locator('.dk-strip-tools')
-                    .evaluate((tools) => tools.scrollWidth > tools.clientWidth);
-                expect(spills, `the switches at ${String(width)}`).toBe(false);
+            try {
+                const page = await context.newPage();
+                await page.goto(`${baseURL ?? ''}?q=jacket`);
+                // The switches fit on one line in the width their section keeps for them, in this
+                // font, rather than wrapping inside it, which would make the strip taller.
+                const lines = javaScriptEnabled
+                    ? await page
+                          .locator('.cards > .card')
+                          .first()
+                          .waitFor()
+                          .then(() =>
+                              page
+                                  .locator('.dk-strip-tools')
+                                  .evaluate(
+                                      (tools) =>
+                                          new Set(
+                                              [...tools.children].map((child) =>
+                                                  Math.round(child.getBoundingClientRect().top)
+                                              )
+                                          ).size
+                                  )
+                          )
+                    : 1;
+                const measured = await page.evaluate(() =>
+                    ['.dk-strip', '.masthead'].map(
+                        (selector) =>
+                            document.querySelector(selector)?.getBoundingClientRect().height ?? 0
+                    )
+                );
+                return { measured, lines };
+            } finally {
+                await context.close();
             }
-            const measured = await page.evaluate(() =>
-                ['.dk-strip', '.masthead'].map(
-                    (selector) =>
-                        document.querySelector(selector)?.getBoundingClientRect().height ?? 0
-                )
-            );
-            await context.close();
-            return measured;
         };
         // Before the script runs, the room is kept. Once the store is ready, what fills it is the same height.
-        const [waitingStrip = 0, waitingMasthead = 0] = await heights(false);
-        const [readyStrip = 0, readyMasthead = 0] = await heights(true);
+        const {
+            measured: [waitingStrip = 0, waitingMasthead = 0],
+        } = await heights(false);
+        const {
+            measured: [readyStrip = 0, readyMasthead = 0],
+            lines,
+        } = await heights(true);
+        expect(lines, `the switches' lines at ${String(width)}`).toBe(1);
         expect(Math.abs(readyStrip - waitingStrip), `the strip at ${String(width)}`).toBeLessThan(
             1
         );
