@@ -52,14 +52,14 @@ test('says whose demo it is before anything else, and follows the theme the port
         /^All products, [\d,]+ products$/
     );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
-    await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
+    await expect(strip.getByRole('link', { name: 'More work by Jason Poteet' })).toHaveAttribute(
         'href',
         'https://jasonsdevspace.com/#work'
     );
     await expect(strip.getByRole('link', { name: 'Source on GitHub' })).toBeVisible();
     // The first Tab from the top lands on the way back, before the storefront's own chrome.
     await page.keyboard.press('Tab');
-    await expect(strip.getByRole('link', { name: 'A demo by Jason Poteet' })).toBeFocused();
+    await expect(strip.getByRole('link', { name: 'More work by Jason Poteet' })).toBeFocused();
 
     // The saved choice wins over the system, with no flash: the attribute is set before paint.
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

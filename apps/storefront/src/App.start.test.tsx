@@ -328,10 +328,9 @@ describe('whose demo this is', () => {
     it('says so above the masthead and below the content, with the portfolio and the source', async () => {
         await open();
         const strip = screen.getByRole('navigation', { name: 'Portfolio' });
-        expect(within(strip).getByRole('link', { name: 'A demo by Jason Poteet' })).toHaveAttribute(
-            'href',
-            'https://jasonsdevspace.com/#work'
-        );
+        expect(
+            within(strip).getByRole('link', { name: 'More work by Jason Poteet' })
+        ).toHaveAttribute('href', 'https://jasonsdevspace.com/#work');
         expect(within(strip).getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute(
             'href',
             'https://github.com/jasonsdevspace/shelflens'
