@@ -22,11 +22,10 @@
  * off but keeps focus, as Previous and Next do where they go nowhere, says so
  * with aria-disabled and counts as off. The labels around a checkbox or a
  * radio are named by class, since :has() is newer than some of the browsers
- * the build supports.
+ * the build supports. A summary takes the design kit's own pointer.
  */
 button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
-summary,
 .facet-option,
 .rules-choice,
 .try-search-only label {

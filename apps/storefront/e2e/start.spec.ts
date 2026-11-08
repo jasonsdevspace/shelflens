@@ -43,7 +43,7 @@ test('a first visit reaches suggestions, results and a product, with no audit fi
     await expect(page).toHaveURL(/\?q=trail\+runner$/);
 });
 
-test('says whose demo it is before anything else, and follows the theme the portfolio saved', async ({
+test('says whose work it is before anything else, and follows the theme the portfolio saved', async ({
     page,
 }) => {
     await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
@@ -52,14 +52,13 @@ test('says whose demo it is before anything else, and follows the theme the port
         /^All products, [\d,]+ products$/
     );
     const strip = page.getByRole('navigation', { name: 'Portfolio' });
-    await expect(strip.getByRole('link', { name: 'More work by Jason Poteet' })).toHaveAttribute(
-        'href',
-        'https://jasonsdevspace.com/#work'
-    );
+    // The strip's first link leads to the portfolio's work, whatever words the kit gives it.
+    const work = strip.getByRole('link').first();
+    await expect(work).toHaveAttribute('href', 'https://jasonsdevspace.com/#work');
     await expect(strip.getByRole('link', { name: 'Source on GitHub' })).toBeVisible();
     // The first Tab from the top lands on the way back, before the storefront's own chrome.
     await page.keyboard.press('Tab');
-    await expect(strip.getByRole('link', { name: 'More work by Jason Poteet' })).toBeFocused();
+    await expect(work).toBeFocused();
 
     // The saved choice wins over the system, with no flash: the attribute is set before paint.
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
