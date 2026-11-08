@@ -37,7 +37,7 @@ jobs:
     # The cheap checks first, so a mistyped tag fails in seconds.
     agree:
         name: Tag, version and changelog
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         outputs:
             version: ${{ steps.version.outputs.version }}
@@ -113,7 +113,7 @@ jobs:
         name: Stage on npm
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'engine'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
         # The environment is what npm's trusted publisher is registered
         # against, and it accepts a deployment only from an engine tag.
@@ -179,8 +179,10 @@ jobs:
             # only what failed.
             - name: Stage the version on npm with provenance
               run: |
+                  page="https://www.npmjs.com/package/@jasonsdevspace/shelflens/v/$VERSION"
                   if npm view "@jasonsdevspace/shelflens@$VERSION" version >/dev/null 2>&1; then
                       echo "$VERSION is already on npm"
+                      printf '### On npm\n\n[%s](%s) was already on npm, so nothing was staged.\n' "$VERSION" "$page" >> "$GITHUB_STEP_SUMMARY"
                       exit 0
                   fi
                   tarball="$RUNNER_TEMP/package/jasonsdevspace-shelflens-$VERSION.tgz"
@@ -199,6 +201,7 @@ jobs:
                   tag=latest
                   [ "$PRERELEASE" = "true" ] && tag=next
                   npm stage publish "$tarball" --provenance --access public --tag "$tag"
+                  printf '### Staged on npm\n\n`@jasonsdevspace/shelflens@%s` is staged under the `%s` tag with provenance, and goes live once it is promoted on npm. Its page will be [%s](%s).\n' "$VERSION" "$tag" "$page" "$page" >> "$GITHUB_STEP_SUMMARY"
 
     # A release on GitHub with the changelog entry as its notes, so the tag
     # has a page a reader can land on. Left alone if it exists. Its own job,
@@ -206,7 +209,7 @@ jobs:
     engine-release:
         name: Engine release on GitHub
         needs: [agree, publish]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: write
@@ -228,12 +231,20 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  flags=""
-                  [ "$PRERELEASE" = "true" ] && flags="--prerelease"
+                  flags=()
+                  [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+                  existed=false
+                  gh release view "$TAG" >/dev/null 2>&1 && existed=true
                   package="$(jq -r .name packages/engine/package.json)"
                   export NOTES_LEAD="The engine is [\`$package\`](https://www.npmjs.com/package/$package) on npm. Once this version is promoted there, install it with \`npm install $package@$VERSION\`."
                   scripts/github-release.sh "$TAG" "$VERSION" packages/engine/CHANGELOG.md \
-                      "ShelfLens engine $VERSION" $flags
+                      "ShelfLens engine $VERSION" "${flags[@]}"
+                  release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+                  if [ "$existed" = "true" ]; then
+                      printf '### On GitHub\n\n[ShelfLens engine %s](%s) was already released, so it was left as it is.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
+                  else
+                      printf '### Released on GitHub\n\n[ShelfLens engine %s](%s), with the changelog entry as its notes.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
+                  fi
 
     # The storefront is deployed from main by CI, so its release is a page
     # that names the version and says what changed. It is not marked as the
@@ -243,7 +254,7 @@ jobs:
         name: Storefront release on GitHub
         needs: [agree, checks]
         if: needs.agree.outputs.package == 'storefront'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: write
@@ -261,7 +272,15 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  flags="--latest=false"
-                  [ "$PRERELEASE" = "true" ] && flags="$flags --prerelease"
+                  flags=(--latest=false)
+                  [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+                  existed=false
+                  gh release view "$TAG" >/dev/null 2>&1 && existed=true
                   scripts/github-release.sh "$TAG" "$VERSION" apps/storefront/CHANGELOG.md \
-                      "ShelfLens storefront $VERSION" $flags
+                      "ShelfLens storefront $VERSION" "${flags[@]}"
+                  release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+                  if [ "$existed" = "true" ]; then
+                      printf '### On GitHub\n\n[ShelfLens storefront %s](%s) was already released, so it was left as it is.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
+                  else
+                      printf '### Released on GitHub\n\n[ShelfLens storefront %s](%s), with the changelog entry as its notes.\n' "$VERSION" "$release" >> "$GITHUB_STEP_SUMMARY"
+                  fi

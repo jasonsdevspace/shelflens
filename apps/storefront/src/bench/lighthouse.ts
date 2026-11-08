@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 import { launch } from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 
+import { lighthouseSummary, writeSummary } from '../../../../scripts/summary.mjs';
 import { PAGES } from './pages.js';
 import { startPreview } from './preview.js';
 
@@ -107,9 +108,15 @@ const auditAccessibility = async (
         const detail = findings.length > 0 ? `, ${findings.join(', ')}` : '';
         console.log(`${path}: accessibility ${String(score)}${detail}`);
         if (score < 100) failures.push(`${path} (accessibility ${String(score)})`);
+        scores.set(path, score);
     }
     await browser.close();
 };
+
+/** Each page's accessibility score, from the first pass, by its path. */
+const scores = new Map<string, number>();
+/** Each page as the audit judged it, for the run's summary. */
+const judgedPages: Parameters<typeof lighthouseSummary>[0][number][] = [];
 
 /** The second pass: performance, on a first visit to each page. What fails is added to `failures`. */
 const measurePerformance = async (origin: string, run: Run, failures: string[]): Promise<void> => {
@@ -124,6 +131,15 @@ const measurePerformance = async (origin: string, run: Run, failures: string[]):
         console.log(`${path} on a first visit: ${describe(judged)}${traces}`);
         const misses = missed(judged);
         if (misses.length > 0) failures.push(`${path} (${misses.join(', ')})`);
+        const score = scores.get(path) ?? 0;
+        judgedPages.push({
+            path,
+            accessibility: score,
+            performance: judged.performance,
+            paint: judged.paint,
+            shift: judged.shift,
+            missed: [...(score < 100 ? [`accessibility ${String(score)}`] : []), ...misses],
+        });
     }
 };
 
@@ -149,6 +165,15 @@ const main = async () => {
         await auditAccessibility(chrome.port, preview.origin, run, failures);
         await measurePerformance(preview.origin, run, failures);
     } finally {
+        // Written whatever happened, so the pages measured before a failure are still reported.
+        writeSummary(
+            lighthouseSummary(judgedPages, {
+                accessibility: 100,
+                performance: PERFORMANCE,
+                paint: LARGEST_PAINT_MS,
+                shift: LAYOUT_SHIFT,
+            })
+        );
         preview.stop();
         try {
             chrome.kill();

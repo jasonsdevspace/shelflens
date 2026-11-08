@@ -71,6 +71,22 @@ describe('the workflows', () => {
         expect(unnamed).toEqual([]);
     });
 
+    it('run every job on a named image, within a time limit of its own', () => {
+        const unready = files.flatMap((file) =>
+            [...jobsOf(read(file))]
+                // A job that calls another workflow takes the image and the time limits of the
+                // jobs in it.
+                .filter(([, lines]) => !/^ {8}uses:/m.test(lines))
+                .filter(
+                    ([, lines]) =>
+                        !/^ {8}timeout-minutes: \d+[ \t]*(?:#.*)?$/m.test(lines) ||
+                        !/^ {8}runs-on: ubuntu-26\.04[ \t]*(?:#.*)?$/m.test(lines)
+                )
+                .map(([id]) => `${file}: ${id}`)
+        );
+        expect(unready).toEqual([]);
+    });
+
     it('take the screenshots in the image of the Playwright the tests pin', () => {
         const pinned = lookupText(
             readJson(join(ROOT, 'package.json')),

@@ -19,7 +19,14 @@ export default defineConfig({
     // A test that passes only when run again is flaky, and fails the run by name
     // rather than hiding behind the retry.
     failOnFlakyTests: Boolean(process.env['CI']),
-    reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
+    // In CI, a JSON report too, which the run's summary is written from.
+    reporter: process.env['CI']
+        ? [
+              ['list'],
+              ['html', { open: 'never' }],
+              ['json', { outputFile: 'playwright-results.json' }],
+          ]
+        : 'list',
     use: {
         baseURL: 'http://localhost:4173/',
         trace: 'retain-on-failure',

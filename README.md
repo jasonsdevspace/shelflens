@@ -212,6 +212,14 @@ checks that the generated types match the schema and holds the build to its size
 `npm run e2e` and audits it with `npm run lighthouse`, which need Chromium once:
 `npx playwright install chromium`.
 
+In CI the browser tests run on desktop and on a phone in two jobs side by side, and every job runs
+on a named Ubuntu image within a time limit, which a test holds. Each check writes what it found to
+its run's page on GitHub: the browser tests' totals and any test that failed, every page's
+Lighthouse scores against the gates, each part's size against its budget with a chart of how much
+of each budget it uses, the engine package's size file by file, where a failed screenshot
+comparison keeps its diffs, the live link a deploy made, and what a release staged and published.
+`scripts/summary.mjs` writes them, and its tests hold what each says.
+
 To work on the storefront:
 
 ```bash

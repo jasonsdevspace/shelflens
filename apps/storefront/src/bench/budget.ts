@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
+import { budgetSummary, writeSummary } from '../../../../scripts/summary.mjs';
 import {
     BUDGET_BYTES,
     CATALOG_BUDGET_BYTES,
@@ -71,7 +72,10 @@ const SHIPPED: readonly {
 ];
 
 const failures: string[] = [];
+// Each part as it was measured, for the run's summary.
+const parts: Parameters<typeof budgetSummary>[0][number][] = [];
 for (const { what, files, budget, graphql } of SHIPPED) {
+    const before = failures.length;
     if (files.length === 0) failures.push(`${what} loads no script the build wrote`);
     let compressed = 0;
     for (const file of files) {
@@ -87,7 +91,14 @@ for (const { what, files, budget, graphql } of SHIPPED) {
     const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
     console.log(`${what}: ${kb(compressed)} of ${kb(budget)}, in ${files.join(', ')}`);
     if (compressed >= budget) failures.push(`${what} is ${kb(compressed)}, past ${kb(budget)}`);
+    parts.push({
+        what,
+        size: compressed,
+        budget,
+        problems: failures.slice(before).map((failure) => failure.replace(`${what} `, '')),
+    });
 }
+writeSummary(budgetSummary(parts));
 
 if (failures.length > 0) {
     console.error(`Past the budget: ${failures.join('. ')}.`);
