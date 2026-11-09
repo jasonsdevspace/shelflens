@@ -104,6 +104,13 @@ measure, gives a summary its pointer, which the store's own rule no longer repea
 invalid field in forced colors. A callout now takes a page's class, but the store keeps its holder,
 which keeps the room below a callout and holds a live one out of sight until it has words.
 
+**Amended with design kit 0.1.0-next.6.** The page build takes its target from the kit's
+`browserFloor()` rather than writing the floor out by hand, so the target moves when the pin does. A
+test holds what the kit gives to the floor this record states below, so a version of the kit that
+raises its floor fails until this record says so, and a raised floor never arrives in a pull request
+that shows only a version changing. The store keeps the default CSS transformer, which reads the
+build target, so the kit's floor for Lightning CSS is not needed.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
@@ -120,8 +127,8 @@ which keeps the room below a callout and holds a live one out of sight until it 
 - Each workaround lasted until the kit took its gap. Since design kit 0.1.0-next.3 the store keeps
   only the holder that takes a waiting callout out of the flow.
 - The bundle budgets did not move, and every page stayed under its own.
-- The page build targets the kit's browser floor, Chrome and Edge 123, Firefox 120 and Safari 17.5,
-  for its script and its sheets alike. Each `light-dark()` reaches the browser as written and picks
+- The page build takes the kit's browser floor from `browserFloor()`, which is Chrome and Edge 123,
+  Firefox 120 and Safari 17.5, for its script and its sheets alike. Each `light-dark()` reaches the browser as written and picks
   by the scheme of the element that draws it. Vite's default target rewrote each one into switches
   set once on the root, which drew the same page but left any part set to the other scheme in the
   page's colors. A browser under the floor no longer gets the store's script without its colors.

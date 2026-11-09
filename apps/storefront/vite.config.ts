@@ -35,8 +35,9 @@ export default defineConfig({
         // sheets alike, so the minifier leaves each light-dark() as it is, which picks by the
         // scheme of the element that draws it. A wider target rewrites it into switches set on the
         // root, so a part of a page set to the other scheme would keep the page's colors, and a
-        // browser under the floor would run the store without the kit's colors. Taken from the
-        // kit, it moves with the kit when the kit raises its floor.
+        // browser under the floor would run the store without the kit's colors. It holds while
+        // the CSS transformer stays the default, which reads this target, and it moves when the
+        // pin does, which a test holds to record 19.
         target: browserFloor(),
         // Two pages would share the preload polyfill as a chunk of its own, one more
         // request on the store's first visit. Every browser that runs the worker
