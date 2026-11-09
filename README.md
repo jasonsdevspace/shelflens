@@ -195,6 +195,9 @@ is read again against the code before each release, and amended where the code h
 
 ## Dev setup
 
+How to contribute is in [CONTRIBUTING.md](CONTRIBUTING.md), and what the demo holds itself to for
+accessibility, and how to report a barrier, is in [ACCESSIBILITY.md](ACCESSIBILITY.md).
+
 You need [Node.js 24](https://nodejs.org/) and Git. The version is in `.nvmrc`, so `nvm use` picks it.
 
 ```bash
