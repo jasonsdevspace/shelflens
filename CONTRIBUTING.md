@@ -22,10 +22,10 @@ so it runs after one of them or after `npm run storefront`.
 
 A change to the schema or to the storefront's operations also needs `npm run codegen`, with the
 generated types and the persisted operations committed, which CI checks. The screenshot comparison
-runs only in CI, in Playwright's own Linux image. When a change moves a picture on purpose, the run
-fails and keeps what it took, and `npm run screenshots:accept <run id>` brings those pictures into
-the branch to look at and commit. It needs the GitHub command line signed in, and a run of the
-branch's last commit.
+runs only in CI, in Playwright's own Linux image. When a change alters a screenshot on purpose, the
+run fails and keeps the screenshots it took. `npm run screenshots:accept <run id>` brings them into
+the branch to look at and commit. It needs the GitHub CLI signed in, and a run of the branch's last
+commit.
 
 ## Writing
 
@@ -48,8 +48,9 @@ test or a look can check. A bug says what happens, what should happen, how to se
 A pull request follows the template. Pull requests are squashed, so the title becomes the commit on
 main, and the title and the body both pass the commit message check. The body says what changed and
 why, with no counts, no checklist and no notes to the reviewer, and ends with "Closes #N", or "Part
-of #N" when the issue has more to do. Every check in CI passes before a pull request is merged, the
-browser tests, the screenshot comparison and the Lighthouse audit among them.
+of #N" when the issue has more to do. "Closes" is repeated before each issue a pull request
+finishes, since GitHub reads only the first otherwise. Every check in CI passes before a pull
+request is merged, the browser tests, the screenshot comparison and the Lighthouse audit among them.
 
 ## Releasing
 
