@@ -111,6 +111,9 @@ raises its floor fails until this record says so, and a raised floor never arriv
 that shows only a version changing. The store keeps the default CSS transformer, which reads the
 build target, so the kit's floor for Lightning CSS is not needed.
 
+**Amended with design kit 0.1.0.** The store pins the kit's first stable version, which has the code
+of 0.1.0-next.6, so nothing the store draws changes with it.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
