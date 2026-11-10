@@ -29,6 +29,6 @@ export const Strip = ({
 
 export const Footer = () => (
     <DemoFooter name="ShelfLens" about={ABOUT_URL} source={REPO_URL}>
-        You can also <a href={TRY_URL}>search your own products</a> with it.
+        You can also <a href={TRY_URL}>search your own products</a> with ShelfLens.
     </DemoFooter>
 );

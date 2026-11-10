@@ -291,6 +291,19 @@ const PIXEL_ALLOWED = [
 /** The breakpoints the tokens name, as a media query writes them. */
 const BREAKPOINTS = ['(max-width: 48rem)', '(max-width: 48rem) and (min-height: 34rem)'];
 
+describe('the focus ring', () => {
+    it("reads the kit's focus role, falling back to the accent as the kit's own rings do", () => {
+        const rings = everyDeclaration().filter(({ property }) => property === 'outline');
+        expect(rings.length).toBeGreaterThan(0);
+        expect(
+            rings
+                .filter(({ value }) => value.includes('--dk-accent'))
+                .filter(({ value }) => !value.includes('var(--dk-focus, var(--dk-accent))'))
+                .map(({ at, value }) => `${at}: outline: ${value}`)
+        ).toEqual([]);
+    });
+});
+
 describe('the units', () => {
     it('keep pixels to what must not scale', () => {
         const stray = everyDeclaration()

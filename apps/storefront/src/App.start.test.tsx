@@ -347,6 +347,13 @@ describe('whose work this is', () => {
         }
 
         const footer = screen.getByRole('contentinfo');
+        // The kit's whole sentences and nothing else, with the store's own after them naming
+        // ShelfLens, since "it" would follow the source.
+        expect(footer.textContent.replace(/\s+/g, ' ').trim()).toBe(
+            'ShelfLens is a portfolio project by Jason Poteet, who has more work on GitHub. How it ' +
+                'works is explained in plain words. The source is on GitHub under the MIT license. ' +
+                'You can also search your own products with ShelfLens.'
+        );
         expect(within(footer).getByRole('link', { name: 'Jason Poteet' })).toHaveAttribute(
             'href',
             'https://jasonsdevspace.com/'

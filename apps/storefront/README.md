@@ -71,7 +71,8 @@ the page.
   the page sets apart, such as who is shopping, whose products these are, that edited rules are in
   effect or which rules a sort set aside, is the kit's `Callout`, and so is what failed to load, in
   its tone for something that went wrong. Each component otherwise wears classes of its own. The
-  page picks each color by the saved theme and the widget by its host's color scheme. A test holds
+  page picks each color by the saved theme, and prints in the light one, and the widget by its
+  host's color scheme. A test holds
   every sheet to the tokens, the store's palette to every pairing the kit measures, and the widget's
   frame to every name it reads, and a browser test holds every control on every page that is not off
   to an edge of 3 to 1, the one focus ring and, for a select, its caret, in both themes and on a

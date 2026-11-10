@@ -67,7 +67,7 @@
 }
 
 .try-pick:focus-within {
-    outline: var(--dk-ring-width) solid var(--dk-accent);
+    outline: var(--dk-ring-width) solid var(--dk-focus, var(--dk-accent));
     outline-offset: var(--dk-ring-offset);
 }
 
