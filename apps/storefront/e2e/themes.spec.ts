@@ -25,3 +25,19 @@ for (const colorScheme of ['light', 'dark'] as const) {
         expect(violations, `axe in the ${colorScheme} theme`).toEqual([]);
     });
 }
+
+/*
+ * Paper is light and the browser drops backgrounds, so the kit prints the light theme whatever the
+ * visitor chose. The host page's own rust, set by scheme rather than by theme, prints dark too.
+ */
+test('a host page prints its own colors in the light theme, from the dark theme', async ({
+    page,
+}) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/widget/');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const item = page.locator('.host ul li').first();
+    await expect(item).toHaveCSS('color', 'rgb(224, 128, 95)');
+    await page.emulateMedia({ media: 'print' });
+    await expect(item).toHaveCSS('color', 'rgb(183, 71, 42)');
+});

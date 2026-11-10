@@ -5,15 +5,15 @@
  * clips what it holds and hands everything in it a cursor of its own. The
  * widget sits inside all of it and keeps its own look and place.
  */
+/*
+ * Hostile, not unreadable: the same rust, lighter on the dark theme's page. It is picked by the
+ * page's scheme rather than by its theme, so print, which the kit draws light, gets the darker one.
+ */
 .host ul li {
-    color: #b7472a;
+    color: light-dark(#b7472a, #e0805f);
     list-style: disc;
     font-family: Georgia, serif;
     font-style: italic;
-}
-/* Hostile, not unreadable: the same rust, lighter on the dark theme's page. */
-:root[data-theme='dark'] .host ul li {
-    color: #e0805f;
 }
 .host button {
     background: #ffd166;

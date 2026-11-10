@@ -114,12 +114,7 @@ build target, so the kit's floor for Lightning CSS is not needed.
 **Amended with design kit 0.1.0.** The store pins the kit's first stable version, which has the code
 of 0.1.0-next.6, so nothing the store draws changes with it.
 
-**Amended with design kit 0.3.0.** The footer reads as whole sentences and names the license for
-the store's source alone, as the kit's has since 0.2.1, on the store and, written by hand, on the
-explainer. The store's own sentence after it names ShelfLens, since the kit's now end on the
-source. The theme script's hash changed with 0.3.0, and the page's policy reads it from the
-package, so nothing here copies it. The store draws none of the kit's new theme switch, copy button
-or pill.
+**Amended with design kit 0.3.0.** Since 0.2.1 the kit's footer reads as whole sentences and names the license for the store's source alone, where it read "How it works, in plain words." and put the author's other work under the store's license too. The explainer writes the same sentences by hand. The store's own sentence after them names ShelfLens rather than saying "it", which would now follow the source. The kit prints in the light theme, so the widget's host pages set their list's rust in `light-dark()` rather than by the dark theme, and it prints in its light value. The theme script sets the saved theme again on a page restored by Back, and its hash changed with it. The page's policy reads the hash from the package, so nothing in the store copies it. The kit's focus ring now reads `--dk-focus` and falls back to the accent, and the store's own rings read it the same way, so every ring stays in the accent while the store leaves `--dk-focus` unset. The store draws none of the kit's new theme switch, copy button or pill.
 
 ## Consequences
 
