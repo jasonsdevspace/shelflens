@@ -114,6 +114,13 @@ build target, so the kit's floor for Lightning CSS is not needed.
 **Amended with design kit 0.1.0.** The store pins the kit's first stable version, which has the code
 of 0.1.0-next.6, so nothing the store draws changes with it.
 
+**Amended with design kit 0.3.0.** The footer reads as whole sentences and names the license for
+the store's source alone, as the kit's has since 0.2.1, on the store and, written by hand, on the
+explainer. The store's own sentence after it names ShelfLens, since the kit's now end on the
+source. The theme script's hash changed with 0.3.0, and the page's policy reads it from the
+package, so nothing here copies it. The store draws none of the kit's new theme switch, copy button
+or pill.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
