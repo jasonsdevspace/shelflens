@@ -377,6 +377,7 @@ select:not(:disabled),
     gap: var(--dk-space-2);
     min-height: 2rem;
     padding-inline: var(--dk-space-2);
+    font-size: var(--dk-text-small);
     border-radius: var(--dk-radius-small);
 }
 
