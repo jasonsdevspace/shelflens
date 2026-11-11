@@ -242,6 +242,11 @@ select:not(:disabled),
         flex-basis: 100%;
         margin-left: 0;
     }
+
+    /* On its own row the tabs start at the column's edge, so the chosen one's line does too. */
+    .category-list {
+        margin-inline: 0;
+    }
 }
 
 /* A store that did not start says so as the page's heading, in the text's own color. */
