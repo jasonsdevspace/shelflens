@@ -24,7 +24,7 @@ export const CategoryNav = ({
                     return (
                         <li key={root.id}>
                             <StateLink
-                                className="category-link dk-tab"
+                                className="dk-tab"
                                 to={target}
                                 navigate={navigate}
                                 current={current === root.id}

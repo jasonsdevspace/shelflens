@@ -2,7 +2,7 @@ import { Button } from '@jasonsdevspace/design-kit/react';
 import { useId, useLayoutEffect, useRef } from 'react';
 
 /**
- * A question with its two answers, the question as a line and the answers in a row under it, as
+ * A question with its two answers, the question as a line and the answers in a row under it, since
  * the kit's text buttons sit beside a block rather than in running text. The answer that keeps
  * things as they are takes focus, so a repeated key press never confirms a discard unread.
  */

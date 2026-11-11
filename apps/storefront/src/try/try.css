@@ -145,10 +145,8 @@
     margin-block: var(--dk-space-4);
 }
 
-.try-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dk-space-3);
+/* A row of actions on the stage keeps the stage's rhythm. */
+.try-stage > .actions {
     margin-block: var(--dk-space-5);
 }
 

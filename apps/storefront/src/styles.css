@@ -84,27 +84,23 @@ select:not(:disabled),
  * beside it, a pressed or open one says so in the accent, a
  * .dk-button-accent is the one action a view asks for, a .dk-button-large
  * ends a step, such as showing what a drawer has filtered, and a
- * .dk-button-text reads as a link beside a block or under a list. The one
- * kind of the store's own follows.
+ * .dk-button-text reads as a link beside a block or under a list.
  *
- * An .option-button is a choice in a list, a full row in the accent,
- * underlined when it is pointed at or focused.
+ * Under a list of choices, in the filters or the rules, a text button is the
+ * list's size rather than the body's the kit's inherits, and starts at the
+ * column's edge, where the grid would stretch it across the column.
  */
-/*
- * Under a list of choices, in the filters or the rules, a text button is
- * the kit's height and starts at the column's edge, where the grid would
- * stretch it. The column sets the small size the kit's text button inherits.
- */
-.facets,
-.rules {
-    font-size: var(--dk-text-small);
-}
-
 .facets .dk-button-text,
 .rules .dk-button-text {
     justify-self: start;
+    font-size: var(--dk-text-small);
 }
 
+/*
+ * An .option-button is the one kind of button of the store's own: a choice
+ * in a list, a full row in the accent, underlined when it is pointed at or
+ * focused.
+ */
 .option-button {
     display: flex;
     align-items: center;
@@ -112,6 +108,7 @@ select:not(:disabled),
     width: 100%;
     min-height: 2rem;
     font: inherit;
+    font-size: var(--dk-text-small);
     text-align: left;
     color: var(--dk-accent);
     background: none;
@@ -147,8 +144,9 @@ select:not(:disabled),
  * does not move when they arrive. One row on a wide screen, and two on a
  * phone, the brand and the search box, then the categories. The kit's
  * strip keeps the room of the demo's switches the same way. On a wide
- * screen the row is as tall as the kit's tab, 2.5rem, between the
- * masthead's padding, and on a phone the tab is a thumb's target.
+ * screen the search box sets the row's height, a little over the kit's
+ * tab beside it, between the masthead's padding and over its rule, and on
+ * a phone the tabs take a row of their own at a thumb's target.
  */
 .masthead.is-waiting {
     min-height: 4.1rem;
@@ -211,11 +209,11 @@ select:not(:disabled),
     color: var(--dk-muted);
 }
 
-/* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
 /*
  * The kit's tabs, a row of links among pages with the chosen one over the
  * accent line, drawn over the masthead's own rule rather than one of their
- * own, with their first and last words at the column's edges.
+ * own. The row is pulled out by a tab's padding, so the words rather than
+ * the padding meet the row's edges and the last one ends at the column's.
  */
 .category-list {
     margin-inline: calc(-1 * var(--dk-space-3));
@@ -351,6 +349,7 @@ select:not(:disabled),
 .facet-title {
     float: left;
     width: 100%;
+    font-size: var(--dk-text-small);
     font-weight: var(--dk-weight-strong);
     padding: 0;
     margin-bottom: var(--dk-space-1);
@@ -396,6 +395,7 @@ select:not(:disabled),
     display: flex;
     align-items: center;
     min-height: 2rem;
+    font-size: var(--dk-text-small);
     font-weight: var(--dk-weight-strong);
 }
 
@@ -795,7 +795,12 @@ select:not(:disabled),
     font-size: var(--dk-text-lead);
 }
 
-/* The first stop in the drawer, as big as a thumb, as its rows are. */
+/* The first stop in the drawer, as big as a thumb, as its rows are, where the kit's text button is only as wide as its word. */
+.drawer-close {
+    min-height: var(--dk-target);
+    padding-inline: var(--dk-space-2);
+}
+
 .drawer-body {
     flex: 1;
     overflow-y: auto;

@@ -106,7 +106,12 @@ export const Drawer = ({ opener, title, done, keep = false, children }: DrawerPr
                                 <h2 id={`${id}-title`} className="drawer-title" tabIndex={-1}>
                                     {title}
                                 </h2>
-                                <Button ref={closer} text onClick={() => setOpen(false)}>
+                                <Button
+                                    ref={closer}
+                                    text
+                                    className="drawer-close"
+                                    onClick={() => setOpen(false)}
+                                >
                                     Close
                                 </Button>
                             </div>

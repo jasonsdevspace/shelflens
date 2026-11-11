@@ -288,7 +288,7 @@ const Review = ({
                             onNo={onKeepProducts}
                         />
                     ) : (
-                        <div className="try-actions">
+                        <div className="actions">
                             <Button accent large onClick={onSearch}>
                                 {partial
                                     ? 'Search these products'
@@ -299,7 +299,7 @@ const Review = ({
                     )}
                 </>
             ) : (
-                <div className="try-actions">
+                <div className="actions">
                     <OtherWays back={back} onAnother={onAnother} onBack={onKeepProducts} />
                 </div>
             )}
