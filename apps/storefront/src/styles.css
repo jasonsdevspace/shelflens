@@ -27,7 +27,6 @@
 button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
 .facet-option,
-.rules-choice,
 .try-search-only label {
     cursor: pointer;
 }
@@ -52,6 +51,25 @@ select:not(:disabled),
     font-size: var(--dk-text-caption);
 }
 
+/* A row of actions after a block, text buttons for the most part, wrapping as the column allows. */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dk-space-2) var(--dk-space-4);
+    align-items: center;
+}
+
+/* A question that asks for an answer, in the text's own color rather than muted, with its answers in a row under it. */
+.ask {
+    display: grid;
+    gap: var(--dk-space-1);
+    color: var(--dk-fg);
+}
+
+.ask > p {
+    margin: 0;
+}
+
 /*
  * The fields are the kit's: a .dk-input and a .dk-select share one height,
  * one inset for their text, one edge and one set of corners, so fields
@@ -63,44 +81,26 @@ select:not(:disabled),
 /*
  * The page's buttons are the kit's: a .dk-button has an edge in the
  * control color and the field's height, so it sits level with a select
- * beside it, a pressed or open one says so in the accent, and a
- * .dk-button-accent is the one action a view asks for. What follows are
- * the store's own kinds.
+ * beside it, a pressed or open one says so in the accent, a
+ * .dk-button-accent is the one action a view asks for, a .dk-button-large
+ * ends a step, such as showing what a drawer has filtered, and a
+ * .dk-button-text reads as a link beside a block or under a list.
  *
- * A .button-large is a kit button for the action that ends a step, such as
- * showing what a drawer has filtered.
- *
- * A .text-button is an action that reads as text, in a sentence or under
- * a list, in the accent and always underlined, since the accent alone is
- * too close to the text to mark it.
- *
- * An .option-button is a choice in a list, a full row in the accent,
- * underlined when it is pointed at or focused.
+ * Under a list of choices, in the filters or the rules, a text button is the
+ * list's size rather than the body's the kit's inherits, and starts at the
+ * column's edge, where the grid would stretch it across the column.
  */
-.button-large {
-    min-height: var(--dk-target);
-    padding-inline: var(--dk-space-4);
-    font-size: var(--dk-text-body);
-    border-radius: var(--dk-radius-large);
-}
-
-.text-button {
+.facets .dk-button-text,
+.rules .dk-button-text {
     justify-self: start;
-    padding: 0;
-    font: inherit;
-    color: var(--dk-accent);
-    background: none;
-    border: none;
-    text-decoration: underline;
-}
-
-/* Under a list of choices, in the filters or the rules, a text button is the list's size, with a target a finger can find. */
-.facets .text-button,
-.rules .text-button {
-    min-height: 1.5rem;
     font-size: var(--dk-text-small);
 }
 
+/*
+ * An .option-button is the one kind of button of the store's own: a choice
+ * in a list, a full row in the accent, underlined when it is pointed at or
+ * focused.
+ */
 .option-button {
     display: flex;
     align-items: center;
@@ -143,10 +143,13 @@ select:not(:disabled),
  * ready, kept while the masthead holds the brand alone, so the page below
  * does not move when they arrive. One row on a wide screen, and two on a
  * phone, the brand and the search box, then the categories. The kit's
- * strip keeps the room of the demo's switches the same way.
+ * strip keeps the room of the demo's switches the same way. On a wide
+ * screen the search box sets the row's height, a little over the kit's
+ * tab beside it, between the masthead's padding and over its rule, and on
+ * a phone the tabs take a row of their own at a thumb's target.
  */
 .masthead.is-waiting {
-    min-height: 4.35rem;
+    min-height: 4.1rem;
 }
 
 .brand {
@@ -206,36 +209,15 @@ select:not(:disabled),
     color: var(--dk-muted);
 }
 
-/* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
+/*
+ * The kit's tabs, a row of links among pages with the chosen one over the
+ * accent line, drawn over the masthead's own rule rather than one of their
+ * own. The row is pulled out by a tab's padding, so the words rather than
+ * the padding meet the row's edges and the last one ends at the column's.
+ */
 .category-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--dk-space-5);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.category-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--dk-target);
-    color: var(--dk-muted);
-    font-weight: var(--dk-weight-medium);
-    text-decoration: none;
-    border-bottom: 2px solid transparent;
-}
-
-.category-link:hover,
-.category-link:focus-visible {
-    color: var(--dk-fg);
-    border-bottom-color: var(--dk-control);
-}
-
-.category-link[aria-current='page'] {
-    color: var(--dk-fg);
-    font-weight: var(--dk-weight-strong);
-    border-bottom-color: var(--dk-accent);
+    margin-inline: calc(-1 * var(--dk-space-3));
+    border-bottom: 0;
 }
 
 @media (max-width: 48rem) {
@@ -257,6 +239,19 @@ select:not(:disabled),
     .category-nav {
         flex-basis: 100%;
         margin-left: 0;
+    }
+
+    /*
+     * On its own row the tabs start at the column's edge, so the chosen one's line does too, and
+     * each is padded by a smaller step, so the three root categories keep to one row on the
+     * narrowest screen in a wider font, which the waiting masthead's room counts on.
+     */
+    .category-list {
+        margin-inline: 0;
+    }
+
+    .category-list .dk-tab {
+        padding-inline: var(--dk-space-2);
     }
 }
 
@@ -330,7 +325,7 @@ select:not(:disabled),
     gap: 0;
 }
 
-.facets > .text-button {
+.facets > .dk-button-text {
     margin-bottom: var(--dk-space-3);
 }
 
@@ -371,7 +366,7 @@ select:not(:disabled),
  */
 .facet-title,
 .facet-current,
-.facet .text-button,
+.facet .dk-button-text,
 .facet .option-button {
     padding-inline: var(--dk-space-2);
 }
@@ -801,7 +796,7 @@ select:not(:disabled),
     font-size: var(--dk-text-lead);
 }
 
-/* The first stop in the drawer, as big as a thumb, as its rows are. */
+/* The first stop in the drawer, as big as a thumb, as its rows are, where the kit's text button is only as wide as its word. */
 .drawer-close {
     min-height: var(--dk-target);
     padding-inline: var(--dk-space-2);
@@ -863,39 +858,10 @@ select:not(:disabled),
     gap: var(--dk-space-3);
 }
 
-.rules-field {
-    display: grid;
-    gap: var(--dk-space-1);
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-size: var(--dk-text-small);
-}
-
-/* The legend is labeled as the kit labels a field, so the form's labels read alike. */
-.rules-field > legend {
-    font-weight: var(--dk-weight-medium);
-    padding: 0;
-}
-
 /* A product field, with the name of the product it holds below it. */
 .rules-product {
     display: grid;
     gap: var(--dk-space-1);
-}
-
-.rules-choice {
-    display: flex;
-    gap: var(--dk-space-2);
-    align-items: baseline;
-    font-size: var(--dk-text-small);
-}
-
-.rules-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dk-space-2) var(--dk-space-4);
-    align-items: center;
 }
 
 /* One product. */

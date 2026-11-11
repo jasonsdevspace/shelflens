@@ -145,28 +145,16 @@
     margin-block: var(--dk-space-4);
 }
 
-.try-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dk-space-3);
+/* A row of actions on the stage keeps the stage's rhythm. */
+.try-stage > .actions {
     margin-block: var(--dk-space-5);
 }
 
-/* A thumb's height when the bar stacks on a phone, the link as well as the buttons. */
-@media (max-width: 48rem) {
-    .try-bar .text-button {
-        display: inline-flex;
-        align-items: center;
-        min-height: var(--dk-target);
-    }
-}
-
-/* A question that asks for an answer is in the text's own color, never muted. */
-.try-ask {
-    color: var(--dk-fg);
+/* A question on the stage keeps the stage's rhythm, and one in the bar sits in the bar's row. */
+.try-stage .ask {
     margin-block: var(--dk-space-5);
 }
 
-.try-bar .try-ask {
+.try-bar .ask {
     margin: 0;
 }

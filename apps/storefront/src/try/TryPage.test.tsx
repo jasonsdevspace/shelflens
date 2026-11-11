@@ -700,7 +700,7 @@ describe('the page for a visitor’s own catalog', () => {
         expect(screen.getByText('Choose a file').closest('label')).toHaveClass(
             'dk-button',
             'dk-button-accent',
-            'button-large'
+            'dk-button-large'
         );
         await userEvent.click(
             screen.getByRole('button', { name: 'Try it with a sample of 200 products' })
@@ -708,7 +708,7 @@ describe('the page for a visitor’s own catalog', () => {
         expect(await screen.findByRole('button', { name: 'Search 200 products' })).toHaveClass(
             'dk-button',
             'dk-button-accent',
-            'button-large'
+            'dk-button-large'
         );
     });
 

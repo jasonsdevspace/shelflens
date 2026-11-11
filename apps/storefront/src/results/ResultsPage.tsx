@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type ReactNode, useId, useRef, useState } from 'react';
 
 import { ancestry, type CategoryTree } from '../app/categories.js';
@@ -293,9 +294,8 @@ const SetAside = ({
         live="status"
         actions={
             said !== undefined && (
-                <button
-                    type="button"
-                    className="text-button"
+                <Button
+                    text
                     onClick={() => {
                         onSortByRelevance();
                         (
@@ -305,7 +305,7 @@ const SetAside = ({
                     }}
                 >
                     Sort by relevance
-                </button>
+                </Button>
             )
         }
     >

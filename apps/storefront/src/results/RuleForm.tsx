@@ -1,4 +1,4 @@
-import { Button, InputField, SelectField } from '@jasonsdevspace/design-kit/react';
+import { Button, ChoiceField, InputField, SelectField } from '@jasonsdevspace/design-kit/react';
 import { type FormEvent, type RefObject, useId } from 'react';
 
 import {
@@ -101,13 +101,9 @@ const ProductFields = ({
             ))}
         </datalist>
         {(form.action === 'pin' || form.action === 'hide') && (
-            <button
-                type="button"
-                className="text-button"
-                onClick={() => onChange({ ...form, skus: [...form.skus, ''] })}
-            >
+            <Button text onClick={() => onChange({ ...form, skus: [...form.skus, ''] })}>
                 Add another product
-            </button>
+            </Button>
         )}
     </>
 );
@@ -188,22 +184,18 @@ export const RuleForm = (props: RuleFormProps) => {
                 onChange={(event) => onChange({ ...form, words: event.target.value })}
             />
             {keptLine(form.kept) !== undefined && <p className="notice">{keptLine(form.kept)}</p>}
-            <fieldset className="rules-field">
-                <legend>What the rule does</legend>
-                {ACTIONS.map((action) => (
-                    <label key={action.value} className="rules-choice">
-                        <input
-                            type="radio"
-                            name={`${id}-action`}
-                            checked={form.action === action.value}
-                            onChange={() => onChange({ ...form, action: action.value, step: 1 })}
-                        />
-                        <span>
-                            {action.label} <span className="hint">{action.gloss}</span>
-                        </span>
-                    </label>
-                ))}
-            </fieldset>
+            <ChoiceField
+                id={`${id}-action`}
+                label="What the rule does"
+                name={`${id}-action`}
+                choices={ACTIONS.map((action) => ({
+                    value: action.value,
+                    label: action.label,
+                    hint: action.gloss,
+                    checked: form.action === action.value,
+                    onChange: () => onChange({ ...form, action: action.value, step: 1 }),
+                }))}
+            />
             {adjusts && (
                 <SelectField
                     id={`${id}-target`}
@@ -228,15 +220,15 @@ export const RuleForm = (props: RuleFormProps) => {
                 <BrandField id={id} {...props} problems={said} />
             )}
             <WeightField id={id} form={form} onChange={onChange} />
-            <div className="rules-actions">
+            <div className="actions">
                 <Button type="submit" accent>
                     Save rule
                 </Button>
                 <Button onClick={onCancel}>Cancel</Button>
                 {existing && (
-                    <button type="button" className="text-button" onClick={onRemove}>
+                    <Button text onClick={onRemove}>
                         Remove rule
-                    </button>
+                    </Button>
                 )}
             </div>
         </form>

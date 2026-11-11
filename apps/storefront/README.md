@@ -61,13 +61,7 @@ the page.
   box, the focus ring, a heading's weight and line, and the cut to motion. The strip and the footer
   are the kit's, and so is the skip link on the pages written by hand. The store's pages draw the
   strip, with the demo's switches in it, and the footer from the kit's React components. The pages
-  written by hand write the same markup, which a test holds to what the components draw. Every
-  bordered button is the kit's, its `Button`, or its `.dk-button` on a link or a label. The one
-  action a view asks for is its accent, and a step that goes nowhere is off rather than disabled,
-  so a keyboard keeps its place on it. An action that reads as text is the
-  store's own `.text-button`, always underlined. Every select is the kit's `.dk-select`, and the
-  rule form draws its fields from the kit's `InputField` and `SelectField`, each problem said above
-  its field and after any hint it has, which stays. The search box keeps a look of its own. A line
+  written by hand write the same markup, which a test holds to what the components draw. Every button is the kit's, its `Button`, or its `.dk-button` on a link or a label. The one action a view asks for is its accent, the one that ends a step is its large button, and a step that goes nowhere is off rather than disabled, so a keyboard keeps its place on it. An action that reads as text is the kit's text button, which keeps a button's height, so it sits beside a block or in a row of actions rather than in a sentence. The category navigation is the kit's tabs over the masthead's own rule. Every select is the kit's `.dk-select`, and the rule form draws its fields from the kit's `InputField`, `SelectField` and `ChoiceField`, each problem said above its field and after any hint it has, which stays. The search box keeps a look of its own. A line
   the page sets apart, such as who is shopping, whose products these are, that edited rules are in
   effect or which rules a sort set aside, is the kit's `Callout`, and so is what failed to load, in
   its tone for something that went wrong. Each component otherwise wears classes of its own. The

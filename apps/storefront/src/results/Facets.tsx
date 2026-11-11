@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { type ReactNode, useId, useState } from 'react';
 
 import { type Category, type CategoryTree, childrenOf } from '../app/categories.js';
@@ -201,17 +202,11 @@ const ListFacet = ({
                 </label>
             ))}
             {listed.length > SHOWN && (
-                <button
-                    type="button"
-                    className="text-button"
-                    aria-expanded={all}
-                    aria-controls={id}
-                    onClick={fold}
-                >
+                <Button text aria-expanded={all} aria-controls={id} onClick={fold}>
                     {all
                         ? `Show fewer ${title.toLowerCase()}s`
                         : `Show all ${listed.length} ${title.toLowerCase()}s`}
-                </button>
+                </Button>
             )}
         </Group>
     );
@@ -343,13 +338,9 @@ export const Facets = (props: FacetsProps) => {
             onSubmit={(event) => event.preventDefault()}
         >
             {offersClear && hasFilters(state) && (
-                <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => onChange(withoutFilters(state))}
-                >
+                <Button text onClick={() => onChange(withoutFilters(state))}>
                     Clear all filters
-                </button>
+                </Button>
             )}
             {category && <CategoryFacet {...props} facet={category} />}
             {LISTS.map((name) => {

@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { useEffect, useRef } from 'react';
 
 import { type StoreInfo, useStoreInfo } from '../app/StoreContext.jsx';
@@ -106,9 +107,8 @@ export const FilterChips = ({
                 </li>
             ))}
             <li>
-                <button
-                    type="button"
-                    className="text-button"
+                <Button
+                    text
                     onClick={() => {
                         const cleared = withoutFilters(state);
                         removed.current = { index: 0, to: serializeSearchState(cleared) };
@@ -116,7 +116,7 @@ export const FilterChips = ({
                     }}
                 >
                     Clear all
-                </button>
+                </Button>
             </li>
         </ul>
     );

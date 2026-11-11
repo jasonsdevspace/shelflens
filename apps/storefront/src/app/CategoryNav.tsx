@@ -18,13 +18,13 @@ export const CategoryNav = ({
     const current = state.product ? undefined : categories.get(state.category ?? '')?.path[0];
     return (
         <nav className="category-nav" aria-label="Categories">
-            <ul className="category-list">
+            <ul className="category-list dk-tabs">
                 {roots.map((root) => {
                     const target: SearchState = { ...EMPTY_STATE, category: root.id };
                     return (
                         <li key={root.id}>
                             <StateLink
-                                className="category-link"
+                                className="dk-tab"
                                 to={target}
                                 navigate={navigate}
                                 current={current === root.id}

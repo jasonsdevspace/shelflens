@@ -1,12 +1,13 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { useLayoutEffect, useRef } from 'react';
 
+import { Ask } from '../app/Ask.jsx';
 import { LiveStatus } from '../app/LiveStatus.jsx';
 import { ProblemAlert } from '../app/ProblemAlert.jsx';
 import { SetApart } from '../app/SetApart.jsx';
 import type { Loaded } from '../client/catalog.js';
 import { count } from '../format/count.js';
 import { DEFAULT_LOCALE } from '../format/locale.js';
-import { Ask } from './notices.jsx';
 
 /** Above the store, saying whose catalog it is, with the ways to change or remove it. */
 export const CatalogBar = ({
@@ -61,18 +62,13 @@ export const CatalogBar = ({
                         />
                     ) : (
                         <>
-                            <button type="button" className="text-button" onClick={onAnother}>
+                            <Button text onClick={onAnother}>
                                 Choose another file
-                            </button>
-                            <button
-                                ref={remove}
-                                type="button"
-                                className="text-button"
-                                onClick={onRemove}
-                            >
+                            </Button>
+                            <Button ref={remove} text onClick={onRemove}>
                                 Remove your products
-                            </button>
-                            <a className="text-button" href={widgetUrl}>
+                            </Button>
+                            <a className="dk-button dk-button-text" href={widgetUrl}>
                                 See your products on a store&rsquo;s page
                             </a>
                         </>
