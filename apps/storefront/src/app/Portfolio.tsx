@@ -24,9 +24,10 @@ export const Strip = ({
     /** Whether the demo's switches are on their way, so the strip keeps their room. */
     readonly toolsWaiting?: boolean;
 }) => (
-    // The switches sit in a section named for the demo, so a screen reader finds them. The store's
-    // page already tells a visitor without script that it needs JavaScript, so the strip draws no
-    // line of its own in the room it keeps for them.
+    // The switches' landmark is named Demo, the name the kit gave it before it asked each page for
+    // one, so a screen reader finds them where it did. The store's page already tells a visitor
+    // without script that it needs JavaScript, so the strip draws no line of its own in the room it
+    // keeps for them.
     <PortfolioStrip
         about={ABOUT_URL}
         source={REPO_URL}
