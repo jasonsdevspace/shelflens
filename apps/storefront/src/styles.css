@@ -146,10 +146,12 @@ select:not(:disabled),
  * ready, kept while the masthead holds the brand alone, so the page below
  * does not move when they arrive. One row on a wide screen, and two on a
  * phone, the brand and the search box, then the categories. The kit's
- * strip keeps the room of the demo's switches the same way.
+ * strip keeps the room of the demo's switches the same way. On a wide
+ * screen the row is as tall as the kit's tab, 2.5rem, between the
+ * masthead's padding, and on a phone the tab is a thumb's target.
  */
 .masthead.is-waiting {
-    min-height: 4.35rem;
+    min-height: 4.1rem;
 }
 
 .brand {
