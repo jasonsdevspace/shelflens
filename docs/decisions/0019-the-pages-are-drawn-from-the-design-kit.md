@@ -116,6 +116,8 @@ of 0.1.0-next.6, so nothing the store draws changes with it.
 
 **Amended with design kit 0.3.0.** Since 0.2.1 the kit's footer reads as whole sentences and names the license for the store's source alone, where it read "How it works, in plain words." and put the author's other work under the store's license too. The explainer writes the same sentences by hand. The store's own sentence after them names ShelfLens rather than saying "it", which would now follow the source. The kit prints in the light theme, so the widget's host pages set their list's rust in `light-dark()` rather than by the dark theme, and it prints in its light value. The theme script sets the saved theme again on a page restored by Back, and its hash changed with it. The page's policy reads the hash from the package, so nothing in the store copies it. The kit's focus ring now reads `--dk-focus` and falls back to the accent, and the store's own rings read it the same way, so every ring stays in the accent while the store leaves `--dk-focus` unset. The store draws none of the kit's new theme switch, copy button or pill.
 
+**Amended with design kit 0.4.0.** The kit's theme script points the browser's bar at the ground of the theme the page draws, where the page names a theme color for each scheme before it, so every page names the kit's two grounds and the bar follows the saved choice rather than the system's scheme alone. The kit takes a live callout with no words and no actions out of the flow itself, so the holder the store kept around a waiting alert is gone, and the room the store keeps below a callout sits on the callout. The strip asks for the name of the section its switches sit in, which the store writes as "Demo", the name the kit gave it before, and the strip would draw a line of its own for a visitor without script in the room it keeps, which the store turns off, since its page already says the store needs JavaScript. The raised shadow is deeper on a dark page, in one `light-dark()`, so the widget's frame carries the pair by scheme with the light value as its fallback. A field's inline padding grew by a quarter of a rem, so the sort select is wider and the toolbar's buttons sit nearer the heading, and the toolbar's screenshots were taken again for that. The kit now keeps a page's delays for a visitor who asks for less motion and cuts only the motion, so the host page's waiting line, delayed in its sheet, waits its moment for that visitor as it does for everyone, and the wait before the results dim no longer has to live in the script, where it stays since the script is where the dimming is decided. The theme script's hash changed again, and the policy reads it from the package. The store draws none of the kit's new tabs, choice field, textarea field, large and text buttons, eyebrow or warning tone, and keeps its own kinds of button and choice until a change of its own takes them, one piece at a time.
+
 ## Consequences
 
 - A fix to a button, a field or a callout is made once, in the kit, and reaches the store with the
@@ -124,13 +126,15 @@ of 0.1.0-next.6, so nothing the store draws changes with it.
   it was, and every screenshot was taken again for that.
 - The kit's field text is never under 16px, so the store's selects take that size on a wide screen
   too.
-- The kit cuts every delay in a stylesheet for a visitor who asks for less motion, so the wait
-  before the results dim is kept in the script, and the host page's waiting line shows at once for
-  that visitor.
+- The wait before the results dim lives in the script, where the dimming is decided, and the host
+  page's waiting line waits its moment in its sheet. Until design kit 0.4.0 the kit cut every delay
+  for a visitor who asks for less motion, so that line showed at once for them, and the dimming's
+  wait could not have been a delay in a sheet. Since 0.4.0 the kit keeps a delay and cuts only the
+  motion, so the line waits its moment for every visitor.
 - A new version of the kit is a pull request of its own, held to the same checks, so a change in
   the kit never reaches the store unseen.
-- Each workaround lasted until the kit took its gap. Since design kit 0.1.0-next.3 the store keeps
-  only the holder that takes a waiting callout out of the flow.
+- Each workaround lasted until the kit took its gap. The last, the holder that took a waiting
+  callout out of the flow, went with design kit 0.4.0, and the store keeps none.
 - The bundle budgets did not move, and every page stayed under its own.
 - The page build takes the kit's browser floor from `browserFloor()`, which is Chrome and Edge 123,
   Firefox 120 and Safari 17.5, for its script and its sheets alike. Each `light-dark()` reaches the browser as written and picks

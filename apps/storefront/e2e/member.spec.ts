@@ -39,7 +39,9 @@ test('a member sees the product guests cannot, and pays less, from the same page
     await page.goto('/?q=jacket');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('results for "jacket"');
     await page.getByRole('combobox', { name: 'Shopping as' }).selectOption('member');
-    await expect(page.locator('.callout')).toContainText(/^Shopping as a member/);
+    await expect(page.locator('.callout', { hasText: 'Shopping as' })).toContainText(
+        /^Shopping as a member/
+    );
     await expect(page.locator('.card-member').first()).toHaveText('Member price');
 
     await page.goto(`/?product=${discounted.sku}`);

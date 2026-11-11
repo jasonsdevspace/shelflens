@@ -37,7 +37,11 @@ describe('as a member', () => {
         const user = await open('?q=jacket');
         await settled();
         expect(screen.queryByText(/Shopping as a member/)).toBeNull();
-        const line = () => document.querySelector('.callout');
+        // The line with words, since a status callout with none yet is in the page too.
+        const line = () =>
+            [...document.querySelectorAll('.callout')].find((callout) =>
+                /Shopping as/.test(callout.textContent)
+            ) ?? null;
         // The member's answer is held, so the page is seen while it is on its way.
         const served = globalThis.fetch;
         let release: () => void = () => undefined;
