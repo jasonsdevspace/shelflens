@@ -12,8 +12,6 @@ import { describe, expect, it } from 'vitest';
  */
 
 const SHARED = new Set([
-    'button-large',
-    'text-button',
     'option-button',
     'notice',
     'callout',

@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { useRef, useState } from 'react';
 
@@ -83,9 +84,9 @@ const RuleList = ({
                 </ul>
             )}
             {rules.length > applying.length && (
-                <button type="button" className="text-button" onClick={() => setShowAll(!showAll)}>
+                <Button text onClick={() => setShowAll(!showAll)}>
                     {showAll ? 'Show the rules that apply' : 'Show every rule'}
-                </button>
+                </Button>
             )}
         </>
     );
@@ -104,9 +105,9 @@ export const DiscardRules = ({ held }: { readonly held: Discard }) => {
                         {held.failure}{' '}
                     </span>
                 )}
-                <button type="button" className="text-button" onClick={() => held.ask(true)}>
+                <Button text onClick={() => held.ask(true)}>
                     Discard your rules
-                </button>
+                </Button>
             </>
         );
     }
@@ -215,13 +216,9 @@ export const RulesPanel = ({
                             onPick={(rule) => edit(formOf(rule))}
                         />
                         <div className="rules-actions">
-                            <button
-                                type="button"
-                                className="text-button"
-                                onClick={() => edit(fresh(phrase))}
-                            >
+                            <Button text onClick={() => edit(fresh(phrase))}>
                                 Add a rule
-                            </button>
+                            </Button>
                         </div>
                         {edited && <DiscardRules held={editor.discarding} />}
                     </>

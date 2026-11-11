@@ -27,7 +27,6 @@
 button:not(:disabled, [aria-disabled='true']),
 select:not(:disabled),
 .facet-option,
-.rules-choice,
 .try-search-only label {
     cursor: pointer;
 }
@@ -63,44 +62,15 @@ select:not(:disabled),
 /*
  * The page's buttons are the kit's: a .dk-button has an edge in the
  * control color and the field's height, so it sits level with a select
- * beside it, a pressed or open one says so in the accent, and a
- * .dk-button-accent is the one action a view asks for. What follows are
- * the store's own kinds.
- *
- * A .button-large is a kit button for the action that ends a step, such as
- * showing what a drawer has filtered.
- *
- * A .text-button is an action that reads as text, in a sentence or under
- * a list, in the accent and always underlined, since the accent alone is
- * too close to the text to mark it.
+ * beside it, a pressed or open one says so in the accent, a
+ * .dk-button-accent is the one action a view asks for, a .dk-button-large
+ * ends a step, such as showing what a drawer has filtered, and a
+ * .dk-button-text reads as a link beside a block or under a list. The one
+ * kind of the store's own follows.
  *
  * An .option-button is a choice in a list, a full row in the accent,
  * underlined when it is pointed at or focused.
  */
-.button-large {
-    min-height: var(--dk-target);
-    padding-inline: var(--dk-space-4);
-    font-size: var(--dk-text-body);
-    border-radius: var(--dk-radius-large);
-}
-
-.text-button {
-    justify-self: start;
-    padding: 0;
-    font: inherit;
-    color: var(--dk-accent);
-    background: none;
-    border: none;
-    text-decoration: underline;
-}
-
-/* Under a list of choices, in the filters or the rules, a text button is the list's size, with a target a finger can find. */
-.facets .text-button,
-.rules .text-button {
-    min-height: 1.5rem;
-    font-size: var(--dk-text-small);
-}
-
 .option-button {
     display: flex;
     align-items: center;
@@ -330,7 +300,7 @@ select:not(:disabled),
     gap: 0;
 }
 
-.facets > .text-button {
+.facets > .dk-button-text {
     margin-bottom: var(--dk-space-3);
 }
 
@@ -371,7 +341,7 @@ select:not(:disabled),
  */
 .facet-title,
 .facet-current,
-.facet .text-button,
+.facet .dk-button-text,
 .facet .option-button {
     padding-inline: var(--dk-space-2);
 }
@@ -802,11 +772,6 @@ select:not(:disabled),
 }
 
 /* The first stop in the drawer, as big as a thumb, as its rows are. */
-.drawer-close {
-    min-height: var(--dk-target);
-    padding-inline: var(--dk-space-2);
-}
-
 .drawer-body {
     flex: 1;
     overflow-y: auto;
@@ -863,32 +828,10 @@ select:not(:disabled),
     gap: var(--dk-space-3);
 }
 
-.rules-field {
-    display: grid;
-    gap: var(--dk-space-1);
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-size: var(--dk-text-small);
-}
-
-/* The legend is labeled as the kit labels a field, so the form's labels read alike. */
-.rules-field > legend {
-    font-weight: var(--dk-weight-medium);
-    padding: 0;
-}
-
 /* A product field, with the name of the product it holds below it. */
 .rules-product {
     display: grid;
     gap: var(--dk-space-1);
-}
-
-.rules-choice {
-    display: flex;
-    gap: var(--dk-space-2);
-    align-items: baseline;
-    font-size: var(--dk-text-small);
 }
 
 .rules-actions {

@@ -152,15 +152,6 @@
     margin-block: var(--dk-space-5);
 }
 
-/* A thumb's height when the bar stacks on a phone, the link as well as the buttons. */
-@media (max-width: 48rem) {
-    .try-bar .text-button {
-        display: inline-flex;
-        align-items: center;
-        min-height: var(--dk-target);
-    }
-}
-
 /* A question that asks for an answer is in the text's own color, never muted. */
 .try-ask {
     color: var(--dk-fg);

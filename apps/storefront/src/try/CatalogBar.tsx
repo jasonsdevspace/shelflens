@@ -1,3 +1,4 @@
+import { Button } from '@jasonsdevspace/design-kit/react';
 import { useLayoutEffect, useRef } from 'react';
 
 import { LiveStatus } from '../app/LiveStatus.jsx';
@@ -61,18 +62,13 @@ export const CatalogBar = ({
                         />
                     ) : (
                         <>
-                            <button type="button" className="text-button" onClick={onAnother}>
+                            <Button text onClick={onAnother}>
                                 Choose another file
-                            </button>
-                            <button
-                                ref={remove}
-                                type="button"
-                                className="text-button"
-                                onClick={onRemove}
-                            >
+                            </Button>
+                            <Button ref={remove} text onClick={onRemove}>
                                 Remove your products
-                            </button>
-                            <a className="text-button" href={widgetUrl}>
+                            </Button>
+                            <a className="dk-button dk-button-text" href={widgetUrl}>
                                 See your products on a store&rsquo;s page
                             </a>
                         </>

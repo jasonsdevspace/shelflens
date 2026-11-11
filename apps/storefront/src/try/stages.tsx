@@ -158,7 +158,7 @@ const Chooser = ({
                 onDrop={() => setOver(false)}
             >
                 <p>Drop a file here, or</p>
-                <label className="dk-button dk-button-accent button-large try-pick">
+                <label className="dk-button dk-button-accent dk-button-large try-pick">
                     Choose a file
                     <input
                         type="file"
@@ -291,7 +291,7 @@ const Review = ({
                         />
                     ) : (
                         <div className="try-actions">
-                            <Button accent className="button-large" onClick={onSearch}>
+                            <Button accent large onClick={onSearch}>
                                 {partial
                                     ? 'Search these products'
                                     : searchLabel(result.catalog.products.length)}
