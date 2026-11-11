@@ -24,7 +24,17 @@ export const Strip = ({
     /** Whether the demo's switches are on their way, so the strip keeps their room. */
     readonly toolsWaiting?: boolean;
 }) => (
-    <PortfolioStrip about={ABOUT_URL} source={REPO_URL} tools={tools} toolsWaiting={toolsWaiting} />
+    // The switches sit in a section named for the demo, so a screen reader finds them. The store's
+    // page already tells a visitor without script that it needs JavaScript, so the strip draws no
+    // line of its own in the room it keeps for them.
+    <PortfolioStrip
+        about={ABOUT_URL}
+        source={REPO_URL}
+        tools={tools}
+        toolsLabel="Demo"
+        toolsWaiting={toolsWaiting}
+        toolsNoscript=""
+    />
 );
 
 export const Footer = () => (

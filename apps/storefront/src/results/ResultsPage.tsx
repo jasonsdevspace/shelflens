@@ -289,7 +289,6 @@ const SetAside = ({
     readonly onSortByRelevance: () => void;
 }) => (
     <SetApart
-        waiting={said === undefined}
         className={said === undefined ? undefined : 'set-aside'}
         live="status"
         actions={

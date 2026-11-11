@@ -52,5 +52,6 @@
         --dk-danger: light-dark(#b7472a, #e8795a);
         --rating: light-dark(#b45309, #f2b544);
         --swatch-edge: light-dark(rgba(0, 0, 0, 0.12), #6e6e6e);
+        --dk-shadow-raised: 0 6px 24px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.5));
     }
 }

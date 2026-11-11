@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 import { THEME_KEY, themeScript } from '@jasonsdevspace/design-kit/theme';
 import { THEME_PLACEHOLDER } from '@jasonsdevspace/design-kit/vite';
@@ -26,6 +27,19 @@ const PAGES = Object.values(typeof inputs === 'object' && !Array.isArray(inputs)
 const built = (html: string) =>
     withPolicy(html.replace(THEME_PLACEHOLDER, () => `<script>${themeScript}</script>`));
 
+/** The ground of each theme, as the kit's tokens set it, which is the ground the store's pages draw. */
+const GROUNDS = (() => {
+    const tokens = readFileSync(
+        createRequire(import.meta.url).resolve('@jasonsdevspace/design-kit/tokens.css'),
+        'utf8'
+    );
+    const found = /--dk-bg:\s*light-dark\((#[\da-f]{6}), (#[\da-f]{6})\)/i.exec(tokens);
+    return [
+        ['light', found?.[1] ?? ''],
+        ['dark', found?.[2] ?? ''],
+    ] as const;
+})();
+
 const policyOf = (html: string) =>
     /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(html)?.[1] ?? '';
 
@@ -39,6 +53,20 @@ describe('the theme the portfolio saved', () => {
             const html = readFileSync(page, 'utf8');
             expect(html.split(THEME_PLACEHOLDER), page).toHaveLength(2);
             expect(html.indexOf(THEME_PLACEHOLDER), page).toBeLessThan(html.indexOf('</head>'));
+        }
+    });
+
+    it("names the ground of each theme before the kit's script, so the browser's bar can follow the theme", () => {
+        for (const [, color] of GROUNDS) expect(color).toMatch(/^#/);
+        for (const page of PAGES) {
+            const html = readFileSync(page, 'utf8');
+            for (const [scheme, color] of GROUNDS) {
+                const meta = `<meta name="theme-color" content="${color}" media="(prefers-color-scheme: ${scheme})" />`;
+                expect(html.split(meta), `${page} ${scheme}`).toHaveLength(2);
+                expect(html.indexOf(meta), `${page} ${scheme}`).toBeLessThan(
+                    html.indexOf(THEME_PLACEHOLDER)
+                );
+            }
         }
     });
 

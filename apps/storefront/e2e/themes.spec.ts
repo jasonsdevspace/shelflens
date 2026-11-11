@@ -27,6 +27,24 @@ for (const colorScheme of ['light', 'dark'] as const) {
 }
 
 /*
+ * The kit's script points the browser's bar at the ground of the theme the page draws, through the
+ * theme color the page names for each scheme, so the bar follows the saved choice and not only the
+ * system's scheme.
+ */
+test("the browser's bar follows the theme the page draws", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const bars = page.locator('meta[name="theme-color"]');
+    await expect(bars).toHaveCount(2);
+    for (const bar of await bars.all()) await expect(bar).toHaveAttribute('content', '#121212');
+    await page.evaluate(() => localStorage.setItem('theme', 'light'));
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    for (const bar of await bars.all()) await expect(bar).toHaveAttribute('content', '#ffffff');
+});
+
+/*
  * Paper is light and the browser drops backgrounds, so the kit prints the light theme whatever the
  * visitor chose. The host page's own rust, set by scheme rather than by theme, prints dark too.
  */

@@ -124,6 +124,13 @@ test('takes the sample with one press', async ({ page }) => {
     await expect(
         page.getByRole('heading', { level: 1, name: 'What is in sample-products.csv' })
     ).toBeVisible();
+    // The alert for a problem is in the page before it has words, and takes no room while it waits.
+    const alert = page.locator('[role="alert"]');
+    await expect(alert).toHaveCount(1);
+    await expect(alert).toBeEmpty();
+    const box = await alert.boundingBox();
+    expect(box?.width ?? 0).toBeLessThanOrEqual(1);
+    expect(box?.height ?? 0).toBeLessThanOrEqual(1);
 });
 
 test('puts a wrong guess right before searching, and the store shows what was chosen', async ({

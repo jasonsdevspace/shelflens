@@ -114,6 +114,32 @@ const PAGE = rulesFor(STORE_TOKENS, ':root');
 const reads = (css: string) =>
     new Set([...css.matchAll(/var\((--[\w-]+)/g)].map(([, name = '']) => name));
 
+/**
+ * A value as a browser without light-dark() takes it: its light-dark(), wherever it sits in the
+ * value, replaced by the light half. Nothing where the value has none.
+ */
+const lightOf = (value: string): string | undefined => {
+    const open = 'light-dark(';
+    const at = value.indexOf(open);
+    if (at < 0) return undefined;
+    let depth = 0;
+    let comma = -1;
+    for (let i = at + open.length; i < value.length; i += 1) {
+        const char = value[i];
+        if (char === '(') depth += 1;
+        else if (char === ')' && depth > 0) depth -= 1;
+        else if (char === ',' && depth === 0 && comma < 0) comma = i;
+        else if (char === ')') {
+            return (
+                value.slice(0, at) +
+                value.slice(at + open.length, comma).trim() +
+                value.slice(i + 1)
+            );
+        }
+    }
+    return undefined;
+};
+
 /** A color role's light and dark values, from its light-dark(). */
 const pair = (value: string): readonly [string, string] | undefined => {
     const found = /^light-dark\((#[\da-f]{6}), (#[\da-f]{6})\)$/i.exec(value);
@@ -194,11 +220,13 @@ describe('the design tokens', () => {
     it("sets the widget's colors by its host's scheme, light first for a browser without it", () => {
         expect(BY_SCHEME.size).toBeGreaterThan(0);
         for (const [name, value] of BY_SCHEME) {
-            const light = /^light-dark\((.+), [^,]+\)$/.exec(value)?.[1];
-            expect(FRAME.get(name), name).toBe(light);
+            expect(FRAME.get(name), name).toBe(lightOf(value));
         }
-        const colors = [...FRAME.keys()].filter((name) => /^(#|rgb)/.test(FRAME.get(name) ?? ''));
-        expect(colors.sort()).toEqual([...BY_SCHEME.keys()].sort());
+        // Every name the store or the kit sets by scheme is set by scheme in the frame too.
+        const byScheme = [...FRAME.keys()].filter((name) =>
+            (PAGE.get(name) ?? PALETTE_KIT.get(name) ?? '').includes('light-dark(')
+        );
+        expect(byScheme.sort()).toEqual([...BY_SCHEME.keys()].sort());
     });
 
     it("draws the store's own colors the same on its pages and in the widget", () => {
@@ -216,7 +244,11 @@ describe('the design tokens', () => {
     });
 
     it("holds every value the frame repeats from the kit to the kit's own", () => {
-        const repeated = [...BY_SCHEME, ...FRAME].filter(
+        // The fallback of a value set by scheme is held to that value above, not to the kit's.
+        const repeated = [
+            ...BY_SCHEME,
+            ...[...FRAME].filter(([name]) => !BY_SCHEME.has(name)),
+        ].filter(
             ([name, value]) => !PAGE.has(name) && PALETTE_KIT.has(name) && !/^(#|rgb)/.test(value)
         );
         expect(repeated.length).toBeGreaterThan(0);
