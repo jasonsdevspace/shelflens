@@ -243,9 +243,17 @@ select:not(:disabled),
         margin-left: 0;
     }
 
-    /* On its own row the tabs start at the column's edge, so the chosen one's line does too. */
+    /*
+     * On its own row the tabs start at the column's edge, so the chosen one's line does too, and
+     * each is padded by a smaller step, so the three root categories keep to one row on the
+     * narrowest screen in a wider font, which the waiting masthead's room counts on.
+     */
     .category-list {
         margin-inline: 0;
+    }
+
+    .category-list .dk-tab {
+        padding-inline: var(--dk-space-2);
     }
 }
 
