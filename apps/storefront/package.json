@@ -14,7 +14,7 @@
     "dependencies": {
         "@jasonsdevspace/design-kit": "0.3.0",
         "@jasonsdevspace/shelflens": "*",
-        "@plausible-analytics/tracker": "0.4.6",
+        "@plausible-analytics/tracker": "0.4.7",
         "@shelflens/api": "0.1.0",
         "@shelflens/catalog": "0.1.0",
         "react": "19.3.1",
