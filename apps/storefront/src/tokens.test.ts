@@ -130,6 +130,7 @@ const lightOf = (value: string): string | undefined => {
         else if (char === ')' && depth > 0) depth -= 1;
         else if (char === ',' && depth === 0 && comma < 0) comma = i;
         else if (char === ')') {
+            if (comma < 0) return undefined;
             return (
                 value.slice(0, at) +
                 value.slice(at + open.length, comma).trim() +
@@ -222,9 +223,12 @@ describe('the design tokens', () => {
         for (const [name, value] of BY_SCHEME) {
             expect(FRAME.get(name), name).toBe(lightOf(value));
         }
-        // Every name the store or the kit sets by scheme is set by scheme in the frame too.
-        const byScheme = [...FRAME.keys()].filter((name) =>
-            (PAGE.get(name) ?? PALETTE_KIT.get(name) ?? '').includes('light-dark(')
+        // Every color the frame holds, and every name the store or the kit sets by scheme, is set
+        // by scheme in the frame too.
+        const byScheme = [...FRAME.keys()].filter(
+            (name) =>
+                /^(#|rgb)/.test(FRAME.get(name) ?? '') ||
+                (PAGE.get(name) ?? PALETTE_KIT.get(name) ?? '').includes('light-dark(')
         );
         expect(byScheme.sort()).toEqual([...BY_SCHEME.keys()].sort());
     });

@@ -27,13 +27,21 @@ const PAGES = Object.values(typeof inputs === 'object' && !Array.isArray(inputs)
 const built = (html: string) =>
     withPolicy(html.replace(THEME_PLACEHOLDER, () => `<script>${themeScript}</script>`));
 
-/** The ground of each theme, as the kit's tokens set it, which is the ground the store's pages draw. */
+/**
+ * The ground of each theme the store's pages draw: the store's own where its tokens set it over
+ * the kit's, and the kit's otherwise.
+ */
 const GROUNDS = (() => {
-    const tokens = readFileSync(
+    const ground = /--dk-bg:\s*light-dark\((#[\da-f]{6}), (#[\da-f]{6})\)/i;
+    const own = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8').replace(
+        /\/\*[\s\S]*?\*\//g,
+        ''
+    );
+    const kit = readFileSync(
         createRequire(import.meta.url).resolve('@jasonsdevspace/design-kit/tokens.css'),
         'utf8'
     );
-    const found = /--dk-bg:\s*light-dark\((#[\da-f]{6}), (#[\da-f]{6})\)/i.exec(tokens);
+    const found = ground.exec(own) ?? ground.exec(kit);
     return [
         ['light', found?.[1] ?? ''],
         ['dark', found?.[2] ?? ''],

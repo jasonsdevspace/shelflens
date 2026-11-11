@@ -128,9 +128,11 @@ test('takes the sample with one press', async ({ page }) => {
     const alert = page.locator('[role="alert"]');
     await expect(alert).toHaveCount(1);
     await expect(alert).toBeEmpty();
+    // A box, so it is laid out for a screen reader to read what fills it, and a pixel at most.
     const box = await alert.boundingBox();
-    expect(box?.width ?? 0).toBeLessThanOrEqual(1);
-    expect(box?.height ?? 0).toBeLessThanOrEqual(1);
+    expect(box).not.toBeNull();
+    expect(box?.width).toBeLessThanOrEqual(1);
+    expect(box?.height).toBeLessThanOrEqual(1);
 });
 
 test('puts a wrong guess right before searching, and the store shows what was chosen', async ({

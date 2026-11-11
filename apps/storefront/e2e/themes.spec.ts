@@ -32,16 +32,29 @@ for (const colorScheme of ['light', 'dark'] as const) {
  * system's scheme.
  */
 test("the browser's bar follows the theme the page draws", async ({ page }) => {
+    // Both metas name the ground the page draws, whatever the theme, read as the browser draws it.
+    const barOf = async (theme: 'light' | 'dark') => {
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        const bars = page.locator('meta[name="theme-color"]');
+        await expect(bars).toHaveCount(2);
+        const ground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+        const contents = await bars.evaluateAll((metas) =>
+            metas.map((meta) => meta.getAttribute('content') ?? '')
+        );
+        for (const content of contents) {
+            const [r, g, b] = [1, 3, 5].map((at) => parseInt(content.slice(at, at + 2), 16));
+            expect(content).toMatch(/^#[\da-f]{6}$/i);
+            expect(`rgb(${String(r)}, ${String(g)}, ${String(b)})`).toBe(ground);
+        }
+        return contents[0];
+    };
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const bars = page.locator('meta[name="theme-color"]');
-    await expect(bars).toHaveCount(2);
-    for (const bar of await bars.all()) await expect(bar).toHaveAttribute('content', '#121212');
+    const dark = await barOf('dark');
     await page.evaluate(() => localStorage.setItem('theme', 'light'));
     await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    for (const bar of await bars.all()) await expect(bar).toHaveAttribute('content', '#ffffff');
+    const light = await barOf('light');
+    expect(light).not.toBe(dark);
 });
 
 /*
