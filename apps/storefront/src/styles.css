@@ -51,6 +51,25 @@ select:not(:disabled),
     font-size: var(--dk-text-caption);
 }
 
+/* A row of actions after a block, text buttons for the most part, wrapping as the column allows. */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dk-space-2) var(--dk-space-4);
+    align-items: center;
+}
+
+/* A question that asks for an answer, in the text's own color rather than muted, with its answers in a row under it. */
+.ask {
+    display: grid;
+    gap: var(--dk-space-1);
+    color: var(--dk-fg);
+}
+
+.ask > p {
+    margin: 0;
+}
+
 /*
  * The fields are the kit's: a .dk-input and a .dk-select share one height,
  * one inset for their text, one edge and one set of corners, so fields
@@ -71,6 +90,21 @@ select:not(:disabled),
  * An .option-button is a choice in a list, a full row in the accent,
  * underlined when it is pointed at or focused.
  */
+/*
+ * Under a list of choices, in the filters or the rules, a text button is
+ * the kit's height and starts at the column's edge, where the grid would
+ * stretch it. The column sets the small size the kit's text button inherits.
+ */
+.facets,
+.rules {
+    font-size: var(--dk-text-small);
+}
+
+.facets .dk-button-text,
+.rules .dk-button-text {
+    justify-self: start;
+}
+
 .option-button {
     display: flex;
     align-items: center;
@@ -78,7 +112,6 @@ select:not(:disabled),
     width: 100%;
     min-height: 2rem;
     font: inherit;
-    font-size: var(--dk-text-small);
     text-align: left;
     color: var(--dk-accent);
     background: none;
@@ -177,35 +210,14 @@ select:not(:disabled),
 }
 
 /* The categories as tabs: each a target's height, the current one in the text's color and weight, underlined. */
+/*
+ * The kit's tabs, a row of links among pages with the chosen one over the
+ * accent line, drawn over the masthead's own rule rather than one of their
+ * own, with their first and last words at the column's edges.
+ */
 .category-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--dk-space-5);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.category-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--dk-target);
-    color: var(--dk-muted);
-    font-weight: var(--dk-weight-medium);
-    text-decoration: none;
-    border-bottom: 2px solid transparent;
-}
-
-.category-link:hover,
-.category-link:focus-visible {
-    color: var(--dk-fg);
-    border-bottom-color: var(--dk-control);
-}
-
-.category-link[aria-current='page'] {
-    color: var(--dk-fg);
-    font-weight: var(--dk-weight-strong);
-    border-bottom-color: var(--dk-accent);
+    margin-inline: calc(-1 * var(--dk-space-3));
+    border-bottom: 0;
 }
 
 @media (max-width: 48rem) {
@@ -324,7 +336,6 @@ select:not(:disabled),
 .facet-title {
     float: left;
     width: 100%;
-    font-size: var(--dk-text-small);
     font-weight: var(--dk-weight-strong);
     padding: 0;
     margin-bottom: var(--dk-space-1);
@@ -352,7 +363,6 @@ select:not(:disabled),
     gap: var(--dk-space-2);
     min-height: 2rem;
     padding-inline: var(--dk-space-2);
-    font-size: var(--dk-text-small);
     border-radius: var(--dk-radius-small);
 }
 
@@ -371,7 +381,6 @@ select:not(:disabled),
     display: flex;
     align-items: center;
     min-height: 2rem;
-    font-size: var(--dk-text-small);
     font-weight: var(--dk-weight-strong);
 }
 
@@ -832,13 +841,6 @@ select:not(:disabled),
 .rules-product {
     display: grid;
     gap: var(--dk-space-1);
-}
-
-.rules-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dk-space-2) var(--dk-space-4);
-    align-items: center;
 }
 
 /* One product. */

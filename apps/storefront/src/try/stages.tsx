@@ -1,6 +1,7 @@
 import { Button } from '@jasonsdevspace/design-kit/react';
 import { type ChangeEvent, useState } from 'react';
 
+import { Ask } from '../app/Ask.jsx';
 import { useHeadingFocus } from '../app/focus.js';
 import { LiveStatus } from '../app/LiveStatus.jsx';
 import { PageTop } from '../app/PageTop.jsx';
@@ -16,7 +17,6 @@ import type { Table } from './csv.js';
 import { CATALOG_ROW_CAP } from './limits.js';
 import type { Mapping } from './mapping.js';
 import { MappingEditor, Preview } from './MappingEditor.jsx';
-import { Ask } from './notices.jsx';
 import type { FileLike } from './read-file.js';
 import { SAMPLE_FILE } from './sample.js';
 import type { LoadResult, RowNote } from './to-catalog.js';
@@ -167,17 +167,15 @@ const Chooser = ({
                     />
                 </label>
             </div>
-            <p>
-                No file of your own?{' '}
-                <button type="button" className="text-button" onClick={onSample}>
+            <p>No file of your own? The sample shows what a file looks like.</p>
+            <div className="actions">
+                <Button text onClick={onSample}>
                     {SAMPLE_BUTTON}
-                </button>
-                , or{' '}
-                <a href={SAMPLE_FILE} download>
-                    download the sample
-                </a>{' '}
-                to see what a file looks like.
-            </p>
+                </Button>
+                <a className="dk-button dk-button-text" href={SAMPLE_FILE} download>
+                    Download the sample
+                </a>
+            </div>
         </section>
     );
 };

@@ -118,7 +118,7 @@
 .searchbox-group-title {
     font-size: 0.85em;
     font-weight: var(--dk-weight-strong);
-    letter-spacing: 0.02em;
+    letter-spacing: var(--dk-tracking-caps);
     text-transform: uppercase;
     color: var(--dk-muted);
 }

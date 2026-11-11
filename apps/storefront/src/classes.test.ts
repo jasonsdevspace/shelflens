@@ -13,6 +13,8 @@ import { describe, expect, it } from 'vitest';
 
 const SHARED = new Set([
     'option-button',
+    'actions',
+    'ask',
     'notice',
     'callout',
     'hint',

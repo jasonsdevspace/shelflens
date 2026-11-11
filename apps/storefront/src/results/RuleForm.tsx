@@ -220,7 +220,7 @@ export const RuleForm = (props: RuleFormProps) => {
                 <BrandField id={id} {...props} problems={said} />
             )}
             <WeightField id={id} form={form} onChange={onChange} />
-            <div className="rules-actions">
+            <div className="actions">
                 <Button type="submit" accent>
                     Save rule
                 </Button>

@@ -152,12 +152,11 @@
     margin-block: var(--dk-space-5);
 }
 
-/* A question that asks for an answer is in the text's own color, never muted. */
-.try-ask {
-    color: var(--dk-fg);
+/* A question on the stage keeps the stage's rhythm, and one in the bar sits in the bar's row. */
+.try-stage .ask {
     margin-block: var(--dk-space-5);
 }
 
-.try-bar .try-ask {
+.try-bar .ask {
     margin: 0;
 }

@@ -2,6 +2,7 @@ import { Button } from '@jasonsdevspace/design-kit/react';
 import type { Rule } from '@jasonsdevspace/shelflens';
 import { useRef, useState } from 'react';
 
+import { Ask } from '../app/Ask.jsx';
 import { LoadFailure } from '../app/LoadFailure.jsx';
 import { ProblemAlert } from '../app/ProblemAlert.jsx';
 import { SetApart } from '../app/SetApart.jsx';
@@ -112,15 +113,13 @@ export const DiscardRules = ({ held }: { readonly held: Discard }) => {
         );
     }
     return (
-        <p className="notice">
-            Discard your rules? They cannot be brought back.{' '}
-            <button type="button" className="text-button" onClick={() => void held.discard()}>
-                Yes, discard
-            </button>{' '}
-            <button type="button" className="text-button" onClick={() => held.ask(false)}>
-                Keep them
-            </button>
-        </p>
+        <Ask
+            question="Discard your rules? They cannot be brought back."
+            yes="Yes, discard"
+            no="Keep them"
+            onYes={() => void held.discard()}
+            onNo={() => held.ask(false)}
+        />
     );
 };
 
@@ -215,7 +214,7 @@ export const RulesPanel = ({
                             phrase={phrase}
                             onPick={(rule) => edit(formOf(rule))}
                         />
-                        <div className="rules-actions">
+                        <div className="actions">
                             <Button text onClick={() => edit(fresh(phrase))}>
                                 Add a rule
                             </Button>
