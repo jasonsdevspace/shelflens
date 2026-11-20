@@ -58,7 +58,9 @@ describe('the widget', () => {
         // The root renders when React gets to it, which is a moment after the mount.
         const box = await within(inside).findByRole('combobox', { name: 'Search the store' });
         expect(host.style.display).toBe('block');
-        expect(host.shadowRoot?.querySelector('style')).not.toBeNull();
+        // A browser with constructed sheets gets the shared one, and no style element.
+        expect(host.shadowRoot?.adoptedStyleSheets).toHaveLength(1);
+        expect(host.shadowRoot?.querySelector('style')).toBeNull();
 
         // A simulated user types at the document, which does not see into the shadow
         // tree, so the keystrokes go to the box as events.
@@ -71,6 +73,33 @@ describe('the widget', () => {
 
         unmount();
         expect(host.shadowRoot?.querySelector('[role="combobox"]')).toBeNull();
+        expect(host.shadowRoot?.adoptedStyleSheets).toHaveLength(0);
+    });
+
+    it('falls back to a style element of its own where the browser has no constructed sheets', async () => {
+        const adopted = Object.getOwnPropertyDescriptor(ShadowRoot.prototype, 'adoptedStyleSheets');
+        if (!adopted) throw new Error('expected constructed sheets in the test document');
+        // An older browser, as far as the widget can tell.
+        Reflect.deleteProperty(ShadowRoot.prototype, 'adoptedStyleSheets');
+        const host = document.createElement('div');
+        document.body.append(host);
+        let unmount: (() => void) | undefined;
+        try {
+            unmount = mountShelfLens(host, { apiUrl: 'http://store.test/graphql', storeUrl: '/' });
+            const inside = host.shadowRoot?.querySelector('.shelflens');
+            if (!(inside instanceof HTMLElement))
+                throw new Error('expected the widget in a shadow root');
+            await within(inside).findByRole('combobox', { name: 'Search the store' });
+            // The sheets come through empty in the unit tests, so this checks the element alone.
+            expect(host.shadowRoot?.querySelector('style')).not.toBeNull();
+
+            unmount();
+            unmount = undefined;
+            expect(host.shadowRoot?.querySelector('style')).toBeNull();
+        } finally {
+            unmount?.();
+            Object.defineProperty(ShadowRoot.prototype, 'adoptedStyleSheets', adopted);
+        }
     });
 
     it('opens the store on a search or a product when the host says nothing else', async () => {
