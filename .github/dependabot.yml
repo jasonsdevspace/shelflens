@@ -3,7 +3,8 @@
 # The workflow actions are pinned to commit hashes, which never move on their
 # own, so without this they would quietly fall behind. Minor and patch updates
 # are grouped into one pull request per ecosystem to keep the noise down, with
-# TypeScript and its lint plugin in a group of their own.
+# TypeScript and its lint plugin in a group of their own, and the GraphQL
+# codegen packages in another, majors and all.
 # Security fixes arrive separately, as soon as an advisory is published.
 # Each update carries the dependencies label alone, so pull requests sort by
 # the kind of work rather than by the package manager. A new version waits a
@@ -25,6 +26,11 @@ updates:
           typescript:
               patterns: ['typescript', 'typescript-eslint', '@typescript-eslint/*']
               update-types: [minor, patch]
+          # The codegen CLI and its plugins share helper packages, so a major
+          # of one alone installs two copies of the helpers and codegen fails.
+          # They move together, majors included.
+          graphql-codegen:
+              patterns: ['@graphql-codegen/*']
           npm:
               update-types: [minor, patch]
       # A new TypeScript major waits for typescript-eslint to support it,
