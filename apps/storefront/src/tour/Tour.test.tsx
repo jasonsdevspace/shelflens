@@ -57,7 +57,12 @@ describe('the tour panel', () => {
     it('shows how far through the tour the stop is, makes Try it the strong action and Close the quiet one', () => {
         render(<Tour index={1} onIndex={vi.fn()} navigate={vi.fn()} onClose={vi.fn()} takeFocus />);
         const done = document.querySelector<HTMLElement>('.tour-progress-done');
-        expect(done?.style.inlineSize).toBe(`${String((2 / STOPS.length) * 100)}%`);
+        // The document keeps a length to a few places, as a browser does.
+        expect(done?.style.inlineSize).toMatch(/%$/);
+        expect(Number.parseFloat(done?.style.inlineSize ?? '')).toBeCloseTo(
+            (2 / STOPS.length) * 100,
+            3
+        );
         // The bar repeats the count, which is said with the stop already.
         expect(document.querySelector('.tour-progress')).toHaveAttribute('aria-hidden', 'true');
         expect(screen.getByRole('link', { name: 'Try it' })).toHaveClass('dk-button-accent');
