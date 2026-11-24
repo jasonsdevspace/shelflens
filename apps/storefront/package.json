@@ -12,7 +12,7 @@
         "sample": "tsx src/try/cli.ts"
     },
     "dependencies": {
-        "@jasonsdevspace/design-kit": "0.7.0",
+        "@jasonsdevspace/design-kit": "0.8.4",
         "@jasonsdevspace/shelflens": "*",
         "@plausible-analytics/tracker": "0.4.7",
         "@shelflens/api": "0.1.0",
