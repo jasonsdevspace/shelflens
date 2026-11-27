@@ -363,7 +363,8 @@ merchandising is `apps/storefront/public/rules.json`, validated when the store i
   benchmark.
 - `packages/api/` holds the schema, its generated types, the resolvers, the store host, the routes,
   the cache key, the shape over HTTP, and the events and rules receivers. Its `scripts/` holds the
-  steps codegen runs after it, which inline the schema and name each operation, with their test.
+  steps codegen runs after it, which inline the schema and name each operation, and the test of
+  the operation naming step.
 - `apps/server/` holds the API behind HTTP, with a rate limit and a request id.
 - `apps/storefront/` holds the demo page and the widget's hosts, with the design kit's theme script.
     - `about/` holds the page on how it works, built beside the demo.
@@ -389,7 +390,8 @@ merchandising is `apps/storefront/public/rules.json`, validated when the store i
 - `docs/` holds the accessibility statement in `ACCESSIBILITY.md`, the recorded measurements in
   `benchmarks/` and the decision records in `decisions/`.
 - `scripts/` holds the Node check, the run summaries, the screenshot collector, the release notes
-  script and the tests that read the whole repository.
+  script, the shared repository and JSON helpers in `repository.mjs` and `json.ts`, and the tests
+  that read the whole repository.
 - `.github/` holds the contributing guide, the security policy, the templates, the workflows, the
   Dependabot config in `dependabot.yml` and the README's pictures in `readme/`.
 
