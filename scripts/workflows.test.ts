@@ -152,6 +152,26 @@ const runOf = (step: string): string => {
     return value.startsWith('>') ? block.join(' ') : block.join('\n');
 };
 
+/** npx's options before the tool it runs, with the value of each option that takes one. */
+const optionsBeforeTool = (words: readonly string[]) => {
+    const options: string[] = [];
+    for (let at = 0; at < words.length; at += 1) {
+        const word = words[at] ?? '';
+        if (word === '--' || !word.startsWith('-')) break;
+        options.push(word);
+        if (['--package', '-p', '--call', '-c'].includes(word)) at += 1;
+    }
+    return options;
+};
+
+/**
+ * Whether a command fetches a package and runs it, as npx, `npm exec` and `npm x` do, which runs the
+ * package's install scripts, unless `--no-install` holds it to what is already installed.
+ */
+const fetchesAndRuns = (command: NpmCommand) =>
+    (command.npx || command.command === 'exec' || command.command === 'x') &&
+    ![...command.flags, ...optionsBeforeTool(command.args)].includes('--no-install');
+
 /** The folder a step names to run in, if it names one. */
 const dirOf = (step: string) => /^ *working-directory: *(.+?) *$/m.exec(step)?.[1];
 
@@ -301,14 +321,16 @@ describe('the workflows', () => {
     });
 
     it('install dependencies without running their install scripts', () => {
-        const installs = npmCommands.filter(({ command }) => INSTALLS.has(command));
+        const installs = npmCommands.filter(
+            (command) => INSTALLS.has(command.command) || fetchesAndRuns(command)
+        );
         expect(installs.length).toBeGreaterThan(0);
         expect(
             installs.filter((command) => !skipsScripts(command)).map(({ line }) => line)
         ).toEqual([]);
     });
 
-    it('run with npx only the tools the lockfile installs, in the repository, so nothing is fetched with its scripts', () => {
+    it('name with npx only the tools the lockfile holds, so a job that installed finds them and one that did not fails rather than fetching', () => {
         const { packages, bins } = lockfileTools(LOCKFILE);
         const fetched = npmCommands
             .filter((command) => {
@@ -324,6 +346,68 @@ describe('the workflows', () => {
             })
             .map(({ line }) => line);
         expect(fetched).toEqual([]);
+    });
+
+    it('count npx and npm exec as an install, unless --no-install holds them to what is installed', () => {
+        const read = (step: string) => commandsIn(runOf(step)).map(fetchesAndRuns);
+        expect(read('- run: npx playwright install chromium')).toEqual([true]);
+        expect(read('- run: npx --no-install playwright install chromium')).toEqual([false]);
+        expect(read('- run: npm exec --package=foo -- foo')).toEqual([true]);
+        expect(read('- run: npm x --no-install -- foo')).toEqual([false]);
+        expect(read('- run: npx foo --no-install')).toEqual([true]);
+        expect(read('- run: npm ci --ignore-scripts')).toEqual([false]);
+    });
+
+    it('grant only read access to the repository by default, in every workflow', () => {
+        expect(
+            files.filter((file) => !/^permissions:\n {4}contents: read\n/m.test(read(file)))
+        ).toEqual([]);
+    });
+
+    it('pin every action to a full commit, in every workflow', () => {
+        const unpinned = files.flatMap((file) =>
+            [...read(file).matchAll(/^\s+(?:- )?uses: (\S+)/gm)]
+                .map((match) => match[1] ?? '')
+                .filter((use) => !use.startsWith('./') && !/@[0-9a-f]{40}$/.test(use))
+                .map((use) => `${file} ${use}`)
+        );
+        expect(unpinned).toEqual([]);
+        for (const file of ['message.yml', 'release.yml'])
+            expect(read(file), file).toMatch(/uses: \S+@[0-9a-f]{40}/);
+    });
+
+    it('check out without keeping the token in the repository, in every workflow', () => {
+        const keeping = files.flatMap((file) =>
+            stepsOf(read(file))
+                .filter(({ text }) => /uses: actions\/checkout@/.test(text))
+                .filter(({ text }) => !/^\s+persist-credentials: false$/m.test(text))
+                .map(() => file)
+        );
+        expect(keeping).toEqual([]);
+        expect(read('message.yml')).toMatch(/uses: actions\/checkout@/);
+    });
+
+    it("run the commit message check from the lockfile's own tarball, checked against its hash, with nothing installed", () => {
+        const message = read('message.yml');
+        const step =
+            stepsOf(message).find(({ text }) => /check-commit-message/.test(text))?.text ?? '';
+        const order = [
+            "p.resolved + ' ' + p.integrity",
+            'https://registry.npmjs.org/@jasonsdevspace/prose-check/-/prose-check-*.tgz) ;;',
+            'openssl dgst -sha512 -binary',
+            'does not match the lockfile\'s hash"',
+            'exit 1',
+            'node "$RUNNER_TEMP/prose-check/package/bin/check-commit-message.mjs" --as-is',
+        ];
+        let from = 0;
+        const missing = order.filter((text) => {
+            const at = step.indexOf(text, from);
+            if (at < 0) return true;
+            from = at + text.length;
+            return false;
+        });
+        expect(missing).toEqual([]);
+        expect(message).not.toMatch(/\bnpm (?:exec|x)\b|\bnpx\b/);
     });
 
     it('read an install however it is written, and the flags the last of which decides', () => {
@@ -476,7 +560,9 @@ describe('the workflows', () => {
     it('run the same checks in CI as `npm run verify` runs, each in a step of its own', () => {
         /** A command as written in either place, without the npx a CI step runs it through. */
         const commands = (line: string) =>
-            line.split(' && ').map((command) => command.trim().replace(/^npx /, ''));
+            line
+                .split(' && ')
+                .map((command) => command.trim().replace(/^npx (?:--no-install )?/, ''));
         const verify = lookupText(readJson(join(ROOT, 'package.json')), 'scripts', 'verify');
         const job = jobsOf(read('ci.yml')).get('verify') ?? '';
         // The checks, by the names a failed run shows, each with the command its step runs.
