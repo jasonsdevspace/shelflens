@@ -6,7 +6,7 @@ conduct](https://github.com/jasonsdevspace/.github/blob/main/CODE_OF_CONDUCT.md)
 
 ## Setting up and running the checks
 
-[Dev setup](README.md#dev-setup) in the README says how to install and what each check covers.
+[Dev setup](../README.md#dev-setup) in the README says how to install and what each check covers.
 Before a pull request, run these checks, which CI runs too:
 
 ```bash
@@ -54,10 +54,11 @@ request is merged, the browser tests, the screenshot comparison and the Lighthou
 
 ## Releasing
 
-[Dev setup](README.md#dev-setup) in the README says how the engine reaches npm and how the
+[Dev setup](../README.md#dev-setup) in the README says how the engine reaches npm and how the
 storefront is released.
 
 ## Security and accessibility
 
 Report a security issue privately, as the [security policy](SECURITY.md) says, not in a public
-issue. Report a barrier to using the demo as the [accessibility statement](ACCESSIBILITY.md) says.
+issue. Report a barrier to using the demo as the
+[accessibility statement](../docs/ACCESSIBILITY.md) says.
