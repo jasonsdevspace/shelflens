@@ -59,7 +59,7 @@ jobs:
               run: npx prettier --check .
 
             - name: Prose check
-              run: node scripts/check-prose.mjs
+              run: npm run prose
 
             - name: Node version check
               run: node scripts/check-node.mjs
