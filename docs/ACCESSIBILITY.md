@@ -44,7 +44,7 @@ Each of these runs in CI on every pull request, and a finding fails the pull req
 
 The store's build takes its target from the design kit's `browserFloor()`, which is Chrome and Edge
 123, Firefox 120 and Safari 17.5. A test checks that floor against the one
-[decision record 19](docs/decisions/0019-the-pages-are-drawn-from-the-design-kit.md) states, so a
+[decision record 19](decisions/0019-the-pages-are-drawn-from-the-design-kit.md) states, so a
 version of the kit that raises it fails until the record is updated. Each color reaches the browser
 as written with `light-dark()`, and a part of a page set to the other scheme draws that scheme's
 colors. The search box on another site's page draws its light colors in a browser without
@@ -72,4 +72,4 @@ If something in the demo is hard or impossible to use, open an issue with the
 you were trying to do and on which page, and under "Where" the browser and any assistive technology
 you use. The acceptance criteria and the size are for whoever fixes it, and can be left empty. A
 maintainer adds the accessibility label, and it is handled as a bug. A barrier that is also a
-security issue goes to the [security policy](SECURITY.md) instead.
+security issue goes to the [security policy](../.github/SECURITY.md) instead.
