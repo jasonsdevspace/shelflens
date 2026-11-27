@@ -22,8 +22,11 @@ const read = (path: string) => readFileSync(at(path), 'utf8');
 const exists = (path: string) => statSync(at(path), { throwIfNoEntry: false }) !== undefined;
 const isFile = (path: string) => statSync(at(path), { throwIfNoEntry: false })?.isFile() === true;
 
-/** Markdown with its fenced code blocks taken out, so an example is never read as a heading or link. */
-const prose = (markdown: string) => markdown.replaceAll(/^(```|~~~)[\s\S]*?^\1/gm, '');
+/**
+ * Markdown with its fenced code blocks taken out, so an example is never read as a heading or link,
+ * one indented under a list item too, as the prose check reads them.
+ */
+const prose = (markdown: string) => markdown.replaceAll(/^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1/gm, '');
 
 /** What a reader sees as prose, with inline code taken out too, so a link shown as code is not read. */
 const linkable = (markdown: string) => prose(markdown).replaceAll(/`(?:[^`\n]|\n(?!\n))*`/g, '');
@@ -72,6 +75,13 @@ const templatesIn = (file: string) =>
     [...linkable(read(file)).matchAll(TEMPLATE)].map(([, template = '']) => decoded(template));
 
 describe('the community files', () => {
+    it('takes a fenced block out of the prose, one indented under a list item too', () => {
+        const indented = '- A step:\n\n  ```bash\n  # Not a heading\n  ```\n\nAfter.\n';
+        expect(prose(indented)).not.toContain('Not a heading');
+        expect(prose(indented)).toContain('After.');
+        expect(prose('```\n[a](missing.md)\n```\n')).not.toContain('missing.md');
+    });
+
     it('runs only npm scripts the repository has, however a line wraps them', () => {
         const scripts = Object.keys(lookupRecord(readJson(at('package.json')), 'scripts') ?? {});
         const named = [...read(CONTRIBUTING).matchAll(/npm\s+run\s+([\w:-]+)/g)].map(

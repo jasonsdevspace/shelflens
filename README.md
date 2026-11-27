@@ -5,10 +5,10 @@
 ShelfLens is a fictional store, and its search does what a real store's has to. It finds the right
 product from a few typed letters, forgives a typo, knows that trainers are sneakers, counts how many
 of each brand and color match even after you tick one, lets a merchandiser pin a promotion, and
-explains why each result ranked where it did. The storefront is React over a GraphQL API, and the
-whole API runs inside your browser, so a search is answered without a server. Its pages are built on
-my [design kit](https://github.com/jasonsdevspace/design-kit), and the engine ships on npm as
-`@jasonsdevspace/shelflens`, with no dependencies.
+explains why each result ranked where it did. The storefront is React over a GraphQL API, and on the
+demo the whole API runs inside your browser, so a search is answered without a server. Its pages are
+built on my [design kit](https://github.com/jasonsdevspace/design-kit), and the engine ships on npm
+as `@jasonsdevspace/shelflens`, with no dependencies.
 
 **[Open the demo](https://jasonsdevspace.com/shelflens/)** ·
 [Read how it works](https://jasonsdevspace.com/shelflens/about/) ·
@@ -24,27 +24,27 @@ my [design kit](https://github.com/jasonsdevspace/design-kit), and the engine sh
 On an earlier team I worked on a React storefront search backed by a GraphQL search API. Search
 looks simple until a shopper types "t shirt" and the Tees outrank the T-Shirts, or a member's price
 is served to the next guest from a cache. ShelfLens is a small, complete example of how I work on
-that kind of problem. Measure it, write the check that would have caught the mistake, then fix it.
-It is built only from public documentation of how such systems behave, with its own names and its
-own schema. These are what it promises, and each has a test that fails on the naive version.
+that kind of problem. Measure first, write the check that would have caught the mistake, then fix
+it. It is built only from public documentation of how such systems behave, with its own names and
+its own schema. These are what it promises, and each is held by a test.
 
 - **The list matches what you typed.** An answer to "tra" that arrives after the answer to "trail"
   never replaces it, and a burst of keystrokes costs one request.
 - **A price belongs to the shopper asking.** A cache never serves a member's price to the next
   guest.
-- **Every result says why it is there.** Which word matched which term in which field, and which
-  rule moved it.
-- **A search that finds nothing still shows a page.** The phrase without a word, a spelling, an
-  offer to clear filters, then the most clicked products.
+- **Every result says why it is there.** Each card says which word matched which term in which
+  field, and which rule moved it.
+- **A search that finds nothing still shows a page.** It offers the phrase without a word, a
+  spelling and to clear the filters, then shows the most clicked products.
 
-The rest, each with its test, are in the gotchas below.
+These and the rest, each with its test, are in the gotchas below.
 
 ## A path through the demo
 
 Each step is a link into the live storefront. A first visit offers a tour of the interesting parts,
-opened beside the store on a wide screen and offered in a short bar on a phone. The "Tour" button at
-the top of the store, beside "Shopping as", walks all nineteen stops with the test behind each. For
-the same story without the code, the demo carries [a page on how it
+opened in a corner of the store on a wide screen and offered in a short bar on a phone. The "Tour"
+button at the top of the store, beside "Shopping as", walks all nineteen stops with the test behind
+each. For the same story without the code, the demo carries [a page on how it
 works](https://jasonsdevspace.com/shelflens/about/).
 
 1. **[The store](https://jasonsdevspace.com/shelflens/).** Type "trail runner" quickly. The answer
@@ -59,7 +59,7 @@ works](https://jasonsdevspace.com/shelflens/about/).
    answer to the next guest, and a test proves it does. Beneath any product is a rail, the most
    rated in its category until you have viewed a second product, then what you viewed, under a
    heading that says which it is.
-3. **[The jacket search with explain
+3. **[The jacket search with "Explain ranking"
    on](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1).** Two jackets are pinned first by
    a rule, and every card says which word matched which term in which field and what the rule did.
    Sort by price and the pins are set aside, and the page names the rule with a "Sort by relevance"
@@ -76,7 +76,7 @@ works](https://jasonsdevspace.com/shelflens/about/).
 6. **[A search for "zzqx jacket"](https://jasonsdevspace.com/shelflens/?q=zzqx%20jacket).** There
    are no results, so the page shows the results of "jacket" instead, offers a spelling when a word
    is two typos off, and falls back to the most clicked products, then the most rated.
-7. **[The jacket search with explain on,
+7. **[The jacket search with "Explain ranking" on,
    again](https://jasonsdevspace.com/shelflens/?q=jacket&explain=1).** Open a few jackets, then
    reload the page. The ones you opened rise a little, with a line under each card saying how many
    earlier visits opened it, and the pinned ones stay first. The nudge is capped and folds in when a
@@ -98,7 +98,7 @@ The rest of this page is for engineers.
 ## The gotchas, and the test behind each
 
 The project exists for these. Each one that claims a failure has a test that fails on the naive
-version, the tour's stops name them, and each test links to its file.
+version, the tour's stops name them, and the table links each test file.
 
 | Gotcha                                                                                                                                                       | Where it is tested                                                                                                                                                                                                                                   |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -160,10 +160,9 @@ Four product additions carry the rest of the story.
   scripts 99 KB and the worker 76 KB, as [the cold visit benchmark](docs/benchmarks/cold-visit.md)
   records.
 
-**Budgets and audits, in CI.** Compressed, each part that ships is held to a budget, or the build
-fails.
+**Budgets and audits, in CI.** Compressed, each of these is held to a budget, or CI fails.
 
-| What ships                           | Held to, compressed |
+| What is held                         | Held to, compressed |
 | ------------------------------------ | ------------------- |
 | The catalog                          | 400 KB              |
 | The API, bundled for a browser       | 90 KB               |
@@ -172,14 +171,15 @@ fails.
 | The widget                           | 85 KB               |
 | The service worker                   | 85 KB               |
 
-Nothing from GraphQL goes in a page or the widget, and no test fixture goes in anything shipped. The
-storefront runs in a real browser on a desktop and a phone profile with an accessibility audit of
-every page it reaches, and every control's edge, focus ring and caret are held to the design in both
-themes. Lighthouse must score a hundred for accessibility, and at least ninety for performance with
-the largest paint inside two and a half seconds and a layout shift of no more than a tenth on a
-first visit, on the home page, a results page in explain mode, a category, a product, the explainer,
-the widget's host page, and the page for a visitor's own catalog, both empty and with a file loaded,
-and the widget on a store's page over that file.
+The API's budget is held by a test that bundles it for a browser, the rest by `npm run budget` over
+the build. Nothing from GraphQL goes in a page or the widget, and no test fixture goes in anything
+shipped. The storefront runs in a real browser on a desktop and a phone profile with an
+accessibility audit of every page it reaches, and every control's edge, focus ring and caret are
+held to the design in both themes. Lighthouse must score a hundred for accessibility, and at least
+ninety for performance with the largest paint inside two and a half seconds and a layout shift of no
+more than a tenth on a first visit, on the home page, a results page in explain mode, a category, a
+product, the explainer, the widget's host page, and the page for a visitor's own catalog, both empty
+and with a file loaded, and the widget on a store's page over that file.
 
 ## How the parts fit
 
@@ -317,7 +317,7 @@ More commands worth knowing:
     FULL_QUERIES=true npm run api
     curl localhost:8080/graphql --header 'content-type: application/json' \
       --header 'shelflens-customer-group: member' \
-      --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total } }" }'
+      --data '{ "query": "{ search(input: { phrase: \"boot\" }) { total items { product { name } } } }" }'
     ```
 
 <details>
@@ -367,12 +367,12 @@ merchandising is `apps/storefront/public/rules.json`, validated when the store i
 - `apps/storefront/` holds the demo page and the widget's hosts, with the design kit's theme script.
     - `about/` holds the page on how it works, built beside the demo.
     - `public/` holds the rules file, and the catalog the build writes beside it.
-    - `src/` holds `tokens.css`, the store's values over the design kit's, and `styles.css`, and these
-      folders:
-        - `app/` holds the URL as state, categories, the store context, the first screen, focus and the
-          live status.
-        - `client/` holds the GraphQL client, its memory, the latest-request helper, and the rules and
-          catalog clients.
+    - `src/` holds `tokens.css`, the store's values over the design kit's, and `styles.css`, and
+      these folders:
+        - `app/` holds the URL as state, categories, the store context, the first screen, focus and
+          the live status.
+        - `client/` holds the GraphQL client, its memory, the latest-request helper, and the rules
+          and catalog clients.
         - `search/` holds the popover.
         - `results/` holds facets, sort, pages, explain mode, nothing and the rules panel.
         - `product/` holds the product page.
@@ -387,8 +387,8 @@ merchandising is `apps/storefront/public/rules.json`, validated when the store i
         - `operations/` and `generated/` hold the storefront's operations and their generated types.
 - `docs/` holds the accessibility statement in `ACCESSIBILITY.md`, the recorded measurements in
   `benchmarks/` and the decision records in `decisions/`.
-- `.github/` holds the contributing guide, the security policy, the templates, the workflows and the
-  README's pictures in `readme/`.
+- `.github/` holds the contributing guide, the security policy, the templates, the workflows, the
+  Dependabot config in `dependabot.yml` and the README's pictures in `readme/`.
 
 </details>
 

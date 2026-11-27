@@ -13,8 +13,15 @@ import { STOPS } from './stops.js';
 
 const root = new URL('../../../../', import.meta.url);
 
-/** The README's gotchas table: each row's gotcha, and the test files it links, in order. */
-const tableRows = (): { gotcha: string; tests: string[] }[] => {
+/**
+ * The README's gotchas table: each row's gotcha, the test files it links, in order, and each link's
+ * file name and the path it goes to.
+ */
+const tableRows = (): {
+    gotcha: string;
+    tests: string[];
+    links: { name: string; path: string }[];
+}[] => {
     const lines = readFileSync(new URL('README.md', root), 'utf8').split('\n');
     const heading = lines.indexOf('## The gotchas, and the test behind each');
     if (heading === -1) throw new Error('the README has no gotchas heading');
@@ -25,9 +32,13 @@ const tableRows = (): { gotcha: string; tests: string[] }[] => {
         // A pipe in a cell is escaped, so only a bare one ends a cell.
         const cells = row.split(/(?<!\\)\|/).map((cell) => cell.trim());
         if (cells.length !== 4) throw new Error(`a gotchas row is not two cells: ${row}`);
+        const links = [...(cells[2] ?? '').matchAll(/\[`([^`]+)`\]\(([^)]+)\)/g)].map(
+            ([, name = '', path = '']) => ({ name, path })
+        );
         return {
             gotcha: cells[1] ?? '',
             tests: [...(cells[2] ?? '').matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1] ?? ''),
+            links,
         };
     });
 };
@@ -84,6 +95,12 @@ describe('the tour', () => {
         for (const stop of STOPS) {
             expect(stop.focus !== undefined, stop.id).toBe(stop.to !== undefined);
         }
+    });
+
+    it('names each test in the README table by the file its link goes to', () => {
+        const links = tableRows().flatMap((row) => row.links);
+        expect(links.length).toBeGreaterThan(0);
+        expect(links.filter(({ name, path }) => !path.endsWith(`/${name}`))).toEqual([]);
     });
 
     it('gives each stop a row in the README table naming the same tests, in the same order', () => {
