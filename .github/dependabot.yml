@@ -1,6 +1,6 @@
-# Monthly checks for newer versions of everything this repo depends on.
-# Once a month, so a month of updates arrives as one pull request per group and is reviewed in
-# one sitting, since in a weekly batch each later pull request needed a branch update to merge.
+# Monthly checks for newer versions of everything this repo depends on, so minor and patch
+# updates arrive once a month, one pull request per group, and are reviewed in one sitting.
+# A major still comes in a pull request of its own.
 #
 # The workflow actions are pinned to commit hashes, which never move on their
 # own, so without this they would quietly fall behind. Minor and patch updates
@@ -10,9 +10,9 @@
 # since it moves in a pull request of its own.
 # Security fixes arrive separately, as soon as an advisory is published.
 # Each update carries the dependencies label alone, so pull requests sort by
-# the kind of work rather than by the package manager. A new version waits two
-# weeks before it is offered, so a release pulled for being compromised is
-# usually gone before it is proposed. Security updates do not wait.
+# the kind of work rather than by the package manager. A new version is offered
+# on the first monthly run at least two weeks after its release, so a release
+# pulled for being compromised is usually gone before it is proposed. Security updates do not wait.
 version: 2
 updates:
     - package-ecosystem: npm
