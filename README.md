@@ -315,8 +315,9 @@ apps/
                  inside the dev server, the first screen and each built page's policy), bench
                  (the measurements and the audit), operations, generated
 docs/
-├── benchmarks/  the recorded measurements
-└── decisions/   the decision records
+├── ACCESSIBILITY.md  the accessibility statement
+├── benchmarks/       the recorded measurements
+└── decisions/        the decision records
 ```
 
 ## Background
