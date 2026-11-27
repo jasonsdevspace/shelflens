@@ -52,13 +52,19 @@ of #N" when the issue has more to do. "Closes" is repeated before each issue a p
 finishes, since GitHub reads only the first otherwise. Every check in CI passes before a pull
 request is merged, the browser tests, the screenshot comparison and the Lighthouse audit among them.
 
-A Dependabot pull request merges by itself once its checks pass when every update in it moves a
-development dependency by a patch or a minor, or a runtime dependency by a patch, and it comes from
-one of the groups in `.github/dependabot.yml`. A runtime minor, a major, an action update or a
-security update waits for a person, since it can change what a visitor gets or what the build does.
-`scripts/dependabot-merge.mjs` holds the rule. The merge uses a token from the records app, whose
-client id and key are set as Dependabot secrets, since a run Dependabot starts cannot read the
-Actions secrets.
+A Dependabot pull request merges by itself once its required checks pass when every update in it
+moves a development dependency by a patch or a minor, or a runtime dependency of 1.0 or later by a
+patch, when it comes from one of the groups `scripts/dependabot-merge.mjs` names and no package in
+it has a new releaser, and when it changes nothing but package manifests and lockfiles. A runtime
+minor, a major, an action update or a security update waits for a person, since it can change what
+a visitor gets or what the build does. The script holds the rule. A push or a reopen by a person
+turns auto-merge off and leaves the pull request to them. The merge uses a token from the records
+app, whose client id and key are set as Dependabot secrets, since a run Dependabot starts cannot
+read the Actions secrets.
+
+Main takes only a branch that is up to date with it, and Dependabot rebases its own pull request only
+when it conflicts, while Update branch counts as a person's push. So a qualifying pull request that
+falls behind waits until someone comments `@dependabot rebase`, and then merges by itself.
 
 ## Releasing
 

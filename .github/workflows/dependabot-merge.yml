@@ -5,27 +5,32 @@ name: Dependabot merge
 # checks pass. Every other update waits for a person. Which updates qualify, and
 # why, is in scripts/dependabot-merge.mjs.
 #
-# The decision runs with a token that can only read. The merge runs in a job of
-# its own with a token from the records app, and runs nothing but gh, so no code
-# from the pull request runs beside the key. A merge made with the workflow's
-# own token would start no workflow on main, so CI would not run after it. A
-# run Dependabot starts reads only what is stored for Dependabot, not what
-# Actions keeps, so the app's client id and key are stored there too.
+# The decision runs with a token that can only read, and only for a push by
+# Dependabot. The merge runs in a job of its own with a token from the records
+# app, starts only when the decision says to merge, and runs nothing but gh, so
+# no code from the pull request runs beside the key. A merge made with the
+# workflow's own token would start no workflow on main, so CI
+# would not run after it. A run Dependabot starts reads only what is stored for
+# Dependabot, not what Actions keeps, so the app's client id and key are stored
+# there too. Every other run, a person's push or reopen among them, turns
+# auto-merge off with the workflow's own token and leaves the pull request to a
+# person.
 on:
     pull_request:
         types: [opened, reopened, synchronize]
 
 permissions: {}
 
+# One run at a time for each pull request, in the order its events came, and
+# none canceled, so a person's run never stops Dependabot's halfway and the last
+# event always has the last word.
 concurrency:
     group: dependabot-merge-${{ github.event.pull_request.number }}
-    cancel-in-progress: true
+    cancel-in-progress: false
 
 jobs:
     decide:
         name: Decide whether it merges by itself
-        # Opened by Dependabot and pushed by it, so a person's push to its branch
-        # never turns auto-merge on.
         if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
@@ -39,11 +44,12 @@ jobs:
               id: metadata
               uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
-            # The decision as main has it, not as the pull request does.
+            # The decision as main has it now, not as the pull request does, so a
+            # pull request opened before the script landed still finds it.
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
-                  ref: ${{ github.event.pull_request.base.sha }}
+                  ref: ${{ github.event.pull_request.base.ref }}
                   persist-credentials: false
 
             # The Node the repository names in .nvmrc, not the runner's own.
@@ -52,15 +58,30 @@ jobs:
               with:
                   node-version-file: .nvmrc
 
+            # The changed files are read only when GitHub lists them all, and an
+            # empty list leaves the pull request to a person.
             - name: Decide
               id: decide
               env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  NUMBER: ${{ github.event.pull_request.number }}
                   UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
-              run: node scripts/dependabot-merge.mjs >> "$GITHUB_OUTPUT"
+              run: |
+                  CHANGED_FILES="$(gh pr view "$NUMBER" --json files,changedFiles --jq 'if (.files | length) == .changedFiles then [.files[].path] else [] end')" || CHANGED_FILES='[]'
+                  export CHANGED_FILES
+                  if [ -f scripts/dependabot-merge.mjs ]; then
+                      node scripts/dependabot-merge.mjs >> "$GITHUB_OUTPUT"
+                  else
+                      echo "merge=false" >> "$GITHUB_OUTPUT"
+                      echo "A person merges this, since main has no merge decision to run." >> "$GITHUB_STEP_SUMMARY"
+                  fi
 
     merge:
-        name: Turn auto-merge on or off
+        name: Turn auto-merge on
         needs: decide
+        # At the job, so a job that never starts never receives the app's key.
+        if: needs.decide.outputs.merge == 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions: {}
@@ -72,7 +93,7 @@ jobs:
               run: |
                   echo "ready=$READY" >> "$GITHUB_OUTPUT"
                   if [ "$READY" != "true" ]; then
-                      echo "Auto-merge was left as it was, since the records app's Dependabot secrets are not set." >> "$GITHUB_STEP_SUMMARY"
+                      echo "Auto-merge was left off, since the records app's Dependabot secrets are not set." >> "$GITHUB_STEP_SUMMARY"
                   fi
 
             - name: Get the records app's token
@@ -85,24 +106,37 @@ jobs:
                   permission-contents: write
                   permission-pull-requests: write
 
-            # A squash, so the pull request's title is the commit on main.
+            # A squash, so the pull request's title is the commit on main, and only
+            # of the commit decided on, so a later push is never merged unread.
             - name: Turn auto-merge on
-              if: steps.app.outputs.ready == 'true' && needs.decide.outputs.merge == 'true'
+              if: steps.app.outputs.ready == 'true'
               env:
                   GH_TOKEN: ${{ steps.token.outputs.token }}
                   GH_REPO: ${{ github.repository }}
                   NUMBER: ${{ github.event.pull_request.number }}
-              run: gh pr merge "$NUMBER" --auto --squash
+                  HEAD: ${{ github.event.pull_request.head.sha }}
+              run: gh pr merge "$NUMBER" --auto --squash --match-head-commit "$HEAD"
 
-            # Off again when a later push, such as a group taking in a runtime minor,
-            # leaves the pull request to a person.
+    hold:
+        name: Leave it to a person
+        needs: decide
+        # Whenever the decision did not say to merge: a run where it said no, failed
+        # or never ran, as for a person's push or reopen. The app's key is held by
+        # Dependabot's runs alone, so the workflow's own token turns auto-merge off.
+        if: ${{ !cancelled() && github.event.pull_request.user.login == 'dependabot[bot]' && (needs.decide.result != 'success' || needs.decide.outputs.merge != 'true') }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
             - name: Turn auto-merge off
-              if: steps.app.outputs.ready == 'true' && needs.decide.outputs.merge != 'true'
               env:
-                  GH_TOKEN: ${{ steps.token.outputs.token }}
+                  GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
                   NUMBER: ${{ github.event.pull_request.number }}
               run: |
                   if [ "$(gh pr view "$NUMBER" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
                       gh pr merge "$NUMBER" --disable-auto
+                      echo "Auto-merge was turned off, so a person merges this." >> "$GITHUB_STEP_SUMMARY"
                   fi
