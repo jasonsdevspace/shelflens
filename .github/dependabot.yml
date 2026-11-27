@@ -51,6 +51,11 @@ updates:
           # until a later version drops them, checked by hand.
           - dependency-name: lighthouse
             versions: ['>=13.6.0']
+          # The design kit's version moves by hand, in a pull request of its own that
+          # reads the release's Upgrading notes and checks the pages, since a release of
+          # the kit can change what a page draws. A security fix for it still arrives on
+          # its own, since a rule that names only the package holds back version updates.
+          - dependency-name: '@jasonsdevspace/design-kit'
 
     - package-ecosystem: github-actions
       directory: /
