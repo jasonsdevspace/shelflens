@@ -10,7 +10,7 @@ import { CATALOG_ROW_CAP } from '../try/limits.js';
 import { SAMPLE_PRODUCTS } from '../try/sample.js';
 
 /*
- * The explainer, the README's two minutes and the tour tell one story.
+ * The explainer, the README's path through the demo and the tour tell one story.
  * The README's steps are links into the live demo, and each of those
  * states is a link on the explainer too. The stop count the explainer
  * names is the tour's.
@@ -52,13 +52,13 @@ describe('the explainer', () => {
     const sections = page.match(/<section[\s>][\s\S]*?<\/section>/g) ?? [];
     const readme = read('README.md');
 
-    it('links to every state the README’s two minutes link to', () => {
-        const twoMinutes = readme.slice(
-            readme.indexOf('## Two minutes with the demo'),
+    it('links to every state the README’s path through the demo links to', () => {
+        const path = readme.slice(
+            readme.indexOf('## A path through the demo'),
             readme.indexOf('## The gotchas')
         );
         const states = [
-            ...twoMinutes.matchAll(/\]\((https:\/\/jasonsdevspace\.com\/shelflens\/[^)]*)\)/g),
+            ...path.matchAll(/\]\((https:\/\/jasonsdevspace\.com\/shelflens\/[^)]*)\)/g),
         ]
             .map((match) => match[1] ?? '')
             .map((url) => url.slice(DEMO.length))
