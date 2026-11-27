@@ -11,6 +11,8 @@
 # the kind of work rather than by the package manager. A new version waits a
 # week before it is offered, so a release pulled for being compromised is
 # usually gone before it is proposed. Security updates do not wait.
+# The low-risk updates merge by themselves once CI passes, as
+# workflows/dependabot-merge.yml says.
 version: 2
 updates:
     - package-ecosystem: npm
