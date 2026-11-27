@@ -3,7 +3,9 @@
     "compilerOptions": {
         "types": ["node"],
         "noEmit": true,
-        "customConditions": ["@shelflens/source"]
+        "customConditions": ["@shelflens/source"],
+        "allowJs": true,
+        "checkJs": true
     },
-    "include": ["src"]
+    "include": ["src", "scripts"]
 }

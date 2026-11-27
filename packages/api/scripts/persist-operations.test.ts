@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { nameOperations } from '../packages/api/scripts/persist-operations.mjs';
+import { nameOperations } from './persist-operations.mjs';
 
 /** Two documents as codegen writes them, an operation and the fragment it uses. */
 const generated = `export const CardFragmentDoc = new TypedDocumentString(\`
