@@ -15,11 +15,13 @@
  * - A Dockerfile's Node images, by any of its usual names.
  * - The root README, which tells a contributor which Node to install.
  *
- * Run with `node scripts/check-node.mjs`, as `npm run verify` does.
+ * Run with `npm run node-check`.
  */
 import { basename } from 'node:path';
 
-import { isDockerfile, isRunDirectly, repositoryFiles } from './repository.mjs';
+import { isDockerfile } from '@jasonsdevspace/prose-check';
+
+import { isRunDirectly, repositoryFiles } from './repository.mjs';
 
 /**
  * The parts of a package.json this reads, each `unknown` until looked at.

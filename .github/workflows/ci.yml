@@ -50,13 +50,13 @@ jobs:
               run: npm ci --ignore-scripts
 
             - name: Type-check
-              run: npm run type-check --workspaces && npx tsc -p scripts
+              run: npm run type-check --workspaces && npx --no-install tsc -p scripts
 
             - name: Lint
-              run: npx eslint .
+              run: npx --no-install eslint .
 
             - name: Format check
-              run: npx prettier --check .
+              run: npx --no-install prettier --check .
 
             - name: Prose check
               run: npm run prose
@@ -65,10 +65,10 @@ jobs:
               run: node scripts/check-node.mjs
 
             - name: Check for unused exports and dependencies
-              run: npx knip --tsConfig tsconfig.build.json
+              run: npx --no-install knip --tsConfig tsconfig.build.json
 
             - name: Unit tests
-              run: npx vitest run
+              run: npx --no-install vitest run
 
             # The server's types are generated from the schema and committed.
             # A schema change without regenerating them fails here.
@@ -126,7 +126,7 @@ jobs:
             - name: Install Chromium
               timeout-minutes: 3
               run: |
-                  npx playwright install chromium
+                  npx --no-install playwright install chromium
                   node -e "require('@playwright/test').chromium.launch().then((browser) => browser.close())"
 
             # The totals, and any test that failed, go to the run's summary from the
@@ -185,7 +185,7 @@ jobs:
             - name: Install Chromium
               timeout-minutes: 3
               run: |
-                  npx playwright install chromium
+                  npx --no-install playwright install chromium
                   node -e "require('@playwright/test').chromium.launch().then((browser) => browser.close())"
 
             # The script builds the store before it audits it.
@@ -230,7 +230,7 @@ jobs:
               run: |
                   rm -f apps/storefront/playwright-results.json
                   status=0
-                  npx playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone || status=$?
+                  npx --no-install playwright test --config apps/storefront/playwright.config.ts --project visual-desktop --project visual-phone || status=$?
                   if [ -f apps/storefront/playwright-results.json ]; then
                       node scripts/summary.mjs playwright apps/storefront/playwright-results.json "Screenshot comparison" "$status" ||
                           echo "The summary of the screenshot comparison could not be written."
@@ -309,7 +309,7 @@ jobs:
             # has just built the engine, and this names a mistake before the
             # slower steps reach it.
             - name: Check the package manifest
-              run: npx publint packages/engine
+              run: npx --no-install publint packages/engine
 
             # Written as an exact version, because setup-node given a range
             # installs the newest Node in it, the opposite of the oldest. The file

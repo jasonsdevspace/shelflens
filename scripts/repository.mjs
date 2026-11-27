@@ -8,16 +8,8 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-/**
- * A Dockerfile by its usual names: `Dockerfile` alone, with a suffix as in
- * `Dockerfile.prod`, or as the extension in `api.Dockerfile`.
- *
- * @param {string} path
- */
-export const isDockerfile = (path) => /^Dockerfile(\..+)?$|\.Dockerfile$/.test(basename(path));
 
 /**
  * The repository's files a check reads, by path from its top, with their text.

@@ -30,6 +30,7 @@
         "storefront": "npm run build && npm run catalog -- --compact --out apps/storefront/public/catalog.json && npm run sample --workspace=@shelflens/storefront && npm run bundle --workspace=@shelflens/storefront",
         "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && node packages/api/scripts/persist-operations.mjs && prettier --write packages/api/src/generated apps/storefront/src/generated",
         "prose": "check-prose",
+        "node-check": "node scripts/check-node.mjs",
         "verify": "npm run type-check --workspaces && tsc -p scripts && eslint . && prettier --check . && npm run prose && node scripts/check-node.mjs && knip --tsConfig tsconfig.build.json && vitest run",
         "prepare": "husky || true"
     },
@@ -41,7 +42,7 @@
         "@graphql-codegen/typescript": "^7.0.1",
         "@graphql-codegen/typescript-operations": "^7.0.1",
         "@graphql-codegen/typescript-resolvers": "^7.0.1",
-        "@jasonsdevspace/prose-check": "0.2.0",
+        "@jasonsdevspace/prose-check": "0.3.0",
         "@playwright/test": "1.64.1",
         "@testing-library/jest-dom": "^8.0.0",
         "@testing-library/react": "^16.3.3",
