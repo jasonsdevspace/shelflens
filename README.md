@@ -14,10 +14,10 @@ my [design kit](https://github.com/jasonsdevspace/design-kit), and the engine sh
 [Read how it works](https://jasonsdevspace.com/shelflens/about/) ·
 [Install the engine from npm](https://www.npmjs.com/package/@jasonsdevspace/shelflens)
 
-<a href="https://jasonsdevspace.com/shelflens/?q=jacket&amp;explain=1"><picture>
+<p><a href="https://jasonsdevspace.com/shelflens/?q=jacket&amp;explain=1"><picture>
 <source media="(prefers-color-scheme: dark)" srcset=".github/readme/explain-dark.png">
 <img src=".github/readme/explain-light.png" alt="The ShelfLens demo searching for jacket with Explain ranking on, two results pinned by a rule and every result saying which word matched in which field" width="720">
-</picture></a>
+</picture></a></p>
 
 ## Why I built it
 
