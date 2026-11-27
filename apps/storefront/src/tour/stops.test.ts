@@ -13,7 +13,7 @@ import { STOPS } from './stops.js';
 
 const root = new URL('../../../../', import.meta.url);
 
-/** The README's gotchas table: each row's gotcha, and the test files it names, in order. */
+/** The README's gotchas table: each row's gotcha, and the test files it links, in order. */
 const tableRows = (): { gotcha: string; tests: string[] }[] => {
     const lines = readFileSync(new URL('README.md', root), 'utf8').split('\n');
     const heading = lines.indexOf('## The gotchas, and the test behind each');
@@ -27,7 +27,7 @@ const tableRows = (): { gotcha: string; tests: string[] }[] => {
         if (cells.length !== 4) throw new Error(`a gotchas row is not two cells: ${row}`);
         return {
             gotcha: cells[1] ?? '',
-            tests: [...(cells[2] ?? '').matchAll(/`([^`]+)`/g)].map((match) => match[1] ?? ''),
+            tests: [...(cells[2] ?? '').matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1] ?? ''),
         };
     });
 };
