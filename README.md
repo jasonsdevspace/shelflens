@@ -278,8 +278,11 @@ with them.
 `npm run verify` runs the checks CI runs before it builds anything: type checking, linting,
 formatting, a prose check, a check that everything names the Node version in `.nvmrc`, a check that
 npm runs no install scripts, a check that nothing is exported or depended on that nothing uses, and
-the tests, golden queries included. CI also
-checks that the generated types match the schema and holds the build to its size budgets. Use
+the tests, golden queries included. The lint, format and TypeScript settings come from
+[`@jasonsdevspace/config`](https://www.npmjs.com/package/@jasonsdevspace/config), which every
+project repository takes, and `eslint.config.js` adds only the rules that name this repository's
+folders. CI also checks that the generated types match the schema and holds the build to its size
+budgets. Use
 `npm test` for watch mode while you work. CI also runs the storefront in a real browser with
 `npm run e2e` and audits it with `npm run lighthouse`, which need Chromium once:
 `npx playwright install chromium`.
