@@ -240,7 +240,7 @@ jobs:
                   flags=()
                   [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
                   package="$(jq -r .name packages/engine/package.json)"
-                  export NOTES_LEAD="The engine is [\`$package\`](https://www.npmjs.com/package/$package) on npm. Once this version is promoted there, install it with \`npm install $package@$VERSION\`."
+                  export NOTES_LEAD="The engine is [\`$package\`](https://www.npmjs.com/package/$package) on npm. Once this version is promoted there, a project adds it at this exact version, \`$package@$VERSION\`."
                   scripts/github-release.sh "$TAG" "$VERSION" packages/engine/CHANGELOG.md \
                       "ShelfLens engine $VERSION" "${flags[@]}"
 

@@ -64,6 +64,11 @@ jobs:
             - name: Node version check
               run: npm run node-check
 
+            # The repository's .npmrc keeps npm from running install scripts or fetching a package
+            # from git or an address, for every install however it is written.
+            - name: Install check
+              run: npm run installs
+
             - name: Check for unused exports and dependencies
               run: npm run knip
 
@@ -288,17 +293,23 @@ jobs:
             - name: Install dependencies
               run: npm ci --ignore-scripts
 
-            # Packing runs the engine's build, on the Node the project builds on,
-            # which is how the published package is made.
+            # The engine has no prepack and is built by name, on the Node the project builds on,
+            # since the .npmrc's ignore-scripts would skip one, then packed, which is how the
+            # published package is made, and the tarball must hold the build.
             # Its checksum is a job output, which no other job in the run can change,
             # unlike the artifact, so the release publishes only this tarball.
             - name: Pack the engine
               id: pack
               run: |
+                  npm run build --workspace @jasonsdevspace/shelflens
                   npm pack --workspace @jasonsdevspace/shelflens --pack-destination "$RUNNER_TEMP"
                   tarballs=("$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz)
                   if [ "${#tarballs[@]}" -ne 1 ] || [ ! -f "${tarballs[0]}" ]; then
                       echo "packing made ${#tarballs[@]} tarballs, not one"
+                      exit 1
+                  fi
+                  if ! tar -tzf "${tarballs[0]}" | grep -q '^package/dist/'; then
+                      echo "the packed tarball holds no dist"
                       exit 1
                   fi
                   sum=$(sha256sum "${tarballs[0]}" | cut -d' ' -f1)

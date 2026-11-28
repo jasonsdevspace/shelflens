@@ -1,6 +1,6 @@
 # 20. Dependencies install without their scripts
 
-**Status:** accepted
+**Status:** replaced by [record 21](0021-installs-follow-npms-own-settings.md)
 
 ## Context
 
