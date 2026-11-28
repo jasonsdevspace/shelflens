@@ -78,7 +78,7 @@ const hasOwnTimeLimit = ({ indent, text }: Step) =>
     new RegExp(`^${indent} {2}timeout-minutes: ['"]?[1-5]['"]?\\s*$`, 'm').test(text);
 
 /** npm's subcommands that install, or that run packages' install scripts, in every spelling. */
-const INSTALLS = new Set([
+const INSTALLS = [
     'ci',
     'clean-install',
     'ic',
@@ -112,205 +112,67 @@ const INSTALLS = new Set([
     'ddp',
     'link',
     'ln',
-]);
+].join('|');
 
-/** npm's other subcommands, so a word that is neither is read as a flag's value, not a command. */
-const OTHERS = new Set(
-    (
-        'run run-script rum urn exec x pack view info show v version test tst t publish stage ' +
-        'query ls list la ll audit config c pkg init create innit prune uninstall remove rm r un ' +
-        'unlink start stop restart cache doctor explain why fund outdated owner search token ' +
-        'whoami help bin root prefix sbom diff completion edit explore find-dupes get set hook ' +
-        'login logout adduser org team access deprecate dist-tag ping profile repo docs home bugs ' +
-        'shrinkwrap star stars unstar unpublish'
-    ).split(' ')
+/** npm's flags before its subcommand, each with its value where it takes one. */
+const FLAGS = String.raw`(?:(?:--prefix|--workspace|-w|-C|--cache|--loglevel|--userconfig)\s+\S+\s+|-\S+\s+)*`;
+
+/**
+ * Whether a line runs npm or npx to install or fetch a package, by its words: npx, or npm with an
+ * install or exec subcommand after only its flags. A plain match, not a reading of the shell.
+ */
+const INSTALLING = new RegExp(
+    String.raw`(?:^|[\s;&|(])(?:npx(?=\s)|npm\s+${FLAGS}(?:${INSTALLS}|exec|x)(?=\s|$))`
 );
 
-/** An npm or npx command: which it is, its subcommand, the flags before and the words after it. */
-interface NpmCommand {
-    readonly npx: boolean;
-    readonly command: string;
-    readonly flags: readonly string[];
-    readonly args: readonly string[];
-    readonly line: string;
-    /** The folder the step runs in, where it names one. */
-    readonly dir: string | undefined;
-}
-
 /**
- * Whether a command's flags, before and after its subcommand, leave install scripts off, the last
- * that names them deciding, as npm reads them.
+ * The lines of a workflow that install or fetch with npm where npm reads no project `.npmrc`, and so
+ * runs install scripts unless the line turns them off: a global install, an install given another
+ * folder, any step of a job that checks nothing out, and a step that runs outside the repository,
+ * by its working-directory or a `cd` into the runner's temporary folder or an absolute path. The
+ * repository's `.npmrc` covers every other install, as the repo check holds.
  */
-const skipsScripts = ({ flags, args }: NpmCommand) => {
-    const words = [...flags, ...args];
-    let off = false;
-    words.forEach((word, index) => {
-        if (word === '--ignore-scripts') off = words[index + 1] !== 'false';
-        else if (word === '--ignore-scripts=true') off = true;
-        else if (word === '--ignore-scripts=false' || word === '--no-ignore-scripts') off = false;
-    });
-    return off;
-};
-
-/**
- * What a step runs: its `run:` value, a block's lines under it, a folded block joined into one, and
- * nothing of the step's other keys, so a step's name is not read as a command.
- */
-const runOf = (step: string): string => {
-    const found = /^( *)(?:- )?run: *(.*)$/m.exec(step);
-    if (!found) return '';
-    const [line = '', indent = '', value = ''] = found;
-    if (!/^[|>][-+]?\d*\s*$/.test(value)) return value;
-    const block: string[] = [];
-    for (const next of step.slice(step.indexOf(line) + line.length + 1).split('\n')) {
-        if (next.trim() === '') block.push('');
-        else if ((/^ */.exec(next)?.[0].length ?? 0) > indent.length) block.push(next);
-        else break;
-    }
-    return value.startsWith('>') ? block.join(' ') : block.join('\n');
-};
-
-/** npx's options before the tool it runs, with the value of each option that takes one. */
-const optionsBeforeTool = (words: readonly string[]) => {
-    const options: string[] = [];
-    for (let at = 0; at < words.length; at += 1) {
-        const word = words[at] ?? '';
-        if (word === '--' || !word.startsWith('-')) break;
-        options.push(word);
-        if (['--package', '-p', '--call', '-c'].includes(word)) at += 1;
-    }
-    return options;
-};
-
-/**
- * Whether a command fetches a package and runs it, as npx, `npm exec` and `npm x` do, which runs the
- * package's install scripts, unless `--no-install` holds it to what is already installed.
- */
-const fetchesAndRuns = (command: NpmCommand) =>
-    (command.npx || command.command === 'exec' || command.command === 'x') &&
-    ![...command.flags, ...optionsBeforeTool(command.args)].includes('--no-install');
-
-/** The folder a step names to run in, if it names one. */
-const dirOf = (step: string) => /^ *working-directory: *(.+?) *$/m.exec(step)?.[1];
-
-/**
- * Each npm or npx command in what a step runs, wherever it sits: after a keyword, an assignment or
- * another command, inside parentheses or a substitution, with continued lines joined, a quoted word
- * read as the word, and quoted words that hold a space left out, since they are a message that
- * names a command rather than one. A word that is no npm command is read as a flag's value, so the
- * subcommand is the first word npm knows.
- */
-const commandsIn = (run: string, dir?: string): NpmCommand[] =>
-    run
-        .replace(/\\\n\s*/g, ' ')
-        .replace(/\\["']/g, '')
-        .replace(/"([^"\s]*)"|'([^'\s]*)'/g, '$1$2')
-        .replace(/"[^"\n]*"|'[^'\n]*'/g, '""')
-        .split(/\n|&&|\|\||;|\||&|\$\(|`|\(|\)/)
-        .flatMap((part): NpmCommand[] => {
-            const words = part.trim().split(/\s+/).filter(Boolean);
-            const at = words.findIndex((word) => word === 'npm' || word === 'npx');
-            if (at < 0) return [];
-            const npx = words[at] === 'npx';
-            const rest = words.slice(at + 1);
-            const line = part.trim();
-            if (npx) return [{ npx, command: '', flags: [], args: rest, line, dir }];
-            let index = 0;
-            while (
-                index < rest.length &&
-                !INSTALLS.has(rest[index] ?? '') &&
-                !OTHERS.has(rest[index] ?? '')
-            ) {
-                index += 1;
-            }
-            return [
-                {
-                    npx,
-                    command: rest[index] ?? '',
-                    flags: rest.slice(0, index),
-                    args: rest.slice(index + 1),
-                    line,
-                    dir,
-                },
-            ];
+const outsideInstalls = (text: string): string[] =>
+    [...jobsOf(text).values()].flatMap((body) => {
+        const checkedOut = /uses: actions\/checkout@/.test(body);
+        return stepsOf(body).flatMap((step) => {
+            const outside =
+                !checkedOut ||
+                /working-directory:\s*(?:\$\{\{\s*runner\.temp|\/|~|"?\$RUNNER_TEMP)/.test(
+                    step.text
+                ) ||
+                /\bcd\s+"?(?:\$RUNNER_TEMP|\$\{\{\s*runner\.temp|\/|~)/.test(step.text);
+            return step.text
+                .split('\n')
+                .filter(
+                    (line) =>
+                        INSTALLING.test(line) &&
+                        (outside ||
+                            /\s(?:-g|--global)(?=\s|$)/.test(line) ||
+                            /\s(?:--prefix(?:=|\s)|-C\s)/.test(line)) &&
+                        !/--ignore-scripts(?![=\w-])|--ignore-scripts=true/.test(line)
+                )
+                .map((line) => line.trim());
         });
-
-/** What a command fetches and runs from npm: a package by its name, or the tool a package provides. */
-interface Fetched {
-    readonly kind: 'bin' | 'package';
-    readonly name: string;
-}
+    });
 
 /**
- * What npx or `npm exec` runs, from the words after it: the package `--package` names, or else the
- * tool. npx's own options come before the tool, and what follows the tool is the tool's own.
+ * The lines that fetch a package and run it: npx, `npm exec` and `npm x`, and `npm init` or `npm
+ * create` given an initializer, which always fetches it, each refused unless `--no-install` holds
+ * it to what the lockfile installed.
  */
-const npxTarget = (words: readonly string[]): Fetched => {
-    let at = 0;
-    while (at < words.length && (words[at] ?? '').startsWith('-')) {
-        at += words[at] === '--package' || words[at] === '-p' ? 2 : 1;
-    }
-    const options = words.slice(0, at);
-    const named = options.findIndex((word) => word === '--package' || word === '-p');
-    const pkg =
-        options.find((word) => word.startsWith('--package='))?.slice('--package='.length) ??
-        (named >= 0 ? options[named + 1] : undefined);
-    if (pkg !== undefined) return { kind: 'package', name: pkg.replace(/(?<=.)@.*$/, '') };
-    return { kind: 'bin', name: words[at] ?? '' };
-};
-
-/**
- * The package a command would fetch and run, if it runs one: what npx or `npm exec` runs, or the
- * initializer `npm init` or `npm create` names. Nothing for a command that runs nothing from npm.
- */
-const fetchedBy = ({ npx, command, args }: NpmCommand): Fetched | undefined => {
-    const words = args.filter((word) => word !== '--');
-    if (npx || command === 'exec' || command === 'x') return npxTarget(words);
-    if (!['init', 'create', 'innit'].includes(command)) return undefined;
-    const name = words.find((word) => !word.startsWith('-'));
-    return name === undefined ? undefined : { kind: 'package', name: `create-${name}` };
-};
-
-/** A lockfile's entries, by their path under node_modules, each as unknown until looked at. */
-const entriesOf = (lockfile: unknown): [string, unknown][] => {
-    const listed =
-        typeof lockfile === 'object' && lockfile !== null && 'packages' in lockfile
-            ? lockfile.packages
-            : undefined;
-    if (typeof listed !== 'object' || listed === null) return [];
-    return Object.keys(listed).map((key): [string, unknown] => [key, Reflect.get(listed, key)]);
-};
-
-/** The commands an entry puts on the path: its own name for a single bin, or each it names. */
-const binsOf = (name: string, entry: unknown): string[] => {
-    const bin: unknown =
-        typeof entry === 'object' && entry !== null && 'bin' in entry ? entry.bin : undefined;
-    if (typeof bin === 'string') return [name.split('/').pop() ?? name];
-    return typeof bin === 'object' && bin !== null ? Object.keys(bin) : [];
-};
-
-/** The packages the lockfile installs at the top of node_modules, and the commands they put on the path. */
-const lockfileTools = (lockfile: unknown) => {
-    const packages = new Set<string>();
-    const bins = new Set<string>();
-    for (const [path, entry] of entriesOf(lockfile)) {
-        if (path.lastIndexOf('node_modules/') !== 0) continue;
-        const name = path.slice('node_modules/'.length);
-        packages.add(name);
-        for (const bin of binsOf(name, entry)) bins.add(bin);
-    }
-    return { packages, bins };
-};
-
-/** The lockfile at the root, which says what npm installs and what tools npx finds. */
-const LOCKFILE = readJson(join(ROOT, 'package-lock.json'));
+const fetchingLines = (lines: readonly string[]): string[] =>
+    lines
+        .filter(
+            (line) =>
+                new RegExp(
+                    String.raw`(?:^|[\s;&|(])(?:npx(?=\s)|npm\s+${FLAGS}(?:exec|x)(?=\s)|npm\s+(?:init|create|innit)\s+(?!-)\S)`
+                ).test(line) && !/--no-install\b/.test(line)
+        )
+        .map((line) => line.trim());
 
 describe('the workflows', () => {
     const files = readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/.test(name));
-    /** Every npm and npx command the workflows' steps run. */
-    const npmCommands = files.flatMap((file) =>
-        stepsOf(read(file)).flatMap(({ text }) => commandsIn(runOf(text), dirOf(text)))
-    );
 
     it('give every job a name that says what it does, not only its id', () => {
         const unnamed = files.flatMap((file) =>
@@ -338,42 +200,53 @@ describe('the workflows', () => {
         expect(unready).toEqual([]);
     });
 
-    it('install dependencies without running their install scripts', () => {
-        const installs = npmCommands.filter(
-            (command) => INSTALLS.has(command.command) || fetchesAndRuns(command)
+    it('turn install scripts off on every install where npm reads no project .npmrc', () => {
+        expect([...workflows.values()].flatMap(outsideInstalls)).toEqual([]);
+    });
+
+    it('fetch nothing to run: npx, npm exec and npm x only on what is installed', () => {
+        const lines = [...workflows.values()].flatMap((text) =>
+            stepsOf(text).flatMap(({ text: step }) => step.split('\n'))
         );
-        expect(installs.length).toBeGreaterThan(0);
+        expect(fetchingLines(lines)).toEqual([]);
+    });
+
+    it('find an install outside the repository that leaves install scripts on', () => {
+        const job = (step: string, checkout = '            - uses: actions/checkout@v7\n') =>
+            `jobs:\n    a:\n        steps:\n${checkout}${step}`;
         expect(
-            installs.filter((command) => !skipsScripts(command)).map(({ line }) => line)
-        ).toEqual([]);
-    });
-
-    it('name with npx only the tools the lockfile holds, so a job that installed finds them and one that did not fails rather than fetching', () => {
-        const { packages, bins } = lockfileTools(LOCKFILE);
-        const fetched = npmCommands
-            .filter((command) => {
-                const wanted = fetchedBy(command);
-                if (wanted === undefined) return false;
-                // Outside the repository npx finds none of its tools, and fetches what it runs.
-                if (
-                    command.dir !== undefined &&
-                    (/\$\{\{/.test(command.dir) || command.dir.startsWith('/'))
+            outsideInstalls(
+                job(
+                    '            - working-directory: ${{ runner.temp }}/x\n              run: npm ci\n'
                 )
-                    return true;
-                return wanted.kind === 'bin' ? !bins.has(wanted.name) : !packages.has(wanted.name);
-            })
-            .map(({ line }) => line);
-        expect(fetched).toEqual([]);
+            )
+        ).toEqual(['run: npm ci']);
+        expect(outsideInstalls(job('            - run: npm ci\n', ''))).toEqual(['- run: npm ci']);
+        expect(outsideInstalls(job('            - run: npm install -g x\n'))).toEqual([
+            '- run: npm install -g x',
+        ]);
+        expect(
+            outsideInstalls(job('            - run: npm --prefix /tmp/x clean-install\n'))
+        ).toEqual(['- run: npm --prefix /tmp/x clean-install']);
+        expect(
+            outsideInstalls(job('            - run: npm install -g --ignore-scripts x\n'))
+        ).toEqual([]);
+        expect(outsideInstalls(job('            - run: npm ci\n'))).toEqual([]);
     });
 
-    it('count npx and npm exec as an install, unless --no-install holds them to what is installed', () => {
-        const read = (step: string) => commandsIn(runOf(step)).map(fetchesAndRuns);
-        expect(read('- run: npx playwright install chromium')).toEqual([true]);
-        expect(read('- run: npx --no-install playwright install chromium')).toEqual([false]);
-        expect(read('- run: npm exec --package=foo -- foo')).toEqual([true]);
-        expect(read('- run: npm x --no-install -- foo')).toEqual([false]);
-        expect(read('- run: npx foo --no-install')).toEqual([true]);
-        expect(read('- run: npm ci --ignore-scripts')).toEqual([false]);
+    it('read a fetch by its words', () => {
+        expect(
+            fetchingLines([
+                'npx tsc',
+                'npx --no-install tsc',
+                'npm exec tsc',
+                'npm x --no-install tsc',
+                'npm init vite',
+                'npm create vite',
+                'npm init -y',
+                'npm ci',
+            ])
+        ).toEqual(['npx tsc', 'npm exec tsc', 'npm init vite', 'npm create vite']);
     });
 
     it('grant only read access to the repository by default, in every workflow', () => {
@@ -407,44 +280,6 @@ describe('the workflows', () => {
         );
         expect(keeping).toEqual([]);
         expect(read('message.yml')).toMatch(/uses: actions\/checkout@/);
-    });
-
-    it('read an install however it is written, and the flags the last of which decides', () => {
-        const read = (step: string) =>
-            commandsIn(runOf(step))
-                .filter(({ command }) => INSTALLS.has(command))
-                .map(skipsScripts);
-        expect(read('- run: npm --prefix a ci')).toEqual([false]);
-        expect(read('- run: npm --loglevel warn ci --ignore-scripts')).toEqual([true]);
-        expect(read('- run: if [ -n "$X" ]; then npm clean-install; fi')).toEqual([false]);
-        expect(read('- run: FOO=1 npm ic --ignore-scripts')).toEqual([true]);
-        expect(read('- run: |\n      npm ci \\\n          --ignore-scripts')).toEqual([true]);
-        expect(read('- run: >\n      npm ci\n      --ignore-scripts')).toEqual([true]);
-        expect(read('- run: npm ci --ignore-scripts false')).toEqual([false]);
-        expect(read('- run: npm ci --ignore-scripts=true')).toEqual([true]);
-        expect(read('- run: npm --ignore-scripts ci')).toEqual([true]);
-        expect(read('- run: npm ci --ignore-scripts --no-ignore-scripts')).toEqual([false]);
-        expect(read('- run: npm ci "--ignore-scripts"')).toEqual([true]);
-        expect(read('- run: (cd site && npm ci)')).toEqual([false]);
-        expect(read('- run: npm ci --ignore-scripts & npm install')).toEqual([true, false]);
-        expect(read('- run: npm rebuild')).toEqual([false]);
-        expect(read("- run: echo it\\'s done; npm ci; echo 'ok'")).toEqual([false]);
-        // Words in a message, or in a step's name, that name a command are not a command.
-        expect(read('- run: echo "install it with `npm install x`"')).toEqual([]);
-        expect(read('- name: Install with npm ci\n  run: echo done')).toEqual([]);
-        // npx and npm exec run what the lockfile installed, or name what they fetch.
-        expect(commandsIn('npx --package=evil playwright install').map(fetchedBy)).toEqual([
-            { kind: 'package', name: 'evil' },
-        ]);
-        expect(commandsIn('npx tsc -p scripts').map(fetchedBy)).toEqual([
-            { kind: 'bin', name: 'tsc' },
-        ]);
-        expect(commandsIn('npx -p evil@1 tool').map(fetchedBy)).toEqual([
-            { kind: 'package', name: 'evil' },
-        ]);
-        expect(commandsIn('npm create vite').map(fetchedBy)).toEqual([
-            { kind: 'package', name: 'create-vite' },
-        ]);
     });
 
     it('publish an engine that runs no script of its own when it is installed', () => {
@@ -568,6 +403,7 @@ describe('the workflows', () => {
             'Format check',
             'Prose check',
             'Node version check',
+            'Install check',
             'Check for unused exports and dependencies',
             'Unit tests',
         ].map((name) => {

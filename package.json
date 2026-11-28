@@ -31,12 +31,13 @@
         "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && node packages/api/scripts/persist-operations.mjs && prettier --write packages/api/src/generated apps/storefront/src/generated",
         "prose": "check-prose",
         "node-check": "node scripts/check-node.mjs",
+        "installs": "check-installs",
         "type-check": "npm run type-check --workspaces && tsc -p scripts",
         "lint": "eslint .",
         "format:check": "prettier --check .",
         "knip": "knip --tsConfig tsconfig.build.json",
         "test:run": "vitest run",
-        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run node-check && npm run knip && npm run test:run",
+        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run node-check && npm run installs && npm run knip && npm run test:run",
         "prepare": "husky || true"
     },
     "devDependencies": {
@@ -48,6 +49,7 @@
         "@graphql-codegen/typescript-operations": "^7.0.1",
         "@graphql-codegen/typescript-resolvers": "^7.0.1",
         "@jasonsdevspace/prose-check": "0.3.0",
+        "@jasonsdevspace/repo-check": "0.1.0",
         "@playwright/test": "1.64.1",
         "@testing-library/jest-dom": "^8.0.0",
         "@testing-library/react": "^16.3.3",
@@ -87,10 +89,5 @@
         "*.{json,md,yml,yaml,css,html,graphql}": [
             "prettier --write"
         ]
-    },
-    "allowScripts": {
-        "esbuild": true,
-        "unrs-resolver": true,
-        "fsevents": true
     }
 }
