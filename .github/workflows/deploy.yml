@@ -19,7 +19,7 @@ permissions:
 # newest commit is always the last deployed, and a run that has handed an
 # artifact to Pages is never canceled, which would leave the deployment
 # pending. The group is the branch's own, so a run started by hand from
-# another branch never takes the place of one waiting on main.
+# another branch never takes the place of one queued on main.
 concurrency:
     group: deploy-${{ github.ref }}
     cancel-in-progress: false
