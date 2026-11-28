@@ -1,15 +1,15 @@
 name: CI
 
+# A push to main, or a deploy by hand, runs these checks through the deploy
+# workflow, which calls this one and builds and deploys the demo once every
+# job passes, so no caller of this workflow has to grant what a deploy needs.
 on:
-    push:
-        branches: [main]
     # Every pull request, not only those into main, so a PR stacked on
     # another's branch is checked before it is merged down.
     pull_request:
-    # A deploy by hand, which still runs every check first.
-    workflow_dispatch:
-    # The release workflow runs these same checks before it publishes, and
-    # publishes only the packed engine whose checksum the check reports.
+    # The deploy workflow runs these checks on main, and the release workflow
+    # runs them before it publishes, and publishes only the packed engine
+    # whose checksum the check reports.
     workflow_call:
         outputs:
             engine-sha256:
@@ -19,10 +19,8 @@ on:
 permissions:
     contents: read
 
-# A newer push to a pull request supersedes the run in progress. A push to
-# main does not: runs on main wait their turn, so the newest commit is always
-# the last deployed, and a run that has handed an artifact to Pages is never
-# canceled, which would leave the deployment pending.
+# A newer push to a pull request supersedes the run in progress. Runs called
+# from main or a tag wait their turn.
 concurrency:
     group: ci-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -390,67 +388,3 @@ jobs:
               run: |
                   node scripts/summary.mjs package "$RUNNER_TEMP"/jasonsdevspace-shelflens-*.tgz ||
                       echo "The summary of the engine's size could not be written."
-
-    # The demo, published to GitHub Pages at jasonsdevspace.com/shelflens/
-    # once everything above has passed on main. A merge that fails a check
-    # is never deployed. The site is built in a job with no more than read
-    # access, so nothing the build installs or runs can deploy, and the
-    # deploy job runs only GitHub's own Pages actions.
-    site:
-        name: Build the demo site
-        needs: [verify, browser, lighthouse, floor, visual]
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        runs-on: ubuntu-26.04
-        timeout-minutes: 15
-        steps:
-            - name: Checkout
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  persist-credentials: false
-
-            - name: Set up Node
-              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-              with:
-                  node-version-file: .nvmrc
-                  cache: 'npm'
-
-            - name: Install dependencies
-              run: npm ci --ignore-scripts
-
-            # The page, the catalog, the rules and the worker, built for the
-            # path the project site is served under.
-            - name: Build the storefront for the project site
-              run: npm run storefront
-              env:
-                  BASE_PATH: /shelflens/
-
-            - name: Upload the site
-              uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-              with:
-                  path: apps/storefront/dist
-
-    deploy:
-        name: Deploy the demo
-        needs: site
-        runs-on: ubuntu-26.04
-        timeout-minutes: 10
-        permissions:
-            pages: write
-            id-token: write
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
-        steps:
-            - name: Configure Pages
-              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-            - name: Deploy to GitHub Pages
-              id: deployment
-              uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-
-            - name: Summarize the deploy
-              env:
-                  PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-              run: |
-                  commit="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
-                  printf '### Deployed\n\n%s, from [`%s`](%s).\n' "$PAGE_URL" "${GITHUB_SHA:0:7}" "$commit" >> "$GITHUB_STEP_SUMMARY"

@@ -880,6 +880,58 @@ describe('the oldest Node job', () => {
     });
 });
 
+describe('the deploy workflow', () => {
+    const text = read('deploy.yml');
+    const job = (id: string) => jobsOf(text).get(id) ?? '';
+
+    /** The jobs of a workflow that are granted what a deploy needs, or the workflow itself. */
+    const holdingIn = (file: string) => {
+        const plain = read(file)
+            .replace(/^[ \t]*#.*\n/gm, '')
+            .replace(/[ \t]+#[ \t].*$/gm, '');
+        const grants = (part: string) => /id-token:\s*write|pages:\s*write|write-all/.test(part);
+        const before = plain.slice(0, Math.max(0, plain.search(/^jobs:/m)));
+        return [
+            ...(grants(before) ? ['the workflow'] : []),
+            ...[...jobsOf(plain)].filter(([, lines]) => grants(lines)).map(([id]) => id),
+        ];
+    };
+
+    it('runs on a push to main and by hand, and CI runs only on pull requests and when called', () => {
+        expect(text).toMatch(
+            /^on:\n {4}push:\n {8}branches: \[main\]\n(?:.*\n)*? {4}workflow_dispatch:\n/m
+        );
+        const triggers = /^on:\n((?: {4}.*\n|[ \t]*\n)*)/m.exec(read('ci.yml'))?.[1] ?? '';
+        expect(triggers.match(/^ {4}[a-z_]+(?=:)/gm)?.map((name) => name.trim())).toEqual([
+            'pull_request',
+            'workflow_call',
+        ]);
+    });
+
+    it('gives what a deploy needs to the deploy job alone, and to no job in CI or the release checks', () => {
+        expect(holdingIn('ci.yml')).toEqual([]);
+        expect(holdingIn('deploy.yml')).toEqual(['deploy']);
+        expect(jobsOf(read('release.yml')).get('checks') ?? '').toMatch(
+            /^ {8}permissions:\n {12}contents: read\n(?! {12})/m
+        );
+    });
+
+    it('builds the demo only once every check in CI has passed, and deploys only what it built', () => {
+        expect(job('checks')).toMatch(/^ {8}uses: \.\/\.github\/workflows\/ci\.yml\s*$/m);
+        expect(job('checks')).toMatch(/^ {8}permissions:\n {12}contents: read\n(?! {12})/m);
+        expect(job('site')).toMatch(/^ {8}needs: checks\s*$/m);
+        expect(job('site')).toMatch(/uses: actions\/upload-pages-artifact@[0-9a-f]{40}\b/);
+        expect(job('deploy')).toMatch(/^ {8}needs: site\s*$/m);
+        expect(job('deploy')).toMatch(
+            /^ {8}permissions:\n {12}pages: write\n {12}id-token: write\n {8}environment:\n {12}name: github-pages\n/m
+        );
+    });
+
+    it('runs one deploy at a time, never canceling one under way', () => {
+        expect(text).toMatch(/^concurrency:\n {4}group: deploy\n {4}cancel-in-progress: false\n/m);
+    });
+});
+
 describe('the release workflow', () => {
     it('uses no cache in its own jobs, and lets the checks it calls read one', () => {
         const release = workflows.get('.github/workflows/release.yml') ?? '';
