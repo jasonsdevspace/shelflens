@@ -55,8 +55,8 @@ run with its scripts on.
 
 - `scripts/workflows.test.ts` holds every command in the workflows that installs or runs install
   scripts, in any of npm's spellings and wherever it sits in what a step runs, to `--ignore-scripts`,
-  the last flag that names it deciding as it does for npm. It holds `npx`, `npm exec` and `npm
-create` to the packages and tools the lockfile installs, in the repository, and holds the engine
-  to no install script of its own.
+  the last flag that names it deciding as it does for npm. It holds `npx`, `npm exec` and
+  `npm create` to the packages and tools the lockfile installs, in the repository, and holds the
+  engine to no install script of its own.
 - Every job in CI that installs builds and tests with scripts off, so a package that needed one
   would fail it.

@@ -29,13 +29,13 @@ commit.
 
 ## Writing
 
-Every file is held to one style, which the prose check enforces: no em dashes, no semicolons joining
-clauses, American spelling, no issue numbers in comments, and no notes about the process, such as a
-list of what is left to do, in anything a reader sees. A commit message says what changed and why in
-plain sentences, with no em dash or semicolon, and names the work rather than whatever tool wrote it,
-which the prose check's `check-commit-message` command enforces. Installing with `npm ci` sets that check up as a hook on
-each commit, beside one that lints and formats the staged files, and CI runs it on a pull request's
-title and body.
+Every file is held to one style, which the prose check enforces: no em dashes, no semicolons
+joining clauses, American spelling, no issue numbers in comments, and no notes about the process,
+such as a list of what is left to do, in anything a reader sees. A commit message says what changed
+and why in plain sentences, with no em dash or semicolon, and names the work rather than whatever
+tool wrote it, which the prose check's `check-commit-message` command enforces. Installing with
+`npm ci` sets that check up as a hook on each commit, beside one that lints and formats the staged
+files, and CI runs it on a pull request's title and body.
 
 ## Issues
 

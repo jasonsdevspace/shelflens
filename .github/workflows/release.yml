@@ -26,6 +26,11 @@ on:
 permissions:
     contents: read
 
+# A release's own jobs use no cache, so nothing a run on main kept reaches what it
+# publishes. Its checks read the cache, as CI does, and npm checks every package it
+# restores against the lockfile's hash.
+cache-mode: none
+
 # One release run for a tag at a time, so a tag pushed again while its run is
 # still going never publishes beside it. A run waiting is replaced by a newer
 # one for the same tag, which is the one to publish.
@@ -96,6 +101,7 @@ jobs:
     checks:
         name: CI
         needs: agree
+        cache-mode: read
         uses: ./.github/workflows/ci.yml
         permissions:
             contents: read
