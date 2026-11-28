@@ -31,7 +31,12 @@
         "codegen": "graphql-codegen --config packages/api/codegen.mjs && node packages/api/scripts/inline-schema.mjs && node packages/api/scripts/persist-operations.mjs && prettier --write packages/api/src/generated apps/storefront/src/generated",
         "prose": "check-prose",
         "node-check": "node scripts/check-node.mjs",
-        "verify": "npm run type-check --workspaces && tsc -p scripts && eslint . && prettier --check . && npm run prose && node scripts/check-node.mjs && knip --tsConfig tsconfig.build.json && vitest run",
+        "type-check": "npm run type-check --workspaces && tsc -p scripts",
+        "lint": "eslint .",
+        "format:check": "prettier --check .",
+        "knip": "knip --tsConfig tsconfig.build.json",
+        "test:run": "vitest run",
+        "verify": "npm run type-check && npm run lint && npm run format:check && npm run prose && npm run node-check && npm run knip && npm run test:run",
         "prepare": "husky || true"
     },
     "devDependencies": {

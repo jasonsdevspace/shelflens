@@ -558,11 +558,8 @@ describe('the workflows', () => {
     });
 
     it('run the same checks in CI as `npm run verify` runs, each in a step of its own', () => {
-        /** A command as written in either place, without the npx a CI step runs it through. */
-        const commands = (line: string) =>
-            line
-                .split(' && ')
-                .map((command) => command.trim().replace(/^npx (?:--no-install )?/, ''));
+        /** The named scripts a line calls, since `verify` and each CI step call the same ones. */
+        const commands = (line: string) => line.split(' && ').map((command) => command.trim());
         const verify = lookupText(readJson(join(ROOT, 'package.json')), 'scripts', 'verify');
         const job = jobsOf(read('ci.yml')).get('verify') ?? '';
         // The checks, by the names a failed run shows, each with the command its step runs.

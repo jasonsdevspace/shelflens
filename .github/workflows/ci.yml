@@ -50,25 +50,25 @@ jobs:
               run: npm ci --ignore-scripts
 
             - name: Type-check
-              run: npm run type-check --workspaces && npx --no-install tsc -p scripts
+              run: npm run type-check
 
             - name: Lint
-              run: npx --no-install eslint .
+              run: npm run lint
 
             - name: Format check
-              run: npx --no-install prettier --check .
+              run: npm run format:check
 
             - name: Prose check
               run: npm run prose
 
             - name: Node version check
-              run: node scripts/check-node.mjs
+              run: npm run node-check
 
             - name: Check for unused exports and dependencies
-              run: npx --no-install knip --tsConfig tsconfig.build.json
+              run: npm run knip
 
             - name: Unit tests
-              run: npx --no-install vitest run
+              run: npm run test:run
 
             # The server's types are generated from the schema and committed.
             # A schema change without regenerating them fails here.
