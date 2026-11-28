@@ -80,7 +80,15 @@ updates:
           interval: monthly
       cooldown:
           default-days: 14
+          # The house's shared message check skips the wait meant for actions from other authors,
+          # as the house's own packages do.
+          exclude:
+              - 'jasonsdevspace/tooling*'
       labels: ['dependencies']
       groups:
+          # The shared message check moves in a pull request of its own, since a new rule can fail
+          # this repository's own text and should not hold back the other updates.
+          pr-message:
+              patterns: ['jasonsdevspace/tooling*']
           actions:
               patterns: ['*']
