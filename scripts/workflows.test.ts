@@ -1,9 +1,27 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+    chmodSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { lookupRecord, lookupText, readJson } from './json.js';
+import { repositoryFiles } from './repository.mjs';
+
+/** Every workflow, by its path from the top of the repository. */
+const workflows = repositoryFiles(import.meta.url, (path) =>
+    /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path)
+);
 
 /*
  * What the workflows promise that only reading them can hold: a name for
@@ -360,7 +378,9 @@ describe('the workflows', () => {
 
     it('grant only read access to the repository by default, in every workflow', () => {
         expect(
-            files.filter((file) => !/^permissions:\n {4}contents: read\n/m.test(read(file)))
+            [...workflows]
+                .filter(([, text]) => !/^permissions:\n {4}contents: read\n(?! )/m.test(text))
+                .map(([path]) => path)
         ).toEqual([]);
     });
 
@@ -385,29 +405,6 @@ describe('the workflows', () => {
         );
         expect(keeping).toEqual([]);
         expect(read('message.yml')).toMatch(/uses: actions\/checkout@/);
-    });
-
-    it("run the commit message check from the lockfile's own tarball, checked against its hash, with nothing installed", () => {
-        const message = read('message.yml');
-        const step =
-            stepsOf(message).find(({ text }) => /check-commit-message/.test(text))?.text ?? '';
-        const order = [
-            "p.resolved + ' ' + p.integrity",
-            'https://registry.npmjs.org/@jasonsdevspace/prose-check/-/prose-check-*.tgz) ;;',
-            'openssl dgst -sha512 -binary',
-            'does not match the lockfile\'s hash"',
-            'exit 1',
-            'node "$RUNNER_TEMP/prose-check/package/bin/check-commit-message.mjs" --as-is',
-        ];
-        let from = 0;
-        const missing = order.filter((text) => {
-            const at = step.indexOf(text, from);
-            if (at < 0) return true;
-            from = at + text.length;
-            return false;
-        });
-        expect(missing).toEqual([]);
-        expect(message).not.toMatch(/\bnpm (?:exec|x)\b|\bnpx\b/);
     });
 
     it('read an install however it is written, and the flags the last of which decides', () => {
@@ -598,5 +595,247 @@ describe('the workflows', () => {
                 '## '
             );
         }
+    });
+});
+
+/**
+ * The lines of a workflow's `run:` block that holds `needle`, as the shell receives them, with the
+ * block's own indent taken off.
+ */
+const runBlockWith = (text: string, needle: string): string => {
+    const lines = text.split('\n');
+    const at = lines.findIndex((line) => line.includes(needle));
+    let start = at;
+    while (start > 0 && !/^\s*(?:- )?run: \|\s*$/.test(lines[start] ?? '')) start -= 1;
+    const indent = /^(\s*)/.exec(lines[start + 1] ?? '')?.[1] ?? '';
+    const body: string[] = [];
+    for (const line of lines.slice(start + 1)) {
+        if (line.trim() !== '' && !line.startsWith(indent)) break;
+        body.push(line.slice(indent.length));
+    }
+    return at < 0 ? '' : body.join('\n');
+};
+
+/**
+ * Every `run:` value in a workflow, a block's lines joined, so a test can read what reaches the
+ * shell and nothing else. A block's lines sit deeper than its key, and the key of a `- run:`
+ * step sits two places past the dash.
+ */
+const runsIn = (text: string): string[] => {
+    const lines = text.split('\n');
+    return lines.flatMap((line, at) => {
+        const match = /^(\s*)(- )?run:\s*(.*)$/.exec(line);
+        if (!match) return [];
+        const [, indent = '', dash = '', value = ''] = match;
+        if (!/^[|>][-+0-9]*\s*$/.test(value)) return [value];
+        const base = indent.length + dash.length;
+        const body: string[] = [];
+        for (const next of lines.slice(at + 1)) {
+            if (next.trim() !== '' && (/^(\s*)/.exec(next)?.[1]?.length ?? 0) <= base) break;
+            body.push(next);
+        }
+        return [body.join('\n')];
+    });
+};
+
+describe("the message workflow's check", () => {
+    const message = workflows.get('.github/workflows/message.yml') ?? '';
+    const script = runBlockWith(message, 'check-commit-message.mjs');
+    const installed = fileURLToPath(
+        new URL('../node_modules/@jasonsdevspace/prose-check', import.meta.url)
+    );
+    const work = mkdtempSync(join(tmpdir(), 'message-check-'));
+    const manifest: unknown = JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8'));
+    const version =
+        typeof manifest === 'object' &&
+        manifest !== null &&
+        'version' in manifest &&
+        typeof manifest.version === 'string'
+            ? manifest.version
+            : '';
+    execFileSync('npm', ['pack', '--ignore-scripts', '--pack-destination', work, installed], {
+        stdio: 'ignore',
+    });
+    const tarball = join(work, readdirSync(work).find((name) => name.endsWith('.tgz')) ?? '');
+    const integrity = `sha512-${createHash('sha512').update(readFileSync(tarball)).digest('base64')}`;
+    const registry = `https://registry.npmjs.org/@jasonsdevspace/prose-check/-/prose-check-${version}.tgz`;
+    afterAll(() => rmSync(work, { recursive: true, force: true }));
+
+    /**
+     * How the step ends for a lockfile entry and a title, run as GitHub runs a step, with `curl`
+     * replaced by one that serves the packed prose check whatever address it is given.
+     */
+    const ends = ({
+        resolved = registry,
+        hash = integrity,
+        named = version,
+        title = 'Check each pull request title',
+    } = {}) => {
+        const dir = mkdtempSync(join(work, 'case-'));
+        const bin = join(dir, 'bin');
+        const temp = join(dir, 'temp');
+        mkdirSync(bin);
+        mkdirSync(temp);
+        writeFileSync(
+            join(dir, 'package-lock.json'),
+            JSON.stringify({
+                packages: {
+                    'node_modules/@jasonsdevspace/prose-check': {
+                        version: named,
+                        resolved,
+                        integrity: hash,
+                    },
+                },
+            })
+        );
+        writeFileSync(
+            join(bin, 'curl'),
+            `#!/bin/bash\nwhile [ $# -gt 1 ]; do [ "$1" = --output ] && out=$2; shift; done\ncp "${tarball}" "$out"\n`
+        );
+        chmodSync(join(bin, 'curl'), 0o755);
+        const { status, stdout, stderr } = spawnSync(
+            'bash',
+            ['--noprofile', '--norc', '-eo', 'pipefail', '-c', script],
+            {
+                cwd: dir,
+                encoding: 'utf8',
+                env: {
+                    PATH: `${bin}:${process.env['PATH'] ?? ''}`,
+                    RUNNER_TEMP: temp,
+                    TITLE: title,
+                    BODY: 'A plain body.',
+                    AUTHOR: 'someone',
+                },
+            }
+        );
+        return { status, output: `${stdout}${stderr}` };
+    };
+
+    it('passes a plain title and body from the tarball the lockfile names', () => {
+        expect(script).not.toBe('');
+        expect(ends().status).toBe(0);
+    });
+
+    it('refuses a title that breaks a prose rule, naming the rule', () => {
+        const refused = ends({ title: `Check each title ${String.fromCodePoint(0x2014)} twice` });
+        expect(refused.status).toBe(1);
+        expect(refused.output).toContain('em dash');
+    });
+
+    it('refuses a tarball whose hash is not the one the lockfile records', () => {
+        const refused = ends({ hash: `${integrity.slice(0, -6)}AAAAA=` });
+        expect(refused.status).toBe(1);
+        expect(refused.output).toContain("does not match the lockfile's hash");
+    });
+
+    it('refuses an address that is not the registry address of the version the lockfile names', () => {
+        for (const resolved of [
+            'https://example.com/prose-check.tgz',
+            `https://registry.npmjs.org/@jasonsdevspace/prose-check/-/prose-check-${version}/../../../../evil/-/evil-1.0.0.tgz`,
+        ]) {
+            const refused = ends({ resolved });
+            expect(refused.status, resolved).toBe(1);
+            expect(refused.output, resolved).toContain('outside the npm registry');
+        }
+        const crafted = 'x/../../../evil/-/evil-1.0.0';
+        expect(
+            ends({
+                named: crafted,
+                resolved: `https://registry.npmjs.org/@jasonsdevspace/prose-check/-/prose-check-${crafted}.tgz`,
+            }).status
+        ).toBe(1);
+    });
+});
+
+describe('what reaches a script', () => {
+    it('passes no pull request or event text into a script, only through env', () => {
+        const pasted = [...workflows].flatMap(([path, text]) =>
+            runsIn(text)
+                .filter((run) => /\$\{\{\s*github\.(?:event\.|head_ref)/.test(run))
+                .map(() => path)
+        );
+        expect(pasted).toEqual([]);
+        expect(runsIn(workflows.get('.github/workflows/message.yml') ?? '').length).toBeGreaterThan(
+            0
+        );
+    });
+
+    it('runs on no trigger that hands a pull request a privileged token', () => {
+        expect(
+            [...workflows]
+                .filter(([, text]) =>
+                    /^\s*(?:pull_request_target|workflow_run)\s*:|\[[^\]]*\b(?:pull_request_target|workflow_run)\b/m.test(
+                        text.replace(/^\s*#.*$/gm, '')
+                    )
+                )
+                .map(([path]) => path)
+        ).toEqual([]);
+    });
+
+    it('finds pull request text pasted into a script, and a privileged trigger', () => {
+        expect(runsIn('      - run: echo "${{ github.event.pull_request.title }}"\n')).toEqual([
+            'echo "${{ github.event.pull_request.title }}"',
+        ]);
+        expect(
+            runsIn('      - run: |\n          printf %s "${{ github.head_ref }}"\n        env:\n')
+        ).toEqual(['          printf %s "${{ github.head_ref }}"']);
+    });
+});
+
+describe('the git hooks', () => {
+    const hooks = repositoryFiles(import.meta.url, (path) => /^\.husky\/[^/_][^/]*$/.test(path));
+
+    it('run npx only on what is installed, so a hook in a checkout without dependencies fetches nothing', () => {
+        expect(hooks.size).toBeGreaterThan(0);
+        const fetching = [...hooks].flatMap(([path, text]) =>
+            text
+                .split('\n')
+                .filter((line) => /\bnpx\b/.test(line) && !/\bnpx --no-install\b/.test(line))
+                .map((line) => `${path}: ${line}`)
+        );
+        expect(fetching).toEqual([]);
+    });
+});
+
+/**
+ * Where each of `patterns` first matches in `text`, in order, each search starting where the
+ * one before ended, or the first pattern that does not match after the one before it.
+ */
+const inOrder = (text: string, patterns: readonly RegExp[]): string[] => {
+    let from = 0;
+    return patterns.flatMap((pattern) => {
+        const match = new RegExp(pattern.source, pattern.flags.replace('g', '')).exec(
+            text.slice(from)
+        );
+        if (!match) return [pattern.source];
+        from += match.index + match[0].length;
+        return [];
+    });
+};
+
+describe('the oldest Node job', () => {
+    const ci = workflows.get('.github/workflows/ci.yml') ?? '';
+    const floor = /^ {4}floor:\n(?: {8}.*\n|[ \t]*\n)*/m.exec(ci)?.[0] ?? '';
+
+    it('proves the engine tarball it reports a checksum for on the oldest Node, before uploading that same tarball', () => {
+        expect(floor).not.toBe('');
+        expect(
+            inOrder(floor, [
+                /id: pack\n[\s\S]*?sha256sum "\$\{tarballs\[0\]\}"[\s\S]*?echo "sha256=\$sum" >> "\$GITHUB_OUTPUT"/,
+                /floorOf\(require\('\.\/packages\/engine\/package\.json'\)\.engines\.node\)[\s\S]*?> engine-floor/,
+                /uses: actions\/setup-node@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+node-version-file: engine-floor/,
+                /npm install --engine-strict --ignore-scripts "\$RUNNER_TEMP"\/jasonsdevspace-shelflens-\*\.tgz/,
+                /working-directory: \$\{\{ runner\.temp \}\}\/consumer/,
+                /uses: actions\/upload-artifact@[0-9a-f]{40}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/jasonsdevspace-shelflens-\*\.tgz/,
+            ])
+        ).toEqual([]);
+    });
+});
+
+describe('the release workflow', () => {
+    it('uses no cache in its own jobs, and lets the checks it calls read one', () => {
+        const release = workflows.get('.github/workflows/release.yml') ?? '';
+        expect(release).toMatch(/^cache-mode: none$/m);
+        expect(release).toMatch(/^ {4}checks:\n(?: {8}.*\n)*? {8}cache-mode: read\n/m);
     });
 });
