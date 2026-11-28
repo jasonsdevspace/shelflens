@@ -1,7 +1,7 @@
 # Decision records
 
 The decisions in this project that had a real alternative, with the option rejected, what the
-choice costs, and the test or measurement behind it. Records 1 to 15, 18 and 20 were written when
+choice costs, and the test or measurement behind it. Records 1 to 15, 18, 20 and 21 were written when
 the decision was made, so the evidence was still fresh. Records 16, 17 and 19 were written after the
 work they describe, from the code, its tests and the pull requests that made it.
 

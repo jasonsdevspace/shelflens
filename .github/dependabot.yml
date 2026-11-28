@@ -6,7 +6,8 @@
 # own, so without this they would quietly fall behind. Minor and patch updates
 # are grouped into one pull request per ecosystem to keep the noise down, with
 # TypeScript and its lint plugin in a group of their own, the GraphQL codegen
-# packages in another, majors and all, and each of the house's own packages in one of its own.
+# packages in another, majors and all, and the prose check and the repo check each in one of its
+# own.
 # Security fixes arrive separately, as soon as an advisory is published.
 # Each update carries the dependencies label alone, so pull requests sort by
 # the kind of work rather than by the package manager. A new version is offered

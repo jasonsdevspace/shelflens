@@ -27,10 +27,11 @@ the repository's own `prepare` and `prepack`, so the hooks and the engine's buil
 **Set npm's own settings, and hold them with the shared check.** The root `.npmrc` sets the three
 settings, `npm run installs` runs `check-installs` in `verify` and in CI, and the engine is built by
 name before it is packed, with its `prepack` gone. The setup runs `npm run prepare` after `npm ci`
-to set up the commit hooks. The workflow test keeps only what the `.npmrc` cannot cover: an install
-where npm reads no project settings, a global one, one given another folder, or one in a job or
-step outside the checkout, turns install scripts off itself, and npx, `npm exec` and `npm x` run
-only what the lockfile installed.
+to set up the commit hooks. The workflow test holds one rule wherever an install runs: every
+workflow line that installs with npm carries `--ignore-scripts`, the last flag deciding, and every
+npx, `npm exec` and `npm x` carries `--no-install`, with `npm init` given an initializer and `npm
+create` refused. The root `package.json` declares `engines.npm` as `>=11.14.0`, the first npm that
+reads both `allow-git` and `allow-remote`.
 
 ## Consequences
 
@@ -46,6 +47,7 @@ only what the lockfile installed.
 ## How it is tested
 
 - `check-installs` runs in `verify` and in CI's checks, and fails without the root `.npmrc`.
-- `scripts/workflows.test.ts` holds every install where npm reads no project `.npmrc` to
-  `--ignore-scripts`, and every npx, `npm exec` and `npm x` to `--no-install`.
+- `scripts/workflows.test.ts` holds every workflow line that installs with npm to
+  `--ignore-scripts`, wherever it runs, and every npx, `npm exec` and `npm x` to `--no-install`, and
+  fails when the npm running it is older than the one `engines.npm` names.
 - The pack job lists the tarball and fails if it holds no `dist`.

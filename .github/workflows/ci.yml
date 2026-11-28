@@ -293,9 +293,9 @@ jobs:
             - name: Install dependencies
               run: npm ci --ignore-scripts
 
-            # The engine is built by name, on the Node the project builds on, since the .npmrc's
-            # ignore-scripts skips a prepack, then packed, which is how the published package is
-            # made, and the tarball must hold the build.
+            # The engine has no prepack and is built by name, on the Node the project builds on,
+            # since the .npmrc's ignore-scripts would skip one, then packed, which is how the
+            # published package is made, and the tarball must hold the build.
             # Its checksum is a job output, which no other job in the run can change,
             # unlike the artifact, so the release publishes only this tarball.
             - name: Pack the engine
