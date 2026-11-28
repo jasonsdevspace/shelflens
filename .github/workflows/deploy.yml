@@ -15,16 +15,21 @@ on:
 permissions:
     contents: read
 
-# One deploy at a time, and one that has started finishes, so the newest commit
-# is always the last deployed, and a run that has handed an artifact to Pages
-# is never canceled, which would leave the deployment pending.
+# One deploy at a time from main, and one that has started finishes, so the
+# newest commit is always the last deployed, and a run that has handed an
+# artifact to Pages is never canceled, which would leave the deployment
+# pending. The group is the branch's own, so a run started by hand from
+# another branch never takes the place of one waiting on main.
 concurrency:
-    group: deploy
+    group: deploy-${{ github.ref }}
     cancel-in-progress: false
 
 jobs:
+    # Only main deploys, so a run started by hand from another branch runs
+    # nothing rather than every check with no deploy after them.
     checks:
         name: CI
+        if: github.ref == 'refs/heads/main'
         uses: ./.github/workflows/ci.yml
         permissions:
             contents: read
@@ -35,7 +40,6 @@ jobs:
     site:
         name: Build the demo site
         needs: checks
-        if: github.ref == 'refs/heads/main'
         runs-on: ubuntu-26.04
         timeout-minutes: 15
         steps:

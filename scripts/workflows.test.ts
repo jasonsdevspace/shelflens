@@ -889,8 +889,9 @@ describe('the deploy workflow', () => {
         const plain = read(file)
             .replace(/^[ \t]*#.*\n/gm, '')
             .replace(/[ \t]+#[ \t].*$/gm, '');
-        const grants = (part: string) => /id-token:\s*write|pages:\s*write|write-all/.test(part);
-        const before = plain.slice(0, Math.max(0, plain.search(/^jobs:/m)));
+        const grants = (part: string) => /(?:id-token|pages):\s*['"]?write\b|write-all/.test(part);
+        const start = plain.search(/^jobs:/m);
+        const before = start < 0 ? plain : plain.slice(0, start);
         return [
             ...(grants(before) ? ['the workflow'] : []),
             ...[...jobsOf(plain)].filter(([, lines]) => grants(lines)).map(([id]) => id),
@@ -918,6 +919,7 @@ describe('the deploy workflow', () => {
 
     it('builds the demo only once every check in CI has passed, and deploys only what it built', () => {
         expect(job('checks')).toMatch(/^ {8}uses: \.\/\.github\/workflows\/ci\.yml\s*$/m);
+        expect(job('checks')).toMatch(/^ {8}if: github\.ref == 'refs\/heads\/main'\s*$/m);
         expect(job('checks')).toMatch(/^ {8}permissions:\n {12}contents: read\n(?! {12})/m);
         expect(job('site')).toMatch(/^ {8}needs: checks\s*$/m);
         expect(job('site')).toMatch(/uses: actions\/upload-pages-artifact@[0-9a-f]{40}\b/);
@@ -927,8 +929,10 @@ describe('the deploy workflow', () => {
         );
     });
 
-    it('runs one deploy at a time, never canceling one under way', () => {
-        expect(text).toMatch(/^concurrency:\n {4}group: deploy\n {4}cancel-in-progress: false\n/m);
+    it('runs one deploy at a time for a branch, never canceling one under way', () => {
+        expect(text).toMatch(
+            /^concurrency:\n {4}group: deploy-\$\{\{ github\.ref \}\}\n {4}cancel-in-progress: false\n/m
+        );
     });
 });
 
