@@ -1,0 +1,96 @@
+name: Deploy
+
+# Publishes the demo to GitHub Pages at jasonsdevspace.com/shelflens/ from each
+# push to main, or by hand from main, once every check CI runs has passed on
+# that commit, so a merge that fails a check is never deployed. CI is called
+# from here rather than holding the deploy itself, so the release, which calls
+# CI too, grants its checks read access alone, and only this workflow's deploy
+# job holds what Pages asks.
+on:
+    push:
+        branches: [main]
+    # A deploy by hand, which still runs every check first.
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+# One deploy at a time from main, and one that has started finishes, so the
+# newest commit is always the last deployed, and a run that has handed an
+# artifact to Pages is never canceled, which would leave the deployment
+# pending. The group is the branch's own, so a run started by hand from
+# another branch never takes the place of one queued on main.
+concurrency:
+    group: deploy-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    # Only main deploys, so a run started by hand from another branch runs
+    # nothing rather than every check with no deploy after them.
+    checks:
+        name: CI
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/workflows/ci.yml
+        permissions:
+            contents: read
+
+    # The site is built in a job with no more than read access, so nothing
+    # the build installs or runs can deploy, and the deploy job runs only
+    # GitHub's own Pages actions.
+    site:
+        name: Build the demo site
+        needs: checks
+        runs-on: ubuntu-26.04
+        timeout-minutes: 15
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Set up Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci --ignore-scripts
+
+            # The page, the catalog, the rules and the worker, built for the
+            # path the project site is served under.
+            - name: Build the storefront for the project site
+              run: npm run storefront
+              env:
+                  BASE_PATH: /shelflens/
+
+            - name: Upload the site
+              uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+              with:
+                  path: apps/storefront/dist
+
+    deploy:
+        name: Deploy the demo
+        needs: site
+        runs-on: ubuntu-26.04
+        timeout-minutes: 10
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Configure Pages
+              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+            - name: Summarize the deploy
+              env:
+                  PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+              run: |
+                  commit="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+                  printf '### Deployed\n\n%s, from [`%s`](%s).\n' "$PAGE_URL" "${GITHUB_SHA:0:7}" "$commit" >> "$GITHUB_STEP_SUMMARY"
