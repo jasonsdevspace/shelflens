@@ -27,11 +27,13 @@ the repository's own `prepare` and `prepack`, so the hooks and the engine's buil
 **Set npm's own settings, and hold them with the shared check.** The root `.npmrc` sets the three
 settings, `npm run installs` runs `check-installs` in `verify` and in CI, and the engine is built by
 name before it is packed, with its `prepack` gone. The setup runs `npm run prepare` after `npm ci`
-to set up the commit hooks. The workflow test holds one rule wherever an install runs: every
-workflow line that installs with npm carries `--ignore-scripts`, the last flag deciding, and every
-npx, `npm exec` and `npm x` carries `--no-install`, with `npm init` given an initializer and `npm
-create` refused. The root `package.json` declares `engines.npm` as `>=11.14.0`, the first npm that
-reads both `allow-git` and `allow-remote`.
+to set up the commit hooks. The workflow test holds one rule wherever an install runs, each command
+judged by its own flags: every command that installs with npm carries `--ignore-scripts`, the last
+flag deciding, every npx, `npm exec` and `npm x` is held by its own options not to fetch, and `npm
+init` given an initializer and `npm create` are refused. A test fails when the npm running the
+checks is older than 11.14.0, the first npm that reads both `allow-git` and `allow-remote`. The
+floor is not named in `engines.npm`, since Dependabot's npm updater reads that field and may refuse
+to run on an older npm.
 
 ## Consequences
 
@@ -48,6 +50,6 @@ reads both `allow-git` and `allow-remote`.
 
 - `check-installs` runs in `verify` and in CI's checks, and fails without the root `.npmrc`.
 - `scripts/workflows.test.ts` holds every workflow line that installs with npm to
-  `--ignore-scripts`, wherever it runs, and every npx, `npm exec` and `npm x` to `--no-install`, and
-  fails when the npm running it is older than the one `engines.npm` names.
+  `--ignore-scripts`, wherever it runs, each command by its own flags, and every npx, `npm exec` and
+  `npm x` to its own options not fetching, and fails when the npm running it is older than 11.14.0.
 - The pack job lists the tarball and fails if it holds no `dist`.
